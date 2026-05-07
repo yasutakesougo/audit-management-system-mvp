@@ -11,7 +11,7 @@ test.describe('Kiosk Procedure List', () => {
   });
 
   test('should display user name and procedure list', async ({ page }) => {
-    await expect(page.getByText('田中 太郎')).toBeVisible();
+    await expect(page.getByText('桂川 進太朗')).toBeVisible();
     await expect(page.getByText('実施状況:')).toBeVisible();
   });
 
