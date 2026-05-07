@@ -10,7 +10,7 @@ import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
 import { formatDateIso } from '@/lib/dateFormat';
 
-const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興興あり', '切り替え困難'];
+const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
 const RESULT_CHIPS = ['改善した', '変化なし', '悪化した', '途中で落ち着いた'];
 
