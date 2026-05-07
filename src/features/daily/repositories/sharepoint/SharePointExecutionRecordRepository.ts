@@ -315,7 +315,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       id: title,
       date: title.slice(0, 10), 
       userId: (item[rf.userId] || '') as string,
-      scheduleItemId: (item[rf.rowNo] || '') as string,
+      scheduleItemId: String(item[rf.rowNo] ?? '').trim(),
       status: item[rf.status] as RecordStatus,
       triggeredBipIds,
       memo: (item[rf.memo] || item[rf.payload] || '') as string,
