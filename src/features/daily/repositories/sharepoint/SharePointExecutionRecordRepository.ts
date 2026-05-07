@@ -37,6 +37,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   private resolvedChildPath: string | null = null;
   private availableFields = new Map<string, Set<string>>();
   private initPromises = new Map<string, Promise<void>>();
+  private entityTypes = new Map<string, string>();
 
   constructor(options: SharePointExecutionRecordRepositoryOptions) {
     this.spFetch = options.spFetch;
@@ -49,6 +50,30 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       this.parentListTitle,
       options.getListFieldInternalNames
     );
+  }
+
+  private async getEntityType(listTitle: string): Promise<string> {
+    const cached = this.entityTypes.get(listTitle);
+    if (cached) return cached;
+    try {
+      const base = listTitle.startsWith('/') ? listTitle : `/lists/getbytitle('${encodeURIComponent(listTitle)}')`;
+      const url = `${base}?$select=ListItemEntityTypeFullName`;
+      const res = await this.spFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const type = data.ListItemEntityTypeFullName || data.d?.ListItemEntityTypeFullName;
+        if (type) {
+          this.entityTypes.set(listTitle, type);
+          return type;
+        }
+      }
+    } catch (e) {
+      console.warn(`[ExecutionRepo] Failed to fetch ListItemEntityTypeFullName for ${listTitle}:`, e);
+    }
+    const cleanTitle = listTitle.replace(/[^a-zA-Z0-9]/g, '');
+    const fallback = `SP.Data.${cleanTitle}ListItem`;
+    this.entityTypes.set(listTitle, fallback);
+    return fallback;
   }
 
   private async getResolvedFields(): Promise<ResolvedRowsFields> {
@@ -133,16 +158,20 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       [DAILY_RECORD_FIELDS.userRowsJSON]: '[]',
     };
     const body = this.filterPayload(this.parentListTitle, rawBody);
+    const parentEntityType = await this.getEntityType(this.parentListTitle);
 
     const createResponse = await this.spFetch(createUrl, {
       method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json;odata=verbose', 'Accept': 'application/json;odata=verbose' }
+      body: JSON.stringify({
+        ...body,
+        __metadata: { type: parentEntityType },
+      }),
+      headers: { 'Content-Type': 'application/json;odata=nometadata', 'Accept': 'application/json;odata=nometadata' }
     });
 
     if (createResponse.ok) {
       const result = await createResponse.json();
-      return result.d.Id;
+      return result.d ? result.d.Id : result.Id;
     }
 
     const secondAttemptResponse = await this.spFetch(url, { method: 'GET' });
@@ -224,6 +253,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
 
     const body = this.filterPayload(this.childListTitle, rawBody);
+    const childEntityType = await this.getEntityType(this.childListTitle);
 
     if (existing) {
       const filter = `${rf.rowKey} eq '${rowKey}'`;
@@ -239,17 +269,27 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
           headers: {
             'X-HTTP-Method': 'MERGE',
             'If-Match': '*',
-            'Content-Type': 'application/json;odata=verbose'
+            'Content-Type': 'application/json;odata=nometadata',
+            'Accept': 'application/json;odata=nometadata'
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            ...body,
+            __metadata: { type: childEntityType },
+          }),
         });
       }
     } else {
       const createUrl = `${this.resolvedChildPath}/items`;
       await this.spFetch(createUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json;odata=verbose' },
-        body: JSON.stringify(body),
+        headers: { 
+          'Content-Type': 'application/json;odata=nometadata',
+          'Accept': 'application/json;odata=nometadata'
+        },
+        body: JSON.stringify({
+          ...body,
+          __metadata: { type: childEntityType },
+        }),
       });
     }
 

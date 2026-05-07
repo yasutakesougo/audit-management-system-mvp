@@ -22,12 +22,35 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
   private readonly sp: ReturnType<typeof createSpClient>;
   private readonly listTitle = LIST_CONFIG[ListKeys.DailyActivityRecords].title;
   private readonly defaultTop: number;
+  private entityType: string | null = null;
 
   constructor(options: SharePointBehaviorRepositoryOptions = {}) {
     this.ensureSharePointConfig();
     this.defaultTop = options.defaultTop ?? SP_QUERY_LIMITS.default;
     const { baseUrl } = ensureConfig();
     this.sp = options.sp ?? createSpClient(acquireSpAccessToken, baseUrl);
+  }
+
+  private async getEntityType(): Promise<string> {
+    if (this.entityType) return this.entityType;
+    try {
+      const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')?$select=ListItemEntityTypeFullName`;
+      const res = await this.sp.spFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const type = data.ListItemEntityTypeFullName || data.d?.ListItemEntityTypeFullName;
+        if (type) {
+          this.entityType = type;
+          return type;
+        }
+      }
+    } catch (e) {
+      console.warn('[SharePointBehaviorRepository] Failed to fetch ListItemEntityTypeFullName:', e);
+    }
+    const cleanTitle = this.listTitle.replace(/[^a-zA-Z0-9]/g, '');
+    const fallback = `SP.Data.${cleanTitle}ListItem`;
+    this.entityType = fallback;
+    return fallback;
   }
 
   async add(observation: Omit<ABCRecord, 'id'>): Promise<ABCRecord> {
@@ -40,13 +63,17 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
 
     const payload = this.toRequest(observation, internalNames);
     const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items`;
+    const typeName = await this.getEntityType();
     const res = await this.sp.spFetch(url, {
       method: 'POST',
       headers: {
         Accept: 'application/json;odata=nometadata',
         'Content-Type': 'application/json;odata=nometadata',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        __metadata: { type: typeName },
+      }),
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     // SharePoint の作成レスポンスは列を省略する場合があるため、
