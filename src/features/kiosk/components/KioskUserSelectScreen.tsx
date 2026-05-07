@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, CircularProgress } from '@mui/material';
+import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, CircularProgress, Chip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
@@ -63,9 +63,29 @@ export const KioskUserSelectScreen: React.FC = () => {
                     >
                       {user.Furigana || '　'}
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
                       {user.FullName}
                     </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 1 }}>
+                      {user.IsHighIntensitySupportTarget && (
+                        <Chip 
+                          label="強度行動障害支援対象" 
+                          size="small" 
+                          color="error" 
+                          variant="outlined"
+                          sx={{ fontWeight: 'bold', borderRadius: 1 }}
+                        />
+                      )}
+                      {user.IsSupportProcedureTarget && !user.IsHighIntensitySupportTarget && (
+                        <Chip 
+                          label="支援手順対象" 
+                          size="small" 
+                          color="primary" 
+                          variant="outlined"
+                          sx={{ fontWeight: 'bold', borderRadius: 1 }}
+                        />
+                      )}
+                    </Box>
                   </CardContent>
                 </CardActionArea>
               </Card>

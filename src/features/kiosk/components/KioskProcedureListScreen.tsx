@@ -112,7 +112,11 @@ export const KioskProcedureListScreen: React.FC = () => {
       <Grid container spacing={2}>
         {procedures.map((step, index) => {
           const scheduleItemId = step.id || index.toString();
-          const record = records.find(r => r.scheduleItemId === scheduleItemId);
+          // IDによる完全一致、または rowNo によるフォールバック一致の両方を試行する
+          const record = records.find(r => 
+            r.scheduleItemId === scheduleItemId || 
+            (step.rowNo && r.scheduleItemId === step.rowNo.toString())
+          );
           const isCompleted = record?.status === 'completed';
           const isTriggered = record?.status === 'triggered';
           
