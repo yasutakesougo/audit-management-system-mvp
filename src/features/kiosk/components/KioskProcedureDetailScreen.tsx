@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar } from '@mui/material';
+import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar, TextField } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -9,6 +9,10 @@ import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
 import { formatDateIso } from '@/lib/dateFormat';
+
+const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
+const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
+const RESULT_CHIPS = ['改善した', '変化なし', '悪化した', '途中で落ち着いた'];
 
 export const KioskProcedureDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -29,16 +33,63 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
   // scheduleItemId として ID もしくは インデックスを使用する
   const scheduleItemId = procedure?.id || slotKey || '';
-  const { record, setStatus } = useExecutionRecord(today, userId || '', scheduleItemId);
+  const { record, saveRecord, isLoading } = useExecutionRecord(today, userId || '', scheduleItemId);
   
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // 観察チップ用ステート
+  const [selectedMood, setSelectedMood] = useState<string>('');
+  const [selectedAction, setSelectedAction] = useState<string>('');
+  const [selectedResult, setSelectedResult] = useState<string>('');
+  const [textMemo, setTextMemo] = useState<string>('');
+  const [showObservations, setShowObservations] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // 以前の保存記録からステートを復元する（1回限り）
+  React.useEffect(() => {
+    if (isLoading || isInitialized || !record) return;
+    
+    const memoText = record.memo || '';
+    const moodMatch = memoText.match(/【様子】([^\n]+)/);
+    const actionMatch = memoText.match(/【対応】([^\n]+)/);
+    const resultMatch = memoText.match(/【変化】([^\n]+)/);
+    const textMatch = memoText.match(/【メモ】([\s\S]+)/);
+    
+    if (moodMatch) setSelectedMood(moodMatch[1].trim());
+    if (actionMatch) setSelectedAction(actionMatch[1].trim());
+    if (resultMatch) setSelectedResult(resultMatch[1].trim());
+    
+    if (textMatch) {
+      setTextMemo(textMatch[1].trim());
+    } else if (memoText.trim()) {
+      const hasLabels = memoText.includes('【様子】') || memoText.includes('【対応】') || memoText.includes('【変化】');
+      if (!hasLabels) {
+        setTextMemo(memoText.trim());
+      }
+    }
+    
+    if (record.status === 'triggered') {
+      setShowObservations(true);
+    }
+    setIsInitialized(true);
+  }, [record, isLoading, isInitialized]);
+
+  const serializeMemo = () => {
+    const parts: string[] = [];
+    if (selectedMood) parts.push(`【様子】${selectedMood}`);
+    if (selectedAction) parts.push(`【対応】${selectedAction}`);
+    if (selectedResult) parts.push(`【変化】${selectedResult}`);
+    if (textMemo.trim()) parts.push(`【メモ】${textMemo.trim()}`);
+    return parts.join('\n');
+  };
 
   const handleSave = async (newStatus: 'completed' | 'triggered') => {
     if (!userId) return;
     setIsSaving(true);
     try {
-      await setStatus(newStatus);
+      const finalMemo = newStatus === 'triggered' ? serializeMemo() : '';
+      await saveRecord(newStatus, finalMemo);
       setShowSuccess(true);
       // 成功フィードバックの後、少し待ってから一覧に戻る
       setTimeout(() => {
@@ -50,7 +101,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     }
   };
 
-  if (isUserLoading) {
+  const handleTriggerClick = () => {
+    setShowObservations(!showObservations);
+  };
+
+  if (isUserLoading || isLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
   }
 
@@ -114,7 +169,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       </Box>
 
       {/* メインコンテンツ */}
-      <Grid container spacing={4} sx={{ flexGrow: 1 }}>
+      <Grid container spacing={4} sx={{ flexGrow: 1, mb: 4 }}>
         {/* 本人のやる事 */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper 
@@ -165,30 +220,176 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* 観察記録の入力パネル */}
+      {showObservations && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            mb: 4,
+            borderRadius: 6,
+            border: '2px solid',
+            borderColor: 'warning.light',
+            bgcolor: 'warning.lighter',
+          }}
+          data-testid="kiosk-observation-panel"
+        >
+          <Typography variant="h5" color="warning.main" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ width: 8, height: 24, bgcolor: 'warning.main', mr: 2, borderRadius: 1 }} />
+            観察記録の追加 (注意あり)
+          </Typography>
+
+          <Stack spacing={4}>
+            {/* 1. 本人の様子 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1.5, color: 'text.secondary' }}>
+                本人の様子
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {MOOD_CHIPS.map((chip) => {
+                  const active = selectedMood === chip;
+                  return (
+                    <Chip
+                      key={chip}
+                      label={chip}
+                      onClick={() => setSelectedMood(active ? '' : chip)}
+                      color={active ? 'warning' : 'default'}
+                      variant={active ? 'filled' : 'outlined'}
+                      sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
+                      data-testid={`mood-chip-${chip}`}
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+
+            {/* 2. 支援者の対応 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1.5, color: 'text.secondary' }}>
+                支援者の対応
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {ACTION_CHIPS.map((chip) => {
+                  const active = selectedAction === chip;
+                  return (
+                    <Chip
+                      key={chip}
+                      label={chip}
+                      onClick={() => setSelectedAction(active ? '' : chip)}
+                      color={active ? 'warning' : 'default'}
+                      variant={active ? 'filled' : 'outlined'}
+                      sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
+                      data-testid={`action-chip-${chip}`}
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+
+            {/* 3. 変化 */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1.5, color: 'text.secondary' }}>
+                変化
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {RESULT_CHIPS.map((chip) => {
+                  const active = selectedResult === chip;
+                  return (
+                    <Chip
+                      key={chip}
+                      label={chip}
+                      onClick={() => setSelectedResult(active ? '' : chip)}
+                      color={active ? 'warning' : 'default'}
+                      variant={active ? 'filled' : 'outlined'}
+                      sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
+                      data-testid={`result-chip-${chip}`}
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+
+            {/* 4. メモ */}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1.5, color: 'text.secondary' }}>
+                メモ (自由記述)
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                variant="outlined"
+                placeholder="様子や対応について、その他の補足事項があれば入力してください"
+                value={textMemo}
+                onChange={(e) => setTextMemo(e.target.value)}
+                sx={{
+                  bgcolor: 'background.paper',
+                  borderRadius: 3,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                  }
+                }}
+                inputProps={{ 'data-testid': 'kiosk-observation-memo' }}
+              />
+            </Box>
+
+            {/* 操作ボタン */}
+            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ pt: 2 }}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => {
+                  setShowObservations(false);
+                  setSelectedMood('');
+                  setSelectedAction('');
+                  setSelectedResult('');
+                  setTextMemo('');
+                }}
+                sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem' }}
+                disabled={isSaving}
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={() => handleSave('triggered')}
+                sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
+                disabled={isSaving}
+                data-testid="kiosk-observation-submit"
+              >
+                注意ありで保存する
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
+
       {/* フッター / アクションボタン */}
-      <Box sx={{ mt: 6, pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ mt: 'auto', pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
         <Stack direction="row" spacing={3} justifyContent="center">
           <Button 
-            variant={isTriggered ? "contained" : "outlined"}
+            variant={showObservations || isTriggered ? "contained" : "outlined"}
             color="warning"
             size="large" 
             startIcon={<ErrorOutlineIcon />}
-            onClick={() => handleSave('triggered')}
+            onClick={handleTriggerClick}
             sx={{ 
               py: 2, 
               px: 4, 
               borderRadius: 4, 
               fontSize: '1.2rem',
-              fontWeight: isTriggered ? 'bold' : 'normal',
-              ...(isTriggered ? {} : {
+              fontWeight: showObservations || isTriggered ? 'bold' : 'normal',
+              ...((showObservations || isTriggered) ? {} : {
                 color: 'text.secondary',
                 borderColor: 'divider',
               }),
-              '&:hover': { bgcolor: isTriggered ? 'warning.dark' : 'action.hover' }
+              '&:hover': { bgcolor: showObservations || isTriggered ? 'warning.dark' : 'action.hover' }
             }}
             disabled={isSaving || isCompleted}
+            data-testid="kiosk-trigger-btn"
           >
-            {isTriggered ? '記録済み' : '注意ありで記録'}
+            {showObservations ? '閉じる' : (isTriggered ? '記録済み（注意あり）' : '注意ありで記録')}
           </Button>
           <Button 
             variant="contained" 
@@ -204,7 +405,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
               fontWeight: 'bold',
               boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
             }}
-            disabled={isSaving || isCompleted}
+            disabled={isSaving || isCompleted || showObservations}
+            data-testid="kiosk-complete-btn"
           >
             {isCompleted ? '実施済みです' : '実施済みにする'}
           </Button>
@@ -225,4 +427,3 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     </Box>
   );
 };
-

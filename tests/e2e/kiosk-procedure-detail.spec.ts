@@ -41,7 +41,14 @@ test.describe('Kiosk Procedure Detail', () => {
   });
 
   test('should save triggered status and reflect in procedure list', async ({ page }) => {
+    // 1. 最初の「注意ありで記録」をクリックしてパネルを開く
     await page.getByRole('button', { name: '注意ありで記録' }).click();
+    
+    // 観察パネルが表示されることを確認
+    await expect(page.getByTestId('kiosk-observation-panel')).toBeVisible();
+
+    // 2. パネル内の「注意ありで保存する」をクリック
+    await page.getByTestId('kiosk-observation-submit').click();
 
     await expect(page.getByText('記録を保存しました')).toBeVisible();
     await expect(page).toHaveURL(/.*\/kiosk\/users\/1\/procedures\/?(\?.*)?/);
