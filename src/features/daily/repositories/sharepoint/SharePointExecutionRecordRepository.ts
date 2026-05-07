@@ -137,7 +137,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const createResponse = await this.spFetch(createUrl, {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json;odata=verbose', 'Accept': 'application/json;odata=verbose' }
+      headers: { 'Content-Type': 'application/json;odata=nometadata', 'Accept': 'application/json;odata=nometadata' }
     });
 
     if (createResponse.ok) {
@@ -239,7 +239,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
           headers: {
             'X-HTTP-Method': 'MERGE',
             'If-Match': '*',
-            'Content-Type': 'application/json;odata=verbose'
+            'Content-Type': 'application/json;odata=nometadata',
+            'Accept': 'application/json;odata=nometadata'
           },
           body: JSON.stringify(body),
         });
@@ -248,7 +249,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       const createUrl = `${this.resolvedChildPath}/items`;
       await this.spFetch(createUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json;odata=verbose' },
+        headers: { 
+          'Content-Type': 'application/json;odata=nometadata',
+          'Accept': 'application/json;odata=nometadata'
+        },
         body: JSON.stringify(body),
       });
     }
