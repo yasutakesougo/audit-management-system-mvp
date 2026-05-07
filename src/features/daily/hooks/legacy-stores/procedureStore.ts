@@ -5,7 +5,7 @@
 // CSVインポートで登録されたデータがリロード後も維持される。
 // ---------------------------------------------------------------------------
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { PROCEDURE_ROWS } from '@/features/planning-sheet/constants/procedureRows';
+
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 
@@ -15,17 +15,22 @@ export type ProcedureItem = ScheduleItem;
 // デフォルト時間割（フォールバック用）
 // ---------------------------------------------------------------------------
 
-const BASE_STEPS: ProcedureItem[] = PROCEDURE_ROWS.map(row => ({
-  id: `base-${row.rowNo}`,
-  rowNo: row.rowNo,
-  time: row.timeLabel,
-  activity: row.activity,
-  instruction: row.instructionDetail || '',
-  activityDetail: row.activityDetail,
-  instructionDetail: row.instructionDetail,
-  isKey: [1, 5, 7, 10, 12, 14, 15].includes(row.rowNo), // 主要なステップをKey設定
-  block: row.category === 'external' ? 'outing' : (row.rowNo <= 5 ? 'morning' : 'afternoon')
-}));
+import { buildUserProcedureRows } from '@/features/planning-sheet/constants/userProcedureDetails';
+
+export function getBaseStepsForUser(userId: string | number): ProcedureItem[] {
+  const rows = buildUserProcedureRows(userId);
+  return rows.map(row => ({
+    id: `base-${row.rowNo}`,
+    rowNo: row.rowNo,
+    time: row.timeLabel,
+    activity: row.activity,
+    instruction: row.instructionDetail || '',
+    activityDetail: row.activityDetail,
+    instructionDetail: row.instructionDetail,
+    isKey: [1, 5, 7, 10, 12, 14, 15].includes(row.rowNo), // 主要なステップをKey設定
+    block: row.category === 'external' ? 'outing' : (row.rowNo <= 5 ? 'morning' : 'afternoon')
+  }));
+}
 
 // ---------------------------------------------------------------------------
 // localStorage persistence
@@ -120,8 +125,8 @@ export function useProcedureStore() {
    * ※ ユーザーが明示的にデータを持っているかどうかは hasUserData() で確認可能
    */
   const getByUser = useCallback((userId: string) => {
-    if (!userId) return BASE_STEPS;
-    return snapshot[userId] ?? BASE_STEPS;
+    if (!userId) return getBaseStepsForUser('');
+    return snapshot[userId] ?? getBaseStepsForUser(userId);
   }, [snapshot]);
 
   /**
