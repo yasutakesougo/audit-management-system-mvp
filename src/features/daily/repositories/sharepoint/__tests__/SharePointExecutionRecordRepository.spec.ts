@@ -131,7 +131,7 @@ describe('SharePointExecutionRecordRepository', () => {
     expect(body[EXECUTION_RECORD_FIELDS.staffName]).toBe('Staff A');
   });
 
-  it('dynamically resolves list entity type name and parses flat parent ID (no .d wrapper)', async () => {
+  it('parses flat parent ID (no .d wrapper)', async () => {
     const record: ExecutionRecord = {
       id: 'R999',
       date: '2024-01-01',
@@ -147,20 +147,6 @@ describe('SharePointExecutionRecordRepository', () => {
     // Reset mocks for sequence-independent URL-based implementation mock
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url.includes('$select=ListItemEntityTypeFullName')) {
-        if (url.includes('SupportRecord_Daily') || url.includes('DailyRecords')) {
-          return {
-            ok: true,
-            json: async () => ({ ListItemEntityTypeFullName: 'SP.Data.SupportRecord_DailyListItem' })
-          };
-        }
-        if (url.includes('DailyRecordRows')) {
-          return {
-            ok: true,
-            json: async () => ({ ListItemEntityTypeFullName: 'SP.Data.DailyRecordRowsListItem' })
-          };
-        }
-      }
       if (url.includes('items') && init?.method === 'POST') {
         if (url.includes('SupportRecord_Daily') || url.includes('DailyRecords')) {
           return {
@@ -182,20 +168,6 @@ describe('SharePointExecutionRecordRepository', () => {
 
     await repo.upsertRecord(record);
 
-    // Verify parent list entity type name request was made
-    const parentMetaCall = mockSpFetch.mock.calls.find(call => 
-      call[0].includes('SupportRecord_Daily') && call[0].includes('$select=ListItemEntityTypeFullName')
-    );
-    expect(parentMetaCall).toBeDefined();
-
-    // Verify parent creation payload has __metadata with correct type
-    const parentCreateCall = mockSpFetch.mock.calls.find(call =>
-      call[0].includes('SupportRecord_Daily') && call[1]?.method === 'POST'
-    );
-    expect(parentCreateCall).toBeDefined();
-    const parentBody = JSON.parse(parentCreateCall![1]!.body as string);
-    expect(parentBody.__metadata).toEqual({ type: 'SP.Data.SupportRecord_DailyListItem' });
-
     // Verify child creation payload has parentId set to the parsed flat ID (777)
     const childCreateCall = mockSpFetch.mock.calls.find(call =>
       call[0].includes('DailyRecordRows') && call[1]?.method === 'POST'
@@ -203,6 +175,5 @@ describe('SharePointExecutionRecordRepository', () => {
     expect(childCreateCall).toBeDefined();
     const childBody = JSON.parse(childCreateCall![1]!.body as string);
     expect(childBody[EXECUTION_RECORD_FIELDS.parentId]).toBe(777);
-    expect(childBody.__metadata).toEqual({ type: 'SP.Data.DailyRecordRowsListItem' });
   });
 });

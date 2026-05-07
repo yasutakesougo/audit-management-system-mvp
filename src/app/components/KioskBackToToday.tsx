@@ -41,7 +41,7 @@ export const KioskBackToToday: React.FC = () => {
       }}
     >
       <ButtonBase
-        onClick={() => navigate('/today')}
+        onClick={() => navigate(`/kiosk${location.search}`)}
         sx={{
           display: 'flex',
           alignItems: 'center',

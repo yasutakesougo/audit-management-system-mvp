@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
@@ -10,7 +9,9 @@ import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { formatDateJapanese, formatDateIso } from '@/lib/dateFormat';
-import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
+import { useExecutionStore } from '@/features/daily/stores/executionStore';
 
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -21,8 +22,6 @@ export const KioskProcedureListScreen: React.FC = () => {
   const procedureRepo = useProcedureData();
   const executionRepo = useExecutionData();
   
-  const [records, setRecords] = useState<ExecutionRecord[]>([]);
-
   const todayIso = React.useMemo(() => formatDateIso(new Date()), []);
   const todayStr = formatDateJapanese(new Date());
 
@@ -30,6 +29,21 @@ export const KioskProcedureListScreen: React.FC = () => {
     if (!userId) return [];
     return procedureRepo.getByUser(userId);
   }, [userId, procedureRepo]);
+  const allPrimaryScheduleKeys = React.useMemo(() => {
+    const keys = new Set<string>();
+    for (const step of procedures) {
+      const idKey = normalizeScheduleItemId(step.id);
+      const rowNoKey = normalizeScheduleItemId(step.rowNo);
+      if (idKey) keys.add(idKey);
+      if (rowNoKey) keys.add(rowNoKey);
+    }
+    return keys;
+  }, [procedures]);
+
+  const { getRecords: getStoreRecords } = useExecutionStore();
+  const storeRecords = getStoreRecords(todayIso || '', userId || '');
+  
+  const [records, setRecords] = useState<ExecutionRecord[]>([]);
 
   // 実施記録の取得
   useEffect(() => {
@@ -43,14 +57,68 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     };
     void fetchRecords();
-  }, [userId, executionRepo, todayIso]);
+  }, [userId, executionRepo, todayIso, location.key, location.search]);
+
+  const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
+    if (!record) return false;
+    if (record.status === 'completed' || record.status === 'triggered') return true;
+    const unknownRecord = record as unknown as Record<string, unknown>;
+    const inputKeys = ['memo', 'note', 'specialNote', 'additionalInfo', 'situation'];
+    return inputKeys.some((key) => {
+      const value = unknownRecord[key];
+      return typeof value === 'string' && value.trim().length > 0;
+    });
+  }, []);
 
   // 進捗サマリーの計算
   const totalCount = procedures.length;
-  const doneCount = records.filter(r => r.status === 'completed').length;
-  const attentionCount = records.filter(r => r.status === 'triggered').length;
-  const progress = totalCount > 0 ? ((doneCount + attentionCount) / totalCount) * 100 : 0;
-  const normalizeScheduleItemId = (value: unknown): string => String(value ?? '').trim();
+  const recordsByScheduleItemId = React.useMemo(() => {
+    const map = new Map<string, ExecutionRecord>();
+    
+    // storeRecords は Zustand から、records は Repository (SharePoint) から。
+    // 同じ scheduleItemId があれば、入力がある方を優先する。
+    // (保存直後は store にあり fetch にはまだない、または fetch が空の場合があるため)
+    const allCandidateRecords = [...storeRecords, ...records];
+    
+    for (const record of allCandidateRecords) {
+      const key = normalizeScheduleItemId(record.scheduleItemId);
+      if (!key) continue;
+      
+      const existing = map.get(key);
+      // まだ未登録、または新しいレコードが入力済みデータを持っている場合は上書き
+      if (!existing || hasRecordInput(record)) {
+        map.set(key, record);
+      }
+    }
+    return map;
+  }, [storeRecords, records, hasRecordInput]);
+  const getRecordedRecordForProcedure = React.useCallback((procedure: { id?: unknown; rowNo?: unknown }, index: number) => {
+    const primaryCandidates = [
+      normalizeScheduleItemId(procedure.id),
+      normalizeScheduleItemId(procedure.rowNo),
+    ].filter(Boolean);
+    const matchedRecord = primaryCandidates
+      .map((key) => recordsByScheduleItemId.get(key))
+      .find((record) => hasRecordInput(record));
+    if (matchedRecord) return matchedRecord;
+
+    const indexKey = index.toString();
+    const canUseIndexFallback = !allPrimaryScheduleKeys.has(indexKey) || primaryCandidates.includes(indexKey);
+    if (!canUseIndexFallback) return undefined;
+
+    const fallbackRecord = recordsByScheduleItemId.get(indexKey);
+    if (hasRecordInput(fallbackRecord)) {
+      return fallbackRecord;
+    }
+    return undefined;
+  }, [allPrimaryScheduleKeys, hasRecordInput, recordsByScheduleItemId]);
+  const recordedRecordsByProcedure = React.useMemo(
+    () => procedures.map((procedure, index) => getRecordedRecordForProcedure(procedure, index)),
+    [procedures, getRecordedRecordForProcedure]
+  );
+  const doneCount = recordedRecordsByProcedure.filter((r) => r?.status === 'completed').length;
+  const recordedCount = recordedRecordsByProcedure.filter(Boolean).length;
+  const progress = totalCount > 0 ? (recordedCount / totalCount) * 100 : 0;
 
   if (isUserLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
@@ -93,7 +161,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         {/* 進捗サマリー */}
         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            実施状況: {doneCount + attentionCount} / {totalCount}
+            実施状況: {recordedCount} / {totalCount}
           </Typography>
           <LinearProgress 
             variant="determinate" 
@@ -101,9 +169,6 @@ export const KioskProcedureListScreen: React.FC = () => {
             sx={{ height: 12, borderRadius: 6, mb: 1, bgcolor: 'action.hover' }} 
           />
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            {attentionCount > 0 && (
-              <Chip icon={<WarningIcon />} label={`${attentionCount} 注意`} color="warning" size="small" sx={{ fontWeight: 'bold' }} />
-            )}
             <Chip icon={<CheckCircleIcon />} label={`${doneCount} 完了`} color="success" size="small" variant={doneCount > 0 ? "filled" : "outlined"} sx={{ fontWeight: 'bold' }} />
           </Box>
         </Box>
@@ -112,15 +177,8 @@ export const KioskProcedureListScreen: React.FC = () => {
       {/* 手順一覧 */}
       <Grid container spacing={2}>
         {procedures.map((step, index) => {
-          // detail 画面の保存キー順（id -> rowNo -> index）に合わせる
-          const scheduleKeyCandidates = [
-            normalizeScheduleItemId(step.id),
-            normalizeScheduleItemId(step.rowNo),
-            index.toString(),
-          ].filter(Boolean);
-          const record = records.find((r) => scheduleKeyCandidates.includes(normalizeScheduleItemId(r.scheduleItemId)));
-          const isCompleted = record?.status === 'completed';
-          const isTriggered = record?.status === 'triggered';
+          const recordedRecord = recordedRecordsByProcedure[index];
+          const isRecorded = Boolean(recordedRecord);
           
           return (
             <Grid key={index} size={12}>
@@ -130,8 +188,8 @@ export const KioskProcedureListScreen: React.FC = () => {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                   borderLeft: '6px solid',
                   borderLeftColor: step.isKey ? 'primary.main' : 'divider',
-                  bgcolor: isCompleted ? 'success.lighter' : isTriggered ? 'warning.lighter' : 'background.paper',
-                  opacity: isCompleted ? 0.8 : 1,
+                  bgcolor: isRecorded ? 'success.lighter' : 'background.paper',
+                  opacity: isRecorded ? 0.8 : 1,
                   transition: 'all 0.2s',
                   '&:hover': {
                     transform: 'translateY(-2px)',
@@ -146,7 +204,7 @@ export const KioskProcedureListScreen: React.FC = () => {
                 >
                   <Grid container alignItems="center" spacing={2}>
                     <Grid size={2} sx={{ textAlign: 'center' }}>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: isCompleted ? 'success.main' : 'text.secondary' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: isRecorded ? 'success.main' : 'text.secondary' }}>
                         {step.time}
                       </Typography>
                     </Grid>
@@ -154,8 +212,8 @@ export const KioskProcedureListScreen: React.FC = () => {
                       <Typography variant="h6" sx={{ 
                         fontWeight: 'bold', 
                         mb: 0.5,
-                        color: isCompleted ? 'success.dark' : 'text.primary',
-                        textDecoration: isCompleted ? 'line-through' : 'none'
+                        color: isRecorded ? 'success.dark' : 'text.primary',
+                        textDecoration: isRecorded ? 'line-through' : 'none'
                       }}>
                         {step.activity}
                       </Typography>
@@ -164,18 +222,11 @@ export const KioskProcedureListScreen: React.FC = () => {
                       </Typography>
                     </Grid>
                     <Grid size={3} sx={{ textAlign: 'right' }}>
-                      {isCompleted ? (
+                      {isRecorded ? (
                         <Chip 
                           icon={<CheckCircleIcon />} 
-                          label="実施済み" 
+                          label="記録済み" 
                           color="success"
-                          sx={{ borderRadius: 2, fontWeight: 'bold' }}
-                        />
-                      ) : isTriggered ? (
-                        <Chip 
-                          icon={<WarningIcon />} 
-                          label="注意あり" 
-                          color="warning"
                           sx={{ borderRadius: 2, fontWeight: 'bold' }}
                         />
                       ) : (

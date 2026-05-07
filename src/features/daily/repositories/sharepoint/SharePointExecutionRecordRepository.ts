@@ -10,6 +10,11 @@ import {
 } from './constants';
 import type { JsonRecord } from '@/lib/sp/types';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
+import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
+import {
+  normalizeExecutionDate,
+  normalizeExecutionUserId,
+} from '@/features/daily/utils/normalizeExecutionLookup';
 
 type SharePointExecutionRecordRepositoryOptions = {
   spFetch: SpFetchFn;
@@ -180,8 +185,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   }
 
   async getRecords(date: string, userId: string): Promise<ExecutionRecord[]> {
+    const normalizedDate = normalizeExecutionDate(date);
+    const normalizedUserId = normalizeExecutionUserId(userId);
     const rf = await this.getResolvedFields();
-    const dailyKey = `${date}-${userId}`;
+    const dailyKey = `${normalizedDate}-${normalizedUserId}`;
     const rowKeyPrefix = dailyKey;
     
     // Safety check: if rf.rowKey is RowKey but was resolved without actual presence, OData will fail.
@@ -207,8 +214,11 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   }
 
   async getRecord(date: string, userId: string, scheduleItemId: string): Promise<ExecutionRecord | undefined> {
+    const normalizedDate = normalizeExecutionDate(date);
+    const normalizedUserId = normalizeExecutionUserId(userId);
+    const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
     const rf = await this.getResolvedFields();
-    const rowKey = `${date}-${userId}-${scheduleItemId}`;
+    const rowKey = `${normalizedDate}-${normalizedUserId}-${normalizedScheduleItemId}`;
     const filter = `${rf.rowKey} eq '${rowKey}'`;
     const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}`;
 
@@ -222,30 +232,39 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   }
 
   async upsertRecord(record: ExecutionRecord): Promise<void> {
+    const normalizedDate = normalizeExecutionDate(record.date);
+    const normalizedUserId = normalizeExecutionUserId(record.userId);
+    const normalizedScheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
+    const normalizedRecord = {
+      ...record,
+      date: normalizedDate,
+      userId: normalizedUserId,
+      scheduleItemId: normalizedScheduleItemId,
+    };
     const rf = await this.getResolvedFields();
-    const dailyKey = `${record.date}-${record.userId}`;
-    const rowKey = `${dailyKey}-${record.scheduleItemId}`;
+    const dailyKey = `${normalizedDate}-${normalizedUserId}`;
+    const rowKey = `${dailyKey}-${normalizedScheduleItemId}`;
 
-    const parentId = await this.ensureParentRecord(dailyKey, record.date, record.userId);
-    const existing = await this.getRecord(record.date, record.userId, record.scheduleItemId);
+    const parentId = await this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
+    const existing = await this.getRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
 
     await this.initFields(this.childListTitle);
     const rawBody = {
       [rf.rowKey]: rowKey,
       [rf.parentId]: parentId,
-      [rf.userId]: record.userId,
-      [rf.rowNo]: record.scheduleItemId,
-      [rf.status]: record.status,
-      [rf.memo]: record.memo,
-      [rf.payload]: record.memo, // Drift protection: map to both candidates
-      [rf.staffName]: record.recordedBy,
-      [rf.recordedAt]: record.recordedAt,
-      [rf.bipsJSON]: JSON.stringify(record.triggeredBipIds),
+      [rf.userId]: normalizedRecord.userId,
+      [rf.rowNo]: normalizedRecord.scheduleItemId,
+      [rf.status]: normalizedRecord.status,
+      [rf.memo]: normalizedRecord.memo,
+      [rf.payload]: normalizedRecord.memo, // Drift protection: map to both candidates
+      [rf.staffName]: normalizedRecord.recordedBy,
+      [rf.recordedAt]: normalizedRecord.recordedAt,
+      [rf.bipsJSON]: JSON.stringify(normalizedRecord.triggeredBipIds),
     };
     
     // Title is needed for POST (creation) but often ignored in MERGE if it doesn't change
     if (!existing) {
-        rawBody[DAILY_RECORD_FIELDS.title] = record.id;
+        rawBody[DAILY_RECORD_FIELDS.title] = normalizedRecord.id;
     }
 
     const body = this.filterPayload(this.childListTitle, rawBody);
@@ -284,7 +303,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     // Sync to local store
     if (this.store) {
-      this.store.upsertRecord(record);
+      this.store.upsertRecord(normalizedRecord);
     }
   }
 
@@ -315,7 +334,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       id: title,
       date: title.slice(0, 10), 
       userId: (item[rf.userId] || '') as string,
-      scheduleItemId: String(item[rf.rowNo] ?? '').trim(),
+      scheduleItemId: normalizeScheduleItemId(item[rf.rowNo]),
       status: item[rf.status] as RecordStatus,
       triggeredBipIds,
       memo: (item[rf.memo] || item[rf.payload] || '') as string,

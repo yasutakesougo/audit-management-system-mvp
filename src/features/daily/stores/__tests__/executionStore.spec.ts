@@ -185,4 +185,54 @@ describe('executionStore', () => {
     const { result } = renderHook(() => useExecutionStore());
     expect(result.current.getRecords('2025-04-01', 'I001')).toEqual([]);
   });
+
+  it('normalizes userId string/number-like mismatch on getRecords', () => {
+    const { result } = renderHook(() => useExecutionStore());
+    const record = {
+      ...createEmptyRecord('2025-04-01', ' 6 ', 'base-0900'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+
+    act(() => {
+      result.current.upsertRecord(record);
+    });
+
+    const records = result.current.getRecords('2025-04-01', '6');
+    expect(records).toHaveLength(1);
+    expect(records[0].userId).toBe('6');
+  });
+
+  it('normalizes ISO date to yyyy-MM-dd for save/load lookup', () => {
+    const { result } = renderHook(() => useExecutionStore());
+    const record = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-0900'),
+      date: '2025-04-01T09:00:00.000+09:00',
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+
+    act(() => {
+      result.current.upsertRecord(record);
+    });
+
+    const records = result.current.getRecords('2025-04-01', 'I001');
+    expect(records).toHaveLength(1);
+    expect(records[0].date).toBe('2025-04-01');
+  });
+
+  it('normalizes scheduleItemId for single-record lookup', () => {
+    const { result } = renderHook(() => useExecutionStore());
+    const record = {
+      ...createEmptyRecord('2025-04-01', 'I001', ' 1 '),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+
+    act(() => {
+      result.current.upsertRecord(record);
+    });
+
+    expect(result.current.getRecord('2025-04-01', 'I001', '1')?.status).toBe('completed');
+  });
 });

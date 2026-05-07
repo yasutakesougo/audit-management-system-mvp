@@ -18,9 +18,8 @@ test.describe('Kiosk Procedure Detail', () => {
     await expect(page.getByText('本人のすること')).toBeVisible();
     await expect(page.getByText('支援者がすること')).toBeVisible();
     
-    // 「手順記録」ボタンが存在するか
-    const procedureButton = page.getByRole('button', { name: '手順記録' });
-    await expect(procedureButton).toBeVisible();
+    // 主操作ボタンが存在するか
+    await expect(page.getByRole('button', { name: '記録を保存する' })).toBeVisible();
 
     // 戻るボタンで一覧に戻れるか
     await page.getByTestId('kiosk-procedure-detail-back').click();
@@ -28,9 +27,6 @@ test.describe('Kiosk Procedure Detail', () => {
   });
 
   test('should save procedure record and reflect in list', async ({ page }) => {
-    // 1. 「手順記録」をクリックしてパネルを開く
-    await page.getByRole('button', { name: '手順記録' }).click();
-    
     // 観察パネルが表示されることを確認
     await expect(page.getByTestId('kiosk-observation-panel')).toBeVisible();
 
@@ -41,8 +37,7 @@ test.describe('Kiosk Procedure Detail', () => {
     await expect(page).toHaveURL(/.*\/kiosk\/users\/1\/procedures\/?(\?.*)?/);
 
     const firstCard = page.locator('[data-testid="kiosk-procedure-card-0"]');
-    // ステータスは triggered なので「注意あり」が表示される（これは既存仕様どおり）
-    await expect(firstCard.getByText('注意あり')).toBeVisible();
+    await expect(firstCard.getByText('記録済み')).toBeVisible();
     await expect(page.getByText('実施状況: 1 / 17')).toBeVisible();
   });
 });
