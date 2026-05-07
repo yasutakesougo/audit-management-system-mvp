@@ -14,6 +14,11 @@ import {
     type DailyUserRecords,
     type ExecutionRecord,
 } from '@/features/daily/domain/executionRecordTypes';
+import {
+  normalizeExecutionDate,
+  normalizeExecutionUserId,
+  normalizeScheduleItemId,
+} from '@/features/daily/utils/normalizeExecutionLookup';
 
 // ---------------------------------------------------------------------------
 // localStorage persistence
@@ -103,8 +108,22 @@ export function useExecutionStore() {
   /** 日付×ユーザーの全記録を取得 */
   const getRecords = useCallback(
     (date: string, userId: string): ExecutionRecord[] => {
-      const key = makeDailyUserKey(date, userId);
-      return snapshot[key]?.records ?? [];
+      const normalizedDate = normalizeExecutionDate(date);
+      const normalizedUserId = normalizeExecutionUserId(userId);
+      const key = makeDailyUserKey(normalizedDate, normalizedUserId);
+      const direct = snapshot[key]?.records;
+      if (direct) return direct;
+
+      // Legacy fallback: scan keys and compare normalized date/userId
+      for (const daily of Object.values(snapshot)) {
+        if (
+          normalizeExecutionDate(daily.date) === normalizedDate &&
+          normalizeExecutionUserId(daily.userId) === normalizedUserId
+        ) {
+          return daily.records;
+        }
+      }
+      return [];
     },
     [snapshot],
   );
@@ -113,7 +132,8 @@ export function useExecutionStore() {
   const getRecord = useCallback(
     (date: string, userId: string, scheduleItemId: string): ExecutionRecord | undefined => {
       const records = getRecords(date, userId);
-      return records.find((r) => r.scheduleItemId === scheduleItemId);
+      const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
+      return records.find((r) => normalizeScheduleItemId(r.scheduleItemId) === normalizedScheduleItemId);
     },
     [getRecords],
   );
@@ -121,15 +141,24 @@ export function useExecutionStore() {
   /** 記録を追加/更新 (upsert) */
   const upsertRecord = useCallback(
     (record: ExecutionRecord) => {
-      const existing = getRecords(record.date, record.userId);
-      const index = existing.findIndex((r) => r.scheduleItemId === record.scheduleItemId);
+      const normalizedDate = normalizeExecutionDate(record.date);
+      const normalizedUserId = normalizeExecutionUserId(record.userId);
+      const normalizedScheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
+      const normalizedRecord: ExecutionRecord = {
+        ...record,
+        date: normalizedDate,
+        userId: normalizedUserId,
+        scheduleItemId: normalizedScheduleItemId,
+      };
+      const existing = getRecords(normalizedDate, normalizedUserId);
+      const index = existing.findIndex((r) => normalizeScheduleItemId(r.scheduleItemId) === normalizedScheduleItemId);
 
       const updated =
         index >= 0
-          ? existing.map((r, i) => (i === index ? record : r))
-          : [...existing, record];
+          ? existing.map((r, i) => (i === index ? normalizedRecord : r))
+          : [...existing, normalizedRecord];
 
-      saveDailyRecords(record.date, record.userId, updated);
+      saveDailyRecords(normalizedDate, normalizedUserId, updated);
     },
     [getRecords],
   );

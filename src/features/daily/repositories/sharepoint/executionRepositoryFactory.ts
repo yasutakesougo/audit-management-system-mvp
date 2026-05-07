@@ -23,6 +23,11 @@ import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRec
 import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
 import { SharePointExecutionRecordRepository } from './SharePointExecutionRecordRepository';
 import type { SpFetchFn } from '@/lib/sp/spLists';
+import {
+  normalizeExecutionDate,
+  normalizeExecutionUserId,
+  normalizeScheduleItemId,
+} from '@/features/daily/utils/normalizeExecutionLookup';
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -80,11 +85,20 @@ function createLocalStorageExecutionAdapter(
 ): ExecutionRecordRepository {
   return {
     getRecords: async (date: string, userId: string) =>
-      store.getRecords(date, userId),
+      store.getRecords(normalizeExecutionDate(date), normalizeExecutionUserId(userId)),
     getRecord: async (date: string, userId: string, scheduleItemId: string) =>
-      store.getRecord(date, userId, scheduleItemId),
+      store.getRecord(
+        normalizeExecutionDate(date),
+        normalizeExecutionUserId(userId),
+        normalizeScheduleItemId(scheduleItemId),
+      ),
     upsertRecord: async (record: ExecutionRecord) =>
-      store.upsertRecord(record),
+      store.upsertRecord({
+        ...record,
+        date: normalizeExecutionDate(record.date),
+        userId: normalizeExecutionUserId(record.userId),
+        scheduleItemId: normalizeScheduleItemId(record.scheduleItemId),
+      }),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       store.getCompletionRate(date, userId, totalSlots),
   };

@@ -1,11 +1,17 @@
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
 
 export function useCancelToToday() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isKioskMode } = useKioskDetection();
+
   return useCallback(() => {
-    navigate('/today', { replace: true });
-  }, [navigate]);
+    // キオスクモードなら /kiosk へ、通常なら /today へ。クエリパラメータを維持。
+    const target = isKioskMode ? '/kiosk' : '/today';
+    navigate(`${target}${location.search}`, { replace: true });
+  }, [navigate, isKioskMode, location.search]);
 }
 
 /** @deprecated Use useCancelToToday instead */

@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar, TextField } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
 import { formatDateIso } from '@/lib/dateFormat';
+import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
@@ -31,10 +31,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     return procedures[index] || null;
   }, [userId, slotKey, procedureRepo]);
 
-  // scheduleItemId として ID もしくは インデックスを使用する
-  // 読み込み時は ID 優先だが、保存済みデータとの不一致を防ぐため hook 内部でのマッチングに任せるか、
-  // ここで安定した identifier を決定する。
-  const scheduleItemId = procedure?.id || procedure?.rowNo?.toString() || slotKey || '';
+  const scheduleItemId = normalizeScheduleItemId(procedure?.id) ||
+    normalizeScheduleItemId(procedure?.rowNo) ||
+    normalizeScheduleItemId(slotKey);
   const { record, saveRecord, isLoading } = useExecutionRecord(today, userId || '', scheduleItemId);
   
   const [isSaving, setIsSaving] = useState(false);
@@ -45,7 +44,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [selectedResult, setSelectedResult] = useState<string>('');
   const [textMemo, setTextMemo] = useState<string>('');
-  const [showObservations, setShowObservations] = useState(false);
+  const [showObservations] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // 以前の保存記録からステートを復元する（1回限り）
@@ -71,9 +70,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       }
     }
     
-    if (record.status === 'triggered') {
-      setShowObservations(true);
-    }
     setIsInitialized(true);
   }, [record, isLoading, isInitialized]);
 
@@ -103,10 +99,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     }
   };
 
-  const handleTriggerClick = () => {
-    setShowObservations(!showObservations);
-  };
-
   if (isUserLoading || isLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
   }
@@ -134,7 +126,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const staffTask = parts.slice(1).join('。') || '適宜見守り、必要に応じて声掛けを行います';
 
   const isCompleted = record?.status === 'completed';
-  const isTriggered = record?.status === 'triggered';
 
   return (
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -163,9 +154,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           )}
           {isCompleted && (
             <Chip label="実施済み" color="success" icon={<CheckCircleOutlineIcon />} sx={{ fontWeight: 'bold' }} />
-          )}
-          {isTriggered && (
-            <Chip label="注意あり" color="warning" icon={<ErrorOutlineIcon />} sx={{ fontWeight: 'bold' }} />
           )}
         </Stack>
       </Box>
@@ -340,17 +328,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
               <Button
                 variant="outlined"
                 color="inherit"
-                onClick={() => {
-                  setShowObservations(false);
-                  setSelectedMood('');
-                  setSelectedAction('');
-                  setSelectedResult('');
-                  setTextMemo('');
-                }}
+                onClick={() => navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search))}
                 sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem' }}
                 disabled={isSaving}
               >
-                キャンセル
+                一覧に戻る
               </Button>
               <Button
                 variant="contained"
@@ -366,36 +348,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           </Stack>
         </Paper>
       )}
-
-      {/* フッター / アクションボタン */}
-      <Box sx={{ mt: 'auto', pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Stack direction="row" spacing={3} justifyContent="center">
-          <Button 
-            variant={showObservations || isTriggered ? "contained" : "outlined"}
-            color="primary"
-            size="large" 
-            startIcon={showObservations ? null : <ErrorOutlineIcon />}
-            onClick={handleTriggerClick}
-            sx={{ 
-              py: 2.5, 
-              px: 12, 
-              borderRadius: 4, 
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
-              boxShadow: showObservations || isTriggered ? '0 8px 16px rgba(0,0,0,0.1)' : 'none',
-              ...((showObservations || isTriggered) ? {} : {
-                color: 'text.secondary',
-                borderColor: 'divider',
-              }),
-              '&:hover': { bgcolor: showObservations || isTriggered ? 'primary.dark' : 'action.hover' }
-            }}
-            disabled={isSaving || isCompleted}
-            data-testid="kiosk-trigger-btn"
-          >
-            {showObservations ? '閉じる' : (isTriggered ? '記録済み' : '手順記録')}
-          </Button>
-        </Stack>
-      </Box>
 
       {/* 成功メッセージ */}
       <Snackbar 
