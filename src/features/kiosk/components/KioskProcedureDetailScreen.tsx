@@ -370,6 +370,24 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       {/* フッター / アクションボタン */}
       <Box sx={{ mt: 'auto', pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
         <Stack direction="row" spacing={3} justifyContent="center">
+          <Button
+            variant={isCompleted ? "contained" : "outlined"}
+            color="success"
+            size="large"
+            startIcon={showObservations ? null : <CheckCircleOutlineIcon />}
+            onClick={() => handleSave('completed')}
+            sx={{
+              py: 2.5,
+              px: 8,
+              borderRadius: 4,
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+            }}
+            disabled={isSaving || isCompleted}
+            data-testid="kiosk-complete-btn"
+          >
+            {isCompleted ? '実施済み' : '完了を記録'}
+          </Button>
           <Button 
             variant={showObservations || isTriggered ? "contained" : "outlined"}
             color="primary"
