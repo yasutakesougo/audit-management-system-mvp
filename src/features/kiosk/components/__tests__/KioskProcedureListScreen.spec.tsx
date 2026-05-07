@@ -19,8 +19,8 @@ vi.mock('@/features/users/useUsers', () => ({
 }));
 
 const mockProcedures = [
-  { id: 'P001', time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります' },
-  { id: 'P002', time: '12:00', activity: '昼食の介助', instruction: '見守りを行います' }
+  { id: 'P001', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります' },
+  { id: 'P002', rowNo: 2, time: '12:00', activity: '昼食の介助', instruction: '見守りを行います' }
 ];
 
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
@@ -72,6 +72,23 @@ describe('KioskProcedureListScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByText('未実施')).toBeInTheDocument();
+    });
+  });
+
+  it('matches rowNo records even when scheduleItemId is returned as number-like value', async () => {
+    mockGetRecords.mockResolvedValue([
+      { scheduleItemId: 1 as unknown as string, status: 'triggered' },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
+      expect(screen.getAllByText('注意あり').length).toBeGreaterThan(0);
     });
   });
 });

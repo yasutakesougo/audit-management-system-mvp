@@ -50,6 +50,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   const doneCount = records.filter(r => r.status === 'completed').length;
   const attentionCount = records.filter(r => r.status === 'triggered').length;
   const progress = totalCount > 0 ? ((doneCount + attentionCount) / totalCount) * 100 : 0;
+  const normalizeScheduleItemId = (value: unknown): string => String(value ?? '').trim();
 
   if (isUserLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
@@ -111,12 +112,13 @@ export const KioskProcedureListScreen: React.FC = () => {
       {/* 手順一覧 */}
       <Grid container spacing={2}>
         {procedures.map((step, index) => {
-          const scheduleItemId = step.id || index.toString();
-          // IDによる完全一致、または rowNo によるフォールバック一致の両方を試行する
-          const record = records.find(r => 
-            r.scheduleItemId === scheduleItemId || 
-            (step.rowNo && r.scheduleItemId === step.rowNo.toString())
-          );
+          // detail 画面の保存キー順（id -> rowNo -> index）に合わせる
+          const scheduleKeyCandidates = [
+            normalizeScheduleItemId(step.id),
+            normalizeScheduleItemId(step.rowNo),
+            index.toString(),
+          ].filter(Boolean);
+          const record = records.find((r) => scheduleKeyCandidates.includes(normalizeScheduleItemId(r.scheduleItemId)));
           const isCompleted = record?.status === 'completed';
           const isTriggered = record?.status === 'triggered';
           
@@ -204,4 +206,3 @@ export const KioskProcedureListScreen: React.FC = () => {
     </Box>
   );
 };
-
