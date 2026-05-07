@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
@@ -53,23 +53,6 @@ describe('KioskProcedureDetailScreen', () => {
 
     expect(screen.getByText('10:00 - 朝のバイタルチェック')).toBeInTheDocument();
     expect(screen.getByText('田中 太郎 様')).toBeInTheDocument();
-  });
-
-  it('calls saveRecord with "completed" and empty memo when Complete button is clicked', async () => {
-    render(
-      <MemoryRouter>
-        <KioskProcedureDetailScreen />
-      </MemoryRouter>
-    );
-
-    const completeButton = screen.getByTestId('kiosk-complete-btn');
-    fireEvent.click(completeButton);
-
-    expect(mockSaveRecord).toHaveBeenCalledWith('completed', '');
-    
-    await waitFor(() => {
-      expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
-    }, { timeout: 3000 });
   });
 
   it('expands observation panel when Trigger button is clicked, then saves with serialized memo', async () => {

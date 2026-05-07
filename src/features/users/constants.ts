@@ -1,11 +1,12 @@
 import type { IUserMaster } from './types';
 
 export const DEMO_USERS: IUserMaster[] = [
-  // 強度行動障害対象者（3名）- 支援手順記録対象
+  // 強度行動障害対象者（4名）- 支援手順記録対象
   {
     Id: 1,
     UserID: 'U-001',
-    FullName: '田中 太郎',
+    FullName: '桂川 進太朗',
+    Furigana: 'かつらがわ しんたろう',
     ServiceStartDate: '2034-04-01',
     ContractDate: '2034-03-15',
     IsActive: true,
@@ -18,12 +19,13 @@ export const DEMO_USERS: IUserMaster[] = [
   {
     Id: 2,
     UserID: 'U-005',
-    FullName: '佐藤 花子',
+    FullName: '田中 太郎',
+    Furigana: 'たなか たろう',
     ServiceStartDate: '2034-06-01',
     ContractDate: '2034-05-20',
     IsActive: true,
     IsHighIntensitySupportTarget: true,
-    IsSupportProcedureTarget: true,
+    IsSupportProcedureTarget: false,
     ServiceEndDate: null,
     AttendanceDays: ['月', '水', '金'],
     LastAssessmentDate: '2026-02-10',
@@ -31,7 +33,8 @@ export const DEMO_USERS: IUserMaster[] = [
   {
     Id: 3,
     UserID: 'U-012',
-    FullName: '山田 一郎',
+    FullName: '塩田 裕貴',
+    Furigana: 'しおだ ひろき',
     ServiceStartDate: '2034-08-01',
     ContractDate: '2034-07-15',
     IsActive: true,
@@ -41,18 +44,20 @@ export const DEMO_USERS: IUserMaster[] = [
     AttendanceDays: ['火', '木', '金'],
     LastAssessmentDate: '2025-12-20',
   },
-  // 通常利用者（29名）- 支援記録（ケース記録）のみ
   {
     Id: 4,
     UserID: 'U-002',
-    FullName: '鈴木 美子',
+    FullName: '石渡 由喜子',
+    Furigana: 'いしわた ゆきこ',
     ServiceStartDate: '2034-04-15',
     ContractDate: '2034-03-30',
-    IsHighIntensitySupportTarget: false,
-    IsSupportProcedureTarget: false,
+    IsActive: true,
+    IsHighIntensitySupportTarget: true,
+    IsSupportProcedureTarget: true,
     ServiceEndDate: null,
     AttendanceDays: ['月', '水', '金'],
   },
+  // 通常利用者（28名）- 支援記録（ケース記録）のみ
   {
     Id: 5,
     UserID: 'U-003',
@@ -78,11 +83,12 @@ export const DEMO_USERS: IUserMaster[] = [
   {
     Id: 7,
     UserID: 'U-006',
-    FullName: '中村 勇気',
+    FullName: '中村 裕樹',
+    Furigana: 'なかむら ひろき',
     ServiceStartDate: '2034-06-15',
     ContractDate: '2034-06-01',
-    IsHighIntensitySupportTarget: false,
-    IsSupportProcedureTarget: false,
+    IsHighIntensitySupportTarget: true,
+    IsSupportProcedureTarget: true,
     ServiceEndDate: null,
     AttendanceDays: ['月', '水', '金'],
   },

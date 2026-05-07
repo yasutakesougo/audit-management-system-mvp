@@ -42,14 +42,23 @@ export type BootKioskOptions = {
 };
 
 const DEFAULT_PROCEDURES: KioskProcedure[] = [
-  { id: 'base-0900', time: '09:00', activity: '朝の受け入れ', instruction: '視線を合わせて挨拶。体調チェックシート記入。', isKey: true },
-  { id: 'base-0915', time: '09:15', activity: '持ち物整理', instruction: 'ロッカーへの収納を支援。手順書を提示。' },
-  { id: 'base-1000', time: '10:00', activity: '作業活動', instruction: '作業手順の提示。失敗時は新しい部材を渡す。', isKey: true },
-  { id: 'base-1130', time: '11:30', activity: '昼食準備', instruction: '手洗い場へ誘導。' },
-  { id: 'base-1200', time: '12:00', activity: '昼食', instruction: '誤嚥に注意して見守り。', isKey: true },
-  { id: 'base-1300', time: '13:00', activity: '休憩', instruction: 'リラックスできる環境を提供。' },
-  { id: 'base-1500', time: '15:00', activity: '掃除', instruction: '担当箇所の清掃を一緒に行う。' },
-  { id: 'base-1545', time: '15:45', activity: '帰りの会', instruction: '一日の振り返り。ポジティブなフィードバック。', isKey: true },
+  { id: 'seed-U-001-1', time: '9:30頃', activity: '通所・朝の準備', instruction: '通所時の様子を確認し、見守りを行う', isKey: true },
+  { id: 'seed-U-001-2', time: '10:00頃', activity: '体操', instruction: '本人の様子を見ながら参加を促す' },
+  { id: 'seed-U-001-3', time: '10:10頃', activity: 'スケジュール確認', instruction: '予定を確認し、見通しが持てるよう支援する' },
+  { id: 'seed-U-001-4', time: '10:15頃', activity: 'お茶休憩', instruction: 'お茶の準備、片付けを行う' },
+  { id: 'seed-U-001-5', time: '10:20〜12:00', activity: 'AM日中活動', instruction: '必要に応じて声かけ、見守り、同行支援を行う', isKey: true },
+  { id: 'seed-U-001-6', time: '12:00', activity: '昼食準備', instruction: '手洗い・消毒を見守る' },
+  { id: 'seed-U-001-7', time: '12:10〜12:40', activity: '昼食', instruction: '食事の様子を見守り、必要に応じて介助を行う', isKey: true },
+  { id: 'seed-U-001-8', time: '12:40〜13:45', activity: '昼休み', instruction: '休憩中の様子を見守る' },
+  { id: 'seed-U-001-9', time: '13:45', activity: 'スケジュール確認', instruction: '本人と一緒に午後の予定を確認する' },
+  { id: 'seed-U-001-10', time: '13:45〜14:30', activity: 'PM日中活動', instruction: '必要に応じて同行支援を行う', isKey: true },
+  { id: 'seed-U-001-11', time: '14:30〜14:45', activity: 'お茶休憩', instruction: 'お茶の準備、片付けを行う' },
+  { id: 'seed-U-001-12', time: '14:45〜15:20', activity: 'PM日中活動', instruction: '見守り、同行支援を行う', isKey: true },
+  { id: 'seed-U-001-13', time: '15:20〜15:40', activity: 'のんびりタイム', instruction: '本人のペースを尊重しながら見守る' },
+  { id: 'seed-U-001-14', time: '15:40〜16:00', activity: '帰りの準備', instruction: '持ち物確認や身支度を見守る', isKey: true },
+  { id: 'seed-U-001-15', time: '16:00', activity: '退所', instruction: '退所時の様子を確認し、見送りを行う', isKey: true },
+  { id: 'seed-U-001-16', time: '10:20頃', activity: '外活動準備', instruction: 'トイレ、帽子、持ち物など外活動に必要な準備を支援する' },
+  { id: 'seed-U-001-17', time: '10:25頃', activity: '外活動', instruction: '外活動中の安全確認、同行支援、見守りを行う' },
 ];
 
 export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Promise<void> {
