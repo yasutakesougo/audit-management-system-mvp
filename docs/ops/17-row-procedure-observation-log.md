@@ -125,11 +125,13 @@ The system has reached its final stabilization peak. The reduction of the persis
 
 ## 結論 (PR #1797 最終判定)
 - [x] #1797 は localhost/localStorage だけでなく、SharePoint検証環境でも主要経路の動作確認済み
-- [x] step不一致吸収 → 保存 → 再取得 → Plan反映 の一連の経路はクローズ可能## Kiosk Observation Recording (PR #1802 & #1803)
+- [x] step不一致吸収 → 保存 → 再取得 → Plan反映 の一連の経路はクローズ可能
+
+## Kiosk Observation Recording (PR #1802 & #1803)
 - **Date**: 2026-05-07
 - **PRs**: #1802 (Observation Chips), #1803 (17-Row Seeding & UI Refinement)
 - **Log Entry**:
-  キオスク端末からの観察記録（様子・対応・変化・メモ）の保存および、高強度支援対象者向け17行手順のシード機能を検証した。
+  キオスク端末からの観察記録（様子・対応・変化・メモ）の保存および、強度行動障害支援対象者向け17行手順のシード機能を検証した。
 
   ### 1. 観察記録の保存 (PR #1802)
   - **様子・対応・変化・メモ**のチップ選択とテキスト入力が `ExecutionRecord.memo` にシリアル化して保存されることを確認。
@@ -137,7 +139,7 @@ The system has reached its final stabilization peak. The reduction of the persis
 
   ### 2. 個別手順シードと対象者表示 (PR #1803)
   - 桂川様、塩田様、石渡様、中村様の4名に対して、支援計画シートに基づいた正確な17行手順がシードされることを確認。
-  - `/kiosk/users` において、支援手順対象者と高強度支援対象者の両方が正しくリストアップされることを確認。
+  - `/kiosk/users` において、支援手順対象者と強度行動障害支援対象者の両方が正しくリストアップされることを確認。
 
   ### 3. 暫定仕様の記録 (Provisional Specification)
   - **記録ステータス**: 現在のキオスク「手順記録」は、内部的に `triggered`（注意あり）ステータスを使用して保存される。
