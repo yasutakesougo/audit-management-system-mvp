@@ -230,10 +230,8 @@ export default defineConfig(({ mode }) => {
             if (normalized.includes('/xlsx/')) {
               return 'vendor-xlsx';
             }
-            if (normalized.includes('/@react-pdf/pdfkit/')) {
-              return 'vendor-pdfkit';
-            }
             if (
+              normalized.includes('/@react-pdf/pdfkit/') ||
               normalized.includes('/@react-pdf/') ||
               normalized.includes('/react-pdf/')
             ) {

@@ -35,6 +35,8 @@ const budgets = [
   { pattern: /App-legacy-.*\.js$/i, limitKb: 1200 },
   // vendor-reports: xlsx + @react-pdf (lazy-loaded on export only)
   { pattern: /vendor-reports-.*\.js$/i, limitKb: 2000 },
+  // vendor-pdf: consolidated @react-pdf chunk (merged with pdfkit to avoid circular TDZ issues)
+  { pattern: /vendor-pdf-.*\.js$/i, limitKb: 2000 },
 ];
 
 const limitKb = Number.parseFloat(process.env.BUNDLE_MAX_CHUNK_KB ?? '') || DEFAULT_LIMIT_KB;
