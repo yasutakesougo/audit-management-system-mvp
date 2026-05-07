@@ -158,14 +158,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       [DAILY_RECORD_FIELDS.userRowsJSON]: '[]',
     };
     const body = this.filterPayload(this.parentListTitle, rawBody);
-    const parentEntityType = await this.getEntityType(this.parentListTitle);
 
     const createResponse = await this.spFetch(createUrl, {
       method: 'POST',
-      body: JSON.stringify({
-        ...body,
-        __metadata: { type: parentEntityType },
-      }),
+      body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json;odata=nometadata', 'Accept': 'application/json;odata=nometadata' }
     });
 
@@ -253,7 +249,6 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
 
     const body = this.filterPayload(this.childListTitle, rawBody);
-    const childEntityType = await this.getEntityType(this.childListTitle);
 
     if (existing) {
       const filter = `${rf.rowKey} eq '${rowKey}'`;
@@ -272,10 +267,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
             'Content-Type': 'application/json;odata=nometadata',
             'Accept': 'application/json;odata=nometadata'
           },
-          body: JSON.stringify({
-            ...body,
-            __metadata: { type: childEntityType },
-          }),
+          body: JSON.stringify(body),
         });
       }
     } else {
@@ -286,10 +278,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
           'Content-Type': 'application/json;odata=nometadata',
           'Accept': 'application/json;odata=nometadata'
         },
-        body: JSON.stringify({
-          ...body,
-          __metadata: { type: childEntityType },
-        }),
+        body: JSON.stringify(body),
       });
     }
 

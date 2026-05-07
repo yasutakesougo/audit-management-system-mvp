@@ -32,7 +32,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   }, [userId, slotKey, procedureRepo]);
 
   // scheduleItemId として ID もしくは インデックスを使用する
-  const scheduleItemId = procedure?.id || slotKey || '';
+  // 読み込み時は ID 優先だが、保存済みデータとの不一致を防ぐため hook 内部でのマッチングに任せるか、
+  // ここで安定した identifier を決定する。
+  const scheduleItemId = procedure?.id || procedure?.rowNo?.toString() || slotKey || '';
   const { record, saveRecord, isLoading } = useExecutionRecord(today, userId || '', scheduleItemId);
   
   const [isSaving, setIsSaving] = useState(false);

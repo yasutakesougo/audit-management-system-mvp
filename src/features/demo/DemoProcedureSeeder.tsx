@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useProcedureStore } from '@/features/daily/hooks/legacy-stores/procedureStore';
+import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { getTargetUserDemoProcedures } from './seedTargetProcedures';
 import { isDemoModeEnabled } from '@/lib/env';
 
