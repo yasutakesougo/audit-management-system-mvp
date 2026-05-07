@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { runHealthChecks } from '../checks';
 import type { HealthContext, ListSpec } from '../types';
 import type { SpAdapter } from '../spAdapter';
@@ -35,13 +36,13 @@ describe('Governance Integration — runHealthChecks Flow', () => {
     };
 
     // Mocks
-    (mockSp.getCurrentUser as any).mockResolvedValue({ id: 1 });
-    (mockSp.getWebTitle as any).mockResolvedValue('Site');
-    (mockSp.getListByTitle as any).mockResolvedValue({ id: '1', title: 'TestList' });
-    (mockSp.getItemsTop1 as any).mockResolvedValue([]);
+    (mockSp.getCurrentUser as Mock).mockResolvedValue({ id: 1 });
+    (mockSp.getWebTitle as Mock).mockResolvedValue('Site');
+    (mockSp.getListByTitle as Mock).mockResolvedValue({ id: '1', title: 'TestList' });
+    (mockSp.getItemsTop1 as Mock).mockResolvedValue([]);
     
     // actual fields has "fullname" (case mismatch)
-    (mockSp.getFields as any).mockResolvedValue([{ internalName: 'fullname', staticName: 'fullname' }]);
+    (mockSp.getFields as Mock).mockResolvedValue([{ internalName: 'fullname', staticName: 'fullname' }]);
 
     const results = await runHealthChecks({ ...baseCtx, listSpecs: () => [spec] }, mockSp);
 
@@ -69,13 +70,13 @@ describe('Governance Integration — runHealthChecks Flow', () => {
       updateItem: {},
     };
 
-    (mockSp.getCurrentUser as any).mockResolvedValue({ id: 1 });
-    (mockSp.getWebTitle as any).mockResolvedValue('Site');
-    (mockSp.getListByTitle as any).mockResolvedValue({ id: '1', title: 'TestList' });
-    (mockSp.getItemsTop1 as any).mockResolvedValue([]);
+    (mockSp.getCurrentUser as Mock).mockResolvedValue({ id: 1 });
+    (mockSp.getWebTitle as Mock).mockResolvedValue('Site');
+    (mockSp.getListByTitle as Mock).mockResolvedValue({ id: '1', title: 'TestList' });
+    (mockSp.getItemsTop1 as Mock).mockResolvedValue([]);
     
     // suffix mismatch
-    (mockSp.getFields as any).mockResolvedValue([{ internalName: 'Status0', staticName: 'Status0' }]);
+    (mockSp.getFields as Mock).mockResolvedValue([{ internalName: 'Status0', staticName: 'Status0' }]);
 
     const results = await runHealthChecks({ ...baseCtx, listSpecs: () => [spec] }, mockSp);
 

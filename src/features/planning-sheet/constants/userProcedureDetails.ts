@@ -1,5 +1,5 @@
 import { PROCEDURE_ROWS, ProcedureRow } from './procedureRows';
-import type { UserProcedureDetail } from '../domain/userProcedureDetail';
+import type { UserProcedureDetail, UserProcedureSheetNotes } from '../domain/userProcedureDetail';
 
 // 石渡さん（Id: 4, UserID: 'U-002'）用の手技データ
 // 原紙「石渡さん_重度加算（外出入り）.xls」から、本人の動き・支援者の動きを行単位で転記。
@@ -108,10 +108,18 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
   },
 ];
 
+function isIshiwataUserId(userId: string | number): boolean {
+  const s = String(userId);
+  return s === '4' || s === 'U-002' || s === 'U-003';
+}
+
 export function findUserProcedureDetail(userId: string | number, rowNo: number): UserProcedureDetail | undefined {
-  return USER_PROCEDURE_DETAILS.find(
-    (detail) => String(detail.userId) === String(userId) && detail.rowNo === rowNo
-  );
+  return USER_PROCEDURE_DETAILS.find((detail) => {
+    const isUserMatch = isIshiwataUserId(detail.userId)
+      ? isIshiwataUserId(userId)
+      : String(detail.userId) === String(userId);
+    return isUserMatch && detail.rowNo === rowNo;
+  });
 }
 
 export function buildUserProcedureRows(userId: string | number): ProcedureRow[] {
@@ -125,3 +133,22 @@ export function buildUserProcedureRows(userId: string | number): ProcedureRow[] 
     };
   });
 }
+
+// 石渡さん（Id: 4, UserID: 'U-002'）用のシート単位補足データ（下部欄）
+// 原紙「石渡さん_重度加算（外出入り）.xls」から、一日を通して気を付ける事・その他を転記。
+export const USER_PROCEDURE_SHEET_NOTES: UserProcedureSheetNotes[] = [
+  {
+    userId: 4,
+    dailyCarePoints: '自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。',
+    otherNotes: '個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。',
+  },
+];
+
+export function findUserProcedureSheetNotes(userId: string | number): UserProcedureSheetNotes | undefined {
+  return USER_PROCEDURE_SHEET_NOTES.find((notes) => {
+    return isIshiwataUserId(notes.userId)
+      ? isIshiwataUserId(userId)
+      : String(notes.userId) === String(userId);
+  });
+}
+

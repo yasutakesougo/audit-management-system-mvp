@@ -9,6 +9,8 @@ import {
   type DailySupportProcedureDocument
 } from '../domain/dailySupportProcedure';
 import { type BridgeSource } from '../planningToRecordBridge';
+import { findUserProcedureSheetNotes } from '../constants/userProcedureDetails';
+
 
 /**
  * 支援計画シートを原紙（支援手順書兼実施記録）ドキュメント形式に変換する。
@@ -111,6 +113,10 @@ export function bridgePlanningSheetToDailyProcedures(
     sheet.intake?.medicalFlags?.length > 0 ? `【医療上の留意点】${sheet.intake.medicalFlags.join('、')}` : '',
   ].filter(Boolean).join('\n');
 
+  const sheetNotes = findUserProcedureSheetNotes(sheet.userId);
+  const dailyCarePoints = sheetNotes?.dailyCarePoints || (sheet.supportPolicy ? (sheet.supportPolicy.slice(0, 100) + (sheet.supportPolicy.length > 100 ? '...' : '')) : '');
+  const otherNotes = sheetNotes?.otherNotes || '';
+
   // 5. ドキュメント全体の組み立て
   return {
     title: '支援手順書兼実施記録',
@@ -118,8 +124,8 @@ export function bridgePlanningSheetToDailyProcedures(
     recordDate: options?.recordDate || new Date().toLocaleDateString('ja-JP'),
     staffName: options?.staffName || sheet.authoredByStaffId || '',
     rows,
-    dailyCarePoints: sheet.supportPolicy.slice(0, 100) + (sheet.supportPolicy.length > 100 ? '...' : ''),
-    otherNotes: '',
+    dailyCarePoints,
+    otherNotes,
     specialNotes: specialNotes,
   };
 }

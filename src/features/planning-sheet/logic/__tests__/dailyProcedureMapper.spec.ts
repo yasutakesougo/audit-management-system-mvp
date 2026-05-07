@@ -268,5 +268,12 @@ describe('dailyProcedureMapper', () => {
       expect(row17?.personAction).toContain('出発前のトイレ');
       expect(row17?.supporterAction).toContain('自動ドアの前で写真を撮る');
     });
+
+    it('should map overall sheet notes (dailyCarePoints, otherNotes) unique to Ishiwata-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(ISHIWATA_SEVERE_SUPPORT_SHEET);
+
+      expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');
+      expect(doc.otherNotes).toBe('個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。');
+    });
   });
 });
