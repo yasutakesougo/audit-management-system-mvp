@@ -75,10 +75,10 @@ The 17-row procedure model is **fully operational and production-hardened**. All
 The system has reached its final stabilization peak. The reduction of the persistence debounce and the unification of the repository factories have resolved the last remaining "edge case" of data loss during rapid date switching. The 17-row model is now reliably persistent and hydrated across all subjects and dates.
 
 ## Closed Tasks
-...
 - [x] Reduce `localStorage` debounce to 100ms for improved navigation stability.
 - [x] Unify `useExecutionData` repository factories to prevent hydration drift.
 - [x] Conduct multi-date/multi-user regression testing (Verification: 2026-05-06).
+- [x] Verify step key mismatch absorption on `/daily/support` (PR #1797 Verification: 2026-05-07).
 
 ## SharePoint Provisioning Dry-Run (17-row columns)
 - **Date**: 2026-05-07
@@ -112,3 +112,20 @@ The system has reached its final stabilization peak. The reduction of the persis
   - `ParentRowNo0`
   - `CreatedByName0`
   - `SourceFileName0`
+
+## Step Key Mismatch Absorption (PR #1797)
+- **Date**: 2026-05-07
+- **PR**: #1797 (Merged)
+- **Log Entry**:
+  SharePoint検証環境で `VITE_FORCE_SHAREPOINT=1` / `VITE_DEMO_MODE=0` の状態を確認し、`/daily/support` の記録保存後に Plan 側の該当スロットへ ✔ 反映されることを確認した。
+
+  `SharePointExecutionRecordRepository` の実装上、SharePointモードでは `upsertRecord` が親レコードを確保したうえで `DailyRecordRows` へ POST/MERGE を行い、`getRecords` が SharePoint から対象日の記録を再取得する構成である。
+
+  したがって、今回の実機検証結果は、SharePoint検証環境において保存・再取得・UI反映の主要経路が正常に動作していることを示す十分な証跡である。
+
+## 結論 (PR #1797 最終判定)
+- [x] #1797 は localhost/localStorage だけでなく、SharePoint検証環境でも主要経路の動作確認済み
+- [x] step不一致吸収 → 保存 → 再取得 → Plan反映 の一連の経路はクローズ可能
+
+
+
