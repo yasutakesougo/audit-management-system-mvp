@@ -181,6 +181,13 @@ describe('dailyProcedureMapper', () => {
       // Row 17 for Katsuragawa-san in Excel was empty except for header
       expect(row17?.personAction).toBe('AM PM日中活動 (外活動)');
     });
+
+    it('should map overall sheet notes (dailyCarePoints, otherNotes) unique to Katsuragawa-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(KATSURAGAWA_SEVERE_SUPPORT_SHEET);
+
+      expect(doc.dailyCarePoints).toBe('本人のペースを尊重し、見通しを持てるように視覚的支援を行う。');
+      expect(doc.otherNotes).toBe('視覚的スケジュールの提示、イヤーマフの活用。\n短い言葉で具体的に伝える。');
+    });
   });
 
   describe('Nakamura-san Severe Support Case (17-Row Validation)', () => {
