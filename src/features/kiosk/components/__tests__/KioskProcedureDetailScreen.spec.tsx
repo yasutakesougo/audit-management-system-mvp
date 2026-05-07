@@ -12,7 +12,7 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useParams: () => ({ userId: 'U001', slotKey: '0' }),
-    useLocation: () => ({ search: '' }),
+    useLocation: () => ({ search: '?kiosk=1&provider=memory' }),
   };
 });
 
@@ -55,17 +55,13 @@ describe('KioskProcedureDetailScreen', () => {
     expect(screen.getByText('田中 太郎 様')).toBeInTheDocument();
   });
 
-  it('expands observation panel when Trigger button is clicked, then saves with serialized memo', async () => {
+  it('saves with serialized memo from the main "記録を保存する" action', async () => {
     render(
       <MemoryRouter>
         <KioskProcedureDetailScreen />
       </MemoryRouter>
     );
 
-    const triggerButton = screen.getByTestId('kiosk-trigger-btn');
-    fireEvent.click(triggerButton);
-
-    // Panel should appear
     expect(screen.getByTestId('kiosk-observation-panel')).toBeInTheDocument();
 
     // Select chips
@@ -82,7 +78,7 @@ describe('KioskProcedureDetailScreen', () => {
     fireEvent.click(submitBtn);
 
     const expectedMemo = `【様子】不安そう\n【対応】声かけ\n【変化】途中で落ち着いた\n【メモ】追加メモテスト`;
-    expect(mockSaveRecord).toHaveBeenCalledWith('triggered', expectedMemo);
+    expect(mockSaveRecord).toHaveBeenCalledWith('completed', expectedMemo);
   });
 
   it('navigates back when back button is clicked', () => {
@@ -95,6 +91,16 @@ describe('KioskProcedureDetailScreen', () => {
     const backButton = screen.getByTestId('kiosk-procedure-detail-back');
     fireEvent.click(backButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/kiosk/users/U001/procedures');
+    expect(mockNavigate).toHaveBeenCalledWith('/kiosk/users/U001/procedures?kiosk=1&provider=memory');
+  });
+
+  it('does not render multiple completion actions', () => {
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText('記録を保存する')).toHaveLength(1);
   });
 });

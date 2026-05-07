@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
 
 type FullScreenDailyDialogPageProps = {
   open?: boolean;
@@ -65,17 +66,22 @@ export function FullScreenDailyDialogPage({
   headerActions,
   children,
 }: FullScreenDailyDialogPageProps) {
+  const { isKioskMode } = useKioskDetection();
   const navigate = useNavigate();
 
   const handleClose = React.useCallback(() => {
     if (busy) return;
     if (onClose) return onClose();
-    navigate(backTo, { replace: true });
-  }, [busy, onClose, navigate, backTo]);
+
+    // /today への戻り先指定がある場合、キオスクモードなら /kiosk に読み替える
+    const resolvedBackTo = (backTo === '/today' && isKioskMode) ? '/kiosk' : backTo;
+    navigate(`${resolvedBackTo}${location.search}`, { replace: true });
+  }, [busy, onClose, navigate, backTo, isKioskMode, location.search]);
 
   const handleHubClick = React.useCallback(() => {
-    navigate('/dailysupport');
-  }, [navigate]);
+    const target = isKioskMode ? '/kiosk' : '/dailysupport';
+    navigate(`${target}${location.search}`);
+  }, [navigate, isKioskMode, location.search]);
 
   // ✅ 背景スクロール防止（フルスクリーン時に背面が動かないように）
   React.useEffect(() => {
@@ -154,7 +160,7 @@ export function FullScreenDailyDialogPage({
             size="small"
             sx={{ minHeight: 32, fontSize: '0.78rem', px: 1.5, flexShrink: 0 }}
           >
-            日次ハブ
+            {isKioskMode ? 'キオスク' : '日次ハブ'}
           </Button>
         </Toolbar>
       </AppBar>
