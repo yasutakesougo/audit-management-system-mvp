@@ -234,9 +234,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           }}
           data-testid="kiosk-observation-panel"
         >
-          <Typography variant="h5" color="warning.main" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ width: 8, height: 24, bgcolor: 'warning.main', mr: 2, borderRadius: 1 }} />
-            観察記録の追加 (注意あり)
+          <Typography variant="h5" color="primary.main" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ width: 8, height: 24, bgcolor: 'primary.main', mr: 2, borderRadius: 1 }} />
+            手順記録の作成
           </Typography>
 
           <Stack spacing={4}>
@@ -352,13 +352,13 @@ export const KioskProcedureDetailScreen: React.FC = () => {
               </Button>
               <Button
                 variant="contained"
-                color="warning"
+                color="primary"
                 onClick={() => handleSave('triggered')}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
                 disabled={isSaving}
                 data-testid="kiosk-observation-submit"
               >
-                注意ありで保存する
+                記録を保存する
               </Button>
             </Stack>
           </Stack>
@@ -370,45 +370,27 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         <Stack direction="row" spacing={3} justifyContent="center">
           <Button 
             variant={showObservations || isTriggered ? "contained" : "outlined"}
-            color="warning"
+            color="primary"
             size="large" 
-            startIcon={<ErrorOutlineIcon />}
+            startIcon={showObservations ? null : <ErrorOutlineIcon />}
             onClick={handleTriggerClick}
             sx={{ 
-              py: 2, 
-              px: 4, 
+              py: 2.5, 
+              px: 12, 
               borderRadius: 4, 
-              fontSize: '1.2rem',
-              fontWeight: showObservations || isTriggered ? 'bold' : 'normal',
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              boxShadow: showObservations || isTriggered ? '0 8px 16px rgba(0,0,0,0.1)' : 'none',
               ...((showObservations || isTriggered) ? {} : {
                 color: 'text.secondary',
                 borderColor: 'divider',
               }),
-              '&:hover': { bgcolor: showObservations || isTriggered ? 'warning.dark' : 'action.hover' }
+              '&:hover': { bgcolor: showObservations || isTriggered ? 'primary.dark' : 'action.hover' }
             }}
             disabled={isSaving || isCompleted}
             data-testid="kiosk-trigger-btn"
           >
-            {showObservations ? '閉じる' : (isTriggered ? '記録済み（注意あり）' : '注意ありで記録')}
-          </Button>
-          <Button 
-            variant="contained" 
-            color={isCompleted ? "success" : "primary"}
-            size="large" 
-            startIcon={<CheckCircleOutlineIcon />}
-            onClick={() => handleSave('completed')}
-            sx={{ 
-              py: 2, 
-              px: 8, 
-              borderRadius: 4, 
-              fontSize: '1.5rem', 
-              fontWeight: 'bold',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
-            }}
-            disabled={isSaving || isCompleted || showObservations}
-            data-testid="kiosk-complete-btn"
-          >
-            {isCompleted ? '実施済みです' : '実施済みにする'}
+            {showObservations ? '閉じる' : (isTriggered ? '記録済み' : '手順記録')}
           </Button>
         </Stack>
       </Box>

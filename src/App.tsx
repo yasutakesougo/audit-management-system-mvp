@@ -18,6 +18,7 @@ import { registerNotifier } from './lib/notice';
 import { DataLayerGuard } from './components/DataLayerGuard';
 import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 import { RemediationAuditMonitor } from '@/features/sp/health/remediation/RemediationAuditMonitor';
+import { DemoProcedureSeeder } from '@/features/demo/DemoProcedureSeeder';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ function App() {
               <DriftMonitor />
               <RemediationAuditMonitor />
               <SpInitBridge />
+              <DemoProcedureSeeder />
               <ToastNotifierBridge />
               <DataLayerGuard>
                 <RouterProvider router={router} future={routerFutureFlags} />

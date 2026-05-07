@@ -9,9 +9,12 @@ export const KioskUserSelectScreen: React.FC = () => {
   const location = useLocation();
   const { data: users, isLoading } = useUsers({ selectMode: 'core' });
 
-  // キオスクモードでは「支援手順対象」の利用者を表示。
+  // キオスクモードでは「支援手順対象」または「強度行動障害支援対象」の利用者を表示。
   // IsActive が明示的に false の場合は除外する。
-  const activeUsers = users.filter(u => u.IsSupportProcedureTarget && u.IsActive !== false);
+  const activeUsers = users.filter(u => 
+    (u.IsSupportProcedureTarget || u.IsHighIntensitySupportTarget) && 
+    u.IsActive !== false
+  );
 
   return (
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
