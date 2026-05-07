@@ -4,7 +4,7 @@ import { getTargetUserDemoProcedures } from './seedTargetProcedures';
 import { isDemoModeEnabled } from '@/lib/env';
 
 /**
- * 4名の強度行動障害対象者の17行手順を自動的にシードするコンポーネント。
+ * 4名の強度行動障害支援対象者の17行手順を自動的にシードするコンポーネント。
  * デモモードの場合、初回起動時に fixture データからマッピングして store へ保存する。
  */
 export const DemoProcedureSeeder: React.FC = () => {
