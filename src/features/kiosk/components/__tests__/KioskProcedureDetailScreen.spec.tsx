@@ -21,7 +21,14 @@ vi.mock('@/features/users/useUsers', () => ({
 }));
 
 const mockProcedures = [
-  { id: 'P001', time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります。' }
+  {
+    id: 'P001',
+    time: '10:00',
+    activity: '朝のバイタルチェック',
+    instruction: '体温と血圧を測ります。',
+    activityDetail: '体温と血圧を測る',
+    instructionDetail: '測定の声かけと記録を行う',
+  }
 ];
 
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
@@ -53,6 +60,8 @@ describe('KioskProcedureDetailScreen', () => {
 
     expect(screen.getByText('10:00 - 朝のバイタルチェック')).toBeInTheDocument();
     expect(screen.getByText('田中 太郎 様')).toBeInTheDocument();
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
   });
 
   it('saves with serialized memo from the main "記録を保存する" action', async () => {

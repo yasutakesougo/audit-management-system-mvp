@@ -119,11 +119,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     );
   }
 
-  // instruction を「本人」と「支援者」に分割して表示（。で区切られた最初の文を本人のタスクとする）
-  // 将来的なスキーマ拡張で明示的なフィールドに移行予定
-  const parts = procedure.instruction.split('。').filter(Boolean);
-  const personTask = parts[0] || '手順に従って進めましょう';
-  const staffTask = parts.slice(1).join('。') || '適宜見守り、必要に応じて声掛けを行います';
+  const parts = (procedure.instruction || '').split('。').filter(Boolean);
+  const personTask = procedure.activityDetail || parts[0] || '手順に従って進めましょう';
+  const staffTask = procedure.instructionDetail || parts.slice(1).join('。') || '適宜見守り、必要に応じて声掛けを行います';
 
   const isCompleted = record?.status === 'completed';
 
