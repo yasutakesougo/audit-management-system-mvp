@@ -26,7 +26,7 @@ export const KioskHomeScreen: React.FC = () => {
         p: { xs: 2, md: 4 }, 
         maxWidth: 800, 
         mx: 'auto', 
-        mt: { xs: 2, md: 6 },
+        mt: { xs: 2, md: 4 },
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -34,7 +34,7 @@ export const KioskHomeScreen: React.FC = () => {
       }}
     >
       <Typography 
-        variant="h3" 
+        variant="h4" 
         component="h1" 
         gutterBottom 
         sx={{ 
@@ -46,9 +46,9 @@ export const KioskHomeScreen: React.FC = () => {
         キオスクモード
       </Typography>
       <Typography 
-        variant="h6" 
+        variant="subtitle1" 
         sx={{ 
-          mb: 6, 
+          mb: { xs: 3, md: 4 }, 
           color: 'text.secondary',
           fontWeight: 500
         }}
@@ -56,7 +56,7 @@ export const KioskHomeScreen: React.FC = () => {
         今日の操作を選んでください
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         {/* メインアクション: 支援手順を実施する */}
         <Grid size={12}>
           <Button
@@ -65,12 +65,12 @@ export const KioskHomeScreen: React.FC = () => {
             size="large"
             color="primary"
             data-testid="kiosk-action-execute-steps"
-            startIcon={<PlayCircleOutlineIcon sx={{ fontSize: '2.5rem !important' }} />}
+            startIcon={<PlayCircleOutlineIcon sx={{ fontSize: { xs: '2rem !important', md: '2.5rem !important' } }} />}
             sx={{
-              py: 6,
-              fontSize: '1.75rem',
+              py: { xs: 3, md: 4 },
+              fontSize: { xs: '1.25rem', md: '1.5rem' },
               fontWeight: 'bold',
-              borderRadius: 6,
+              borderRadius: 4,
               boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
               '&:active': {
                 transform: 'scale(0.98)',
@@ -92,10 +92,10 @@ export const KioskHomeScreen: React.FC = () => {
             data-testid="kiosk-action-attendance"
             startIcon={<LoginIcon sx={{ fontSize: '1.5rem !important' }} />}
             sx={{
-              py: 4,
-              fontSize: '1.25rem',
+              py: { xs: 2, md: 3 },
+              fontSize: { xs: '1.1rem', md: '1.25rem' },
               fontWeight: 'bold',
-              borderRadius: 4,
+              borderRadius: 3,
               borderWidth: 2,
               '&:hover': {
                 borderWidth: 2,
@@ -114,10 +114,10 @@ export const KioskHomeScreen: React.FC = () => {
             data-testid="kiosk-action-leave"
             startIcon={<LogoutIcon sx={{ fontSize: '1.5rem !important' }} />}
             sx={{
-              py: 4,
-              fontSize: '1.25rem',
+              py: { xs: 2, md: 3 },
+              fontSize: { xs: '1.1rem', md: '1.25rem' },
               fontWeight: 'bold',
-              borderRadius: 4,
+              borderRadius: 3,
               borderWidth: 2,
               '&:hover': {
                 borderWidth: 2,
@@ -138,7 +138,7 @@ export const KioskHomeScreen: React.FC = () => {
             data-testid="kiosk-action-schedule"
             startIcon={<EventNoteIcon sx={{ fontSize: '1.5rem !important' }} />}
             sx={{
-              py: 3,
+              py: { xs: 2, md: 2.5 },
               fontSize: '1.1rem',
               fontWeight: 'bold',
               borderRadius: 3,
@@ -146,7 +146,7 @@ export const KioskHomeScreen: React.FC = () => {
               '&:hover': {
                 borderWidth: 2,
               },
-              mt: 2
+              mt: { xs: 1, md: 2 }
             }}
             onClick={() => navigate(appendKioskSearchParams('/schedules/day', location.search))}
           >
