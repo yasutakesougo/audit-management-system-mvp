@@ -82,7 +82,7 @@ describe('KioskProcedureDetailScreen', () => {
     fireEvent.click(submitBtn);
 
     const expectedMemo = `【様子】不安そう\n【対応】声かけ\n【変化】途中で落ち着いた\n【メモ】追加メモテスト`;
-    expect(mockSaveRecord).toHaveBeenCalledWith('triggered', expectedMemo);
+    expect(mockSaveRecord).toHaveBeenCalledWith('completed', expectedMemo);
   });
 
   it('navigates back when back button is clicked', () => {

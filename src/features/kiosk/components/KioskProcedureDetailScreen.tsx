@@ -86,12 +86,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     return parts.join('\n');
   };
 
-  const handleSave = async (newStatus: 'completed' | 'triggered') => {
+  const handleSave = async () => {
     if (!userId) return;
     setIsSaving(true);
     try {
-      const finalMemo = newStatus === 'triggered' ? serializeMemo() : '';
-      await saveRecord(newStatus, finalMemo);
+      const finalMemo = serializeMemo();
+      await saveRecord('completed', finalMemo);
       setShowSuccess(true);
       // 成功フィードバックの後、少し待ってから一覧に戻る
       setTimeout(() => {
@@ -355,7 +355,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => handleSave('triggered')}
+                onClick={handleSave}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
                 disabled={isSaving}
                 data-testid="kiosk-observation-submit"
@@ -370,24 +370,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       {/* フッター / アクションボタン */}
       <Box sx={{ mt: 'auto', pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
         <Stack direction="row" spacing={3} justifyContent="center">
-          <Button
-            variant={isCompleted ? "contained" : "outlined"}
-            color="success"
-            size="large"
-            startIcon={showObservations ? null : <CheckCircleOutlineIcon />}
-            onClick={() => handleSave('completed')}
-            sx={{
-              py: 2.5,
-              px: 8,
-              borderRadius: 4,
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
-            }}
-            disabled={isSaving || isCompleted}
-            data-testid="kiosk-complete-btn"
-          >
-            {isCompleted ? '実施済み' : '完了を記録'}
-          </Button>
           <Button 
             variant={showObservations || isTriggered ? "contained" : "outlined"}
             color="primary"
