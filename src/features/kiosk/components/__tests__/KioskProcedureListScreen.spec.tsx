@@ -49,7 +49,7 @@ vi.mock('@/features/daily/repositories/sharepoint/executionRepositoryFactory', (
   getCurrentExecutionRepositoryKind: () => mockGetCurrentExecutionRepositoryKind(),
 }));
 
-describe('KioskProcedureListScreen', () => {
+describe('KioskProcedureListScreen (includes local/memory-style recorded-state checks)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');

@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Kiosk UX Regression (Smoke)', () => {
+test.describe('Kiosk UX Regression (Smoke, memory provider for local UI verification)', () => {
   test.use({
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173',
   });
 
   test('kiosk mode: 1-tap navigation to schedule and back to today', async ({ page }) => {
+    // NOTE: provider=memory here is for local deterministic UI regression checks.
+    // Production kiosk uses SharePoint-backed execution repository.
     // 1. 事前準備: UIからの設定切替ではなく、localStorageへの流し込みで確実・高速にキオスクモードをON
     await page.addInitScript(() => {
       window.localStorage.setItem(
