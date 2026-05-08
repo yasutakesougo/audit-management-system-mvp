@@ -12,6 +12,8 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useParams: () => ({ userId: 'U001', slotKey: '0' }),
+    // provider=memory is intentional for component-level kiosk flow checks in local test context.
+    // Production kiosk execution persistence is SharePoint-backed.
     useLocation: () => ({ search: '?kiosk=1&provider=memory' }),
   };
 });
@@ -46,7 +48,7 @@ vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
   }),
 }));
 
-describe('KioskProcedureDetailScreen', () => {
+describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

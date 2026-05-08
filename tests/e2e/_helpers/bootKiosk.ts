@@ -62,6 +62,8 @@ const DEFAULT_PROCEDURES: KioskProcedure[] = [
 ];
 
 export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Promise<void> {
+  // E2E kiosk tests default to memory provider so UI flow and form behavior can be
+  // validated deterministically in local/demo runs. Production kiosk is SharePoint-fixed.
   const provider = options.provider ?? 'memory';
   const route = options.route ?? '/kiosk';
   const autoNavigate = options.autoNavigate ?? true;
@@ -144,4 +146,3 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
     // networkidle は Vite の HMR 等で不安定になることがあるため、load までで止める
   }
 }
-
