@@ -18,6 +18,7 @@ import {
     isTestMode,
     shouldSkipLogin,
     readBool,
+    readOptionalEnv,
 } from '@/lib/env';
 import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRecordRepository';
 import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
@@ -40,13 +41,41 @@ export type ExecutionRepositoryKind = 'local' | 'sharepoint';
 // ────────────────────────────────────────────────────────────
 
 const shouldUseLocalRepository = (): boolean => {
+  const providerParam =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('provider') : undefined;
+  const providerEnv = readOptionalEnv('VITE_DATA_PROVIDER');
+  const providerHint = (providerParam ?? providerEnv ?? '').trim().toLowerCase();
+
   if (readBool('VITE_FORCE_SHAREPOINT', false)) {
     return false;
   }
+
   const { isDev } = getAppConfig();
+  const isTest = isTestMode();
+  const isKioskRuntime =
+    typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
+
+  // Kiosk in non-dev runtime must never rely on local-only records.
+  // Even when demo/skip flags are accidentally enabled, prefer SharePoint.
+  if (isKioskRuntime && !isDev && !isTest) {
+    if (providerHint === 'local' || providerHint === 'memory' || shouldSkipLogin()) {
+      console.warn(
+        '[ExecutionRepositoryFactory] local/memory hint detected in kiosk runtime; forcing SharePoint adapter.',
+      );
+    }
+    return false;
+  }
+
+  if (providerHint === 'sharepoint') {
+    return false;
+  }
+  if (providerHint === 'local' || providerHint === 'memory') {
+    return true;
+  }
+
   return (
     isDev ||
-    isTestMode() ||
+    isTest ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
     shouldSkipLogin()
