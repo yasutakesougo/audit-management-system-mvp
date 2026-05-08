@@ -330,6 +330,15 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return { completed, triggered, rate };
   }
 
+  private pickFirstNonEmptyString(...values: unknown[]): string {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value;
+      }
+    }
+    return '';
+  }
+
   private mapToDomain(item: JsonRecord, rf: ResolvedRowsFields): ExecutionRecord {
     const title = (item.Title || item.title || '') as string;
     let triggeredBipIds: string[] = [];
@@ -373,7 +382,12 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       scheduleItemId,
       status: item[rf.status] as RecordStatus,
       triggeredBipIds,
-      memo: (item[rf.memo] || item[rf.payload] || '') as string,
+      memo: this.pickFirstNonEmptyString(
+        item[rf.memo],
+        item[rf.payload],
+        item.Observation,
+        item.observation,
+      ),
       recordedBy: (item[rf.staffName] || '') as string,
       recordedAt: (item[rf.recordedAt] || '') as string,
     };
