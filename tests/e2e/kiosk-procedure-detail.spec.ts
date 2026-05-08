@@ -30,6 +30,9 @@ test.describe('Kiosk Procedure Detail', () => {
     // 観察パネルが表示されることを確認
     await expect(page.getByTestId('kiosk-observation-panel')).toBeVisible();
 
+    // 1. 本人の様子を選択（バリデーション回避のため1つ以上選択が必要）
+    await page.getByTestId('mood-chip-落ち着いていた').click();
+
     // 2. パネル内の「記録を保存する」をクリック
     await page.getByRole('button', { name: '記録を保存する' }).click();
 
