@@ -7,7 +7,7 @@ import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
-import { formatDateIso } from '@/lib/dateFormat';
+import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
@@ -22,7 +22,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const isUserLoading = status === 'loading' || status === 'idle';
   const procedureRepo = useProcedureData();
   
-  const today = React.useMemo(() => formatDateIso(new Date()), []);
+  const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
   
   const procedure = React.useMemo(() => {
     if (!userId || slotKey === undefined) return null;
@@ -36,7 +36,16 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const scheduleItemId = normalizeScheduleItemId(procedure?.rowNo) ||
     normalizeScheduleItemId(procedure?.id) ||
     normalizeScheduleItemId(slotKey);
-  const { record, saveRecord, isLoading } = useExecutionRecord(today, userId || '', scheduleItemId);
+  const fallbackScheduleItemIds = React.useMemo(
+    () => [normalizeScheduleItemId(slotKey)].filter((value): value is string => Boolean(value)),
+    [slotKey],
+  );
+  const { record, saveRecord, isLoading } = useExecutionRecord(
+    selectedDateIso,
+    userId || '',
+    scheduleItemId,
+    fallbackScheduleItemIds,
+  );
   
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);

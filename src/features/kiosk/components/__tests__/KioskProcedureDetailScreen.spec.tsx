@@ -1,20 +1,19 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock dependencies
 const mockNavigate = vi.fn();
+const mockUseLocation = vi.fn(() => ({ search: '?kiosk=1&provider=memory' }));
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
     useParams: () => ({ userId: 'U001', slotKey: '0' }),
-    // provider=memory is intentional for component-level kiosk flow checks in local test context.
-    // Production kiosk execution persistence is SharePoint-backed.
-    useLocation: () => ({ search: '?kiosk=1&provider=memory' }),
+    useLocation: () => mockUseLocation(),
   };
 });
 
@@ -40,17 +39,28 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 }));
 
 const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
+const mockUseExecutionRecord = vi.fn(() => ({
+  record: null,
+  saveRecord: mockSaveRecord,
+  isLoading: false,
+}));
 vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
-  useExecutionRecord: () => ({
-    record: null,
-    saveRecord: mockSaveRecord,
-    isLoading: false,
-  }),
+  useExecutionRecord: (...args: unknown[]) => mockUseExecutionRecord(...args),
 }));
 
 describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
+    mockUseExecutionRecord.mockReturnValue({
+      record: null,
+      saveRecord: mockSaveRecord,
+      isLoading: false,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders procedure details correctly', () => {
@@ -104,6 +114,41 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     fireEvent.click(backButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('/kiosk/users/U001/procedures?kiosk=1&provider=memory');
+  });
+
+  it('uses date query for useExecutionRecord and saveRecord', async () => {
+    mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory&date=2026-05-07' });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(mockUseExecutionRecord).toHaveBeenCalledWith('2026-05-07', 'U001', 'P001', ['0']);
+
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+    await waitFor(() => {
+      expect(mockSaveRecord).toHaveBeenCalled();
+    });
+  });
+
+  it('preserves date query in return URL after save', async () => {
+    mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory&date=2026-05-07' });
+    vi.useFakeTimers();
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockSaveRecord).toHaveBeenCalled();
+    await vi.runAllTimersAsync();
+    expect(mockNavigate).toHaveBeenCalledWith('/kiosk/users/U001/procedures?kiosk=1&provider=memory&date=2026-05-07');
   });
 
   it('does not render multiple completion actions', () => {

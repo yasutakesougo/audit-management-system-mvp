@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -51,10 +51,16 @@ vi.mock('@/features/daily/repositories/sharepoint/executionRepositoryFactory', (
 
 describe('KioskProcedureListScreen (includes local/memory-style recorded-state checks)', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
     mockGetRecords.mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders procedure list and calculates progress correctly', async () => {
@@ -302,6 +308,45 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
         expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         'U001'
       );
+    });
+  });
+
+  it('uses date query when provided for store/repository record fetch', async () => {
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-05-07']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetStoreRecords).toHaveBeenCalledWith('2026-05-07', 'U001');
+      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-07', 'U001');
+    });
+  });
+
+  it('uses today when date query is missing', async () => {
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?provider=memory&kiosk=1']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetStoreRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
+      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
+    });
+  });
+
+  it('falls back to today when date query is invalid', async () => {
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-13-99&provider=memory']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetStoreRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
+      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
     });
   });
 

@@ -8,7 +8,8 @@ import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
-import { formatDateJapanese, formatDateIso } from '@/lib/dateFormat';
+import { formatDateJapanese } from '@/lib/dateFormat';
+import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
@@ -23,8 +24,8 @@ export const KioskProcedureListScreen: React.FC = () => {
   const procedureRepo = useProcedureData();
   const executionRepo = useExecutionData();
   
-  const todayIso = React.useMemo(() => formatDateIso(new Date()), []);
-  const todayStr = formatDateJapanese(new Date());
+  const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
+  const selectedDateStr = formatDateJapanese(selectedDateIso);
 
   const procedures = React.useMemo(() => {
     if (!userId) return [];
@@ -42,7 +43,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   }, [procedures]);
 
   const { getRecords: getStoreRecords } = useExecutionStore();
-  const storeRecords = getStoreRecords(todayIso || '', userId || '');
+  const storeRecords = getStoreRecords(selectedDateIso || '', userId || '');
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
@@ -53,7 +54,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     const fetchRecords = async () => {
       if (!userId) return;
       try {
-        const data = await executionRepo.getRecords(todayIso, userId);
+        const data = await executionRepo.getRecords(selectedDateIso, userId);
         setRecords(data);
       } catch (error) {
         console.error('Failed to fetch execution records:', error);
@@ -61,7 +62,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     };
     void fetchRecords();
-  }, [userId, executionRepo, todayIso, location.key, location.search]);
+  }, [userId, executionRepo, selectedDateIso, location.key, location.search]);
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
     if (!record) return false;
@@ -157,7 +158,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               {user.FullName} 様
             </Typography>
             <Typography variant="subtitle1" color="text.secondary">
-              {todayStr} の支援手順
+              {selectedDateStr} の支援手順
             </Typography>
           </Box>
         </Box>
@@ -252,7 +253,7 @@ export const KioskProcedureListScreen: React.FC = () => {
           <Grid size={12}>
             <Box sx={{ p: 8, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 4 }}>
               <Typography variant="h6" color="text.secondary">
-                本日の支援手順が設定されていません
+                支援手順が設定されていません
               </Typography>
             </Box>
           </Grid>
