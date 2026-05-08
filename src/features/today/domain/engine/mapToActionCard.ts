@@ -17,6 +17,7 @@ function resolveActionType(item: ScoredActionItem): ActionType {
     case 'corrective_action':
     case 'plan_patch':
     case 'isp_renew_suggest':
+    case 'monitoring_deadline':
       return 'NAVIGATE';
     case 'schedule':
       return 'OPEN_DRAWER';
@@ -56,6 +57,13 @@ function buildContextMessage(item: ScoredActionItem): string {
     const impactLabel = payload?.impact === 'high' ? '高優先' : '通常';
     const mode = payload?.recommendedOnly === false ? '要確認' : '要確認（自動適用なし）';
     return `${impactLabel} / ${mode} / ${reason}`;
+  }
+
+  if (item.sourceType === 'monitoring_deadline') {
+    const payload = item.payload as { status?: string; remainingDays?: number; nextDueDate?: string } | undefined;
+    const statusLabel = payload?.status === 'overdue' ? '期限超過' : '期限間近';
+    const remaining = payload?.remainingDays !== undefined ? `${payload.remainingDays}日` : '不明';
+    return `${statusLabel} / 残り ${remaining} / 期限: ${payload?.nextDueDate}`;
   }
 
   const base = item.targetTime

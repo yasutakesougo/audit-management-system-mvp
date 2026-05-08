@@ -31,6 +31,13 @@ export function scoreActionPriority(source: RawActionSource): ActionPriority {
     }
     case 'isp_renew_suggest':
       return 'P2';
+    case 'monitoring_deadline': {
+      const payload = source.payload as { signalCode?: string } | undefined;
+      return payload?.signalCode === 'monitoring_overdue' ||
+        payload?.signalCode === 'monitoring_due_today'
+        ? 'P0'
+        : 'P1';
+    }
     default: {
       const _exhaustive: never = source.sourceType;
       return _exhaustive;
