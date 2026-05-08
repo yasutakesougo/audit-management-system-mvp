@@ -12,6 +12,46 @@ test.describe('Kiosk Home Smoke (memory provider for local kiosk flow checks)', 
     await bootKiosk(page, { route: '/kiosk' });
   });
 
+  test('should preserve provider/kiosk/date query params across main kiosk procedure flow', async ({ page }) => {
+    const expectedDate = '2026-05-08';
+    await bootKiosk(page, { route: `/kiosk?kiosk=1&date=${expectedDate}` });
+
+    const expectCoreQueryParams = async () => {
+      const current = new URL(page.url());
+      expect(current.searchParams.get('provider')).toBe('memory');
+      expect(current.searchParams.get('kiosk')).toBe('1');
+      expect(current.searchParams.get('date')).toBe(expectedDate);
+    };
+
+    await expectCoreQueryParams();
+
+    await page.getByTestId('kiosk-action-execute-steps').click();
+    await expect(page).toHaveURL(/\/kiosk\/users/);
+    await expectCoreQueryParams();
+
+    const firstUserCard = page.locator('[data-testid^="kiosk-user-card-"]').first();
+    await expect(firstUserCard).toBeVisible();
+    await firstUserCard.click();
+    await expect(page).toHaveURL(/\/kiosk\/users\/.+\/procedures/);
+    await expectCoreQueryParams();
+
+    await page.getByTestId('kiosk-procedure-card-0').click();
+    await expect(page).toHaveURL(/\/kiosk\/users\/.+\/procedures\/\d+/);
+    await expectCoreQueryParams();
+
+    await page.getByTestId('kiosk-procedure-detail-back').click();
+    await expect(page).toHaveURL(/\/kiosk\/users\/.+\/procedures\/?(\?.*)?$/);
+    await expectCoreQueryParams();
+
+    await page.getByTestId('kiosk-procedure-list-back').click();
+    await expect(page).toHaveURL(/\/kiosk\/users(\?.*)?$/);
+    await expectCoreQueryParams();
+
+    await page.getByTestId('kiosk-user-select-back').click();
+    await expect(page).toHaveURL(/\/kiosk(\?.*)?$/);
+    await expectCoreQueryParams();
+  });
+
   test('should display kiosk home page with action buttons and no sidebar', async ({ page }) => {
     // 1. タイトルと説明の確認
     await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({ timeout: 15000 });
