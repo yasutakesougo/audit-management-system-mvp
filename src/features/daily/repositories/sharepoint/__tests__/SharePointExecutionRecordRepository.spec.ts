@@ -280,5 +280,117 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(mapped.userId).toBe('4');
       expect(mapped.date).toBe('2026-05-08');
     });
+
+    it('uses Memo when Memo has content', () => {
+      const mockItem = {
+        Title: '2026-05-08-4-1',
+        User_x0020_ID: '4',
+        Status: 'completed',
+        Memo: 'memo-value',
+        Payload: 'payload-value',
+        Observation: 'observation-value',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      expect(mapped.memo).toBe('memo-value');
+    });
+
+    it('uses Payload when Memo is empty', () => {
+      const mockItem = {
+        Title: '2026-05-08-4-2',
+        User_x0020_ID: '4',
+        Status: 'completed',
+        Memo: '   ',
+        Payload: 'payload-value',
+        Observation: 'observation-value',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      expect(mapped.memo).toBe('payload-value');
+    });
+
+    it('uses Observation when Memo and Payload are empty', () => {
+      const mockItem = {
+        Title: '2026-05-08-4-3',
+        User_x0020_ID: '4',
+        Status: 'completed',
+        Memo: '',
+        Payload: '   ',
+        Observation: 'observation-value',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      expect(mapped.memo).toBe('observation-value');
+    });
+
+    it('skips empty strings and returns empty when all candidates are empty', () => {
+      const mockItem = {
+        Title: '2026-05-08-4-4',
+        User_x0020_ID: '4',
+        Status: 'completed',
+        Memo: '   ',
+        Payload: '',
+        Observation: '\n\t',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      expect(mapped.memo).toBe('');
+    });
   });
 });
