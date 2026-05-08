@@ -15,8 +15,7 @@ import { AbcSlotDialog } from './AbcSlotDialog';
 import { StrategyReferenceAccordion } from './StrategyReferenceAccordion';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
-import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
-import type { MonitoringCycleResult } from '@/features/daily/components/MonitoringCountdown';
+import { computeMonitoringDeadlineFromSupportStart, type MonitoringDeadlineState } from '@/features/daily/components/MonitoringCountdown';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
@@ -64,7 +63,7 @@ export type PlanSelectionStepProps = {
   /** 選択中ユーザーID（状態サマリー計算用、optional） */
   userId?: string;
   /** ユーザーのアセスメント日（モニタリング計算用、optional） */
-  lastAssessmentDate?: string | null;
+  monitoringBaseDate?: string | null;
   /** スロットごとの選択可否状態（競合の有無） */
   selectableStateByStepId?: Map<string, { conflicted: boolean; blockingOrders: number[] }>;
   /** 非表示にする手順オーダー */
@@ -163,19 +162,19 @@ function usePlanStatus(userId?: string): { label: string; color: 'success' | 'wa
 
 const StatusSummaryBar: React.FC<{
   userId?: string;
-  lastAssessmentDate?: string | null;
+  monitoringBaseDate?: string | null;
   totalCount: number;
   unfilledCount: number;
   onIcebergAnalysis?: () => void;
   onAbcRecord?: () => void;
-}> = memo(({ userId, lastAssessmentDate, totalCount, unfilledCount, onIcebergAnalysis, onAbcRecord }) => {
+}> = memo(({ userId, monitoringBaseDate, totalCount, unfilledCount, onIcebergAnalysis, onAbcRecord }) => {
   const { todayCount: abcTodayCount } = useAbcTodayCount(userId);
   const planStatus = usePlanStatus(userId);
 
-  const monitoringCycle: MonitoringCycleResult | null = useMemo(() => {
-    if (!lastAssessmentDate) return null;
-    return computeMonitoringCycle(new Date(`${lastAssessmentDate}T00:00:00`), new Date());
-  }, [lastAssessmentDate]);
+  const monitoringDeadline: MonitoringDeadlineState | null = useMemo(() => {
+    if (!monitoringBaseDate) return null;
+    return computeMonitoringDeadlineFromSupportStart(monitoringBaseDate);
+  }, [monitoringBaseDate]);
 
   const filledCount = totalCount - unfilledCount;
   const progress = totalCount > 0 ? (filledCount / totalCount) * 100 : 0;
@@ -225,16 +224,20 @@ const StatusSummaryBar: React.FC<{
         />
 
         {/* モニタリング */}
-        {monitoringCycle && (
-          <Chip
-            icon={<EventRoundedIcon />}
-            label={`会議まで${monitoringCycle.remaining}日`}
-            size="small"
-            color={monitoringCycle.remaining <= 14 ? 'error' : monitoringCycle.remaining <= 30 ? 'warning' : 'default'}
-            variant="outlined"
-            sx={{ fontSize: '0.7rem', height: 22 }}
-          />
-        )}
+        {(() => {
+          const deadline = monitoringDeadline;
+          if (!deadline || deadline.remainingDays === null || !deadline.nextDueDate) return null;
+          return (
+            <Chip
+              icon={<EventRoundedIcon />}
+              label={`モニタリング期限まで${deadline.remainingDays}日`}
+              size="small"
+              color={deadline.status === 'critical' || deadline.status === 'dueToday' || deadline.status === 'overdue' ? 'error' : deadline.status === 'warning' ? 'warning' : 'default'}
+              variant="outlined"
+              sx={{ fontSize: '0.7rem', height: 22 }}
+            />
+          );
+        })()}
 
         {/* ABC 記録 */}
         <Chip
@@ -309,7 +312,7 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   onIcebergAnalysis,
   onAbcRecord,
   userId,
-  lastAssessmentDate,
+  monitoringBaseDate,
   selectableStateByStepId,
   hiddenStepOrders,
 }) => {
@@ -372,7 +375,7 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
       {/* ── Status Summary Bar ── */}
       <StatusSummaryBar
         userId={userId}
-        lastAssessmentDate={lastAssessmentDate}
+        monitoringBaseDate={monitoringBaseDate}
         totalCount={totalCount}
         unfilledCount={unfilledCount}
         onIcebergAnalysis={onIcebergAnalysis}

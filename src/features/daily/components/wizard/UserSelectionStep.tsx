@@ -16,8 +16,7 @@
  */
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
-import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
-import type { MonitoringCycleResult } from '@/features/daily/components/MonitoringCountdown';
+import { computeMonitoringDeadlineFromSupportStart, type MonitoringDeadlineState } from '@/features/daily/components/MonitoringCountdown';
 import type { DailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
 import type { IUserMaster } from '@/features/users/types';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
@@ -155,21 +154,21 @@ const UserCard: React.FC<{
   /** 計画未作成フラグ */
   hasPlan: boolean;
   /** モニタリングサイクル情報（null = 未設定） */
-  monitoringCycle: MonitoringCycleResult | null;
+  monitoringDeadline: MonitoringDeadlineState | null;
   onSelect: (userId: string) => void;
-}> = memo(({ user, unfilled, abcTodayCount, isSelected, hasPlan, monitoringCycle, onSelect }) => {
+}> = memo(({ user, unfilled, abcTodayCount, isSelected, hasPlan, monitoringDeadline, onSelect }) => {
   const isHighIntensity = user.IsHighIntensitySupportTarget === true;
   const behaviorScore = user.BehaviorScore;
   const supportLevel = user.DisabilitySupportLevel;
 
   // モニタリング期限チップの表示判定
   const monitoringChip = useMemo(() => {
-    if (!monitoringCycle) return null;
-    const { remaining } = monitoringCycle;
-    if (remaining <= 14) return { label: `会議まで${remaining}日`, color: 'error' as const };
-    if (remaining <= 30) return { label: `会議まで${remaining}日`, color: 'warning' as const };
+    if (!monitoringDeadline || monitoringDeadline.remainingDays === null) return null;
+    const remaining = monitoringDeadline.remainingDays;
+    if (remaining <= 14) return { label: `期限まで${remaining}日`, color: 'error' as const };
+    if (remaining <= 30) return { label: `期限まで${remaining}日`, color: 'warning' as const };
     return null; // 30日超は非表示
-  }, [monitoringCycle]);
+  }, [monitoringDeadline]);
 
   return (
     <Card
@@ -440,8 +439,8 @@ export const UserSelectionStep: React.FC<UserSelectionStepProps> = memo(({
           </Typography>
         ) : (
           sortedUsers.map((user) => {
-            const userMonitoringCycle = user.LastAssessmentDate
-              ? computeMonitoringCycle(new Date(`${user.LastAssessmentDate}T00:00:00`), new Date())
+            const monitoringDeadline = user.ServiceStartDate
+              ? computeMonitoringDeadlineFromSupportStart(user.ServiceStartDate)
               : null;
             return (
               <UserCard
@@ -451,7 +450,7 @@ export const UserSelectionStep: React.FC<UserSelectionStepProps> = memo(({
                 abcTodayCount={abcSummary.todayCounts.get(user.UserID) ?? 0}
                 isSelected={false}
                 hasPlan={planningSheets.has(user.UserID)}
-                monitoringCycle={userMonitoringCycle}
+                monitoringDeadline={monitoringDeadline}
                 onSelect={handleCardClick}
               />
             );
