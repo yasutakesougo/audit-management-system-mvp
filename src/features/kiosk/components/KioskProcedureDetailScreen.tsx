@@ -38,6 +38,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showSaveError, setShowSaveError] = useState(false);
 
   // 観察チップ用ステート
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -95,6 +96,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       }, 1500);
     } catch (error) {
       console.error('Failed to save execution record:', error);
+      setShowSaveError(true);
       setIsSaving(false);
     }
   };
@@ -356,6 +358,17 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       >
         <Alert severity="success" sx={{ width: '100%', fontSize: '1.2rem', fontWeight: 'bold' }}>
           記録を保存しました
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={showSaveError}
+        autoHideDuration={4000}
+        onClose={() => setShowSaveError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" sx={{ width: '100%' }}>
+          記録の保存に失敗しました。再度お試しください。
         </Alert>
       </Snackbar>
     </Box>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress } from '@mui/material';
+import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress, Snackbar, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -46,6 +46,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
+  const [showFetchError, setShowFetchError] = useState(false);
 
   // 実施記録の取得
   useEffect(() => {
@@ -56,6 +57,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         setRecords(data);
       } catch (error) {
         console.error('Failed to fetch execution records:', error);
+        setShowFetchError(true);
       }
     };
     void fetchRecords();
@@ -256,6 +258,17 @@ export const KioskProcedureListScreen: React.FC = () => {
           </Grid>
         )}
       </Grid>
+
+      <Snackbar
+        open={showFetchError}
+        autoHideDuration={4000}
+        onClose={() => setShowFetchError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" sx={{ width: '100%' }}>
+          記録の取得に失敗しました。再読み込みしてください。
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

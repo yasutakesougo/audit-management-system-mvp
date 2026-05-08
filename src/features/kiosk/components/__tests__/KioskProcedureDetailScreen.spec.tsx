@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
@@ -88,6 +88,7 @@ describe('KioskProcedureDetailScreen', () => {
 
     const expectedMemo = `【様子】不安そう\n【対応】声かけ\n【変化】途中で落ち着いた\n【メモ】追加メモテスト`;
     expect(mockSaveRecord).toHaveBeenCalledWith('completed', expectedMemo);
+    expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
   });
 
   it('navigates back when back button is clicked', () => {
@@ -111,5 +112,21 @@ describe('KioskProcedureDetailScreen', () => {
     );
 
     expect(screen.getAllByText('記録を保存する')).toHaveLength(1);
+  });
+
+  it('shows save error snackbar when save fails', async () => {
+    mockSaveRecord.mockRejectedValueOnce(new Error('save failed'));
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('記録の保存に失敗しました。再度お試しください。')).toBeInTheDocument();
+    });
   });
 });
