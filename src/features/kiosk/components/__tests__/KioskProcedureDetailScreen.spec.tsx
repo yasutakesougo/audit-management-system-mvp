@@ -39,13 +39,13 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 }));
 
 const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
-const mockUseExecutionRecord = vi.fn(() => ({
+const mockUseExecutionRecord = vi.fn((_date?: string, _userId?: string, _scheduleItemId?: string, _fallbackScheduleItemIds?: string[]) => ({
   record: null,
   saveRecord: mockSaveRecord,
   isLoading: false,
 }));
 vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
-  useExecutionRecord: (...args: unknown[]) => mockUseExecutionRecord(...args),
+  useExecutionRecord: (date: string, userId: string, scheduleItemId: string, fallbackScheduleItemIds?: string[]) => mockUseExecutionRecord(date, userId, scheduleItemId, fallbackScheduleItemIds),
 }));
 
 describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
