@@ -310,6 +310,24 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
     personAction: '出発前にトイレを確認する',
     supporterAction: 'トイレの声掛け。自動ドア前で写真を撮る。',
   },
+  // 塩田 裕貴さん（I016）
+  { userId: 'I016', rowNo: 1, personAction: '手洗い、消毒。荷物を入れる。', supporterAction: '通所時の様子を確認し、必要に応じて声かけを行う。' },
+  { userId: 'I016', rowNo: 2, personAction: '体操に参加する', supporterAction: '本人の様子を見ながら参加を促す' },
+  { userId: 'I016', rowNo: 3, personAction: '予定を見る', supporterAction: '本人と一緒に予定を確認し、見通しが持てるよう支援する' },
+  { userId: 'I016', rowNo: 4, personAction: 'お茶を飲む', supporterAction: 'お茶の準備、片付けを行う' },
+  { userId: 'I016', rowNo: 5, personAction: '午前の活動に参加する', supporterAction: '必要に応じて声かけ、見守りを行う' },
+  { userId: 'I016', rowNo: 6, personAction: '手洗い、配膳', supporterAction: '手洗い・配膳を見守り、必要に応じて支援する' },
+  { userId: 'I016', rowNo: 7, personAction: '昼食を食べる', supporterAction: '食事の様子を見守り、必要に応じて介助を行う' },
+  { userId: 'I016', rowNo: 8, personAction: '休憩時間を過ごす', supporterAction: '休憩中の様子を見守る' },
+  { userId: 'I016', rowNo: 9, personAction: '午後の予定を確認する', supporterAction: '本人と一緒に午後の予定を確認する' },
+  { userId: 'I016', rowNo: 10, personAction: '午後の活動に参加する', supporterAction: '必要に応じて同行支援を行う' },
+  { userId: 'I016', rowNo: 11, personAction: 'お茶を飲む', supporterAction: 'お茶の準備、片付けを行う' },
+  { userId: 'I016', rowNo: 12, personAction: '午後の活動に参加する', supporterAction: '必要に応じて同行支援を行う' },
+  { userId: 'I016', rowNo: 13, personAction: 'ダンスを踊る。音楽に合わせて動く。', supporterAction: '本人の好きな曲をかけ、一緒に楽しむ。' },
+  { userId: 'I016', rowNo: 14, personAction: '帰宅準備を行う', supporterAction: '身支度を見守り、必要に応じて支援する' },
+  { userId: 'I016', rowNo: 15, personAction: '退所する', supporterAction: '退所時の様子を確認し、見送りを行う' },
+  { userId: 'I016', rowNo: 16, personAction: '外活動に向けた準備を行う', supporterAction: 'トイレ、帽子、持ち物など外活動に必要な準備を支援する' },
+  { userId: 'I016', rowNo: 17, personAction: '外活動に参加する', supporterAction: '外活動中の安全確認、同行支援、見守りを行う' },
 ];
 
 function isIshiwataUserId(userId: string | number): boolean {
@@ -327,6 +345,11 @@ function isNakamuraUserId(userId: string | number): boolean {
   return s === '7' || s === '23' || s === 'U-006' || s === 'I017' || s === 'I022';
 }
 
+function isShiotaUserId(userId: string | number): boolean {
+  const s = String(userId);
+  return s === 'I016';
+}
+
 export function findUserProcedureDetail(userId: string | number, rowNo: number): UserProcedureDetail | undefined {
   return USER_PROCEDURE_DETAILS.find((detail) => {
     const isUserMatch = isIshiwataUserId(detail.userId)
@@ -335,7 +358,9 @@ export function findUserProcedureDetail(userId: string | number, rowNo: number):
         ? isKatsuragawaUserId(userId)
         : isNakamuraUserId(detail.userId)
           ? isNakamuraUserId(userId)
-          : String(detail.userId) === String(userId);
+          : isShiotaUserId(detail.userId)
+            ? isShiotaUserId(userId)
+            : String(detail.userId) === String(userId);
     return isUserMatch && detail.rowNo === rowNo;
   });
 }
@@ -370,6 +395,15 @@ export const USER_PROCEDURE_SHEET_NOTES: UserProcedureSheetNotes[] = [
     dailyCarePoints: '見通しを持ち、安心して活動に取り組む。制限エリア（プレイルーム・和室・給食室）への進入防止と自主課題の充実。',
     otherNotes: 'かさぶた・ささくれ・靴下の糸を気にする。ダイア磯子前の車を気にする。\nスケジュール表の提示。制限エリアの視覚的表示。\n写真カードによる活動の提示。トイレ間隔の把握と声掛けのタイミング調整。',
   },
+  {
+    userId: 'I016',
+    dailyCarePoints: '見通しを持って落ち着いて活動に取り組む。ハサミ以外の没頭できる活動の探索。',
+    otherNotes: [
+      '【観察事実】\nハサミに没頭すると切り替えが困難。音楽への反応が良い。',
+      '【環境調整】\nスケジュール表の提示。クールダウン場所の確保。',
+      '【具体的対応】\n写真カードによる選択肢提示。本人の表情や動作からのフィードバック収集。',
+    ].join('\n\n'),
+  },
 ];
 
 export function findUserProcedureSheetNotes(userId: string | number): UserProcedureSheetNotes | undefined {
@@ -380,6 +414,8 @@ export function findUserProcedureSheetNotes(userId: string | number): UserProced
         ? isKatsuragawaUserId(userId)
         : isNakamuraUserId(notes.userId)
           ? isNakamuraUserId(userId)
-          : String(notes.userId) === String(userId);
+          : isShiotaUserId(notes.userId)
+            ? isShiotaUserId(userId)
+            : String(notes.userId) === String(userId);
   });
 }
