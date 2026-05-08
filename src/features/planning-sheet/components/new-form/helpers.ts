@@ -77,7 +77,7 @@ export function buildCreateInput(
     reviewedAt: undefined,
     hasMedicalCoordination: form.hasMedicalCoordination,
     hasEducationCoordination: false,
-    supportStartDate: today,
+    supportStartDate: form.supportStartDate || today,
     monitoringCycleDays: form.monitoringCycleDays,
     status: 'draft',
   };

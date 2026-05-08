@@ -221,6 +221,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
       {(() => {
         const startDate = resolveSupportStartDate(
           (sheet as Record<string, unknown>).supportStartDate as string | null,
+          undefined, // 利用者マスタの ServiceStartDate はヘッダー単体では不明なためスキップ
           sheet.appliedFrom,
         );
         if (!startDate) return null;

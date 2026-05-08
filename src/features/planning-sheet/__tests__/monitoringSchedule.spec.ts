@@ -107,17 +107,23 @@ describe('calculateMonitoringSchedule', () => {
 });
 
 describe('resolveSupportStartDate', () => {
-  it('supportStartDate があればそれを返す', () => {
-    expect(resolveSupportStartDate('2026-01-15', '2026-01-01')).toBe('2026-01-15');
+  it('1. SupportStartDate が最優先 (L2 個別設定)', () => {
+    // SupportStartDate, ServiceStartDate, AppliedFrom
+    expect(resolveSupportStartDate('2026-05-01', '2026-04-01', '2026-04-15')).toBe('2026-05-01');
   });
 
-  it('supportStartDate がなく appliedFrom があれば fallback', () => {
-    expect(resolveSupportStartDate(null, '2026-01-01')).toBe('2026-01-01');
-    expect(resolveSupportStartDate(undefined, '2026-01-01')).toBe('2026-01-01');
+  it('2. ServiceStartDate が次点 (利用者マスタ)', () => {
+    expect(resolveSupportStartDate(null, '2026-04-01', '2026-04-15')).toBe('2026-04-01');
+    expect(resolveSupportStartDate(undefined, '2026-04-01', '2026-04-15')).toBe('2026-04-01');
   });
 
-  it('両方なければ null', () => {
-    expect(resolveSupportStartDate(null, null)).toBeNull();
-    expect(resolveSupportStartDate(undefined, undefined)).toBeNull();
+  it('3. appliedFrom が最後 (計画適用日)', () => {
+    expect(resolveSupportStartDate(null, null, '2026-04-15')).toBe('2026-04-15');
+    expect(resolveSupportStartDate(undefined, undefined, '2026-04-15')).toBe('2026-04-15');
+  });
+
+  it('すべてなければ null', () => {
+    expect(resolveSupportStartDate(null, null, null)).toBeNull();
+    expect(resolveSupportStartDate(undefined, undefined, undefined)).toBeNull();
   });
 });

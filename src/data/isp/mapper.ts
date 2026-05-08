@@ -260,6 +260,8 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     intake: parseJsonObject(row.IntakeJson, EMPTY_INTAKE),
     assessment: parseJsonObject(row.AssessmentJson, EMPTY_ASSESSMENT),
     planning: parseJsonObject(row.PlanningJson, EMPTY_PLANNING),
+    supportStartDate: row.SupportStartDate ?? null,
+    monitoringCycleDays: row.MonitoringCycleDays ?? 90,
   });
 }
 
@@ -321,6 +323,8 @@ export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateI
     IntakeJson: input.intake ? JSON.stringify(input.intake) : JSON.stringify(EMPTY_INTAKE),
     AssessmentJson: input.assessment ? JSON.stringify(input.assessment) : JSON.stringify(EMPTY_ASSESSMENT),
     PlanningJson: input.planning ? JSON.stringify(input.planning) : JSON.stringify(EMPTY_PLANNING),
+    SupportStartDate: input.supportStartDate ?? null,
+    MonitoringCycleDays: input.monitoringCycleDays ?? 90,
   };
 }
 
@@ -358,6 +362,8 @@ export function mapPlanningSheetUpdateInputToPayload(input: PlanningSheetUpdateI
   if (input.intake !== undefined) payload.IntakeJson = JSON.stringify(input.intake);
   if (input.assessment !== undefined) payload.AssessmentJson = JSON.stringify(input.assessment);
   if (input.planning !== undefined) payload.PlanningJson = JSON.stringify(input.planning);
+  if (input.supportStartDate !== undefined) payload.SupportStartDate = input.supportStartDate ?? null;
+  if (input.monitoringCycleDays !== undefined) payload.MonitoringCycleDays = input.monitoringCycleDays;
 
   return payload;
 }

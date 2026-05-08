@@ -135,15 +135,39 @@ export function calculateMonitoringSchedule(
   }
 }
 
+/** 支援開始日の決定ソース */
+export type SupportStartDateSource = 'planning' | 'master' | 'fallback' | 'none';
+
+/** 決定された支援開始日とそのソース */
+export interface ResolvedSupportStartDate {
+  date: string | null;
+  source: SupportStartDateSource;
+}
+
 /**
- * 支援開始日が未設定の場合のフォールバック。
- * appliedFrom があればそれを使い、なければ null を返す。
+ * 支援開始日が未設定の場合の解決（詳細版）
+ * 1. 支援計画シートの SupportStartDate (個別最適化)
+ * 2. 利用者マスタの ServiceStartDate (施設利用開始日としてのデフォルト)
+ * 3. fallback として appliedFrom (計画適用日)
+ */
+export function resolveSupportStartDateDetailed(
+  supportStartDate: string | null | undefined,
+  serviceStartDate: string | null | undefined,
+  appliedFrom?: string | null | undefined,
+): ResolvedSupportStartDate {
+  if (supportStartDate) return { date: supportStartDate, source: 'planning' };
+  if (serviceStartDate) return { date: serviceStartDate, source: 'master' };
+  if (appliedFrom) return { date: appliedFrom, source: 'fallback' };
+  return { date: null, source: 'none' };
+}
+
+/**
+ * 支援開始日が未設定の場合の解決（簡易版 - 互換性用）
  */
 export function resolveSupportStartDate(
   supportStartDate: string | null | undefined,
-  appliedFrom: string | null | undefined,
+  serviceStartDate: string | null | undefined,
+  appliedFrom?: string | null | undefined,
 ): string | null {
-  if (supportStartDate) return supportStartDate;
-  if (appliedFrom) return appliedFrom;
-  return null;
+  return resolveSupportStartDateDetailed(supportStartDate, serviceStartDate, appliedFrom).date;
 }

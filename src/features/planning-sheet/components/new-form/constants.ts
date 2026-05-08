@@ -40,7 +40,7 @@ export const ICEBERG_FACTORS = [
 ] as const;
 
 export const INITIAL_FORM: FormState = {
-  title: '', supportLevel: '', behaviorScore: '', planPeriod: '',
+  title: '', supportLevel: '', behaviorScore: '', planPeriod: '', supportStartDate: '',
   trainingLevel: 'なし', relatedOrganizations: '',
   targetBehavior: '', behaviorFrequency: '', behaviorSituation: '',
   behaviorDuration: '', behaviorIntensity: '', behaviorRisk: '', behaviorImpact: '',
@@ -67,6 +67,7 @@ export const SAMPLE_FORM: FormState = {
   supportLevel: '区分5',
   behaviorScore: '18点',
   planPeriod: '2026年4月1日 〜 2026年9月30日',
+  supportStartDate: '2026-04-01',
   trainingLevel: '実践研修',
   relatedOrganizations: '相談支援センターみらい、訪問看護ステーションあおば',
   // §2

@@ -22,6 +22,7 @@ export interface FormState {
   supportLevel: string;
   behaviorScore: string;
   planPeriod: string;
+  supportStartDate: string; // 支援開始日（モニタリング起点）
   trainingLevel: string;
   relatedOrganizations: string;
   // §2 対象行動
