@@ -8,6 +8,9 @@ export type TodaySignalCode =
   | 'monitoring_overdue'
   | 'monitoring_due_today'
   | 'monitoring_due_soon'
+  | 'monitoring_origin_provisional'
+  | 'monitoring_origin_unset'
+  | 'monitoring_origin_invalid'
   | 'isp_renew_suggest'
   | 'risk_health_alert';
 

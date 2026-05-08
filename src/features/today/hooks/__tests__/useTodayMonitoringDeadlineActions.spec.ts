@@ -1,7 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useTodayMonitoringDeadlineActions } from '../useTodayMonitoringDeadlineActions';
 import type { IUserMaster } from '@/features/users/types';
+
+const listCurrentByUser = vi.fn();
+const getById = vi.fn();
+
+vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
+  usePlanningSheetRepositories: () => ({
+    listCurrentByUser,
+    getById,
+  }),
+}));
 
 describe('useTodayMonitoringDeadlineActions', () => {
   const mockUsers: Partial<IUserMaster>[] = [
@@ -37,19 +47,21 @@ describe('useTodayMonitoringDeadlineActions', () => {
     },
   ];
 
-  it('should return correct actions based on monitoring deadlines', () => {
-    // 基準日を 2026-05-08 に固定
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-05-08'));
+  it('should return correct actions based on monitoring deadlines', async () => {
+    listCurrentByUser.mockResolvedValue([]);
+    getById.mockResolvedValue(null);
 
     const { result } = renderHook(() => 
-      useTodayMonitoringDeadlineActions(mockUsers as IUserMaster[])
+      useTodayMonitoringDeadlineActions(mockUsers as IUserMaster[], '2026-05-08')
     );
+    await waitFor(() => {
+      expect(result.current.signals.length).toBe(5);
+    });
 
     const { signals, actionSources } = result.current;
 
-    // normal(U005) と unknown(U006) は含まれないはず
-    expect(signals).toHaveLength(4);
+    // normal(U005) は含まれない。unknown(U006) は起点未設定として含まれる。
+    expect(signals).toHaveLength(5);
 
     // U001: overdue -> P0
     const signal1 = signals.find(s => s.metadata?.userId === 'U001');
@@ -74,11 +86,15 @@ describe('useTodayMonitoringDeadlineActions', () => {
     expect(signal4?.priority).toBe('P1');
     expect(signal4?.metadata?.status).toBe('warning');
 
+    // U006: unset -> P0
+    const signal6 = signals.find(s => s.metadata?.userId === 'U006');
+    expect(signal6?.code).toBe('monitoring_origin_unset');
+    expect(signal6?.priority).toBe('P0');
+
     // ActionSources verify
-    expect(actionSources).toHaveLength(4);
+    expect(actionSources).toHaveLength(5);
     const source1 = actionSources.find(s => s.id === `today-signal:${signal1?.id}`);
     expect(source1?.sourceType).toBe('monitoring_deadline');
 
-    vi.useRealTimers();
   });
 });
