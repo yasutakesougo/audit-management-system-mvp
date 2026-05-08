@@ -361,7 +361,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         <React.Fragment>
           <MonitoringCountdown
             userName={selectedUser?.FullName}
-            lastAssessmentDate={selectedUser?.LastAssessmentDate}
+            monitoringBaseDate={selectedUser?.ServiceStartDate}
           />
           {initialParams.planningSheetId && (
             <React.Fragment>
@@ -464,7 +464,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                   : undefined
               }
               userId={wizard.wizardUserId || targetUserId}
-              lastAssessmentDate={selectedUser?.LastAssessmentDate}
+              monitoringBaseDate={selectedUser?.ServiceStartDate}
               selectableStateByStepId={selectableStateByStepId}
               hiddenStepOrders={hiddenStepOrders}
               onAbcRecord={
