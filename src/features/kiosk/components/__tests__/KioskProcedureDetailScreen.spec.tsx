@@ -125,7 +125,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       </MemoryRouter>
     );
 
-    expect(mockUseExecutionRecord).toHaveBeenCalledWith('2026-05-07', 'U001', 'P001');
+    expect(mockUseExecutionRecord).toHaveBeenCalledWith('2026-05-07', 'U001', 'P001', ['0']);
 
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
     await waitFor(() => {

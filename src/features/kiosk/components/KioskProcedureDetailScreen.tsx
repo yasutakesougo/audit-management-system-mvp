@@ -36,7 +36,16 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const scheduleItemId = normalizeScheduleItemId(procedure?.rowNo) ||
     normalizeScheduleItemId(procedure?.id) ||
     normalizeScheduleItemId(slotKey);
-  const { record, saveRecord, isLoading } = useExecutionRecord(selectedDateIso, userId || '', scheduleItemId);
+  const fallbackScheduleItemIds = React.useMemo(
+    () => [normalizeScheduleItemId(slotKey)].filter((value): value is string => Boolean(value)),
+    [slotKey],
+  );
+  const { record, saveRecord, isLoading } = useExecutionRecord(
+    selectedDateIso,
+    userId || '',
+    scheduleItemId,
+    fallbackScheduleItemIds,
+  );
   
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
