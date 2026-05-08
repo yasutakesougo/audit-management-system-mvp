@@ -232,6 +232,15 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
           </Stack>
           <TextField label="計画期間" value={form.planPeriod} onChange={e => updateField('planPeriod', e.target.value)} fullWidth
             placeholder="例: 2026年4月1日 〜 2026年9月30日" />
+          <TextField
+            label="支援開始日（モニタリング起点）"
+            type="date"
+            value={form.supportStartDate}
+            onChange={e => updateField('supportStartDate', e.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            helperText="90日モニタリングの起点となる日付です。通常は利用開始日を設定します。"
+          />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField select label="関与研修" value={form.trainingLevel} onChange={e => updateField('trainingLevel', e.target.value)} fullWidth>
               {TRAINING_LEVELS.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}

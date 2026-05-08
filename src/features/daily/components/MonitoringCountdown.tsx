@@ -14,6 +14,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useMemo } from 'react';
 
+import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
 export { computeMonitoringDeadlineFromSupportStart } from '@/domain/isp/monitoringDeadline';
 export type {
   MonitoringDeadlineState,
@@ -48,6 +49,7 @@ export type MonitoringCountdownProps = {
   monitoringBaseDate?: string | null;
   // Backward compatible prop name
   lastAssessmentDate?: string | null;
+  appliedFrom?: string | null;
   today?: Date;
 };
 
@@ -62,15 +64,29 @@ export const MonitoringCountdown: React.FC<MonitoringCountdownProps> = ({
   userName,
   monitoringBaseDate,
   lastAssessmentDate,
+  appliedFrom,
   today,
 }) => {
   const now = useMemo(() => today ?? new Date(), [today]);
   if (!userName) return null;
 
-  const baseDate = monitoringBaseDate ?? lastAssessmentDate ?? null;
+  // 支援開始日の解決（優先順位）:
+  // 1. 支援計画シート側で設定した支援開始日 (monitoringBaseDate)
+  // 2. 利用者マスタのサービス開始日 (lastAssessmentDate = ServiceStartDate)
+  // 3. どちらもなければ未設定警告
+  const { date: baseDate, source } = resolveSupportStartDateDetailed(
+    monitoringBaseDate,
+    lastAssessmentDate,
+    appliedFrom
+  );
+
   if (!baseDate) {
     return (
-      <Tooltip title="この利用者の支援開始日が未設定です" arrow placement="bottom">
+      <Tooltip 
+        title="この利用者は、90日モニタリングの起点となる支援開始日が未設定です。利用者マスタ、または支援計画シート側で支援開始日を設定してください。モニタリング起点日はL2（支援計画シート）の責務として管理します。" 
+        arrow 
+        placement="bottom"
+      >
         <Box
           sx={{
             display: 'flex',
@@ -94,6 +110,7 @@ export const MonitoringCountdown: React.FC<MonitoringCountdownProps> = ({
     );
   }
 
+  const isFallback = source === 'fallback';
   const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const state = computeMonitoringDeadlineFromSupportStart(baseDate, todayIso);
   const color = resolveColor(state.remainingDays);
@@ -118,11 +135,16 @@ export const MonitoringCountdown: React.FC<MonitoringCountdownProps> = ({
           <Typography variant="body2" fontWeight="bold" gutterBottom>
             モニタリング期限（90日固定）
           </Typography>
+          {isFallback && (
+            <Typography variant="caption" component="div" color="warning.main" sx={{ mb: 1, fontWeight: 'bold' }}>
+              ⚠️ 正式な支援開始日が未設定のため、計画適用日から暫定計算しています。利用者マスタまたは支援計画シートで支援開始日を設定してください。
+            </Typography>
+          )}
           <Typography variant="caption" component="div">
-            支援開始日：{formatDateYmd(new Date(`${baseDate}T00:00:00`))}
+            起点日：{formatDateYmd(new Date(`${baseDate}T00:00:00`))} {isFallback ? '(計画適用日)' : ''}
           </Typography>
           <Typography variant="caption" component="div">
-            次回モニタリング期限：{state.nextDueDate ? formatDateYmd(new Date(`${state.nextDueDate}T00:00:00`)) : '未算出'}
+            次回期限：{state.nextDueDate ? formatDateYmd(new Date(`${state.nextDueDate}T00:00:00`)) : '未算出'}
           </Typography>
         </Box>
       )}
@@ -137,15 +159,22 @@ export const MonitoringCountdown: React.FC<MonitoringCountdownProps> = ({
           px: 1.5,
           py: 0.5,
           borderRadius: 2,
-          bgcolor: 'action.hover',
+          bgcolor: color === 'primary' ? 'action.hover' : `${color}.light`,
           cursor: 'default',
           minWidth: 'fit-content',
           flexShrink: 0,
+          border: isFallback ? '1px dashed' : 'none',
+          borderColor: isFallback ? 'warning.main' : 'transparent',
         }}
         data-testid="monitoring-countdown"
       >
-        <EventIcon fontSize="small" color={color} sx={{ fontSize: '1rem' }} />
+        <EventIcon fontSize="small" color={color === 'primary' ? 'action' : color} sx={{ fontSize: '1rem' }} />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {isFallback && (
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 900, color: 'warning.main' }}>
+              [暫定]
+            </Typography>
+          )}
           <Typography
             variant="caption"
             fontWeight="bold"

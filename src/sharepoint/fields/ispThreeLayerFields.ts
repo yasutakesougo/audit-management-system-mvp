@@ -186,6 +186,8 @@ export const PLANNING_SHEET_FIELDS = {
   intakeJson: 'IntakeJson',
   assessmentJson: 'AssessmentJson',
   planningJson: 'PlanningJson',
+  supportStartDate: 'SupportStartDate',
+  monitoringCycleDays: 'MonitoringCycleDays',
   created: 'Created',
   modified: 'Modified',
 } as const;
@@ -218,6 +220,8 @@ export const PLANNING_SHEET_SELECT_FIELDS = [
   PLANNING_SHEET_FIELDS.intakeJson,
   PLANNING_SHEET_FIELDS.assessmentJson,
   PLANNING_SHEET_FIELDS.planningJson,
+  PLANNING_SHEET_FIELDS.supportStartDate,
+  PLANNING_SHEET_FIELDS.monitoringCycleDays,
   PLANNING_SHEET_FIELDS.created,
   PLANNING_SHEET_FIELDS.modified,
 ] as const;
@@ -259,6 +263,8 @@ export interface SpPlanningSheetRow {
   IntakeJson?: string | null;
   AssessmentJson?: string | null;
   PlanningJson?: string | null;
+  SupportStartDate?: string | null;
+  MonitoringCycleDays?: number | null;
   Created?: string | null;
   Modified?: string | null;
 }
@@ -299,6 +305,8 @@ export interface SpPlanningSheetPayload {
   IntakeJson?: string;
   AssessmentJson?: string;
   PlanningJson?: string;
+  SupportStartDate?: string | null;
+  MonitoringCycleDays?: number;
 }
 
 /** 動的 $select ビルダー */
@@ -323,6 +331,8 @@ export const PLANNING_SHEET_CANDIDATES = {
   intakeJson: ['IntakeJson', 'cr013_intakeJson'],
   assessmentJson: ['AssessmentJson', 'cr013_assessmentJson'],
   planningJson: ['PlanningJson', 'cr013_planningJson'],
+  supportStartDate: ['SupportStartDate', 'cr013_supportStartDate'],
+  monitoringCycleDays: ['MonitoringCycleDays', 'cr013_monitoringCycleDays'],
 } as const;
 
 export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [
