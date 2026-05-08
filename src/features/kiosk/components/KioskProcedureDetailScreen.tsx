@@ -31,8 +31,10 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     return procedures[index] || null;
   }, [userId, slotKey, procedureRepo]);
 
-  const scheduleItemId = normalizeScheduleItemId(procedure?.id) ||
-    normalizeScheduleItemId(procedure?.rowNo) ||
+  // rowNo is the canonical slot identity for kiosk procedure completion tracking.
+  // Some procedure IDs can vary by source/runtime, so prefer rowNo for persistence keys.
+  const scheduleItemId = normalizeScheduleItemId(procedure?.rowNo) ||
+    normalizeScheduleItemId(procedure?.id) ||
     normalizeScheduleItemId(slotKey);
   const { record, saveRecord, isLoading } = useExecutionRecord(today, userId || '', scheduleItemId);
   
