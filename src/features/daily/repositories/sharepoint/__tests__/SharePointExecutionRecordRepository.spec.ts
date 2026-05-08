@@ -215,4 +215,70 @@ describe('SharePointExecutionRecordRepository', () => {
 
     await expect(repo.upsertRecord(record)).rejects.toThrow('row create failed');
   });
+
+  describe('mapToDomain fallback', () => {
+    it('correctly falls back to parsing scheduleItemId from Title if RowNo is missing', () => {
+      const mockItem = {
+        Title: '2026-05-08-4-1',
+        User_x0020_ID: '4',
+        Status: 'completed',
+        Memo: 'Test memo',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // Call the private mapToDomain method using prototype/any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      
+      expect(mapped.scheduleItemId).toBe('1');
+      expect(mapped.userId).toBe('4');
+      expect(mapped.date).toBe('2026-05-08');
+    });
+
+    it('correctly falls back to parsing scheduleItemId from RowKey if Title is not matched', () => {
+      const mockItem = {
+        Title: 'SomeCustomID',
+        RowKey: '2026-05-08-4-15',
+        User_x0020_ID: '4',
+        Status: 'completed',
+        Memo: 'Test memo',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'RowKey',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      
+      expect(mapped.scheduleItemId).toBe('15');
+      expect(mapped.userId).toBe('4');
+      expect(mapped.date).toBe('2026-05-08');
+    });
+  });
 });
