@@ -50,6 +50,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showSaveError, setShowSaveError] = useState(false);
+  const [showValidationError, setShowValidationError] = useState(false);
 
   // 観察チップ用ステート
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -96,9 +97,13 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!userId) return;
+    const finalMemo = serializeMemo();
+    if (!finalMemo.trim()) {
+      setShowValidationError(true);
+      return;
+    }
     setIsSaving(true);
     try {
-      const finalMemo = serializeMemo();
       await saveRecord('completed', finalMemo);
       setShowSuccess(true);
       // 成功フィードバックの後、少し待ってから一覧に戻る
@@ -380,6 +385,17 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       >
         <Alert severity="error" sx={{ width: '100%' }}>
           記録の保存に失敗しました。再度お試しください。
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={showValidationError}
+        autoHideDuration={3000}
+        onClose={() => setShowValidationError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="warning" sx={{ width: '100%' }}>
+          手順記録の内容を1つ以上入力してください。
         </Alert>
       </Snackbar>
     </Box>

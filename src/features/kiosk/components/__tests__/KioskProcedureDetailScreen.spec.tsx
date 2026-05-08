@@ -127,6 +127,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
     expect(mockUseExecutionRecord).toHaveBeenCalledWith('2026-05-07', 'U001', 'P001', ['0']);
 
+    fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
     await waitFor(() => {
       expect(mockSaveRecord).toHaveBeenCalled();
@@ -143,6 +144,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       </MemoryRouter>
     );
 
+    fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
     await Promise.resolve();
     await Promise.resolve();
@@ -170,10 +172,26 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       </MemoryRouter>
     );
 
+    fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
 
     await waitFor(() => {
       expect(screen.getByText('記録の保存に失敗しました。再度お試しください。')).toBeInTheDocument();
     });
+  });
+
+  it('blocks save when observation content is empty', async () => {
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByText('手順記録の内容を1つ以上入力してください。')).toBeInTheDocument();
+    });
+    expect(mockSaveRecord).not.toHaveBeenCalled();
   });
 });

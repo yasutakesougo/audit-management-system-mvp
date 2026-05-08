@@ -30,10 +30,14 @@ test.describe('Kiosk Procedure Detail', () => {
     // 観察パネルが表示されることを確認
     await expect(page.getByTestId('kiosk-observation-panel')).toBeVisible();
 
-    // 2. パネル内の「記録を保存する」をクリック
-    await page.getByRole('button', { name: '記録を保存する' }).click();
+    // 1. 自由記述メモを入力（バリデーション回避のため1つ以上入力が必要）
+    await page.getByTestId('kiosk-observation-memo').fill('E2E保存確認');
 
-    await expect(page.getByText('記録を保存しました')).toBeVisible();
+    // 2. 「記録を保存する」ボタンをクリック（data-testidを使用）
+    await page.getByTestId('kiosk-observation-submit').click();
+
+    // 成功メッセージが表示されるのを待つ（タイムアウトに注意）
+    await expect(page.getByText('記録を保存しました')).toBeVisible({ timeout: 5000 });
     await expect(page).toHaveURL(/.*\/kiosk\/users\/1\/procedures\/?(\?.*)?/);
 
     const firstCard = page.locator('[data-testid="kiosk-procedure-card-0"]');
