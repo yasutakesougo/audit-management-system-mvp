@@ -39,17 +39,33 @@ describe('mapTodaySignalToActionSource', () => {
   });
 
   it('対象外 code は null を返す', () => {
-    const signal = makeSignal({ code: 'monitoring_due_soon' });
+    const signal = makeSignal({ code: 'daily_record_missing' as unknown as TodaySignalCode });
     const result = mapTodaySignalToActionSource(signal);
     expect(result).toBeNull();
+  });
+
+  it('monitoring_deadline シグナルを変換する', () => {
+    const signal = makeSignal({
+      id: 'monitoring-deadline:U001:2026-05-30',
+      code: 'monitoring_due_soon',
+      metadata: {
+        userId: 'U001',
+        nextDueDate: '2026-05-30',
+        remainingDays: 22,
+        status: 'warning',
+      },
+    });
+    const result = mapTodaySignalToActionSource(signal);
+    expect(result?.sourceType).toBe('monitoring_deadline');
+    expect(result?.targetTime?.toISOString()).toContain('2026-05-30');
   });
 
   it('配列変換では null を除外する', () => {
     const signals: TodaySignal[] = [
       makeSignal(),
       makeSignal({
-        id: 'monitoring_due_soon:u002',
-        code: 'monitoring_due_soon',
+        id: 'daily_record_missing:u002',
+        code: 'daily_record_missing' as unknown as TodaySignalCode,
       }),
     ];
     const result = mapTodaySignalsToActionSources(signals);
