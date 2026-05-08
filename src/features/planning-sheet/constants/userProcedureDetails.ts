@@ -1,8 +1,8 @@
 import { PROCEDURE_ROWS, ProcedureRow } from './procedureRows';
 import type { UserProcedureDetail, UserProcedureSheetNotes } from '../domain/userProcedureDetail';
 
-// 石渡さん（Id: 4, UserID: 'U-002'）用の手技データ
-// 原紙「石渡さん_重度加算（外出入り）.xls」から、本人の動き・支援者の動きを行単位で転記。
+// 桂川さん（Id: 3, 原紙マッピングID: 3）用の手技データ
+// 原紙「桂川さん_重度加算（外出入り）.xls」から、本人の動き・支援者の動きを行単位で転記。
 export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
   {
     userId: 3,
@@ -208,16 +208,123 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
     personAction: '出発前のトイレ',
     supporterAction: 'トイレの介助\n着替えを持つ\n自動ドアの前で写真を撮る',
   },
+  {
+    userId: 7,
+    rowNo: 1,
+    personAction: '家族の送迎で来所。車見送り。手洗い、各所確認。',
+    supporterAction: '家族との引継ぎを行い、手洗い・着替え等の朝の準備を支援する。',
+  },
+  {
+    userId: 7,
+    rowNo: 2,
+    personAction: 'ラジオ体操動画の確認',
+    supporterAction: '見守り。入ってはいけない場所へ行った際、付き添い。',
+  },
+  {
+    userId: 7,
+    rowNo: 3,
+    personAction: '活動内容発表時は室内（第１作業室）にいる',
+    supporterAction: '室内（第１作業室）にいてもらうようにする。見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 4,
+    personAction: '手洗い後、お茶を飲む',
+    supporterAction: '手洗い、消毒を促す。お茶の列に誘導する。',
+  },
+  {
+    userId: 7,
+    rowNo: 5,
+    personAction: 'タオル作業（ペン入れ、鈴入れ）',
+    supporterAction: '活動準備の手伝い。タオル運び、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 6,
+    personAction: '手洗い、消毒。昼食まで座っている。',
+    supporterAction: '手洗い、消毒を促す。席についている見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 7,
+    personAction: '食事の受け取り。食後の片付け、手洗い。',
+    supporterAction: '一部食事介助、見守り。食後片付けの補助。',
+  },
+  {
+    userId: 7,
+    rowNo: 8,
+    personAction: '動画鑑賞。コーヒー等を飲む。寝て過ごす。',
+    supporterAction: 'タブレットの順番管理、声掛け。財布の声掛け、お金を出すところの見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 9,
+    personAction: '活動内容発表時は室内（第１作業室）にいる',
+    supporterAction: '室内（第１作業室）にいてもらうようにする。見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 10,
+    personAction: 'ペン入れ、鈴入れ。自主課題。',
+    supporterAction: '活動準備の手伝い、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 11,
+    personAction: '手洗い後、お茶を飲む',
+    supporterAction: '手洗い、消毒を促す。お茶の列に誘導する。',
+  },
+  {
+    userId: 7,
+    rowNo: 12,
+    personAction: 'ペン入れ、鈴入れ。自主課題。',
+    supporterAction: '活動準備の手伝い、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 13,
+    personAction: '動画の確認、動画鑑賞。ご本人のペースで自由に過ごす。',
+    supporterAction: '入ってはいけない場所へ行った際付き添い、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 14,
+    personAction: '着替え、帰りの準備。毛布干し。トイレ誘導。',
+    supporterAction: '着替え、帰りの準備の手伝い。ルーティンの付き添い。トイレの声掛け。',
+  },
+  {
+    userId: 7,
+    rowNo: 15,
+    personAction: '送迎車に乗る',
+    supporterAction: '送迎ボードを確認しながら送迎車を確認。安全に送迎車に乗れるよう付き添い。',
+  },
+  {
+    userId: 7,
+    rowNo: 16,
+    personAction: '出発前にトイレを確認する',
+    supporterAction: 'トイレの声掛け。自動ドア前で写真を撮る。',
+  },
+  {
+    userId: 7,
+    rowNo: 17,
+    personAction: '出発前にトイレを確認する',
+    supporterAction: 'トイレの声掛け。自動ドア前で写真を撮る。',
+  },
 ];
 
 function isIshiwataUserId(userId: string | number): boolean {
   const s = String(userId);
-  return s === '4' || s === '6' || s === 'U-002' || s === 'U-003';
+  return s === '4' || s === '6' || s === 'U-002' || s === 'U-003' || s === 'I005';
 }
 
 function isKatsuragawaUserId(userId: string | number): boolean {
   const s = String(userId);
-  return s === '3' || s === 'U-001';
+  return s === '3' || s === '10' || s === 'U-001' || s === 'I009';
+}
+
+function isNakamuraUserId(userId: string | number): boolean {
+  const s = String(userId);
+  return s === '7' || s === '23' || s === 'U-006' || s === 'I017' || s === 'I022';
 }
 
 export function findUserProcedureDetail(userId: string | number, rowNo: number): UserProcedureDetail | undefined {
@@ -226,7 +333,9 @@ export function findUserProcedureDetail(userId: string | number, rowNo: number):
       ? isIshiwataUserId(userId)
       : isKatsuragawaUserId(detail.userId)
         ? isKatsuragawaUserId(userId)
-        : String(detail.userId) === String(userId);
+        : isNakamuraUserId(detail.userId)
+          ? isNakamuraUserId(userId)
+          : String(detail.userId) === String(userId);
     return isUserMatch && detail.rowNo === rowNo;
   });
 }
@@ -256,6 +365,11 @@ export const USER_PROCEDURE_SHEET_NOTES: UserProcedureSheetNotes[] = [
     dailyCarePoints: '自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。',
     otherNotes: '個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。',
   },
+  {
+    userId: 7,
+    dailyCarePoints: '見通しを持ち、安心して活動に取り組む。制限エリア（プレイルーム・和室・給食室）への進入防止と自主課題の充実。',
+    otherNotes: 'かさぶた・ささくれ・靴下の糸を気にする。ダイア磯子前の車を気にする。\nスケジュール表の提示。制限エリアの視覚的表示。\n写真カードによる活動の提示。トイレ間隔の把握と声掛けのタイミング調整。',
+  },
 ];
 
 export function findUserProcedureSheetNotes(userId: string | number): UserProcedureSheetNotes | undefined {
@@ -264,6 +378,8 @@ export function findUserProcedureSheetNotes(userId: string | number): UserProced
       ? isIshiwataUserId(userId)
       : isKatsuragawaUserId(notes.userId)
         ? isKatsuragawaUserId(userId)
-        : String(notes.userId) === String(userId);
+        : isNakamuraUserId(notes.userId)
+          ? isNakamuraUserId(userId)
+          : String(notes.userId) === String(userId);
   });
 }
