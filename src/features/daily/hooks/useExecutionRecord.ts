@@ -6,18 +6,37 @@
 import { useCallback, useEffect, useState } from 'react';
 import { type RecordStatus, makeRecordId, type ExecutionRecord } from '../domain/executionRecordTypes';
 import { useExecutionData } from './useExecutionData';
+import { normalizeScheduleItemId } from '../utils/normalizeScheduleItemId';
 
-export function useExecutionRecord(date: string, userId: string, scheduleItemId: string) {
+export function useExecutionRecord(
+  date: string,
+  userId: string,
+  scheduleItemId: string,
+  fallbackScheduleItemIds?: string[],
+) {
   const { getRecord, upsertRecord } = useExecutionData();
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchRecord = useCallback(async () => {
     setIsLoading(true);
-    const r = await getRecord(date, userId, scheduleItemId);
-    setRecord(r);
+    let resolved = await getRecord(date, userId, scheduleItemId);
+
+    if (!resolved && fallbackScheduleItemIds && fallbackScheduleItemIds.length > 0) {
+      for (const fallbackId of fallbackScheduleItemIds) {
+        const normalizedFallbackId = normalizeScheduleItemId(fallbackId);
+        if (!normalizedFallbackId || normalizedFallbackId === scheduleItemId) continue;
+        const fallbackRecord = await getRecord(date, userId, normalizedFallbackId);
+        if (fallbackRecord) {
+          resolved = fallbackRecord;
+          break;
+        }
+      }
+    }
+
+    setRecord(resolved);
     setIsLoading(false);
-  }, [getRecord, date, userId, scheduleItemId]);
+  }, [getRecord, date, userId, scheduleItemId, fallbackScheduleItemIds]);
 
   useEffect(() => {
     void fetchRecord();
@@ -77,5 +96,4 @@ export function useExecutionRecord(date: string, userId: string, scheduleItemId:
 
   return { record, setStatus, setMemo, saveRecord, isLoading, refresh: fetchRecord } as const;
 }
-
 
