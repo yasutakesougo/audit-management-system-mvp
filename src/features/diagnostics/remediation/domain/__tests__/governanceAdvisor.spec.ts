@@ -12,8 +12,8 @@ describe('governanceAdvisor v4.3 (Operational Readiness)', () => {
       provisioningFields: [
         { internalName: 'FullName', type: 'Text', required: true },
       ],
-      operations: ['R'] as any,
-      category: 'user' as any,
+      operations: ['R'],
+      category: 'master',
       essentialFields: ['FullName'],
       lifecycle: 'required',
     }
@@ -48,11 +48,11 @@ describe('governanceAdvisor v4.3 (Operational Readiness)', () => {
       displayName: '監査ログ',
       resolve: () => 'AuditLogs',
       provisioningFields: [{ internalName: 'Log', type: 'Text' }],
-      operations: ['R'] as any,
-      category: 'ops' as any,
+      operations: ['R'],
+      category: 'other',
       essentialFields: ['Log'],
       lifecycle: 'required',
-    } as any];
+    } as SpListEntry];
     
     const signals = [createMockDrift({ reasonKey: 'audit_logs:Log', streak: 10 })];
     const recs = deriveGovernanceRecommendations(registryWithAudit, signals);
