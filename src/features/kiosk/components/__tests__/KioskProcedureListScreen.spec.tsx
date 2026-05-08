@@ -304,4 +304,18 @@ describe('KioskProcedureListScreen', () => {
       );
     });
   });
+
+  it('shows fetch error snackbar when repository fetch fails', async () => {
+    mockGetRecords.mockRejectedValue(new Error('fetch failed'));
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('記録の取得に失敗しました。再読み込みしてください。')).toBeInTheDocument();
+    });
+  });
 });
