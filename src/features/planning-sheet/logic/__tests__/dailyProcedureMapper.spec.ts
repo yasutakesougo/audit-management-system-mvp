@@ -146,6 +146,26 @@ describe('dailyProcedureMapper', () => {
       const row1 = doc.rows.find(r => r.rowNo === 1);
       expect(row1?.personAction).toBe('手洗い、消毒。荷物を入れる。');
     });
+
+    it('should map overall sheet notes (dailyCarePoints, otherNotes) unique to Shiota-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(SHIODA_SEVERE_SUPPORT_SHEET);
+
+      expect(doc.dailyCarePoints).toBe('見通しを持って落ち着いて活動に取り組む。ハサミ以外の没頭できる活動の探索。');
+      expect(doc.otherNotes).toContain('【観察事実】\nハサミに没頭すると切り替えが困難。');
+      expect(doc.otherNotes).toContain('【環境調整】\nスケジュール表の提示。');
+      expect(doc.otherNotes).toContain('【具体的対応】\n写真カードによる選択肢提示。');
+    });
+
+    it('should resolve Shiota aliases when userId is production UserID I016', () => {
+      // SHIODA_SEVERE_SUPPORT_SHEET already uses I016, but we test the explicit mapping here
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...SHIODA_SEVERE_SUPPORT_SHEET,
+        userId: 'I016',
+      });
+
+      expect(doc.dailyCarePoints).toContain('ハサミ以外の没頭できる活動');
+      expect(doc.rows.find((row) => row.rowNo === 13)?.personAction).toContain('ダンスを踊る');
+    });
   });
 
   describe('Katsuragawa-san Severe Support Case (17-Row Validation)', () => {
@@ -187,6 +207,26 @@ describe('dailyProcedureMapper', () => {
 
       expect(doc.dailyCarePoints).toBe('本人のペースを尊重し、見通しを持てるように視覚的支援を行う。');
       expect(doc.otherNotes).toBe('視覚的スケジュールの提示、イヤーマフの活用。\n短い言葉で具体的に伝える。');
+    });
+
+    it('should resolve Katsuragawa aliases when userId is production SP UserID I009', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...KATSURAGAWA_SEVERE_SUPPORT_SHEET,
+        userId: 'I009',
+      });
+
+      expect(doc.dailyCarePoints).toBe('本人のペースを尊重し、見通しを持てるように視覚的支援を行う。');
+      expect(doc.rows.find((row) => row.rowNo === 5)?.personAction).toContain('ビーズの種類分け');
+    });
+
+    it('should resolve Katsuragawa aliases when userId is production SP item id 10', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...KATSURAGAWA_SEVERE_SUPPORT_SHEET,
+        userId: '10',
+      });
+
+      expect(doc.dailyCarePoints).toBe('本人のペースを尊重し、見通しを持てるように視覚的支援を行う。');
+      expect(doc.rows.find((row) => row.rowNo === 1)?.personAction).toContain('手洗い 荷物をロッカーへ');
     });
   });
 
@@ -233,6 +273,50 @@ describe('dailyProcedureMapper', () => {
       // specialNotes should include sensory triggers
       expect(doc.specialNotes).toContain('かさぶた');
       expect(doc.specialNotes).toContain('ささくれ');
+    });
+
+    it('should map overall sheet notes (dailyCarePoints, otherNotes) unique to Nakamura-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(NAKAMURA_SEVERE_SUPPORT_SHEET);
+
+      expect(doc.dailyCarePoints).toBe(
+        '見通しを持ち、安心して活動に取り組む。制限エリア（プレイルーム・和室・給食室）への進入防止と自主課題の充実。'
+      );
+      expect(doc.otherNotes).toContain('かさぶた・ささくれ・靴下の糸を気にする');
+      expect(doc.otherNotes).toContain('スケジュール表の提示');
+      expect(doc.otherNotes).toContain('写真カードによる活動の提示');
+    });
+
+    it('should resolve Nakamura aliases when userId is numeric DEMO_USERS id', () => {
+      // NAKAMURA_SEVERE_SUPPORT_SHEET uses userId: 'I017' (fixture alias)
+      // USER_PROCEDURE_DETAILS uses userId: 7 (DEMO_USERS Id)
+      // The alias resolver should bridge them via isNakamuraUserId
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...NAKAMURA_SEVERE_SUPPORT_SHEET,
+        userId: '7',
+      });
+
+      expect(doc.dailyCarePoints).toContain('制限エリア');
+      expect(doc.rows.find((row) => row.rowNo === 5)?.personAction).toContain('タオル作業');
+    });
+
+    it('should resolve Nakamura aliases when userId is U-006', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...NAKAMURA_SEVERE_SUPPORT_SHEET,
+        userId: 'U-006',
+      });
+
+      expect(doc.dailyCarePoints).toContain('制限エリア');
+      expect(doc.rows.find((row) => row.rowNo === 8)?.supporterAction).toContain('財布の声掛け');
+    });
+
+    it('should resolve Nakamura aliases when userId is production SP item id 23', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...NAKAMURA_SEVERE_SUPPORT_SHEET,
+        userId: '23',
+      });
+
+      expect(doc.dailyCarePoints).toContain('制限エリア');
+      expect(doc.rows.find((row) => row.rowNo === 1)?.personAction).toContain('家族の送迎で来所');
     });
   });
 
@@ -287,6 +371,16 @@ describe('dailyProcedureMapper', () => {
       const doc = bridgePlanningSheetToDailyProcedures({
         ...ISHIWATA_SEVERE_SUPPORT_SHEET,
         userId: '6',
+      });
+
+      expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');
+      expect(doc.rows.find((row) => row.rowNo === 1)?.personAction).toContain('送迎車で来所');
+    });
+
+    it('should resolve Ishiwata aliases when userId is production SP Title I005', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...ISHIWATA_SEVERE_SUPPORT_SHEET,
+        userId: 'I005',
       });
 
       expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');

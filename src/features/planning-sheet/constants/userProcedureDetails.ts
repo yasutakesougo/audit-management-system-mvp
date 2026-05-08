@@ -1,8 +1,8 @@
 import { PROCEDURE_ROWS, ProcedureRow } from './procedureRows';
 import type { UserProcedureDetail, UserProcedureSheetNotes } from '../domain/userProcedureDetail';
 
-// 石渡さん（Id: 4, UserID: 'U-002'）用の手技データ
-// 原紙「石渡さん_重度加算（外出入り）.xls」から、本人の動き・支援者の動きを行単位で転記。
+// 桂川さん（Id: 3, 原紙マッピングID: 3）用の手技データ
+// 原紙「桂川さん_重度加算（外出入り）.xls」から、本人の動き・支援者の動きを行単位で転記。
 export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
   {
     userId: 3,
@@ -208,16 +208,146 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
     personAction: '出発前のトイレ',
     supporterAction: 'トイレの介助\n着替えを持つ\n自動ドアの前で写真を撮る',
   },
+  {
+    userId: 7,
+    rowNo: 1,
+    personAction: '家族の送迎で来所。車見送り。手洗い、各所確認。',
+    supporterAction: '家族との引継ぎを行い、手洗い・着替え等の朝の準備を支援する。',
+  },
+  {
+    userId: 7,
+    rowNo: 2,
+    personAction: 'ラジオ体操動画の確認',
+    supporterAction: '見守り。入ってはいけない場所へ行った際、付き添い。',
+  },
+  {
+    userId: 7,
+    rowNo: 3,
+    personAction: '活動内容発表時は室内（第１作業室）にいる',
+    supporterAction: '室内（第１作業室）にいてもらうようにする。見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 4,
+    personAction: '手洗い後、お茶を飲む',
+    supporterAction: '手洗い、消毒を促す。お茶の列に誘導する。',
+  },
+  {
+    userId: 7,
+    rowNo: 5,
+    personAction: 'タオル作業（ペン入れ、鈴入れ）',
+    supporterAction: '活動準備の手伝い。タオル運び、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 6,
+    personAction: '手洗い、消毒。昼食まで座っている。',
+    supporterAction: '手洗い、消毒を促す。席についている見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 7,
+    personAction: '食事の受け取り。食後の片付け、手洗い。',
+    supporterAction: '一部食事介助、見守り。食後片付けの補助。',
+  },
+  {
+    userId: 7,
+    rowNo: 8,
+    personAction: '動画鑑賞。コーヒー等を飲む。寝て過ごす。',
+    supporterAction: 'タブレットの順番管理、声掛け。財布の声掛け、お金を出すところの見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 9,
+    personAction: '活動内容発表時は室内（第１作業室）にいる',
+    supporterAction: '室内（第１作業室）にいてもらうようにする。見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 10,
+    personAction: 'ペン入れ、鈴入れ。自主課題。',
+    supporterAction: '活動準備の手伝い、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 11,
+    personAction: '手洗い後、お茶を飲む',
+    supporterAction: '手洗い、消毒を促す。お茶の列に誘導する。',
+  },
+  {
+    userId: 7,
+    rowNo: 12,
+    personAction: 'ペン入れ、鈴入れ。自主課題。',
+    supporterAction: '活動準備の手伝い、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 13,
+    personAction: '動画の確認、動画鑑賞。ご本人のペースで自由に過ごす。',
+    supporterAction: '入ってはいけない場所へ行った際付き添い、見守り。',
+  },
+  {
+    userId: 7,
+    rowNo: 14,
+    personAction: '着替え、帰りの準備。毛布干し。トイレ誘導。',
+    supporterAction: '着替え、帰りの準備の手伝い。ルーティンの付き添い。トイレの声掛け。',
+  },
+  {
+    userId: 7,
+    rowNo: 15,
+    personAction: '送迎車に乗る',
+    supporterAction: '送迎ボードを確認しながら送迎車を確認。安全に送迎車に乗れるよう付き添い。',
+  },
+  {
+    userId: 7,
+    rowNo: 16,
+    personAction: '出発前にトイレを確認する',
+    supporterAction: 'トイレの声掛け。自動ドア前で写真を撮る。',
+  },
+  {
+    userId: 7,
+    rowNo: 17,
+    personAction: '出発前にトイレを確認する',
+    supporterAction: 'トイレの声掛け。自動ドア前で写真を撮る。',
+  },
+  // 塩田 裕貴さん（I016）
+  { userId: 'I016', rowNo: 1, personAction: '手洗い、消毒。荷物を入れる。', supporterAction: '通所時の様子を確認し、必要に応じて声かけを行う。' },
+  { userId: 'I016', rowNo: 2, personAction: '体操に参加する', supporterAction: '本人の様子を見ながら参加を促す' },
+  { userId: 'I016', rowNo: 3, personAction: '予定を見る', supporterAction: '本人と一緒に予定を確認し、見通しが持てるよう支援する' },
+  { userId: 'I016', rowNo: 4, personAction: 'お茶を飲む', supporterAction: 'お茶の準備、片付けを行う' },
+  { userId: 'I016', rowNo: 5, personAction: '午前の活動に参加する', supporterAction: '必要に応じて声かけ、見守りを行う' },
+  { userId: 'I016', rowNo: 6, personAction: '手洗い、配膳', supporterAction: '手洗い・配膳を見守り、必要に応じて支援する' },
+  { userId: 'I016', rowNo: 7, personAction: '昼食を食べる', supporterAction: '食事の様子を見守り、必要に応じて介助を行う' },
+  { userId: 'I016', rowNo: 8, personAction: '休憩時間を過ごす', supporterAction: '休憩中の様子を見守る' },
+  { userId: 'I016', rowNo: 9, personAction: '午後の予定を確認する', supporterAction: '本人と一緒に午後の予定を確認する' },
+  { userId: 'I016', rowNo: 10, personAction: '午後の活動に参加する', supporterAction: '必要に応じて同行支援を行う' },
+  { userId: 'I016', rowNo: 11, personAction: 'お茶を飲む', supporterAction: 'お茶の準備、片付けを行う' },
+  { userId: 'I016', rowNo: 12, personAction: '午後の活動に参加する', supporterAction: '必要に応じて同行支援を行う' },
+  { userId: 'I016', rowNo: 13, personAction: 'ダンスを踊る。音楽に合わせて動く。', supporterAction: '本人の好きな曲をかけ、一緒に楽しむ。' },
+  { userId: 'I016', rowNo: 14, personAction: '帰宅準備を行う', supporterAction: '身支度を見守り、必要に応じて支援する' },
+  { userId: 'I016', rowNo: 15, personAction: '退所する', supporterAction: '退所時の様子を確認し、見送りを行う' },
+  { userId: 'I016', rowNo: 16, personAction: '外活動に向けた準備を行う', supporterAction: 'トイレ、帽子、持ち物など外活動に必要な準備を支援する' },
+  { userId: 'I016', rowNo: 17, personAction: '外活動に参加する', supporterAction: '外活動中の安全確認、同行支援、見守りを行う' },
 ];
 
 function isIshiwataUserId(userId: string | number): boolean {
   const s = String(userId);
-  return s === '4' || s === '6' || s === 'U-002' || s === 'U-003';
+  return s === '4' || s === '6' || s === 'U-002' || s === 'U-003' || s === 'I005';
 }
 
 function isKatsuragawaUserId(userId: string | number): boolean {
   const s = String(userId);
-  return s === '3' || s === 'U-001';
+  return s === '3' || s === '10' || s === 'U-001' || s === 'I009';
+}
+
+function isNakamuraUserId(userId: string | number): boolean {
+  const s = String(userId);
+  return s === '7' || s === '23' || s === 'U-006' || s === 'I017' || s === 'I022';
+}
+
+function isShiotaUserId(userId: string | number): boolean {
+  const s = String(userId);
+  return s === 'I016';
 }
 
 export function findUserProcedureDetail(userId: string | number, rowNo: number): UserProcedureDetail | undefined {
@@ -226,7 +356,11 @@ export function findUserProcedureDetail(userId: string | number, rowNo: number):
       ? isIshiwataUserId(userId)
       : isKatsuragawaUserId(detail.userId)
         ? isKatsuragawaUserId(userId)
-        : String(detail.userId) === String(userId);
+        : isNakamuraUserId(detail.userId)
+          ? isNakamuraUserId(userId)
+          : isShiotaUserId(detail.userId)
+            ? isShiotaUserId(userId)
+            : String(detail.userId) === String(userId);
     return isUserMatch && detail.rowNo === rowNo;
   });
 }
@@ -256,6 +390,20 @@ export const USER_PROCEDURE_SHEET_NOTES: UserProcedureSheetNotes[] = [
     dailyCarePoints: '自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。',
     otherNotes: '個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。',
   },
+  {
+    userId: 7,
+    dailyCarePoints: '見通しを持ち、安心して活動に取り組む。制限エリア（プレイルーム・和室・給食室）への進入防止と自主課題の充実。',
+    otherNotes: 'かさぶた・ささくれ・靴下の糸を気にする。ダイア磯子前の車を気にする。\nスケジュール表の提示。制限エリアの視覚的表示。\n写真カードによる活動の提示。トイレ間隔の把握と声掛けのタイミング調整。',
+  },
+  {
+    userId: 'I016',
+    dailyCarePoints: '見通しを持って落ち着いて活動に取り組む。ハサミ以外の没頭できる活動の探索。',
+    otherNotes: [
+      '【観察事実】\nハサミに没頭すると切り替えが困難。音楽への反応が良い。',
+      '【環境調整】\nスケジュール表の提示。クールダウン場所の確保。',
+      '【具体的対応】\n写真カードによる選択肢提示。本人の表情や動作からのフィードバック収集。',
+    ].join('\n\n'),
+  },
 ];
 
 export function findUserProcedureSheetNotes(userId: string | number): UserProcedureSheetNotes | undefined {
@@ -264,6 +412,10 @@ export function findUserProcedureSheetNotes(userId: string | number): UserProced
       ? isIshiwataUserId(userId)
       : isKatsuragawaUserId(notes.userId)
         ? isKatsuragawaUserId(userId)
-        : String(notes.userId) === String(userId);
+        : isNakamuraUserId(notes.userId)
+          ? isNakamuraUserId(userId)
+          : isShiotaUserId(notes.userId)
+            ? isShiotaUserId(userId)
+            : String(notes.userId) === String(userId);
   });
 }
