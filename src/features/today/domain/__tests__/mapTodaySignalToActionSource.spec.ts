@@ -39,7 +39,7 @@ describe('mapTodaySignalToActionSource', () => {
   });
 
   it('対象外 code は null を返す', () => {
-    const signal = makeSignal({ code: 'daily_record_missing' as any });
+    const signal = makeSignal({ code: 'daily_record_missing' as unknown as TodaySignalCode });
     const result = mapTodaySignalToActionSource(signal);
     expect(result).toBeNull();
   });
@@ -65,7 +65,7 @@ describe('mapTodaySignalToActionSource', () => {
       makeSignal(),
       makeSignal({
         id: 'daily_record_missing:u002',
-        code: 'daily_record_missing' as any,
+        code: 'daily_record_missing' as unknown as TodaySignalCode,
       }),
     ];
     const result = mapTodaySignalsToActionSources(signals);
