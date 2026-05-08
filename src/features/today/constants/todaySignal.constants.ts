@@ -45,6 +45,14 @@ export const TODAY_SIGNAL_DISPLAY_CONFIG: Record<TodaySignalCode, SignalDisplayC
     severity: 'danger',
     group: 'planning',
   },
+  monitoring_due_today: {
+    prefix: '【期日当日】',
+    defaultActionLabel: 'モニタリングへ',
+    priority: 'P0',
+    audience: ['admin', 'staff'],
+    severity: 'danger',
+    group: 'planning',
+  },
   monitoring_due_soon: {
     prefix: '【期日接近】',
     defaultActionLabel: 'モニタリングへ',

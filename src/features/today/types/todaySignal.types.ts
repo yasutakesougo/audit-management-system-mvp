@@ -6,6 +6,7 @@ export type TodaySignalCode =
   | 'health_record_missing'
   | 'handoff_unread'
   | 'monitoring_overdue'
+  | 'monitoring_due_today'
   | 'monitoring_due_soon'
   | 'isp_renew_suggest'
   | 'risk_health_alert';

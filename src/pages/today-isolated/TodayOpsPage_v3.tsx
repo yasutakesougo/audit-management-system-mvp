@@ -17,6 +17,7 @@ import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps'
 import { useTodayIspRenewSuggestActions } from '@/features/today/hooks/useTodayIspRenewSuggestActions';
 import { useTodayPlanPatchActions } from '@/features/today/hooks/useTodayPlanPatchActions';
 import { useTodayExceptions } from '@/features/today/hooks/useTodayExceptions';
+import { useTodayMonitoringDeadlineActions } from '@/features/today/hooks/useTodayMonitoringDeadlineActions';
 import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary';
 import { useKioskAutoRefresh } from '@/features/today/hooks/useKioskAutoRefresh';
 import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
@@ -81,6 +82,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   const summary = useTodaySummary();
   const todayPlanPatchActions = useTodayPlanPatchActions(summary.users ?? []);
   const todayIspRenewSuggest = useTodayIspRenewSuggestActions(summary.users ?? []);
+  const todayMonitoringDeadline = useTodayMonitoringDeadlineActions(summary.users ?? []);
   const pendingSupportUsers = useMemo(() => {
     const ids = summary.todayRecordCompletion?.pendingUserIds ?? [];
     const usersArr = summary.users ?? [];
@@ -112,6 +114,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
       ...summary.todayExceptionActions,
       ...todayPlanPatchActions,
       ...todayIspRenewSuggest.actionSources,
+      ...todayMonitoringDeadline.actionSources,
     ],
   });
 

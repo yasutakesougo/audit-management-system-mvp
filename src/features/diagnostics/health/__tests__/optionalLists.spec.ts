@@ -38,7 +38,7 @@ describe('Health Checks — Optional List Contract', () => {
       isOptional: false,
     };
 
-    (mockSp.getListByTitle as any).mockRejectedValueOnce(new Error('404 Not Found'));
+    vi.mocked(mockSp.getListByTitle).mockRejectedValueOnce(new Error('404 Not Found'));
 
     const ctx = { ...baseCtx, listSpecs: () => [spec] };
     const results = await runHealthChecks(ctx, mockSp);
@@ -59,7 +59,7 @@ describe('Health Checks — Optional List Contract', () => {
       isOptional: true,
     };
 
-    (mockSp.getListByTitle as any).mockRejectedValueOnce(new Error('404 Not Found'));
+    vi.mocked(mockSp.getListByTitle).mockRejectedValueOnce(new Error('404 Not Found'));
 
     const ctx = { ...baseCtx, listSpecs: () => [spec] };
     const results = await runHealthChecks(ctx, mockSp);
@@ -80,8 +80,8 @@ describe('Health Checks — Optional List Contract', () => {
       isOptional: true,
     };
 
-    (mockSp.getListByTitle as any).mockResolvedValueOnce({ id: 'guid', title: 'OptionalList' });
-    (mockSp.getFields as any).mockResolvedValueOnce([]);
+    vi.mocked(mockSp.getListByTitle).mockResolvedValueOnce({ id: 'guid', title: 'OptionalList' });
+    vi.mocked(mockSp.getFields).mockResolvedValueOnce([]);
 
     const ctx = { ...baseCtx, listSpecs: () => [spec] };
     const results = await runHealthChecks(ctx, mockSp);
