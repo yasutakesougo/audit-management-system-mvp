@@ -146,6 +146,26 @@ describe('dailyProcedureMapper', () => {
       const row1 = doc.rows.find(r => r.rowNo === 1);
       expect(row1?.personAction).toBe('手洗い、消毒。荷物を入れる。');
     });
+
+    it('should map overall sheet notes (dailyCarePoints, otherNotes) unique to Shiota-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(SHIODA_SEVERE_SUPPORT_SHEET);
+
+      expect(doc.dailyCarePoints).toBe('見通しを持って落ち着いて活動に取り組む。ハサミ以外の没頭できる活動の探索。');
+      expect(doc.otherNotes).toContain('【観察事実】\nハサミに没頭すると切り替えが困難。');
+      expect(doc.otherNotes).toContain('【環境調整】\nスケジュール表の提示。');
+      expect(doc.otherNotes).toContain('【具体的対応】\n写真カードによる選択肢提示。');
+    });
+
+    it('should resolve Shiota aliases when userId is production UserID I016', () => {
+      // SHIODA_SEVERE_SUPPORT_SHEET already uses I016, but we test the explicit mapping here
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...SHIODA_SEVERE_SUPPORT_SHEET,
+        userId: 'I016',
+      });
+
+      expect(doc.dailyCarePoints).toContain('ハサミ以外の没頭できる活動');
+      expect(doc.rows.find((row) => row.rowNo === 13)?.personAction).toContain('ダンスを踊る');
+    });
   });
 
   describe('Katsuragawa-san Severe Support Case (17-Row Validation)', () => {
