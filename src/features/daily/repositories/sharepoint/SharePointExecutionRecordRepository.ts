@@ -341,11 +341,36 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       console.warn('[ExecutionRepo] Failed to parse triggeredBipIds:', e);
     }
 
+    let date = title.slice(0, 10);
+    const userId = (item[rf.userId] || '') as string;
+    let scheduleItemId = normalizeScheduleItemId(item[rf.rowNo]);
+
+    // Fallback: extract scheduleItemId and/or date from composite key if missing or empty
+    if (!scheduleItemId || !/^\d{4}-\d{2}-\d{2}/.test(date)) {
+      const keys = [title, (item[rf.rowKey] || '') as string];
+      for (const key of keys) {
+        if (key.length > 11 && /^\d{4}-\d{2}-\d{2}-/.test(key)) {
+          const parsedDate = key.slice(0, 10);
+          const suffix = key.slice(11); // userId-scheduleItemId
+          const userPrefix = `${userId}-`;
+          if (suffix.startsWith(userPrefix)) {
+            if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
+              date = parsedDate;
+            }
+            if (!scheduleItemId) {
+              scheduleItemId = normalizeScheduleItemId(suffix.slice(userPrefix.length));
+            }
+            break;
+          }
+        }
+      }
+    }
+
     return {
       id: title,
-      date: title.slice(0, 10), 
-      userId: (item[rf.userId] || '') as string,
-      scheduleItemId: normalizeScheduleItemId(item[rf.rowNo]),
+      date, 
+      userId,
+      scheduleItemId,
       status: item[rf.status] as RecordStatus,
       triggeredBipIds,
       memo: (item[rf.memo] || item[rf.payload] || '') as string,
