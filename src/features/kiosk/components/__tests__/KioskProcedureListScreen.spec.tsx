@@ -31,7 +31,7 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 
 const mockGetRecords = vi.fn();
 const mockGetStoreRecords = vi.fn();
-const mockGetCurrentExecutionRepositoryKind = vi.fn(() => 'local' as const);
+const mockGetCurrentExecutionRepositoryKind = vi.fn(() => 'local' as 'local' | 'sharepoint');
 
 vi.mock('@/features/daily/stores/executionStore', () => ({
   useExecutionStore: () => ({
@@ -51,7 +51,7 @@ vi.mock('@/features/daily/repositories/sharepoint/executionRepositoryFactory', (
 
 describe('KioskProcedureListScreen (includes local/memory-style recorded-state checks)', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
