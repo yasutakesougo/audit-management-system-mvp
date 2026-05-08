@@ -198,7 +198,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}`;
 
     const response = await this.spFetch(url);
-    if (!response.ok) return [];
+    if (!response.ok) {
+      throw new Error(`[ExecutionRepo] getRecords failed: ${response.status} ${response.statusText}`);
+    }
 
     const data: SharePointResponse<JsonRecord> = await response.json();
     if (!data.value) return [];
@@ -273,12 +275,15 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       const filter = `${rf.rowKey} eq '${rowKey}'`;
       const searchUrl = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
       const searchResp = await this.spFetch(searchUrl);
+      if (!searchResp.ok) {
+        throw new Error(`[ExecutionRepo] row search failed: ${searchResp.status} ${searchResp.statusText}`);
+      }
       const searchData: SharePointResponse<JsonRecord> = await searchResp.json();
       
       if (searchData.value && searchData.value.length > 0) {
         const internalId = searchData.value[0].Id;
         const updateUrl = `${this.resolvedChildPath}/items(${internalId})`;
-        await this.spFetch(updateUrl, {
+        const updateResp = await this.spFetch(updateUrl, {
           method: 'POST',
           headers: {
             'X-HTTP-Method': 'MERGE',
@@ -288,10 +293,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
           },
           body: JSON.stringify(body),
         });
+        if (!updateResp.ok) {
+          throw new Error(`[ExecutionRepo] row update failed: ${updateResp.status} ${updateResp.statusText}`);
+        }
       }
     } else {
       const createUrl = `${this.resolvedChildPath}/items`;
-      await this.spFetch(createUrl, {
+      const createResp = await this.spFetch(createUrl, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json;odata=nometadata',
@@ -299,6 +307,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         },
         body: JSON.stringify(body),
       });
+      if (!createResp.ok) {
+        throw new Error(`[ExecutionRepo] row create failed: ${createResp.status} ${createResp.statusText}`);
+      }
     }
 
     // Sync to local store
