@@ -176,4 +176,43 @@ describe('SharePointExecutionRecordRepository', () => {
     const childBody = JSON.parse(childCreateCall![1]!.body as string);
     expect(childBody[EXECUTION_RECORD_FIELDS.parentId]).toBe(777);
   });
+
+  it('throws when child row create fails', async () => {
+    const record: ExecutionRecord = {
+      id: 'R500',
+      date: '2024-01-01',
+      userId: 'U500',
+      scheduleItemId: 'S500',
+      status: 'completed',
+      memo: 'create fail test',
+      recordedAt: '2024-01-01T11:00:00Z',
+      recordedBy: 'Staff C',
+      triggeredBipIds: [],
+    };
+
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      // Ensure parent lookup returns existing parent
+      if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+      }
+      // Existing child row lookup returns empty so repo goes to create
+      if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [] }) };
+      }
+      // Child create fails
+      if (url.includes('DailyRecordRows') && url.includes('/items') && init?.method === 'POST') {
+        return {
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          json: async () => ({ error: { message: 'failed' } }),
+        };
+      }
+      // Default for resolver probes
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    await expect(repo.upsertRecord(record)).rejects.toThrow('row create failed');
+  });
 });
