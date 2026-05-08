@@ -12,6 +12,7 @@ import { formatDateJapanese, formatDateIso } from '@/lib/dateFormat';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   const { getRecords: getStoreRecords } = useExecutionStore();
   const storeRecords = getStoreRecords(todayIso || '', userId || '');
+  const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
 
@@ -74,11 +76,11 @@ export const KioskProcedureListScreen: React.FC = () => {
   const totalCount = procedures.length;
   const recordsByScheduleItemId = React.useMemo(() => {
     const map = new Map<string, ExecutionRecord>();
-    
-    // storeRecords は Zustand から、records は Repository (SharePoint) から。
-    // 同じ scheduleItemId があれば、入力がある方を優先する。
-    // (保存直後は store にあり fetch にはまだない、または fetch が空の場合があるため)
-    const allCandidateRecords = [...storeRecords, ...records];
+
+    // In sharepoint mode, treat repository result as source of truth to avoid
+    // local-only "記録済み" labels that don't survive across devices.
+    const allCandidateRecords =
+      executionRepositoryKind === 'local' ? [...storeRecords, ...records] : [...records];
     
     for (const record of allCandidateRecords) {
       const key = normalizeScheduleItemId(record.scheduleItemId);
@@ -91,7 +93,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     }
     return map;
-  }, [storeRecords, records, hasRecordInput]);
+  }, [executionRepositoryKind, storeRecords, records, hasRecordInput]);
   const getRecordedRecordForProcedure = React.useCallback((procedure: { id?: unknown; rowNo?: unknown }, index: number) => {
     const primaryCandidates = [
       normalizeScheduleItemId(procedure.id),

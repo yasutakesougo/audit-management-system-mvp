@@ -31,6 +31,7 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 
 const mockGetRecords = vi.fn();
 const mockGetStoreRecords = vi.fn();
+const mockGetCurrentExecutionRepositoryKind = vi.fn(() => 'local' as const);
 
 vi.mock('@/features/daily/stores/executionStore', () => ({
   useExecutionStore: () => ({
@@ -44,9 +45,14 @@ vi.mock('@/features/daily/hooks/useExecutionData', () => ({
   }),
 }));
 
+vi.mock('@/features/daily/repositories/sharepoint/executionRepositoryFactory', () => ({
+  getCurrentExecutionRepositoryKind: () => mockGetCurrentExecutionRepositoryKind(),
+}));
+
 describe('KioskProcedureListScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
     mockGetRecords.mockResolvedValue([]);
   });
@@ -234,6 +240,27 @@ describe('KioskProcedureListScreen', () => {
       const firstCard = screen.getByTestId('kiosk-procedure-card-0');
       expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
       expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show "記録済み" from store-only data when repository kind is sharepoint', async () => {
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockGetRecords.mockResolvedValue([]);
+    mockGetStoreRecords.mockReturnValue([
+      { scheduleItemId: '1', status: 'completed', id: 'STORE-1' },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).queryByText('記録済み')).toBeNull();
+      expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
+      expect(screen.getByText('実施状況: 0 / 2')).toBeInTheDocument();
     });
   });
 
