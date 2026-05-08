@@ -30,7 +30,9 @@ export function mapTodaySignalToActionSource(signal: TodaySignal): RawActionSour
   if (
     signal.code === 'monitoring_overdue' ||
     signal.code === 'monitoring_due_today' ||
-    signal.code === 'monitoring_due_soon'
+    signal.code === 'monitoring_due_soon' ||
+    signal.code === 'monitoring_origin_unset' ||
+    signal.code === 'monitoring_origin_invalid'
   ) {
     return {
       id: `today-signal:${signal.id}`,

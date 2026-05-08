@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mapTodaySignalToActionSource, mapTodaySignalsToActionSources } from '../mapTodaySignalToActionSource';
 import type { TodaySignal } from '../../types/todaySignal.types';
+import type { TodaySignalCode } from '../../types/todaySignal.types';
 
 function makeSignal(overrides: Partial<TodaySignal> = {}): TodaySignal {
   return {
@@ -58,6 +59,19 @@ describe('mapTodaySignalToActionSource', () => {
     const result = mapTodaySignalToActionSource(signal);
     expect(result?.sourceType).toBe('monitoring_deadline');
     expect(result?.targetTime?.toISOString()).toContain('2026-05-30');
+  });
+
+  it('monitoring_origin_provisional は優先アクションに変換しない', () => {
+    const signal = makeSignal({
+      id: 'monitoring-origin-provisional:U001:2026-05-01',
+      code: 'monitoring_origin_provisional',
+      metadata: {
+        userId: 'U001',
+        resolvedDate: '2026-05-01',
+      },
+    });
+    const result = mapTodaySignalToActionSource(signal);
+    expect(result).toBeNull();
   });
 
   it('配列変換では null を除外する', () => {
