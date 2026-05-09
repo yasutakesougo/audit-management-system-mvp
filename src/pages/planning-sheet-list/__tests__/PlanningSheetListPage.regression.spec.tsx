@@ -148,4 +148,41 @@ describe('PlanningSheetListPage Regression Tests', () => {
 
     expect(screen.queryByTestId(TESTIDS.DIFFERENCE_INSIGHT_BAR)).not.toBeInTheDocument();
   });
+
+  test('起点ステータスのChipが正しく表示されること', () => {
+    const vm = { 
+      ...baseViewModel, 
+      sheets: [
+        {
+          id: 's1',
+          userId: 'I009',
+          ispId: 'isp1',
+          title: 'テスト計画',
+          targetScene: '食事',
+          status: 'active' as const,
+          isCurrent: true,
+          statusColor: 'success' as const,
+          nextReviewAt: null,
+          applicableServiceType: 'other',
+          applicableAddOnTypes: ['none'],
+          authoredByQualification: 'unknown',
+          reviewedAt: null,
+          supportStartDate: '2026-05-01',
+          appliedFrom: null,
+          monitoringOriginStatus: 'official' as const,
+          monitoringOriginLabel: '確定',
+          monitoringOriginHelper: '支援開始日を起点に90日モニタリングを管理しています',
+          monitoringOriginColor: 'success' as const,
+        } as unknown as (PlanningSheetListViewModel['sheets'][0])
+      ]
+    };
+    render(
+      <MemoryRouter>
+        <PlanningSheetListView viewModel={vm} handlers={mockHandlers} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('確定')).toBeInTheDocument();
+    expect(screen.getByTestId('monitoring-origin-chip')).toBeInTheDocument();
+  });
 });

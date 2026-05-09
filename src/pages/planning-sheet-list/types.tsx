@@ -1,9 +1,17 @@
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 import type { IUserMaster } from '@/features/users/types';
 
+export type MonitoringOriginStatus = 'official' | 'provisional' | 'unset' | 'invalid';
+
 export interface PlanningSheetListViewModel {
   userId: string | null;
-  sheets: (PlanningSheetListItem & { statusColor: 'default' | 'info' | 'success' | 'warning' })[];
+  sheets: (PlanningSheetListItem & {
+    statusColor: 'default' | 'info' | 'success' | 'warning';
+    monitoringOriginStatus: MonitoringOriginStatus;
+    monitoringOriginLabel: string;
+    monitoringOriginHelper: string;
+    monitoringOriginColor: 'success' | 'warning' | 'error' | 'default';
+  })[];
   isLoading: boolean;
   error: string | null;
   allUsers: IUserMaster[];

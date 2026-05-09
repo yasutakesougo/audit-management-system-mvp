@@ -104,13 +104,82 @@ describe('planningSheetListViewModelMapper', () => {
     const input: MapperInput = {
       ...baseInput,
       sheets: [
-        { id: '1', status: 'active' } as unknown as (PlanningSheetListViewModel['sheets'][0]),
-        { id: '2', status: 'revision_pending' } as unknown as (PlanningSheetListViewModel['sheets'][0]),
+        { id: '1', userId: 'U001', status: 'active' } as unknown as (PlanningSheetListViewModel['sheets'][0]),
+        { id: '2', userId: 'U001', status: 'revision_pending' } as unknown as (PlanningSheetListViewModel['sheets'][0]),
       ],
     };
     const vm = mapToPlanningSheetListViewModel(input);
 
     expect(vm.sheets[0].statusColor).toBe('success');
     expect(vm.sheets[1].statusColor).toBe('warning');
+  });
+
+  describe('Monitoring Origin Status', () => {
+    it('支援開始日が設定されている場合、official と判定されること', () => {
+      const input: MapperInput = {
+        ...baseInput,
+        sheets: [
+          { id: '1', userId: 'U001', supportStartDate: '2026-05-01' } as unknown as PlanningSheetListViewModel['sheets'][0],
+        ],
+      };
+      const vm = mapToPlanningSheetListViewModel(input);
+      expect(vm.sheets[0].monitoringOriginStatus).toBe('official');
+      expect(vm.sheets[0].monitoringOriginColor).toBe('success');
+      expect(vm.sheets[0].monitoringOriginLabel).toBe('確定');
+    });
+
+    it('支援開始日がなく、利用者マスタにServiceStartDateがある場合、official と判定されること', () => {
+      const userWithServiceStart = { ...mockUser, ServiceStartDate: '2026-04-01' };
+      const input: MapperInput = {
+        ...baseInput,
+        allUsers: [userWithServiceStart],
+        sheets: [
+          { id: '1', userId: 'U001', supportStartDate: null } as unknown as PlanningSheetListViewModel['sheets'][0],
+        ],
+      };
+      const vm = mapToPlanningSheetListViewModel(input);
+      expect(vm.sheets[0].monitoringOriginStatus).toBe('official');
+      expect(vm.sheets[0].monitoringOriginColor).toBe('success');
+      expect(vm.sheets[0].monitoringOriginLabel).toBe('確定');
+    });
+
+    it('支援開始日がなく、appliedFrom (計画適用日) がある場合、provisional と判定されること', () => {
+      const input: MapperInput = {
+        ...baseInput,
+        sheets: [
+          { id: '1', userId: 'U001', supportStartDate: null, appliedFrom: '2026-05-05' } as unknown as PlanningSheetListViewModel['sheets'][0],
+        ],
+      };
+      const vm = mapToPlanningSheetListViewModel(input);
+      expect(vm.sheets[0].monitoringOriginStatus).toBe('provisional');
+      expect(vm.sheets[0].monitoringOriginColor).toBe('warning');
+      expect(vm.sheets[0].monitoringOriginLabel).toBe('暫定');
+    });
+
+    it('日付が一切設定されていない場合、unset と判定されること', () => {
+      const input: MapperInput = {
+        ...baseInput,
+        sheets: [
+          { id: '1', userId: 'U001', supportStartDate: null, appliedFrom: null } as unknown as PlanningSheetListViewModel['sheets'][0],
+        ],
+      };
+      const vm = mapToPlanningSheetListViewModel(input);
+      expect(vm.sheets[0].monitoringOriginStatus).toBe('unset');
+      expect(vm.sheets[0].monitoringOriginColor).toBe('error');
+      expect(vm.sheets[0].monitoringOriginLabel).toBe('未設定');
+    });
+
+    it('日付形式が不正な場合、invalid と判定されること', () => {
+      const input: MapperInput = {
+        ...baseInput,
+        sheets: [
+          { id: '1', userId: 'U001', supportStartDate: 'invalid-date' } as unknown as PlanningSheetListViewModel['sheets'][0],
+        ],
+      };
+      const vm = mapToPlanningSheetListViewModel(input);
+      expect(vm.sheets[0].monitoringOriginStatus).toBe('invalid');
+      expect(vm.sheets[0].monitoringOriginColor).toBe('error');
+      expect(vm.sheets[0].monitoringOriginLabel).toBe('不正');
+    });
   });
 });
