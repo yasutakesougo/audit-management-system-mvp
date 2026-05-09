@@ -696,3 +696,25 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 2. Nightly Patrol の手動実行とレポート更新。
 
 #health #sharepoint #diagnostics #drift-absorption #skill-matrix-20260509-2
+
+
+### 2026-05-09 (3) — SharePoint schema drift hardening cycle complete (PR #1831 & #1832) 🏁
+
+**Summary**: SharePointの物理環境に存在するスキーマの乖離を吸収する「スキーマ・ドリフト対策サイクル」を完了。主要な環境警告（WARN）をコード側（List Registryおよびカラム定義マッピング）で完全に吸収し、診断エラーとNightly Patrolの滞りを解消した。
+
+**Completed**:
+- **PR #1831 マージ完了**:
+  - `Users_Master` の `userCode` を `UserID` とする物理名称不一致（Drift）を吸収。ドメイン層の属性名 `userCode` を維持し、レガシー別名互換（Candidates）も完備。
+- **PR #1832 マージ完了**:
+  - `MeetingMinutes` / `MonitoringMeetings` / `ISP_Master` / `support_procedure_record_daily` において、不整合となっていた registry candidates 定義やエイリアスを統一、同期。
+- **最終クローズ・検証**:
+  - `main` ブランチを同期し、ローカル型チェック (`npm run typecheck`) および SharePoint ユニットテスト群 (`npx vitest run src/sharepoint` 337件) が100%パスすることを確認。
+  - `Nightly Patrol` を `--dry-run` で手動実行し、最新レポート `docs/nightly-patrol/2026-05-09.md` の正常生成を確認。
+
+**Learnings**:
+- 物理SharePoint環境に起因するスキーマ名の揺れを解決する際、物理側を変更するのではなく、`spListRegistry.definitions.ts` 側の `candidates` 配列を充実させる（許容度を上げる）アプローチは、安全かつ強力に稼働環境のドリフトを吸収できる。
+- main 同期後にすばやくローカルテストを実走し、パトロール処理を乾走（dry-run）させることで、コードベース全体の不退行（non-regression）を瞬時に立証できた。
+
+**所要時間**: 約 10min
+
+#health #sharepoint #diagnostics #drift-absorption #nightly-patrol #skill-matrix-20260509-3
