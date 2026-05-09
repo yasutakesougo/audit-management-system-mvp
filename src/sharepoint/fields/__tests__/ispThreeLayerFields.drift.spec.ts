@@ -172,6 +172,13 @@ describe('PLANNING_SHEET_CANDIDATES — 標準名・drift', () => {
     expect(fieldStatus.status.isDrifted).toBe(false);
   });
 
+  it('ISPId が ispId として解決される（標準）', () => {
+    const available = new Set(['UserCode', 'ISPId', 'Status']);
+    const { resolved, fieldStatus } = resolveSheet(available);
+    expect(resolved.ispId).toBe('ISPId');
+    expect(fieldStatus.ispId.isDrifted).toBe(false);
+  });
+
   it('ISPLookupId が ispId として解決される（drift）', () => {
     const available = new Set(['UserCode', 'ISPLookupId', 'Status']);
     const { resolved, fieldStatus } = resolveSheet(available);
@@ -233,14 +240,15 @@ describe('PROCEDURE_RECORD_CANDIDATES — 標準名', () => {
   ]);
 
   it('必須3フィールドがすべて解決される', () => {
-    const { resolved } = resolveProc(available);
+    const { resolved } = resolveProc(new Set(['Id', 'Title', 'UserCode', 'PlanningSheetId', 'RecordDate']));
     expect(resolved.userCode).toBe('UserCode');
     expect(resolved.planningSheetId).toBe('PlanningSheetId');
     expect(resolved.recordDate).toBe('RecordDate');
   });
 
   it('drift フラグが false（完全一致）', () => {
-    const { fieldStatus } = resolveProc(available);
+    const availableMatch = new Set(['UserCode', 'PlanningSheetId', 'RecordDate']);
+    const { fieldStatus } = resolveProc(availableMatch);
     expect(fieldStatus.userCode.isDrifted).toBe(false);
     expect(fieldStatus.planningSheetId.isDrifted).toBe(false);
     expect(fieldStatus.recordDate.isDrifted).toBe(false);
@@ -260,12 +268,19 @@ describe('PROCEDURE_RECORD_CANDIDATES — drift パターン', () => {
     expect(fieldStatus.userCode.isDrifted).toBe(true);
   });
 
-  it('PlanningSheetLookupId が planningSheetId として解決される', () => {
+  it('PlanningSheetId が planningSheetId として解決される（標準）', () => {
+    const available = new Set(['UserCode', 'PlanningSheetId', 'RecordDate']);
+    const { resolved, fieldStatus } = resolveProc(available);
+    expect(resolved.planningSheetId).toBe('PlanningSheetId');
+    expect(fieldStatus.planningSheetId.isDrifted).toBe(false);
+    expect(isProcHealthy(resolved as Record<string, string | undefined>)).toBe(true);
+  });
+
+  it('PlanningSheetLookupId が planningSheetId として解決される（drift）', () => {
     const available = new Set(['UserCode', 'PlanningSheetLookupId', 'RecordDate']);
     const { resolved, fieldStatus } = resolveProc(available);
     expect(resolved.planningSheetId).toBe('PlanningSheetLookupId');
     expect(fieldStatus.planningSheetId.isDrifted).toBe(true);
-    expect(isProcHealthy(resolved as Record<string, string | undefined>)).toBe(true);
   });
 
   it('cr013_recordDate が recordDate として解決される', () => {
@@ -312,7 +327,7 @@ describe('PROCEDURE_RECORD_ESSENTIALS FAIL/WARN 境界', () => {
   });
 
   it('drift 経由3点でも isHealthy=true', () => {
-    const { resolved } = resolveProc(new Set(['cr013_userCode', 'PlanningSheetLookupId', 'cr013_recordDate']));
+    const { resolved } = resolveProc(new Set(['cr013_userCode', 'PlanningSheetId', 'cr013_recordDate']));
     expect(isProcHealthy(resolved as Record<string, string | undefined>)).toBe(true);
   });
 

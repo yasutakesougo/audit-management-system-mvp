@@ -120,6 +120,7 @@ export const USERS_MASTER_CORE_FIELD_MAP = {
   title: 'Title',
   userId: 'UserID',
   fullName: 'FullName',
+  userCode: 'UserID',
   furigana: 'Furigana',
   fullNameKana: 'FullNameKana',
   contractDate: 'ContractDate',
@@ -127,7 +128,7 @@ export const USERS_MASTER_CORE_FIELD_MAP = {
   serviceEndDate: 'ServiceEndDate',
   isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
   isSupportProcedureTarget: 'IsSupportProcedureTarget',
-  severeFlag: 'severeFlag',
+  severeFlag: 'SevereFlag',
   isActive: 'IsActive',
   usageStatus: 'UsageStatus',
   attendanceDays: 'AttendanceDays',
@@ -145,7 +146,7 @@ export const USERS_MASTER_COMPLIANCE_FIELD_MAP = {
 } as const;
 
 // ── Common Candidates (SSOT) ──
-const CANDIDATE_USER_ID = ['UserID', 'User ID', 'UserCode', 'userId', 'cr013_userId', 'PersonID'];
+const CANDIDATE_USER_ID = ['UserID', 'userCode', 'UserCode', 'User ID', 'userId', 'cr013_userId', 'PersonID'];
 const CANDIDATE_FULL_NAME = ['FullName', 'Name', 'DisplayName', 'cr013_fullName'];
 const CANDIDATE_FURIGANA = ['Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'];
 const CANDIDATE_FULL_NAME_KANA = ['FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'];
@@ -154,7 +155,7 @@ const CANDIDATE_SERVICE_START_DATE = ['ServiceStartDate', 'StartDate', 'cr013_se
 const CANDIDATE_SERVICE_END_DATE = ['ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'];
 const CANDIDATE_IS_HIGH_INTENSITY = ['IsHighIntensitySupportTarget', 'IntensityTarget', 'IsHighIntensitySupportTarget0', 'cr013_isHighIntensity'];
 const CANDIDATE_IS_SUPPORT_PROCEDURE = ['IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'];
-const CANDIDATE_SEVERE_FLAG = ['severeFlag', 'SevereFlag', 'HighSeverityFlag', 'cr013_severeFlag'];
+const CANDIDATE_SEVERE_FLAG = ['SevereFlag', 'severeFlag', 'HighSeverityFlag', 'cr013_severeFlag'];
 const CANDIDATE_IS_ACTIVE = ['IsActive', 'Active', 'IsEnabled', 'cr013_isActive'];
 const CANDIDATE_USAGE_STATUS = ['UsageStatus', 'Status', 'UsageStatus0', 'cr013_usageStatus'];
 const CANDIDATE_ATTENDANCE_DAYS = ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'];
@@ -190,6 +191,7 @@ const CANDIDATE_USER_BENEFIT_USER_ID = [...CANDIDATE_USER_ID, 'Title'];
  */
 export const USERS_MASTER_CANDIDATES = {
   userId: CANDIDATE_USER_ID,
+  userCode: CANDIDATE_USER_ID,
   fullName: CANDIDATE_FULL_NAME,
   furigana: CANDIDATE_FURIGANA,
   fullNameKana: CANDIDATE_FULL_NAME_KANA,

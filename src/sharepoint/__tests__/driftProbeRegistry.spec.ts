@@ -25,7 +25,7 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     // Id and Title are automatically added by the mapper if missing
     expect(users?.selectFields).toContain('Id');
     expect(users?.selectFields).toContain('Title');
-    expect(users?.selectFields).toContain('UserID');
+    expect(users?.selectFields).toContain('userCode');
     expect(users?.selectFields).toContain('FullName');
   });
 
