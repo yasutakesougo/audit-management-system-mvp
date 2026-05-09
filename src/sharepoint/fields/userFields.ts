@@ -120,6 +120,7 @@ export const USERS_MASTER_CORE_FIELD_MAP = {
   title: 'Title',
   userId: 'UserID',
   fullName: 'FullName',
+  userCode: 'userCode',
   furigana: 'Furigana',
   fullNameKana: 'FullNameKana',
   contractDate: 'ContractDate',

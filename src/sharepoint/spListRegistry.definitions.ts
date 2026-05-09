@@ -13,10 +13,10 @@ export const masterListEntries: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'required', // 制度管理の基盤となるため required
     essentialFields: [
-      'UserID', 'FullName', 'IsActive', 'UsageStatus'
+      'userCode', 'FullName', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'UserCode'] },
+      { internalName: 'userCode', type: 'Text', displayName: 'User Code', required: true, indexed: true, candidates: ['userCode', 'UserID', 'UserCode'] },
       { internalName: 'FullName', type: 'Text', displayName: 'Full Name', required: true, candidates: ['FullName', 'Full_x0020_Name', 'Title'] },
       { internalName: 'Furigana', type: 'Text', displayName: 'Furigana' },
       { internalName: 'FullNameKana', type: 'Text', displayName: 'Full Name Kana', candidates: ['FullNameKana', 'Full_x0020_Name_x0020_Kana'] },
@@ -27,7 +27,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status', candidates: ['UsageStatus', 'Usage_x0020_Status'] },
       { internalName: 'IsHighIntensitySupportTarget', type: 'Boolean', displayName: 'High Intensity Target', candidates: ['IsHighIntensitySupportTarget', 'HighIntensityTarget'] },
       { internalName: 'IsSupportProcedureTarget', type: 'Boolean', displayName: 'Support Procedure Target', candidates: ['IsSupportProcedureTarget', 'SupportProcedureTarget'] },
-      { internalName: 'SevereFlag', type: 'Boolean', displayName: 'Severe Flag', candidates: ['SevereFlag', 'severeFlag', 'HighSeverityFlag', 'cr013_severeFlag'] },
+      { internalName: 'severeFlag', type: 'Boolean', displayName: 'Severe Flag', candidates: ['severeFlag', 'SevereFlag', 'HighSeverityFlag', 'cr013_severeFlag'] },
       { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days (Legacy)', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], governance: 'allow', isSilent: true, candidates: ['TransportToDays', 'Transport_x0020_To_x0020_Days', 'cr013_transportToDays'] },
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days (Legacy)', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], governance: 'allow', isSilent: true, candidates: ['TransportFromDays', 'Transport_x0020_From_x0020_Days', 'cr013_transportFromDays'] },
       { internalName: 'LastAssessmentDate', type: 'DateTime', displayName: 'Last Assessment Date', dateTimeFormat: 'DateOnly', candidates: ['LastAssessmentDate', 'Last_x0020_Assessment_x0020_Date'] },
@@ -240,7 +240,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
       { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
       { internalName: 'ISPId', type: 'Text', displayName: 'ISP ID', governance: 'allow', isSilent: true, candidates: ['ISPId', 'ISPLookupId', 'cr013_ispId'] },
-      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true, candidates: ['PlanningSheetId', 'PlanningSheetLookupId', 'cr013_planningSheetId'] },
       { internalName: 'ProcedureText', type: 'Note', displayName: 'Procedure Text', richText: false, isSilent: true, candidates: ['ProcedureText', 'Procedure_x0020_Text'] },
       { internalName: 'ExecutionStatus', type: 'Text', displayName: 'Execution Status', isSilent: true, candidates: ['ExecutionStatus', 'Execution_x0020_Status'] },
       { internalName: 'TimeSlot', type: 'Text', displayName: 'Time Slot', isSilent: true, candidates: ['TimeSlot', 'Time_x0020_Slot'] },
