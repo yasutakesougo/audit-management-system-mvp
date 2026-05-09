@@ -637,3 +637,40 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 3. 現場向け UI ブラッシュアップ（ボタンサイズ、タッチ操作最適化）
 
 #kiosk #e2e #ci #automation #skill-matrix-20260501
+
+---
+
+### 2026-05-09 — Kiosk / SharePoint / Health Diagnostics stabilization 🏁
+
+**Summary**: 2026-05-07〜2026-05-09 の期間で、キオスクモード、17行支援手順、SharePoint永続化、環境診断まわりの安定化を集中的に実施した。
+
+**Completed**:
+- キオスクモードの安定化を継続
+  - 観察記録チップとメモ保存を統合
+  - 17行支援手順を複数利用者向けに追加・調整
+  - 保存後に一覧へ即時反映されない問題を修正
+  - ボタンサイズ、表示、保存失敗時通知などのUXを改善
+- SharePoint永続化層を強化
+  - 17行記録保存時の OData / metadata 型不一致を回避
+  - `odata=nometadata` と保存payloadの平坦化により 400 Bad Request を抑制
+  - 保存失敗時にサイレント失敗せず例外化
+  - `SharePointExecutionRecordRepository` のメソッドバインド問題を修正
+- テスト・CI保護を追加
+  - kiosk query propagation のE2E検証を追加
+  - `provider=memory` などのquery paramが画面遷移後も維持されることを確認
+  - kiosk-e2e をRequired Checkに追加し、キオスク導線の回帰を防止
+
+**Current observations**:
+- `/admin/status` で Environment Diagnosis が WARN
+  - MeetingMinutes: アクセスエラーまたはスキーマ不一致の可能性
+  - PlanningSheet: Internal Name drift が残存
+- Nightly Patrol が 2026-04-30 以降 stale
+  - 最新レポートが更新されていないため、運用監視上は Watch 扱い
+
+**Next actions**:
+1. PlanningSheet drift の再診断
+2. MeetingMinutes のリストアクセス・スキーマ確認
+3. Nightly Patrol stale の原因確認と再実行
+4. Health Diagnostics を再実行し、WARN件数の変化を確認
+
+#kiosk #sharepoint #diagnostics #stabilization #skill-matrix-20260509
