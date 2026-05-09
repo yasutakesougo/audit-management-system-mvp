@@ -718,3 +718,28 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 **所要時間**: 約 10min
 
 #health #sharepoint #diagnostics #drift-absorption #nightly-patrol #skill-matrix-20260509-3
+
+### 2026-05-09 (4) — Nightly Patrol restored (execution path recovered) 🏁
+
+**Summary**: Nightly Patrol の実行経路は復旧済み。`npm run patrol` は exit code `0` で完了し、当日成果物が生成された。`needs-review` は即時障害ではなく運用レビュー対象として扱う。
+
+**Verification**:
+- `npm run patrol`: exit `0`
+- 生成物:
+  - `docs/nightly-patrol/2026-05-09.md`
+  - `docs/nightly-patrol/2026-05-09.json`
+  - `docs/nightly-patrol/classification-2026-05-09.json`
+- 指標:
+  - `Large files`: 18
+  - `any hits`: 19
+  - `TODO/FIXME`: 9
+  - `Untested feat`: 0
+- `Classification Status`: `needs-review`
+- `SP_TOKEN` 未設定のため `index pressure` チェックはスキップ
+- GitHub open PR: `0`
+
+**Operational decision**:
+- Nightly Patrol stale は解消。
+- 現在ステータスは `needs-review` の通常レビュー段階。
+
+#nightly-patrol #operations #stability
