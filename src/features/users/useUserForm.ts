@@ -310,7 +310,7 @@ export function useUserForm(
     isSaving,
     isDirty,
     error: message?.type === 'error' ? message.text : null,
-    setFieldValue: <K extends keyof IUserMasterCreateDto>(field: K, value: IUserMasterCreateDto[K]) => setField(field as any, value as any),
+    setFieldValue: <K extends keyof IUserMasterCreateDto>(field: K, value: IUserMasterCreateDto[K]) => setField(field as keyof FormValues, value as unknown as FormValues[keyof FormValues]),
     setSaving: setIsSaving,
     setError: (err: string | null) => setMessage(err ? { type: 'error', text: err } : null),
     reset: (_updatedUser: IUserMaster) => {

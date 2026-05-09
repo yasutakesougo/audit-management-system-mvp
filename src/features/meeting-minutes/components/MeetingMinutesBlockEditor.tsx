@@ -41,10 +41,16 @@ export type MeetingMinutesBlockEditorProps = {
  * 安全に serializable な最小サブセットに射影する。
  */
 function toMinuteBlocks(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bnBlocks: readonly any[]
+  bnBlocks: readonly unknown[]
 ): MeetingMinuteBlock[] {
-  return bnBlocks.map((b) => ({
+  const blocks = bnBlocks as readonly {
+    id?: unknown;
+    type?: unknown;
+    props?: unknown;
+    content?: unknown;
+    children?: unknown;
+  }[];
+  return blocks.map((b) => ({
     id: String(b.id ?? ''),
     type: String(b.type ?? 'paragraph'),
     props: (b.props as Record<string, unknown>) ?? {},
@@ -65,8 +71,7 @@ export function MeetingMinutesBlockEditor(
   // 初期コンテンツ: 正規化してから BlockNote へ渡す
   const normalized = normalizeMeetingMinuteBlocks(value);
   const initialContent = normalized.length > 0
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? (normalized as any[])
+    ? (normalized as unknown as Record<string, unknown>[])
     : undefined;
 
   // カスタムスキーマ付きエディタを生成
