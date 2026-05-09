@@ -2,9 +2,9 @@
   "version": 1,
   "date": "2026-05-09",
   "final": {
-    "label": "action_required",
-    "emoji": "🔴",
-    "line": "🔴 Action Required（明日対応必須）"
+    "label": "watch",
+    "emoji": "🟡",
+    "line": "🟡 Watch（軽微な懸念あり）"
   },
   "thresholds": {
     "healthScoreWarn": 80,
@@ -69,7 +69,7 @@
     "staleExceptions": 0,
     "recurringExceptions": 0,
     "actWarnings": 0,
-    "classificationOverall": "needs-review",
+    "classificationOverall": "watch",
     "laneErrors": 0,
     "laneWarnings": 0,
     "adminOverall": "unknown",
@@ -86,8 +86,8 @@
     {
       "id": "patrol-overall",
       "label": "Nightly Patrol 分類",
-      "status": "fail",
-      "value": "needs-review",
+      "status": "unknown",
+      "value": "watch",
       "note": "classification-<date>.json"
     },
     {
@@ -197,9 +197,7 @@
     }
   ],
   "reasons": {
-    "fail": [
-      "Nightly Patrol が needs-review"
-    ],
+    "fail": [],
     "warn": [
       "/admin/status summary が欠損（判定信頼性低下）",
       "Drift residual 32 (管理済み残差あり)",
@@ -207,9 +205,7 @@
     ]
   },
   "reasonCodes": {
-    "fail": [
-      "PATROL_NEEDS_REVIEW"
-    ],
+    "fail": [],
     "warn": [
       "ADMIN_STATUS_SUMMARY_MISSING",
       "DRIFT_COUNT_PRESENT",
@@ -219,12 +215,7 @@
   "runbook": {
     "path": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md",
     "reasonCodeLinks": {
-      "fail": [
-        {
-          "code": "PATROL_NEEDS_REVIEW",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
-        }
-      ],
+      "fail": [],
       "warn": [
         {
           "code": "ADMIN_STATUS_SUMMARY_MISSING",
@@ -241,16 +232,7 @@
       ]
     },
     "reasonCodeActions": {
-      "fail": [
-        {
-          "code": "PATROL_NEEDS_REVIEW",
-          "normalizedCode": "PATROL_NEEDS_REVIEW",
-          "owner": "Platform Owner",
-          "severity": "action_required",
-          "firstAction": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
-        }
-      ],
+      "fail": [],
       "warn": [
         {
           "code": "ADMIN_STATUS_SUMMARY_MISSING",
@@ -282,12 +264,6 @@
   "escalations": [],
   "interpretation": {
     "signals": [
-      {
-        "type": "zombie",
-        "severity": "critical",
-        "message": "PATROL_NEEDS_REVIEW",
-        "recommendation": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。"
-      },
       {
         "type": "zombie",
         "severity": "warn",
