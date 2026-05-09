@@ -13,7 +13,7 @@ export const masterListEntries: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'required', // 制度管理の基盤となるため required
     essentialFields: [
-      'userCode', 'FullName', 'IsActive', 'UsageStatus'
+      'UserID', 'FullName', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User Code', required: true, indexed: true, candidates: ['UserID', 'userCode', 'UserCode'] },
