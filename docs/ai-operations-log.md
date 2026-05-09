@@ -743,3 +743,16 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 - 現在ステータスは `needs-review` の通常レビュー段階。
 
 #nightly-patrol #operations #stability
+
+### 2026-05-09 — Iceberg-PDCA `/admin/status` Compliance_CheckRules 再確認
+
+**ワークフロー**: 環境確認 → SharePoint CLI 実診断
+**対象**: `Compliance_CheckRules` / 必須リスト存在診断（welfare 環境）
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 確認 | `Compliance_CheckRules` は `https://isogokatudouhome.sharepoint.com/sites/welfare` に実在（List ID: `b14ca1f6-91b4-40d5-ae53-e4b3f7ffe412`） |
+| ✅ 確認 | `m365 spo list list` ベースの必須33リスト診断で missing 0 |
+| ℹ️ 注記 | GitHub Actions 変数に `ADMIN_STATUS_RAW_URL` がなく、nightly と同一経路での `/admin/status` 生JSON再取得はこのセッションでは未実施 |
+
+**成果**: リスト不存在起因の FAIL は再現せず（welfare 環境）
