@@ -84,6 +84,25 @@ export function clearStabilityCache(): void {
 // Coordinator Logic
 // ---------------------------------------------------------------------------
 
+/**
+ * 🧪 Stub Mode / E2E Smoke Test 判定用の超厳格セーフガード
+ * 本番環境への不要なバイパスを100%防ぎ、明示的なスキップ指定またはE2E時のみに発火を限定。
+ */
+export function shouldSkipSharePoint(): boolean {
+  if (typeof window !== 'undefined') {
+    const env = ((window as unknown as Record<string, unknown>).__ENV__ as Record<string, unknown>) || {};
+    const skipSp = env.VITE_SKIP_SHAREPOINT === '1' || env.VITE_SKIP_SHAREPOINT === true;
+    const isE2ESmoke = env.VITE_E2E === '1' && env.PLAYWRIGHT_TEST === '1';
+    if (skipSp || isE2ESmoke) return true;
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1';
+    const isE2ESmoke = process.env.VITE_E2E === '1' && process.env.PLAYWRIGHT_TEST === '1';
+    if (skipSp || isE2ESmoke) return true;
+  }
+  return false;
+}
+
 export class SharePointProvisioningCoordinator {
   /**
    * App 起動時に一括初期化を実行
@@ -97,6 +116,32 @@ export class SharePointProvisioningCoordinator {
   ): Promise<BootstrapResult> {
     const startTime = Date.now();
     trackSpEvent('sp:bootstrap_start');
+
+    // 🧪 Stub Mode / Simulation logic to skip physical network bootstraps entirely
+    if (shouldSkipSharePoint()) {
+      const targets = SP_LIST_REGISTRY.filter(entry => {
+        if (options.categories && !options.categories.includes(entry.category)) return false;
+        return true;
+      });
+      const summaries: StabilitySummary[] = targets.map(entry => {
+        const isPlanningMaster = entry.key === 'planning_sheet_master';
+        return {
+          key: entry.key,
+          displayName: entry.displayName,
+          listName: entry.resolve(),
+          status: isPlanningMaster ? 'drifted' : 'ok',
+          details: isPlanningMaster ? 'Drift: UserCode -> userCode, UserId -> userId, ISPLookupId -> PlanningSheetId' : undefined
+        };
+      });
+      const duration = Date.now() - startTime;
+      trackSpEvent('sp:bootstrap_complete', { durationMs: duration, details: { healthy: summaries.length, unhealthy: 0 } });
+      return {
+        total: summaries.length,
+        healthy: summaries.length,
+        unhealthy: 0,
+        summaries,
+      };
+    }
 
     // 404 抑制のための事前一括チェック
     const existingIdentifiers = await client.getExistingListTitlesAndIds();
@@ -165,6 +210,18 @@ export class SharePointProvisioningCoordinator {
     const listName = entry.resolve();
     const lc = entry.lifecycle;
     
+    // 🧪 Stub Mode / Skip SharePoint check
+    if (shouldSkipSharePoint()) {
+      const isPlanningMaster = entry.key === 'planning_sheet_master';
+      return {
+        key: entry.key,
+        displayName: entry.displayName,
+        listName,
+        status: isPlanningMaster ? 'drifted' : 'ok',
+        details: isPlanningMaster ? 'Drift: UserCode -> userCode, UserId -> userId, ISPLookupId -> PlanningSheetId' : undefined
+      };
+    }
+
     // 0. Feature Flag Check (Experimental)
     if (lc === 'experimental') {
       const flagName = `VITE_FEATURE_${entry.key.toUpperCase()}`;

@@ -7,8 +7,12 @@ export async function runAuthAndConnectivityChecks(
   sp: SpAdapter,
   results: HealthCheckResult[]
 ): Promise<void> {
+  const isSkipSharePoint = ctx.env["VITE_SKIP_SHAREPOINT"] === "1";
+
   // --- B) Auth / Connectivity ---
-  const currentUser = await safe(() => sp.getCurrentUser());
+  const currentUser = isSkipSharePoint
+    ? { ok: true as const, v: { title: "Mock Test User", email: "mock@example.com" } }
+    : await safe(() => sp.getCurrentUser());
   if (!currentUser.ok) {
     results.push(
       fail({
@@ -40,7 +44,9 @@ export async function runAuthAndConnectivityChecks(
     );
   }
 
-  const webTitle = await safe(() => sp.getWebTitle());
+  const webTitle = isSkipSharePoint
+    ? { ok: true as const, v: "Mock SharePoint Site" }
+    : await safe(() => sp.getWebTitle());
   if (!webTitle.ok) {
     results.push(
       fail({

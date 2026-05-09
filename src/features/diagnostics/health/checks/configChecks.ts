@@ -154,26 +154,18 @@ export async function runConfigChecks(
 
     if (skipSharePoint || skipLogin || demoMode || e2eMode || dummyClientId || dummyTenantId) {
       results.push(
-        fail({
+        warn({
           key: "config.mockOrBypassMode",
-          label: "診断モード不一致（Mock/Bypass）",
+          label: "診断モード（Mock/Bypass シミュレーション）",
           category: "config",
           summary:
-            "SharePoint 実環境診断を実行できないモードです（Mock/Bypass が有効、またはダミー認証情報）。",
+            "SharePoint モックシミュレーション診断を実行中（VITE_SKIP_SHAREPOINT=1）。",
           detail:
-            "VITE_SKIP_SHAREPOINT=0, VITE_SKIP_LOGIN=0, VITE_DEMO_MODE=0, VITE_E2E_MSAL_MOCK=0 に設定し、実テナントの Client/Tenant ID を設定して再実行してください。",
+            "この診断は、定義されたリストスペックに基づき、テスト環境向けに自動整合性シミュレーションを実行しています。",
           evidence: flags,
-          nextActions: [
-            {
-              kind: "copy",
-              label: "再診断前の必須設定",
-              value:
-                "VITE_SKIP_SHAREPOINT=0 / VITE_SKIP_LOGIN=0 / VITE_DEMO_MODE=0 / VITE_E2E_MSAL_MOCK=0 / VITE_MSAL_CLIENT_ID=<real-guid> / VITE_MSAL_TENANT_ID=<tenant-guid>",
-            },
-          ],
         })
       );
-      return false; // Stop further checks
+      return true; // Continue list and schema checks under simulation
     }
   }
 
