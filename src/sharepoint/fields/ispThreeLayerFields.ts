@@ -321,8 +321,8 @@ export function buildPlanningSheetSelectFields(existingInternalNames?: readonly 
 export const PLANNING_SHEET_CANDIDATES = {
   id: ['Id', 'ID'],
   title: ['Title'],
-  userCode: ['UserCode', 'UserID', 'User_ID', 'cr013_userCode'],
-  ispId: ['ISPId', 'ISPLookupId', 'cr013_ispId'],
+  userCode: ['UserCode', 'userCode', 'UserID', 'UserId', 'userId', 'User_ID', 'cr013_userCode'],
+  ispId: ['ISPId', 'ISPLookupId', 'PlanningSheetId', 'PlanningSheetLookupId', 'cr013_ispId'],
   targetScene: ['TargetScene', 'Scene', 'cr013_targetScene'],
   status: ['Status', 'UsageStatus', 'cr013_status'],
   versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],

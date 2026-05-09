@@ -192,6 +192,34 @@ describe('PLANNING_SHEET_CANDIDATES — 標準名・drift', () => {
     expect(resolved.status).toBe('cr013_status');
     expect(fieldStatus.status.isDrifted).toBe(true);
   });
+
+  it('userCode (小文字) が userCode として解決される（drift）', () => {
+    const available = new Set(['userCode', 'Status']);
+    const { resolved, fieldStatus } = resolveSheet(available);
+    expect(resolved.userCode).toBe('userCode');
+    expect(fieldStatus.userCode.isDrifted).toBe(true);
+  });
+
+  it('userId (小文字) が userCode として解決される（drift）', () => {
+    const available = new Set(['userId', 'Status']);
+    const { resolved, fieldStatus } = resolveSheet(available);
+    expect(resolved.userCode).toBe('userId');
+    expect(fieldStatus.userCode.isDrifted).toBe(true);
+  });
+
+  it('PlanningSheetId が ispId として解決される（drift）', () => {
+    const available = new Set(['UserCode', 'PlanningSheetId', 'Status']);
+    const { resolved, fieldStatus } = resolveSheet(available);
+    expect(resolved.ispId).toBe('PlanningSheetId');
+    expect(fieldStatus.ispId.isDrifted).toBe(true);
+  });
+
+  it('PlanningSheetLookupId が ispId として解決される（drift）', () => {
+    const available = new Set(['UserCode', 'PlanningSheetLookupId', 'Status']);
+    const { resolved, fieldStatus } = resolveSheet(available);
+    expect(resolved.ispId).toBe('PlanningSheetLookupId');
+    expect(fieldStatus.ispId.isDrifted).toBe(true);
+  });
 });
 
 describe('PLANNING_SHEET_ESSENTIALS FAIL/WARN 境界', () => {
