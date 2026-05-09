@@ -19,6 +19,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
 import { TESTIDS } from '@/testids';
@@ -281,6 +282,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
                   <TableCell>タイトル</TableCell>
                   <TableCell>対象場面</TableCell>
                   <TableCell>ステータス</TableCell>
+                  <TableCell>起点ステータス</TableCell>
                   <TableCell>サービス</TableCell>
                   <TableCell>次回見直し</TableCell>
                   <TableCell align="right">操作</TableCell>
@@ -325,6 +327,17 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
                         label={PLANNING_SHEET_STATUS_DISPLAY[sheet.status]}
                         color={sheet.statusColor}
                       />
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title={sheet.monitoringOriginHelper} arrow>
+                        <Chip
+                          size="small"
+                          label={sheet.monitoringOriginLabel}
+                          color={sheet.monitoringOriginColor}
+                          data-testid="monitoring-origin-chip"
+                          variant="filled"
+                        />
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption">{sheet.applicableServiceType}</Typography>

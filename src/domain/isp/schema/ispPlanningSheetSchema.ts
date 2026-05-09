@@ -377,6 +377,10 @@ export const planningSheetListItemSchema = z.object({
   authoredByQualification: staffQualificationSchema.default('unknown'),
   /** 最終レビュー日（再評価日として加算判定に使用） */
   reviewedAt: z.string().nullable().default(null),
+  /** 支援開始日（モニタリング起点用） */
+  supportStartDate: z.string().nullable().default(null),
+  /** 計画適用日（Provisional起点用フォールバック） */
+  appliedFrom: z.string().nullable().default(null),
 });
 
 export type PlanningSheetListItem = z.infer<typeof planningSheetListItemSchema>;

@@ -283,6 +283,8 @@ export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): Planning
       : ['none'],
     authoredByQualification: row.AuthoredByQualification ?? 'unknown',
     reviewedAt: row.ReviewedAt ?? null,
+    supportStartDate: row.SupportStartDate ?? null,
+    appliedFrom: row.AppliedFrom ?? null,
   });
 }
 
