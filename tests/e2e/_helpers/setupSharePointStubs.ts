@@ -165,6 +165,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
     const url = new URL(request.url());
     const pathname = url.pathname;
     const method = request.method().toUpperCase();
+    console.log(`[Stub Request] ${method} ${pathname}${url.search}`);
     const headers = request.headers();
     const methodOverride = (headers['x-http-method'] ?? headers['x-http-method-override'] ?? '').toUpperCase();
     const effectiveMethod = (method === 'POST' && ['MERGE', 'PATCH', 'DELETE'].includes(methodOverride)) ? methodOverride : method;
@@ -214,6 +215,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
       if (!state && (isMetadataQuery || isDataQuery)) {
          state = { config: { name: match.key }, items: [], nextId: 1 };
          nameMap.set(normalizeName(match.key), state);
+         console.log(`[Stub] Auto-created state for list: ${match.key}`);
       }
 
       if (!state) {
@@ -292,6 +294,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
             TypeAsString: 'Text',
             Required: false,
           }));
+          console.log(`[Stub] Returning ${results.length} fields for list: ${state.config.name}`);
           await fulfill(route, { status: 200, body: { value: results } });
         }
         return;
@@ -327,27 +330,33 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         if (method === 'GET') {
           const itemsSource = isSchedule ? scheduleStore : state.items;
           let results = itemsSource.map((item) => isSchedule ? normalizeScheduleRecord(cloneRecord(item as Record<string, unknown>)) : item);
-          
-          // Basic filtering support for common fields used in tests
+          // Improved filtering support
           const filter = url.searchParams.get('$filter');
           if (filter) {
-            // UserCode / cr013_userCode
-            const userMatch = filter.match(/(UserCode|cr013_userCode) eq '([^']+)'/i);
-            if (userMatch) {
-              const val = userMatch[2];
-              results = results.filter(r => String(r['UserCode'] || r['cr013_userCode']) === val);
-            }
-            
-            // ISPId / cr013_ispId
-            const ispMatch = filter.match(/(ISPId|cr013_ispId) eq '([^']+)'/i);
-            if (ispMatch) {
-              const val = ispMatch[2];
-              results = results.filter(r => String(r['ISPId'] || r['cr013_ispId']) === val);
-            }
+            const conditions = filter.split(/\s+and\s+/i);
+            for (const condition of conditions) {
+              const eqMatch = condition.match(/([a-zA-Z0-9_]+)\s+eq\s+(.+)/i);
+              if (eqMatch) {
+                const field = eqMatch[1];
+                const rawVal = eqMatch[2].trim();
 
-            // IsCurrent
-            if (filter.includes('IsCurrent eq true') || filter.includes('cr013_isCurrent eq true')) {
-              results = results.filter(r => r['IsCurrent'] === true || r['cr013_isCurrent'] === true);
+                // Handle quotes for strings
+                let val: any = rawVal;
+                if (rawVal.startsWith("'") && rawVal.endsWith("'")) {
+                  val = rawVal.substring(1, rawVal.length - 1);
+                } else if (rawVal.toLowerCase() === 'true') {
+                  val = true;
+                } else if (rawVal.toLowerCase() === 'false') {
+                  val = false;
+                } else if (!isNaN(Number(rawVal))) {
+                  val = Number(rawVal);
+                }
+
+                results = results.filter((r) => {
+                  const actualVal = r[field];
+                  return String(actualVal) === String(val) || actualVal === val;
+                });
+              }
             }
           }
 
@@ -393,6 +402,31 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
       await fulfill(route, await resolveFallback(request));
       return;
     }
+
+    // Global list creation support (when no list matched getbytitle)
+    if (method === 'POST' && (pathname.endsWith('/lists') || pathname.endsWith('/lists/'))) {
+      try {
+        const body = JSON.parse(request.postData() || '{}');
+        const title = body.Title || 'New List';
+        console.log(`[Stub] Global POST /lists creating: ${title}`);
+        const newState = { config: { name: title }, items: [], nextId: 1 };
+        nameMap.set(normalizeName(title), newState);
+        await fulfill(route, { 
+          status: 201, 
+          body: { 
+            d: { 
+              Id: `mock-id-${title}`, 
+              Title: title,
+              __metadata: { type: 'SP.List' }
+            } 
+          } 
+        });
+        return;
+      } catch (err) {
+        console.error(`[Stub Error] Failed to handle global POST /lists: ${err}`);
+      }
+    }
+
     await fulfill(route, await resolveFallback(request));
   });
 }

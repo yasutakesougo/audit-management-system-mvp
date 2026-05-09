@@ -8,11 +8,10 @@ import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 
-// import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
+import { useIspRepository } from '@/features/planning-sheet/hooks/useIspRepository';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanPatchRepository } from '@/features/planning-sheet/hooks/usePlanPatchRepository';
 import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPlanningSheetForm';
-// import { useSP } from '@/lib/spClient';
 import { TESTIDS, tid } from '@/testids';
 import {
   detectPlanNeedsUpdate,
@@ -21,7 +20,6 @@ import {
 } from '@/domain/isp/planPatch';
 
 import { type SupportPlanningSheetViewProps } from './types';
-import type { IspRepository } from '@/domain/isp/port';
 import { usePlanningSheetOrchestrator } from '@/features/planning-sheet/hooks/orchestrators/usePlanningSheetOrchestrator';
 import { ContextPanelSection } from './sections/ContextPanelSection';
 import { ImportDialogsSection } from './sections/ImportDialogsSection';
@@ -35,10 +33,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
 }) => {
   const planningSheetRepo = usePlanningSheetRepositories();
   const planPatchRepository = usePlanPatchRepository();
-  // const spClient = useSP();
-  const ispRepo = React.useMemo(() => ({
-    getCurrentByUser: async () => null,
-  } as unknown as IspRepository), []);
+  const ispRepo = useIspRepository();
   const [pendingPatchCount, setPendingPatchCount] = React.useState(0);
   const [pendingPatches, setPendingPatches] = React.useState<PlanPatch[]>([]);
   const [patchActionMessage, setPatchActionMessage] = React.useState<string | null>(null);
