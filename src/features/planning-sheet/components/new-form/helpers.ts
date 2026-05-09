@@ -2,6 +2,7 @@
  * NewPlanningSheetForm — ヘルパー関数
  */
 import type { PlanningSheetFormValues } from '@/domain/isp/schema';
+import { calculateMonitoringSchedule } from '../../monitoringSchedule';
 import type { FormState } from './types';
 
 /**
@@ -14,6 +15,13 @@ export function buildCreateInput(
   createdBy: string,
 ): PlanningSheetFormValues {
   const today = new Date().toISOString().slice(0, 10);
+  const startDate = form.supportStartDate || today;
+  const cycleDays = form.monitoringCycleDays || 90;
+
+  // L2 モニタリングスケジュールの計算 (90日周期)
+  const schedule = calculateMonitoringSchedule(startDate, cycleDays, today);
+  const nextReviewAt = schedule?.nextMonitoringDate || undefined;
+
   return {
     userId,
     ispId,
@@ -67,7 +75,7 @@ export function buildCreateInput(
       `記録方法: ${form.recordMethod}`,
     ].join('\n'),
     appliedFrom: today,
-    nextReviewAt: undefined,
+    nextReviewAt,
     authoredByStaffId: createdBy,
     authoredByQualification: 'unknown',
     authoredAt: today,
@@ -77,8 +85,13 @@ export function buildCreateInput(
     reviewedAt: undefined,
     hasMedicalCoordination: form.hasMedicalCoordination,
     hasEducationCoordination: false,
-    supportStartDate: form.supportStartDate || today,
-    monitoringCycleDays: form.monitoringCycleDays,
+    supportStartDate: startDate,
+    monitoringCycleDays: cycleDays,
+    evaluationIndicator: form.evaluationIndicator,
+    evaluationPeriod: form.evaluationPeriod,
+    evaluationMethod: form.evaluationMethod,
+    improvementResult: form.improvementResult,
+    nextSupport: form.nextSupport,
     status: 'draft',
   };
 }

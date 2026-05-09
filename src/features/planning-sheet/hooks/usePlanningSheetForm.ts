@@ -88,6 +88,11 @@ function sheetToFormValues(sheet: SupportPlanningSheet): PlanningSheetFormValues
     reviewedAt: sheet.reviewedAt ?? undefined,
     hasMedicalCoordination: sheet.hasMedicalCoordination,
     hasEducationCoordination: sheet.hasEducationCoordination,
+    evaluationIndicator: sheet.evaluationIndicator ?? '',
+    evaluationPeriod: sheet.evaluationPeriod ?? '',
+    evaluationMethod: sheet.evaluationMethod ?? '',
+    improvementResult: sheet.improvementResult ?? '',
+    nextSupport: sheet.nextSupport ?? '',
     supportStartDate: sheet.supportStartDate ?? undefined,
     monitoringCycleDays: sheet.monitoringCycleDays ?? 90,
     status: sheet.status,
@@ -177,6 +182,11 @@ export function usePlanningSheetForm(
         reviewedAt: undefined,
         hasMedicalCoordination: false,
         hasEducationCoordination: false,
+        evaluationIndicator: '',
+        evaluationPeriod: '',
+        evaluationMethod: '',
+        improvementResult: '',
+        nextSupport: '',
         supportStartDate: undefined,
         monitoringCycleDays: 90,
         status: 'draft',
@@ -192,7 +202,21 @@ export function usePlanningSheetForm(
   // 構造化セクションの state
   const defaultAssessment: PlanningAssessment = { targetBehaviors: [], abcEvents: [], hypotheses: [], riskLevel: 'low', healthFactors: [], teamConsensusNote: '' };
   const defaultIntake: PlanningIntake = { presentingProblem: '', targetBehaviorsDraft: [], behaviorItemsTotal: null, incidentSummaryLast30d: '', communicationModes: [], sensoryTriggers: [], medicalFlags: [], consentScope: [], consentDate: null };
-  const defaultPlanning: PlanningDesign = { supportPriorities: [], antecedentStrategies: [], teachingStrategies: [], consequenceStrategies: [], procedureSteps: [], crisisThresholds: null, restraintPolicy: 'prohibited_except_emergency', reviewCycleDays: 180 };
+  const defaultPlanning: PlanningDesign = {
+    supportPriorities: [],
+    antecedentStrategies: [],
+    teachingStrategies: [],
+    consequenceStrategies: [],
+    procedureSteps: [],
+    crisisThresholds: null,
+    restraintPolicy: 'prohibited_except_emergency',
+    reviewCycleDays: 180,
+    evaluationIndicator: '',
+    evaluationPeriod: '',
+    evaluationMethod: '',
+    improvementResult: '',
+    nextSupport: '',
+  };
 
   const [assessmentState, setAssessmentState] = useState<PlanningAssessment>(sheet?.assessment ?? defaultAssessment);
   const [intakeState, setIntakeState] = useState<PlanningIntake>(sheet?.intake ?? defaultIntake);

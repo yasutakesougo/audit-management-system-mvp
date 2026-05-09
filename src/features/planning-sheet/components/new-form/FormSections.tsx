@@ -22,6 +22,7 @@ import Typography from '@mui/material/Typography';
 // ── Local ──
 import type { FormState } from './types';
 import { BEHAVIOR_FUNCTIONS, TRAINING_LEVELS, ICEBERG_FACTORS } from './constants';
+import { calculateMonitoringSchedule } from '@/features/planning-sheet/monitoringSchedule';
 
 // ─────────────────────────────────────────────
 // SectionTitle — 共通ヘッダー
@@ -217,6 +218,19 @@ interface FormSectionsProps {
 // ─────────────────────────────────────────────
 
 const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, renderProvenanceBadge }) => {
+  const schedule = React.useMemo(() => {
+    if (!form.supportStartDate) return null;
+    return calculateMonitoringSchedule(form.supportStartDate, form.monitoringCycleDays);
+  }, [form.supportStartDate, form.monitoringCycleDays]);
+
+  const schedulePreview = schedule ? (
+    <Alert icon={false} severity="info" sx={{ mt: 1, py: 0.5, px: 2, border: '1px solid #93c5fd', bgcolor: '#eff6ff', borderRadius: 2 }}>
+      <Typography variant="caption" color="primary.main" fontWeight={800}>
+        🗓️ 次回予定日: {schedule.nextMonitoringDate} （{form.monitoringCycleDays}日周期）
+      </Typography>
+    </Alert>
+  ) : null;
+
   switch (step) {
     case 0: // §1 基本情報
       return (
@@ -241,6 +255,7 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
             InputLabelProps={{ shrink: true }}
             helperText="90日モニタリングの起点となる日付です。通常は利用開始日を設定します。"
           />
+          {schedulePreview}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <TextField select label="関与研修" value={form.trainingLevel} onChange={e => updateField('trainingLevel', e.target.value)} fullWidth>
               {TRAINING_LEVELS.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
@@ -434,6 +449,7 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
             <TextField type="number" label="モニタリング周期（日）" value={form.monitoringCycleDays} onChange={e => updateField('monitoringCycleDays', Number(e.target.value) || 90)} fullWidth
               inputProps={{ min: 1, max: 365 }} />
           </Stack>
+          {schedulePreview}
           <TextField label="評価方法" value={form.evaluationMethod} onChange={e => updateField('evaluationMethod', e.target.value)} fullWidth multiline minRows={2}
             placeholder="ABC記録集計、グラフ化、カンファレンス" />
           <TextField label="改善結果" value={form.improvementResult} onChange={e => updateField('improvementResult', e.target.value)} fullWidth multiline minRows={2}

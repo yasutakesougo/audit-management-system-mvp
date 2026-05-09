@@ -198,6 +198,12 @@ export const planningDesignSchema = z.object({
   crisisThresholds: crisisThresholdsSchema,
   restraintPolicy: restraintPolicySchema.default('prohibited_except_emergency'),
   reviewCycleDays: z.number().int().min(1).default(180),
+  // §9 モニタリング
+  evaluationIndicator: z.string().default(''),
+  evaluationPeriod: z.string().default(''),
+  evaluationMethod: z.string().default(''),
+  improvementResult: z.string().default(''),
+  nextSupport: z.string().default(''),
 }).default({
   supportPriorities: [],
   antecedentStrategies: [],
@@ -207,6 +213,11 @@ export const planningDesignSchema = z.object({
   crisisThresholds: null,
   restraintPolicy: 'prohibited_except_emergency',
   reviewCycleDays: 180,
+  evaluationIndicator: '',
+  evaluationPeriod: '',
+  evaluationMethod: '',
+  improvementResult: '',
+  nextSupport: '',
 });
 
 export type PlanningDesign = z.infer<typeof planningDesignSchema>;
@@ -219,7 +230,7 @@ export const planningSheetStatusValues = [
   'active',
   'revision_pending',
   'archived',
-] as const;
+ ] as const;
 
 export const planningSheetStatusSchema = z.enum(planningSheetStatusValues);
 export type PlanningSheetStatus = z.infer<typeof planningSheetStatusSchema>;
@@ -259,6 +270,13 @@ export const planningSheetFormSchema = z.object({
   supportStartDate: isoDateString.optional(),
   /** モニタリング周期（日数、デフォルト 90日 = 3ヶ月） */
   monitoringCycleDays: z.number().int().min(1).max(365).default(90),
+
+  // ── §9 モニタリング ──
+  evaluationIndicator: z.string().optional(),
+  evaluationPeriod: z.string().optional(),
+  evaluationMethod: z.string().optional(),
+  improvementResult: z.string().optional(),
+  nextSupport: z.string().optional(),
 
   // ── 制度項目 ──
   authoredByStaffId: z.string().max(100).default(''),
@@ -300,6 +318,13 @@ export const supportPlanningSheetSchema = baseAuditFieldsSchema.extend({
   // ── L2 モニタリング起点 ──
   supportStartDate: z.string().nullable().default(null),
   monitoringCycleDays: z.number().int().default(90),
+
+  // ── §9 モニタリング ──
+  evaluationIndicator: z.string().default(''),
+  evaluationPeriod: z.string().default(''),
+  evaluationMethod: z.string().default(''),
+  improvementResult: z.string().default(''),
+  nextSupport: z.string().default(''),
 
   // ── 制度項目 ──
   authoredByStaffId: z.string().default(''),
@@ -357,6 +382,9 @@ export const planningSheetSpRowSchema = z.object({
   PlanningJson: z.string().nullable().default(null),
   Created: z.string().nullable().optional(),
   Modified: z.string().nullable().optional(),
+  // ── L2 モニタリング起点 ──
+  SupportStartDate: z.string().nullable().default(null),
+  MonitoringCycleDays: z.number().nullable().default(null),
 });
 
 export type PlanningSheetSpRow = z.infer<typeof planningSheetSpRowSchema>;
