@@ -6,7 +6,7 @@
  *   - create/update input → SP payload (書き込み)
  *
  * null / '' / undefined の正規化、JSON 列のパース、LookupId 変換は
- * すべてこのファイルに閉じ込める。
+ * すべて this ファイルに閉じ込める。
  *
  * @see src/sharepoint/fields/ispThreeLayerFields.ts
  * @see src/domain/isp/schema.ts
@@ -98,6 +98,8 @@ const EMPTY_PLANNING = {
   supportPriorities: [], antecedentStrategies: [], teachingStrategies: [],
   consequenceStrategies: [], procedureSteps: [], crisisThresholds: null,
   restraintPolicy: 'prohibited_except_emergency' as const, reviewCycleDays: 180,
+  evaluationIndicator: '', evaluationPeriod: '', evaluationMethod: '',
+  improvementResult: '', nextSupport: '',
 };
 
 // ═════════════════════════════════════════════
@@ -213,6 +215,7 @@ export function mapIspUpdateInputToPayload(input: IspUpdateInput): SpIspMasterPa
 
 /** SP row → SupportPlanningSheet (full) */
 export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPlanningSheet {
+  const planning = parseJsonObject(row.PlanningJson, EMPTY_PLANNING);
   return supportPlanningSheetSchema.parse({
     id: `sp-${row.Id}`,
     createdAt: str(row.Created, new Date().toISOString()),
@@ -259,7 +262,15 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     // 実務モデル
     intake: parseJsonObject(row.IntakeJson, EMPTY_INTAKE),
     assessment: parseJsonObject(row.AssessmentJson, EMPTY_ASSESSMENT),
-    planning: parseJsonObject(row.PlanningJson, EMPTY_PLANNING),
+    planning: planning,
+
+    // §9 モニタリング（フラット化したフィールドへのマッピング）
+    evaluationIndicator: planning.evaluationIndicator ?? '',
+    evaluationPeriod: planning.evaluationPeriod ?? '',
+    evaluationMethod: planning.evaluationMethod ?? '',
+    improvementResult: planning.improvementResult ?? '',
+    nextSupport: planning.nextSupport ?? '',
+
     supportStartDate: row.SupportStartDate ?? null,
     monitoringCycleDays: row.MonitoringCycleDays ?? 90,
   });
@@ -324,7 +335,15 @@ export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateI
     // 実務モデル
     IntakeJson: input.intake ? JSON.stringify(input.intake) : JSON.stringify(EMPTY_INTAKE),
     AssessmentJson: input.assessment ? JSON.stringify(input.assessment) : JSON.stringify(EMPTY_ASSESSMENT),
-    PlanningJson: input.planning ? JSON.stringify(input.planning) : JSON.stringify(EMPTY_PLANNING),
+    PlanningJson: JSON.stringify({
+      ...EMPTY_PLANNING,
+      ...(input.planning || {}),
+      evaluationIndicator: input.evaluationIndicator ?? input.planning?.evaluationIndicator ?? '',
+      evaluationPeriod: input.evaluationPeriod ?? input.planning?.evaluationPeriod ?? '',
+      evaluationMethod: input.evaluationMethod ?? input.planning?.evaluationMethod ?? '',
+      improvementResult: input.improvementResult ?? input.planning?.improvementResult ?? '',
+      nextSupport: input.nextSupport ?? input.planning?.nextSupport ?? '',
+    }),
     SupportStartDate: input.supportStartDate ?? null,
     MonitoringCycleDays: input.monitoringCycleDays ?? 90,
   };
@@ -363,7 +382,30 @@ export function mapPlanningSheetUpdateInputToPayload(input: PlanningSheetUpdateI
   // 実務モデル
   if (input.intake !== undefined) payload.IntakeJson = JSON.stringify(input.intake);
   if (input.assessment !== undefined) payload.AssessmentJson = JSON.stringify(input.assessment);
-  if (input.planning !== undefined) payload.PlanningJson = JSON.stringify(input.planning);
+  if (input.planning !== undefined) {
+    payload.PlanningJson = JSON.stringify({
+      ...EMPTY_PLANNING,
+      ...input.planning,
+    });
+  } else if (
+    input.evaluationIndicator !== undefined ||
+    input.evaluationPeriod !== undefined ||
+    input.evaluationMethod !== undefined ||
+    input.improvementResult !== undefined ||
+    input.nextSupport !== undefined
+  ) {
+    // 部分更新時の §9 項目反映（既存の PlanningJson が不明な場合は空ベースになるため注意が必要だが、
+    // 基本的に create 時か一括 update 時に渡される想定）
+    payload.PlanningJson = JSON.stringify({
+      ...EMPTY_PLANNING,
+      evaluationIndicator: input.evaluationIndicator ?? '',
+      evaluationPeriod: input.evaluationPeriod ?? '',
+      evaluationMethod: input.evaluationMethod ?? '',
+      improvementResult: input.improvementResult ?? '',
+      nextSupport: input.nextSupport ?? '',
+    });
+  }
+
   if (input.supportStartDate !== undefined) payload.SupportStartDate = input.supportStartDate ?? null;
   if (input.monitoringCycleDays !== undefined) payload.MonitoringCycleDays = input.monitoringCycleDays;
 
@@ -455,6 +497,7 @@ export function mapProcedureRecordUpdateInputToPayload(input: ProcedureRecordUpd
 
   return payload;
 }
+
 // ────────────────────────────────────────────────────────────────
 // Utilities
 // ────────────────────────────────────────────────────────────────

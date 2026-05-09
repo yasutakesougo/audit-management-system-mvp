@@ -181,7 +181,7 @@ export const KATSURAGAWA_SEVERE_SUPPORT_SHEET: SupportPlanningSheet = {
     consequenceStrategies: [],
     crisisThresholds: null,
     restraintPolicy: 'prohibited_except_emergency',
-    reviewCycleDays: 180,
+    reviewCycleDays: 180, evaluationIndicator: "", evaluationPeriod: "", evaluationMethod: "", improvementResult: "", nextSupport: "",
   },
 
   status: 'active',
@@ -223,7 +223,7 @@ export const KATSURAGAWA_SEVERE_SUPPORT_SHEET: SupportPlanningSheet = {
   hasEducationCoordination: false,
   authoredAt: '2026-04-10',
   appliedFrom: '2026-04-01',
-  nextReviewAt: '2026-09-30',
+  nextReviewAt: '2026-09-30', evaluationIndicator: "", evaluationPeriod: "", evaluationMethod: "", improvementResult: "", nextSupport: "",
   createdAt: '2026-05-01T00:00:00Z',
   updatedAt: '2026-05-01T00:00:00Z',
   createdBy: 'staff-watanabe',

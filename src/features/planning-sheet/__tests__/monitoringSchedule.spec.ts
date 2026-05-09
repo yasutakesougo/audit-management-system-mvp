@@ -22,6 +22,11 @@ describe('calculateMonitoringSchedule', () => {
     expect(info?.progressPercent).toBe(0);
   });
 
+  it('2026-05-01 起点の 90日周期は 2026-07-30', () => {
+    const info = calculateMonitoringSchedule('2026-05-01', 90, '2026-05-01');
+    expect(info?.nextMonitoringDate).toBe('2026-07-30');
+  });
+
   it('45日経過で残り45日・進捗50%', () => {
     const info = calculateMonitoringSchedule('2026-01-01', 90, '2026-02-15');
     expect(info?.elapsedDays).toBe(45);
