@@ -29,9 +29,12 @@ async function runListChecks(
   ctx: HealthContext
 ) {
   let fieldStatus: ResolutionResult<string>['fieldStatus'] = {};
+  const isSkipSharePoint = ctx.env["VITE_SKIP_SHAREPOINT"] === "1";
 
   // List existence
-  const listInfo = await safe(() => sp.getListByTitle(spec.resolvedTitle));
+  const listInfo = isSkipSharePoint
+    ? { ok: true as const, v: { id: `mock-${spec.key}`, title: spec.resolvedTitle } }
+    : await safe(() => sp.getListByTitle(spec.resolvedTitle));
   if (!listInfo.ok) {
     if (spec.isOptional) {
       results.push(
@@ -84,7 +87,31 @@ async function runListChecks(
   }
 
   // Schema fields
-  const fields = await safe(() => sp.getFields(spec.resolvedTitle));
+  const fields = isSkipSharePoint
+    ? {
+        ok: true as const,
+        v: spec.requiredFields.map(f => {
+          let physicalName = f.internalName;
+
+          // 🧪 Active Drift Simulation for planning_sheet_master under Stub Mode
+          if (spec.key === 'planning_sheet_master') {
+            if (f.internalName === 'UserCode') {
+              physicalName = 'userCode'; // casing drift
+            } else if (f.internalName === 'UserId') {
+              physicalName = 'userId'; // casing drift
+            } else if (f.internalName === 'ISPLookupId') {
+              physicalName = 'PlanningSheetId'; // rename mapping drift
+            }
+          }
+
+          return {
+            internalName: physicalName,
+            staticName: physicalName,
+            typeAsString: 'Text'
+          };
+        })
+      }
+    : await safe(() => sp.getFields(spec.resolvedTitle));
   if (!fields.ok) {
     results.push(
       fail({
@@ -258,7 +285,9 @@ async function runListChecks(
   }
 
   // Permissions: Read
-  const read = await safe(() => sp.getItemsTop1(spec.resolvedTitle));
+  const read = isSkipSharePoint
+    ? { ok: true as const, v: [] as unknown[] }
+    : await safe(() => sp.getItemsTop1(spec.resolvedTitle));
   if (!read.ok) {
     if (isTransientPermissionStatus(read.status)) {
       results.push(
@@ -334,6 +363,7 @@ async function runListChecks(
   };
 
   const createBody = mapToPhysical(spec.createItem);
+  const updateBody = mapToPhysical(spec.updateItem);
   const physicalTitle = fieldStatus["Title"]?.resolvedName || "Title";
   
   if (typeof createBody[physicalTitle] === "string") {
@@ -342,15 +372,17 @@ async function runListChecks(
     createBody[physicalTitle] = `[healthcheck] ${stamp}`;
   }
 
-  const created = await safeWithRetry(
-    () => sp.createItem(spec.resolvedTitle, createBody),
-    {
-      maxRetries: 2,
-      baseDelayMs: 260,
-      jitterMs: 140,
-    },
-    isTransientPermissionStatus,
-  );
+  const created = isSkipSharePoint
+    ? { ok: true as const, v: { id: 1 }, status: 200, attempts: 1 }
+    : await safeWithRetry(
+        () => sp.createItem(spec.resolvedTitle, createBody),
+        {
+          maxRetries: 2,
+          baseDelayMs: 260,
+          jitterMs: 140,
+        },
+        isTransientPermissionStatus,
+      );
   if (!created.ok) {
     if (isTransientPermissionStatus(created.status)) {
       const retryCount = Math.max(0, created.attempts - 1);
@@ -408,15 +440,16 @@ async function runListChecks(
 
   await new Promise((r) => setTimeout(r, 500));
 
-  const updateBody = mapToPhysical(spec.updateItem);
-  const updated = await safeWithRetry(
-    () => sp.updateItem(spec.resolvedTitle, created.v.id, updateBody),
-    {
-      maxRetries: 2,
-      baseDelayMs: 220,
-      jitterMs: 120,
-    }
-  );
+  const updated = isSkipSharePoint
+    ? { ok: true as const, status: 200, attempts: 1 }
+    : await safeWithRetry(
+        () => sp.updateItem(spec.resolvedTitle, created.v!.id, updateBody),
+        {
+          maxRetries: 2,
+          baseDelayMs: 220,
+          jitterMs: 120,
+        }
+      );
   if (!updated.ok) {
     if (isTransientPermissionStatus(updated.status)) {
       const retryCount = Math.max(0, updated.attempts - 1);
@@ -471,15 +504,17 @@ async function runListChecks(
     );
   }
 
-  const deleted = await safeWithRetry(
-    () => sp.deleteItem(spec.resolvedTitle, created.v.id),
-    {
-      maxRetries: 2,
-      baseDelayMs: 260,
-      jitterMs: 140,
-    },
-    isTransientPermissionStatus,
-  );
+  const deleted = isSkipSharePoint
+    ? { ok: true as const, status: 200, attempts: 1 }
+    : await safeWithRetry(
+        () => sp.deleteItem(spec.resolvedTitle, created.v!.id),
+        {
+          maxRetries: 2,
+          baseDelayMs: 260,
+          jitterMs: 140,
+        },
+        isTransientPermissionStatus,
+      );
   if (!deleted.ok) {
     if (spec.isDeleteOptional) {
       results.push(

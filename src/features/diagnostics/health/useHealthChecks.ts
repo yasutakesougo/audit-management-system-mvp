@@ -48,13 +48,22 @@ export function useHealthChecks(ctx: HealthContext) {
   const sp = useMemo(() => createSpAdapterWithAuth(acquireToken), [acquireToken]);
 
   const run = async () => {
+    /* eslint-disable no-console */
+    console.log("=== START RUNNING HEALTH CHECKS ===");
     setLoading(true);
     setError(null);
     try {
+      console.log("=== RUNNING runHealthChecks ===");
       const results = await runHealthChecks(ctx, sp);
+      console.log("=== HEALTH CHECKS COMPLETED ===", results.length, "results");
+      if (typeof window !== 'undefined') {
+        (window as unknown as Record<string, unknown>).__HEALTH_CHECKS__ = results;
+      }
+      /* eslint-enable no-console */
       setReport(summarize(results));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      console.error("=== HEALTH CHECKS FAILED WITH EXCEPTION ===", msg, e);
       setError(msg);
       setReport(null);
     } finally {

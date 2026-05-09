@@ -25,6 +25,8 @@ const webServerEnvVars = {
   VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE ?? '/sites/Audit',
   VITE_SP_SCOPE_DEFAULT:
     process.env.VITE_SP_SCOPE_DEFAULT ?? 'https://contoso.sharepoint.com/AllSites.Read',
+  ...(process.env.VITE_SKIP_SHAREPOINT ? { VITE_SKIP_SHAREPOINT: process.env.VITE_SKIP_SHAREPOINT } : {}),
+  ...(process.env.VITE_SP_RETRY_MAX ? { VITE_SP_RETRY_MAX: process.env.VITE_SP_RETRY_MAX } : {}),
   ...(isCI
     ? {
         // E2E/MSAL モック時は SharePoint 実環境前提の検証をスキップさせる
