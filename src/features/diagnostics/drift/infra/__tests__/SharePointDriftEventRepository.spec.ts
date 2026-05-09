@@ -358,7 +358,7 @@ describe('SharePointDriftEventRepository', () => {
         listName: 'Daily_Attendance',
         fieldName: 'Status0',
         detectedAt: '2026-04-04T01:00:00.000Z',
-        severity: 'warn',
+        severity: 'info',
         resolutionType: 'fallback',
         driftType: 'suffix_mismatch',
         resolved: false,
@@ -545,7 +545,7 @@ describe('SharePointDriftEventRepository', () => {
         listName: 'Daily_Attendance',
         fieldName: 'Status0',
         detectedAt: '2026-04-10T10:00:00.000Z',
-        severity: 'warn',
+        severity: 'info',
         resolutionType: 'fallback',
         driftType: 'suffix_mismatch',
         resolved: false,
@@ -628,6 +628,38 @@ describe('SharePointDriftEventRepository', () => {
     expect(select).not.toContain('_Level');
     expect(select).not.toContain('_ModerationStatus');
     expect(select).toEqual(expect.arrayContaining(['Id', 'Title']));
+  });
+
+  it('does not include hidden system fields (e.g. _Level) in write payloads', async () => {
+    const createItem = vi.fn(async (_listTitle: string, _payload: Record<string, unknown>) => ({}));
+
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => [
+        'List_x0020_Name',
+        'Field_x0020_Name',
+        'Detected_x0020_At',
+        'Logged_x0020_At',
+        'DriftType',
+        '_Level',
+      ]),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).toHaveBeenCalledTimes(1);
+    const [, payload] = createItem.mock.calls[0];
+    expect(payload).not.toHaveProperty('_Level');
   });
 
   it('uses resolved physical field when marking resolved', async () => {

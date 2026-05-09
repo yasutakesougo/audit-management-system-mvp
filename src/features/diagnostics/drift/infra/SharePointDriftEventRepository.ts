@@ -115,6 +115,14 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return true;
   }
 
+  /**
+   * SharePoint hidden/system fields (e.g. _Level) cannot be safely targeted in write payloads.
+   * Keep `_xNNNN_` encoded user columns allowed.
+   */
+  private isUnsafeWriteFieldName(fieldName: string): boolean {
+    return fieldName.startsWith('_') && !fieldName.startsWith('_x');
+  }
+
   private getWritablePhysicalNames(
     key: keyof typeof DRIFT_LOG_CANDIDATES,
     required: boolean,
@@ -223,6 +231,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       }
 
       for (const physicalName of physicalNames) {
+        if (this.isUnsafeWriteFieldName(physicalName)) {
+          continue;
+        }
         payload[physicalName] = value;
       }
       return true;
