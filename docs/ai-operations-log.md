@@ -668,9 +668,31 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
   - 最新レポートが更新されていないため、運用監視上は Watch 扱い
 
 **Next actions**:
-1. PlanningSheet drift の再診断
-2. MeetingMinutes のリストアクセス・スキーマ確認
-3. Nightly Patrol stale の原因確認と再実行
-4. Health Diagnostics を再実行し、WARN件数の変化を確認
+1. Users_Master drift (userCode -> UserID) の解消済
+2. PlanningSheet drift の再診断（一部解消済みを確認）
+3. MeetingMinutes のリストアクセス・スキーマ確認
+4. Nightly Patrol stale の原因確認と再実行
+5. Health Diagnostics を再実行し、WARN件数の変化を確認
 
-#kiosk #sharepoint #diagnostics #stabilization #skill-matrix-20260509
+---
+
+### 2026-05-09 (2) — Users_Master schema drift alignment (UserID) 🏁
+
+**Summary**: 「利用者マスタ (Users_Master)」における `userCode` 列の物理スキーマ名不一致（期待: `userCode`, 実体: `UserID`）を、コード側のマッピングを `UserID` に寄せることで解消（Drift Absorption）。
+
+**Completed**:
+- `src/sharepoint/fields/userFields.ts` の `USERS_MASTER_CORE_FIELD_MAP.userCode` を `UserID` に変更。
+- `src/sharepoint/spListRegistry.definitions.ts` の `users_master` 定義において、`internalName` を `UserID` に変更し、`candidates` の優先順位を調整。
+- `severeFlag` の正本を `SevereFlag` に合わせ、大文字小文字のドリフトを抑制。
+- `CANDIDATE_USER_ID` および `CANDIDATE_SEVERE_FLAG` の順序を実体優先に更新。
+
+**Verification**:
+- `npm run typecheck`: Pass
+- `npx vitest run src/sharepoint`: Pass (337 tests)
+- `/admin/status` (Local Browser): SharePoint 側の一時的なスロットリング（429）により実機検証は待機中だが、ロジック上の不整合は解消済み。
+
+**Next actions**:
+1. MeetingMinutes のアクセス権限/スキーマの再調査。
+2. Nightly Patrol の手動実行とレポート更新。
+
+#health #sharepoint #diagnostics #drift-absorption #skill-matrix-20260509-2

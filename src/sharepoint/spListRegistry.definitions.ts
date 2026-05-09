@@ -16,7 +16,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       'userCode', 'FullName', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
-      { internalName: 'userCode', type: 'Text', displayName: 'User Code', required: true, indexed: true, candidates: ['userCode', 'UserID', 'UserCode'] },
+      { internalName: 'UserID', type: 'Text', displayName: 'User Code', required: true, indexed: true, candidates: ['UserID', 'userCode', 'UserCode'] },
       { internalName: 'FullName', type: 'Text', displayName: 'Full Name', required: true, candidates: ['FullName', 'Full_x0020_Name', 'Title'] },
       { internalName: 'Furigana', type: 'Text', displayName: 'Furigana' },
       { internalName: 'FullNameKana', type: 'Text', displayName: 'Full Name Kana', candidates: ['FullNameKana', 'Full_x0020_Name_x0020_Kana'] },
@@ -27,7 +27,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status', candidates: ['UsageStatus', 'Usage_x0020_Status'] },
       { internalName: 'IsHighIntensitySupportTarget', type: 'Boolean', displayName: 'High Intensity Target', candidates: ['IsHighIntensitySupportTarget', 'HighIntensityTarget'] },
       { internalName: 'IsSupportProcedureTarget', type: 'Boolean', displayName: 'Support Procedure Target', candidates: ['IsSupportProcedureTarget', 'SupportProcedureTarget'] },
-      { internalName: 'severeFlag', type: 'Boolean', displayName: 'Severe Flag', candidates: ['severeFlag', 'SevereFlag', 'HighSeverityFlag', 'cr013_severeFlag'] },
+      { internalName: 'SevereFlag', type: 'Boolean', displayName: 'Severe Flag', candidates: ['SevereFlag', 'severeFlag', 'HighSeverityFlag', 'cr013_severeFlag'] },
       { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days (Legacy)', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], governance: 'allow', isSilent: true, candidates: ['TransportToDays', 'Transport_x0020_To_x0020_Days', 'cr013_transportToDays'] },
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days (Legacy)', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], governance: 'allow', isSilent: true, candidates: ['TransportFromDays', 'Transport_x0020_From_x0020_Days', 'cr013_transportFromDays'] },
       { internalName: 'LastAssessmentDate', type: 'DateTime', displayName: 'Last Assessment Date', dateTimeFormat: 'DateOnly', candidates: ['LastAssessmentDate', 'Last_x0020_Assessment_x0020_Date'] },
