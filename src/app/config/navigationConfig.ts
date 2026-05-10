@@ -142,10 +142,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     PLANNING_ROUTES.ISP_EDITOR(isFieldStaffShell),
     
     createHubNavItem('severe', {
-      isActive: (pathname) => pathname === '/severe' || pathname.startsWith('/severe/'),
+      isActive: (pathname) => pathname === '/severe' || pathname.startsWith('/severe/') || pathname.startsWith('/support-review'),
     }),
-    SEVERE_ROUTES.PLANNING_SHEET(isFieldStaffShell),
-    SEVERE_ROUTES.ASSESSMENT(isFieldStaffShell),
+    SEVERE_ROUTES.SUPPORT_REVIEW_HUB(isFieldStaffShell),
 
     // --- 3. 記録・参照 (records) ---
     RECORD_ROUTES.DASHBOARD(isFieldStaffShell),

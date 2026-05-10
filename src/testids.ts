@@ -26,6 +26,7 @@ const NAV_TESTIDS = {
   operationFlowSettings: 'nav-operation-flow-settings',
   planningSheet: 'nav-planning-sheet',
   exceptionCenter: 'nav-exception-center',
+  supportReviewHub: 'nav-support-review-hub',
 } as const;
 
 const FOOTER_TESTIDS = {

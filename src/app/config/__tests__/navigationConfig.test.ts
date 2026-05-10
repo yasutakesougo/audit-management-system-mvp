@@ -48,6 +48,9 @@ describe("Navigation Configuration", () => {
 
     const masterItems = map.get("master") || [];
     expect(masterItems.some((i) => i.label === "利用者")).toBe(true);
+
+    const severeItems = map.get("severe") || [];
+    expect(severeItems.some((i) => i.label === "支援の確認・見直し")).toBe(true);
   });
 
   it("hides admin items when feature flag/permissions omit them", () => {
