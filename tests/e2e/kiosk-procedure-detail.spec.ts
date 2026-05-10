@@ -44,4 +44,17 @@ test.describe('Kiosk Procedure Detail', () => {
     await expect(firstCard.getByText('記録済み')).toBeVisible();
     await expect(page.getByText('実施状況: 1 / 17')).toBeVisible();
   });
+
+  test('should propagate date URL parameter to detail and back on save', async ({ page }) => {
+    await bootKiosk(page, { route: '/kiosk/users/1/procedures/0?date=2026-05-07', userId: '1' });
+    await expect(page.getByText('本人のすること')).toBeVisible({ timeout: 10000 });
+    await expect(page).toHaveURL(/\/kiosk\/users\/1\/procedures\/0\?date=2026-05-07/);
+
+    await page.getByTestId('kiosk-observation-memo').fill('E2E過去日保存確認');
+    await page.getByTestId('kiosk-observation-submit').click();
+
+    await expect(page.getByText('記録を保存しました')).toBeVisible({ timeout: 5000 });
+    await expect(page).toHaveURL(/\/kiosk\/users\/1\/procedures\?date=2026-05-07/);
+    await expect(page.getByText('2026年5月7日 の支援手順')).toBeVisible({ timeout: 10000 });
+  });
 });

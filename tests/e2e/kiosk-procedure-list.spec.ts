@@ -15,6 +15,13 @@ test.describe('Kiosk Procedure List', () => {
     await expect(page.getByText('実施状況:')).toBeVisible();
   });
 
+  test('should parse and display selected date from URL parameter', async ({ page }) => {
+    await bootKiosk(page, { route: '/kiosk/users/1/procedures?date=2026-05-07', userId: '1' });
+
+    await expect(page).toHaveURL(/\/kiosk\/users\/1\/procedures\?date=2026-05-07/);
+    await expect(page.getByText('2026年5月7日 の支援手順')).toBeVisible({ timeout: 10000 });
+  });
+
   test('should navigate back to user selection from procedure list', async ({ page }) => {
     test.setTimeout(120000);
     const selector = '[data-testid="kiosk-procedure-list-back"]';
