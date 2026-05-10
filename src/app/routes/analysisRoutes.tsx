@@ -12,6 +12,7 @@ import {
     SuspendedIcebergAnalysisPage,
     SuspendedIcebergPdcaPage,
     SuspendedInterventionDashboardPage,
+    SuspendedSupportReviewHubPage,
     SuspendedTokuseiSurveyResultsPage,
 } from './lazyPages';
 
@@ -93,6 +94,14 @@ export const analysisRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedTokuseiSurveyResultsPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'support-review',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedSupportReviewHubPage />
       </RequireAudience>
     ),
   },

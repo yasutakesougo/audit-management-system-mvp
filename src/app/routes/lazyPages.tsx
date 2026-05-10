@@ -26,6 +26,7 @@ const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSup
 const HealthObservationPage = React.lazy(() => import('@/pages/HealthObservationPage'));
 const AnalysisDashboardPage = React.lazy(() => import('@/pages/AnalysisDashboardPage'));
 const AssessmentDashboardPage = React.lazy(() => import('@/pages/AssessmentDashboardPage'));
+const SupportReviewHubPage = React.lazy(() => import('@/pages/SupportReviewHubPage'));
 const TokuseiSurveyResultsPage = React.lazy(() => import('@/pages/TokuseiSurveyResultsPage'));
 const IcebergPdcaPage = React.lazy(() => import('@/pages/IcebergPdcaPage'));
 const IcebergAnalysisPage = React.lazy(() => import('@/pages/IcebergAnalysisPage'));
@@ -119,6 +120,7 @@ export const SuspendedIcebergPdcaPage = createSuspended(IcebergPdcaPage, '氷山
 export const SuspendedIcebergAnalysisPage = createSuspended(IcebergAnalysisPage, '氷山分析ワークスペースを読み込んでいます…');
 export const SuspendedInterventionDashboardPage = createSuspended(InterventionDashboardPage, '行動対応プランを読み込んでいます…');
 export const SuspendedAssessmentDashboardPage = createSuspended(AssessmentDashboardPage, 'アセスメント管理ページを読み込んでいます…');
+export const SuspendedSupportReviewHubPage = createSuspended(SupportReviewHubPage, '支援の確認・見直しハブを読み込んでいます…');
 export const SuspendedTokuseiSurveyResultsPage = createSuspended(TokuseiSurveyResultsPage, '特性アンケート結果を読み込んでいます…');
 export const SuspendedHealthObservationPage = createSuspended(HealthObservationPage, '身体記録画面を読み込んでいます…');
 export const SuspendedStaffDashboardPage = createSuspended(StaffDashboardPage, 'ダッシュボードを読み込んでいます…');

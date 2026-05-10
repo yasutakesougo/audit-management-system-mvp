@@ -114,7 +114,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
   schedules: '🗓️ スケジュール',
   records: '📚 記録を参照',
   planning: '🗓️ 計画・調整',
-  severe: '🔍 分析して改善',
+  severe: '🔍 支援を見直す',
   operations: '⚙️ 拠点運営',
   billing: '💰 請求処理',
   master: '👥 利用者・職員',
