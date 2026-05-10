@@ -70,21 +70,19 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
 
   const isLinkMode = !!link;
 
-  // Reset local state when target changes
+  // Reset local state when target node/link CHANGES (by ID only)
   React.useEffect(() => {
-    setLocalNote(link?.note || '');
-    setLocalRationale(link?.statusRationale || '');
-    if (link) {
+    if (isLinkMode && link) {
+      setLocalNote(link.note || '');
+      setLocalRationale(link.statusRationale || '');
       const target = nodes?.find(n => n.id === link.targetNodeId);
       setSearchQuery(target?.label || '');
+    } else if (!isLinkMode && node) {
+      setLocalDetails(node.details || '');
+      setLocalRationale(node.statusRationale || '');
+      setSearchQuery(node.label || '');
     }
-  }, [link?.id, link?.note, link?.statusRationale, nodes]);
-
-  React.useEffect(() => {
-    setLocalDetails(node?.details || '');
-    setLocalRationale(node?.statusRationale || '');
-    setSearchQuery(node?.label || ''); // Set default search query to node label
-  }, [node?.id, node?.details, node?.label, node?.statusRationale]);
+  }, [link?.id, node?.id]);
 
   // -- Record Fetching --
   const userId = nodes?.[0]?.sourceId || ''; // Getting userId from nodes (heuristic)
@@ -149,7 +147,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
         const hasEvidence = (node.evidenceRecordIds?.length || 0) > 0;
         const hasRationale = !!node.statusRationale?.trim() || !!localRationale?.trim();
         if (!hasEvidence || !hasRationale) {
-          // Stay on current or go to hypothesis, but show warning
+          window.alert('「検証済み」に昇格させるには、最低1件の根拠（記録）の紐付けと、検証理由の記入が必要です。');
           return;
         }
       }
@@ -185,6 +183,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
         const hasEvidence = (link.evidenceRecordIds?.length || 0) > 0;
         const hasRationale = !!link.statusRationale?.trim() || !!localRationale?.trim();
         if (!hasEvidence || !hasRationale) {
+          window.alert('「検証済み」に昇格させるには、最低1件の根拠（記録）の紐付けと、検証理由の記入が必要です。');
           return;
         }
       }
