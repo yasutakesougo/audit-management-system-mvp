@@ -67,6 +67,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
   const [localNote, setLocalNote] = useState(link?.note || '');
   const [localDetails, setLocalDetails] = useState(node?.details || '');
   const [localRationale, setLocalRationale] = useState(node?.statusRationale || link?.statusRationale || '');
+  const [localLabel, setLocalLabel] = useState(node?.label || '');
 
   const isLinkMode = !!link;
 
@@ -81,6 +82,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
       setLocalDetails(node.details || '');
       setLocalRationale(node.statusRationale || '');
       setSearchQuery(node.label || '');
+      setLocalLabel(node.label || '');
     }
   }, [link?.id, node?.id]);
 
@@ -139,7 +141,12 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
 
   // -- Node Handlers --
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (node && onUpdateNode) onUpdateNode({ ...node, label: e.target.value });
+    setLocalLabel(e.target.value);
+  };
+  const handleLabelBlur = () => {
+    if (node && onUpdateNode && localLabel !== node.label) {
+      onUpdateNode({ ...node, label: localLabel });
+    }
   };
   const handleStatusChange = (_: React.MouseEvent<HTMLElement>, newStatus: string | null) => {
     if (node && onUpdateNode && newStatus) {
@@ -482,8 +489,9 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
                 <Stack spacing={2.5}>
                   <TextField
                     label="見出し / タイトル"
-                    value={node.label}
+                    value={localLabel}
                     onChange={handleLabelChange}
+                    onBlur={handleLabelBlur}
                     fullWidth
                     size="small"
                     variant="outlined"
