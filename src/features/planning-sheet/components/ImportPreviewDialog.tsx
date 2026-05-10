@@ -55,6 +55,7 @@ export const ImportPreviewDialog: React.FC<Props> = ({
   if (!preview) return null;
 
   const { items, summary } = preview;
+  const inferredSource = responderInfo ? '特性アンケート' : '氷山分析';
 
   // セクションごとにグループ化
   const grouped = React.useMemo(() => {
@@ -79,13 +80,22 @@ export const ImportPreviewDialog: React.FC<Props> = ({
         <Stack direction="row" spacing={1} alignItems="center">
           <SupportAgentRoundedIcon color="primary" />
           <Typography variant="h6" fontWeight={700}>
-            取込プレビュー
+            {inferredSource}の取込プレビュー
           </Typography>
         </Stack>
       </DialogTitle>
 
       <DialogContent dividers>
         <Stack spacing={2}>
+          <Alert severity="info" variant="outlined" icon={false}>
+            <Typography variant="body2">
+              以下の内容を新規支援計画シートの各項目に反映します。入力済みの項目がある場合は上書きせず追記します。
+            </Typography>
+            <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1, fontWeight: 700 }}>
+              ※ここで反映しても、まだ保存は完了しません。最後に「支援計画シートを作成」を押すと正式に保存されます。
+            </Typography>
+          </Alert>
+
           {/* ── 回答者情報 ── */}
           {responderInfo && (
             <Alert severity="info" variant="outlined" icon={false}>
@@ -211,7 +221,7 @@ export const ImportPreviewDialog: React.FC<Props> = ({
           disabled={items.length === 0}
           startIcon={<SupportAgentRoundedIcon />}
         >
-          この内容で取り込む
+          確認してフォームに反映する
         </Button>
       </DialogActions>
     </Dialog>
