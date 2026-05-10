@@ -67,7 +67,7 @@ const AnalysisDashboardPage: React.FC = () => {
 
   // 行動分析対象者のみに絞り込み
   const ibdUsers = useMemo(
-    () => users.filter((u) => u.IsSupportProcedureTarget === true),
+    () => users.filter((u) => u.IsSupportProcedureTarget === true || u.IsHighIntensitySupportTarget === true),
     [users],
   );
   const ibdUserCodes = useMemo(
