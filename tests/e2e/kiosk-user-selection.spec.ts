@@ -25,6 +25,14 @@ test.describe('Kiosk User Selection', () => {
     }
   });
 
+  test('should not automatically jump when wizard search params are appended', async ({ page }) => {
+    await bootKiosk(page, { route: '/kiosk/users?wizard=plan&user=I005&userId=I005' });
+
+    await expect(page).toHaveURL(/\/kiosk\/users\?wizard=plan&user=I005&userId=I005/);
+    await expect(page.getByText('利用者を選択してください')).toBeVisible({ timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/kiosk\/users\/I005\/procedures/);
+  });
+
   test('should navigate back to kiosk home from user selection', async ({ page }) => {
     test.setTimeout(120000);
     // 利用者選択画面が表示されるのを待つ
