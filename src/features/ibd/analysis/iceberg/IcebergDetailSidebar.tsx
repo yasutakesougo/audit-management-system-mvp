@@ -148,6 +148,11 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
       onUpdateNode({ ...node, label: localLabel });
     }
   };
+  const handleNodeTypeChange = (e: SelectChangeEvent<string>) => {
+    if (node && onUpdateNode) {
+      onUpdateNode({ ...node, type: e.target.value as IcebergNode['type'] });
+    }
+  };
   const handleStatusChange = (_: React.MouseEvent<HTMLElement>, newStatus: string | null) => {
     if (node && onUpdateNode && newStatus) {
       if (newStatus === 'validated') {
@@ -387,12 +392,28 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
                   <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ display: 'block', mb: 1 }}>
                     項目の属性
                   </Typography>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: alpha(color, 0.1), border: `1px solid ${alpha(color, 0.2)}` }}>
-                      <Typography variant="caption" fontWeight="bold" color={color}>
-                        {node.type === 'behavior' ? '行動 (結果)' : node.type === 'assessment' ? '内の要因' : '環境要因'}
-                      </Typography>
-                    </Box>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <FormControl size="small" variant="outlined" sx={{ minWidth: 140 }}>
+                      <Select
+                        value={node.type}
+                        onChange={handleNodeTypeChange}
+                        disabled={isReadOnly}
+                        sx={{
+                          height: 32,
+                          fontSize: '0.85rem',
+                          fontWeight: 'bold',
+                          color: color,
+                          bgcolor: alpha(color, 0.05),
+                          '.MuiOutlinedInput-notchedOutline': { borderColor: alpha(color, 0.3) },
+                          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: color },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: color }
+                        }}
+                      >
+                        <MenuItem value="behavior" sx={{ color: '#c62828', fontWeight: 'bold' }}>行動 (結果)</MenuItem>
+                        <MenuItem value="assessment" sx={{ color: '#1565c0', fontWeight: 'bold' }}>内的要因</MenuItem>
+                        <MenuItem value="environment" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>環境要因</MenuItem>
+                      </Select>
+                    </FormControl>
                     <Typography variant="caption" color="text.disabled">
                       ID: {node.id.slice(0, 8)}
                     </Typography>
