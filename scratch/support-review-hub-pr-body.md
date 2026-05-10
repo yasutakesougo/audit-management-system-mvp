@@ -3,7 +3,7 @@
 ## Summary
 Simplifies the sidebar navigation by collapsing three highly-technical, abstract screens under the `'severe'` group into a single, user-friendly entry point labeled **「支援の確認・見直し」** routing to a brand new **Support Review Hub** (`/support-review`).
 
-This change drastically reduces cognitive load for care workers, presenting them with concrete, goal-oriented pathways rather than abstract system names, while preserving 100% of the underlying page logic, direct URL routes, and existing feature integrations.
+This change drastically reduces cognitive load for care workers, presenting them with concrete, goal-oriented pathways rather than abstract system names, while preserving the existing page logic, direct URL routes, and current feature integrations.
 
 > [!IMPORTANT]
 > This PR does not merge the assessment, analysis, and planning features.
@@ -16,7 +16,7 @@ This change drastically reduces cognitive load for care workers, presenting them
 ### 1. Unified Side Navigation Entrance
 - **Sidebar Label Update**: Renamed navigation group `'severe'` (previously "🔍 分析して改善") to **「🔍 支援を見直す」** to align with the action of care quality reviews.
 - **Collapsing Sidebar Items**: Consolidated the three legacy items (支援計画シート, アセスメント, 分析ワークスペース) into a single unified item: **「支援の確認・見直し」** (`/support-review`), targeting the new Hub.
-- **Source Preservation**: Direct URLs to the existing paths (`/planning-sheet-list`, `/assessment`, `/analysis`) remain fully active to guarantee that deep links, page-to-page bridges, and automatic triggers function perfectly.
+- **Source Preservation**: Direct URLs to the existing paths (`/planning-sheet-list`, `/assessment`, `/analysis`) remain fully active to guarantee that deep links, page-to-page bridges, and automatic triggers function correctly.
 
 ### 2. Premium Support Review Hub Page (`/support-review`)
 Renders a responsive, high-fidelity grid of 4 goal-oriented action cards utilizing curated themed palettes, elevation cards, and hover micro-animations matching the codebase design language:
