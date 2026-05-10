@@ -130,13 +130,15 @@ test.describe('Support Planning Sheet — Iceberg Creation Flow', () => {
 
     await page.goto('/support-planning-sheet/new?userId=UX-001&source=iceberg');
 
-    await expect(page.getByRole('heading', { name: '基本情報' })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/現行個別支援計画と紐付けます/)).toBeVisible();
-
+    // Wait for the automatic import preview dialog to appear (since it is a modal that blocks the background)
     const previewDialog = page.getByRole('dialog', { name: /取込プレビュー/ });
     await expect(previewDialog).toBeVisible({ timeout: 10000 });
     await previewDialog.getByRole('button', { name: 'この内容で取り込む' }).click();
     await expect(previewDialog).toBeHidden();
+
+    // Now that the modal is closed, the background content should be visible and interactive
+    await expect(page.getByRole('heading', { name: '基本情報' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/現行個別支援計画と紐付けます/)).toBeVisible();
 
     const testTitle = `E2E Iceberg Link Plan ${Date.now()}`;
     await page.getByLabel('計画タイトル').fill(testTitle);
@@ -156,6 +158,6 @@ test.describe('Support Planning Sheet — Iceberg Creation Flow', () => {
     await submitBtn.click();
 
     await expect(page).toHaveURL(/\/support-planning-sheet\/(sp-)?\d+/);
-    await expect(page.getByText(testTitle)).toBeVisible();
+    await expect(page.getByRole('heading', { name: testTitle })).toBeVisible();
   });
 });
