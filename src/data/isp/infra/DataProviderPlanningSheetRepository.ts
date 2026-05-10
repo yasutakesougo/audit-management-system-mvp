@@ -38,6 +38,52 @@ export function __resetPlanningSheetWarningCache(): void {
 }
 
 /**
+ * ペイロードキーを物理/ドリフト吸収後の列名に変換し、物理スキーマに存在しない項目をオミットする
+ */
+function adjustPayloadWithResolvedFields(
+  payload: Record<string, unknown>,
+  fields: Record<string, string | undefined>
+): Record<string, unknown> {
+  const adjusted: Record<string, unknown> = {};
+
+  const physicalToLogical: Record<string, string> = {
+    Title: 'title',
+    UserCode: 'userCode',
+    ISPId: 'ispId',
+    ISPLookupId: 'ispId',
+    TargetScene: 'targetScene',
+    Status: 'status',
+    VersionNo: 'versionNo',
+    IsCurrent: 'isCurrent',
+    FormDataJson: 'formDataJson',
+    IntakeJson: 'intakeJson',
+    AssessmentJson: 'assessmentJson',
+    PlanningJson: 'planningJson',
+    SupportStartDate: 'supportStartDate',
+    MonitoringCycleDays: 'monitoringCycleDays',
+  };
+
+  for (const [key, value] of Object.entries(payload)) {
+    const logicalKey = physicalToLogical[key];
+    if (logicalKey) {
+      const resolvedName = fields[logicalKey];
+      if (resolvedName) {
+        adjusted[resolvedName] = value;
+      } else {
+        // 物理スキーマに存在しない（undefined）フィールドはペイロードからオミットする
+        console.warn(`[DataProviderPlanningSheetRepository] Omit unresolved field from write payload: ${key}`);
+      }
+    } else {
+      // mapped candidatesに定義されていないフィールド（TargetDomain, ObservationFacts等）はそのまま通す
+      adjusted[key] = value;
+    }
+  }
+
+  return adjusted;
+}
+
+
+/**
  * DataProviderPlanningSheetRepository — 第2層 SupportPlanningSheet_Master
  */
 export class DataProviderPlanningSheetRepository implements PlanningSheetRepository {
@@ -176,10 +222,11 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
   }
 
   async create(input: PlanningSheetCreateInput): Promise<SupportPlanningSheet> {
-    const { title } = await this.resolveSource();
+    const { title, fields } = await this.resolveSource();
     const payload = mapPlanningSheetCreateInputToPayload(input);
+    const adjustedPayload = adjustPayloadWithResolvedFields(payload as unknown as Record<string, unknown>, fields);
     
-    const created = await this.provider.createItem<SpPlanningSheetRow>(title, payload as unknown as Record<string, unknown>);
+    const created = await this.provider.createItem<SpPlanningSheetRow>(title, adjustedPayload);
     
     const refreshed = await this.getById(`sp-${created.Id}`);
     if (!refreshed) throw new Error('[PlanningSheetRepository] Failed to reload created item');
@@ -190,10 +237,11 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     const numericId = extractSpId(id);
     if (numericId === null) throw new Error(`Invalid ID: ${id}`);
 
-    const { title } = await this.resolveSource();
+    const { title, fields } = await this.resolveSource();
     const payload = mapPlanningSheetUpdateInputToPayload(input);
+    const adjustedPayload = adjustPayloadWithResolvedFields(payload as unknown as Record<string, unknown>, fields);
 
-    await this.provider.updateItem(title, numericId, payload as unknown as Record<string, unknown>);
+    await this.provider.updateItem(title, numericId, adjustedPayload);
     
     const updated = await this.getById(id);
     if (!updated) throw new Error(`[PlanningSheetRepository] Failed to reload updated item: ${id}`);
