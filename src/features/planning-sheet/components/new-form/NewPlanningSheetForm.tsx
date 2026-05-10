@@ -694,6 +694,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 form={form}
                 updateField={updateField}
                 renderProvenanceBadge={renderProvenanceBadge}
+                userId={selectedUser?.id}
               />
             </Paper>
 
