@@ -69,7 +69,8 @@ export function icebergToPlanningBridge(drafts: BehaviorInterventionPlan[]): Par
     
     // §7 問題行動時対応
     initialResponse: uniqueLabels(reactiveStrategies).join('\n'),
-    staffResponse: uniqueLabels(reactiveStrategies).join('\n'), // 重複するが、職員対応にも入れる
+    // 初期対応と職員対応は現行BIPでは分離できないため、同じ reactive 案を初期値として入れる
+    staffResponse: uniqueLabels(reactiveStrategies).join('\n'),
   };
 }
 

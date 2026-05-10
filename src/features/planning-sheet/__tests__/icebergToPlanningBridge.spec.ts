@@ -59,7 +59,7 @@ describe('icebergToPlanningBridge', () => {
       }
     ];
 
-    it('should map targetBehavior and icegergSurface', () => {
+    it('should map targetBehavior and icebergSurface', () => {
       const result = icebergToPlanningBridge(mockDrafts);
       expect(result.targetBehavior).toBe('パニック');
       expect(result.icebergSurface).toBe('パニック');
