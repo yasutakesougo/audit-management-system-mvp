@@ -141,9 +141,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     PLANNING_ROUTES.SUPPORT_PLAN_GUIDE(isFieldStaffShell),
     PLANNING_ROUTES.ISP_EDITOR(isFieldStaffShell),
     
-    createHubNavItem('severe', {
-      isActive: (pathname) => pathname === '/severe' || pathname.startsWith('/severe/') || pathname.startsWith('/support-review'),
-    }),
     SEVERE_ROUTES.SUPPORT_REVIEW_HUB(isFieldStaffShell),
 
     // --- 3. 記録・参照 (records) ---

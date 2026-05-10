@@ -16,6 +16,7 @@ export const APP_ROUTE_PATHS = [
   'today',
   'planning',
   'severe',
+  'support-review',
   'operations',
   'master',
   'platform',
