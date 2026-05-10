@@ -230,4 +230,94 @@ describe('DataProviderPlanningSheetRepository', () => {
       expect(sheets).toHaveLength(1);
     });
   });
+
+  describe('create and update with dynamic schema resolution', () => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    it('omits SupportStartDate and MonitoringCycleDays if they are missing from physical schema', async () => {
+      let capturedPayload: any = null;
+      provider.createItem = async (_title, payload) => {
+        capturedPayload = payload;
+        return { Id: 123, ...payload } as any;
+      };
+
+      repo.getById = async () => {
+        return { id: 'sp-123', intake: {}, assessment: {}, planning: {} } as any;
+      };
+
+      await repo.create({
+        title: 'New Sheet',
+        userId: 'U-001',
+        ispId: 'sp-456',
+        supportStartDate: '2026-05-10',
+        monitoringCycleDays: 90,
+      } as any);
+
+      expect(capturedPayload).toBeDefined();
+      expect(capturedPayload.SupportStartDate).toBeUndefined();
+      expect(capturedPayload.MonitoringCycleDays).toBeUndefined();
+      expect(capturedPayload.UserCode).toBe('U-001');
+      expect(capturedPayload.Title).toBe('New Sheet');
+    });
+
+    it('retains SupportStartDate and MonitoringCycleDays if they exist in physical schema', async () => {
+      provider.getFieldInternalNames = async () => new Set([
+        'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent', 'Status',
+        'SupportStartDate', 'MonitoringCycleDays'
+      ]);
+
+      let capturedPayload: any = null;
+      provider.createItem = async (_title, payload) => {
+        capturedPayload = payload;
+        return { Id: 123, ...payload } as any;
+      };
+
+      repo.getById = async () => {
+        return { id: 'sp-123', intake: {}, assessment: {}, planning: {} } as any;
+      };
+
+      await repo.create({
+        title: 'New Sheet with dates',
+        userId: 'U-001',
+        ispId: 'sp-456',
+        supportStartDate: '2026-05-10',
+        monitoringCycleDays: 90,
+      } as any);
+
+      expect(capturedPayload).toBeDefined();
+      expect(capturedPayload.SupportStartDate).toBe('2026-05-10');
+      expect(capturedPayload.MonitoringCycleDays).toBe(90);
+    });
+
+    it('retains and translates SupportStartDate and MonitoringCycleDays if they exist as drifted names', async () => {
+      provider.getFieldInternalNames = async () => new Set([
+        'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent', 'Status',
+        'cr013_supportStartDate', 'cr013_monitoringCycleDays'
+      ]);
+
+      let capturedPayload: any = null;
+      provider.createItem = async (_title, payload) => {
+        capturedPayload = payload;
+        return { Id: 123, ...payload } as any;
+      };
+
+      repo.getById = async () => {
+        return { id: 'sp-123', intake: {}, assessment: {}, planning: {} } as any;
+      };
+
+      await repo.create({
+        title: 'New Sheet with dates',
+        userId: 'U-001',
+        ispId: 'sp-456',
+        supportStartDate: '2026-05-10',
+        monitoringCycleDays: 90,
+      } as any);
+
+      expect(capturedPayload).toBeDefined();
+      expect(capturedPayload.cr013_supportStartDate).toBe('2026-05-10');
+      expect(capturedPayload.cr013_monitoringCycleDays).toBe(90);
+      expect(capturedPayload.SupportStartDate).toBeUndefined();
+      expect(capturedPayload.MonitoringCycleDays).toBeUndefined();
+    });
+  });
 });
+
