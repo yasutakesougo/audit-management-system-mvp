@@ -133,6 +133,19 @@ export const ImportPreviewDialog: React.FC<Props> = ({
             />
           </Stack>
 
+          {/* ── 氷山分析詳細サマリー ── */}
+          {summary.icebergSummary && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ bgcolor: 'grey.50', p: 1, borderRadius: 1, border: '1px dashed', borderColor: 'grey.300' }}>
+              <Typography variant="caption" sx={{ width: '100%', mb: 0.5, fontWeight: 700, color: 'text.secondary' }}>
+                氷山分析データの内訳:
+              </Typography>
+              <Chip label={`分析数: ${summary.icebergSummary.behaviorCount}`} size="small" variant="outlined" />
+              <Chip label={`きっかけ: ${summary.icebergSummary.triggerCount}`} size="small" variant="outlined" />
+              <Chip label={`環境要因: ${summary.icebergSummary.environmentFactorCount}`} size="small" variant="outlined" />
+              <Chip label={`支援案: ${summary.icebergSummary.strategyCount}`} size="small" variant="outlined" />
+            </Stack>
+          )}
+
           {/* ── セクション別プレビュー ── */}
           {grouped.map(([section, sectionItems], sIdx) => (
             <Box key={section}>
