@@ -40,6 +40,13 @@ export interface ImportPreviewSummary {
   skipCount: number;
   /** 反映される合計フィールド数 */
   totalAffected: number;
+  /** 氷山分析特有のサマリー（オプショナル） */
+  icebergSummary?: {
+    behaviorCount: number;
+    triggerCount: number;
+    environmentFactorCount: number;
+    strategyCount: number;
+  };
 }
 
 /** buildImportPreview() の戻り値 */
@@ -64,6 +71,7 @@ const FIELD_LABELS: Record<string, { label: string; section: string }> = {
   // §3 氷山分析
   triggers: { label: 'トリガー（きっかけ）', section: '§3 氷山分析' },
   environmentFactors: { label: '環境要因', section: '§3 氷山分析' },
+  icebergSurface: { label: '表面（対象行動）', section: '§3 氷山分析' },
   emotions: { label: '本人の感情', section: '§3 氷山分析' },
   cognition: { label: '理解状況（認知）', section: '§3 氷山分析' },
   needs: { label: '本人ニーズ', section: '§3 氷山分析' },
@@ -78,6 +86,12 @@ const FIELD_LABELS: Record<string, { label: string; section: string }> = {
   communicationSupport: { label: 'コミュニケーション支援', section: '§5 予防的支援' },
   safetySupport: { label: '安心支援', section: '§5 予防的支援' },
   preSupport: { label: '事前支援', section: '§5 予防的支援' },
+  // §6 代替行動
+  desiredBehavior: { label: '本人の希望・目標', section: '§6 代替行動' },
+  teachingMethod: { label: '新しい教え方', section: '§6 代替行動' },
+  // §7 問題行動時対応
+  initialResponse: { label: '初期対応', section: '§7 問題行動時対応' },
+  staffResponse: { label: '職員の対応', section: '§7 問題行動時対応' },
   // §8 危機対応
   dangerousBehavior: { label: '危険行動', section: '§8 危機対応' },
   medicalCoordination: { label: '医療連携', section: '§8 危機対応' },
@@ -97,6 +111,7 @@ const FIELD_LABELS: Record<string, { label: string; section: string }> = {
 export function buildImportPreview(
   formPatches: Record<string, string>,
   currentFormValues: Record<string, unknown>,
+  icebergSummary?: ImportPreviewSummary['icebergSummary'],
 ): ImportPreviewResult {
   const items: ImportPreviewItem[] = [];
 
@@ -134,6 +149,7 @@ export function buildImportPreview(
       appendCount,
       skipCount: 0,
       totalAffected: newCount + appendCount,
+      icebergSummary,
     },
   };
 }

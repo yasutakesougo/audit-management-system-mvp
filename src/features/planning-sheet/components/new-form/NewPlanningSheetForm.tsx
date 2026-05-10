@@ -254,7 +254,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       const drafts = icebergToInterventionDrafts({ ...latest, targetUserId: (latest as unknown as IcebergSnapshot).userId } as unknown as IcebergSession);
       const result = buildIcebergImportResult(drafts);
       
-      const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>);
+      const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>, result.summary);
       setImportPreview(preview);
       // 特性アンケートのブリッジ結果と構造が同じなので再利用
       setLastBridgeResult({ formPatches: result.formPatches } as unknown as ReturnType<typeof tokuseiToPlanningBridge>);
