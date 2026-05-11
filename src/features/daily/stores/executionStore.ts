@@ -179,10 +179,32 @@ export function useExecutionStore() {
     [getRecords],
   );
 
+  /** 期間指定でユーザーの全記録を取得 */
+  const getRecordsInRange = useCallback(
+    (userId: string, from: string, to: string): ExecutionRecord[] => {
+      const normalizedUserId = normalizeExecutionUserId(userId);
+      const normalizedFrom = normalizeExecutionDate(from);
+      const normalizedTo = normalizeExecutionDate(to);
+      const results: ExecutionRecord[] = [];
+
+      for (const daily of Object.values(snapshot)) {
+        if (normalizeExecutionUserId(daily.userId) === normalizedUserId) {
+          const date = normalizeExecutionDate(daily.date);
+          if (date >= normalizedFrom && date <= normalizedTo) {
+            results.push(...daily.records);
+          }
+        }
+      }
+      return results;
+    },
+    [snapshot],
+  );
+
   return useMemo(() => ({
     getRecords,
     getRecord,
     upsertRecord,
     getCompletionRate,
-  }), [getRecords, getRecord, upsertRecord, getCompletionRate]);
+    getRecordsInRange,
+  }), [getRecords, getRecord, upsertRecord, getCompletionRate, getRecordsInRange]);
 }

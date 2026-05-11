@@ -35,6 +35,7 @@ import MonitoringDashboardSection from './MonitoringDashboardSection';
 import MeetingEvidenceDraftPanel from '@/features/monitoring/components/MeetingEvidenceDraftPanel';
 import MonitoringEvidencePanel from './MonitoringEvidencePanel';
 import MonitoringFieldSection from './MonitoringFieldSection';
+import KioskMonitoringEvidencePanel from '@/features/monitoring/components/KioskMonitoringEvidencePanel';
 import type { SectionTabProps } from './tabProps';
 
 export type MonitoringTabProps = SectionTabProps & {
@@ -119,6 +120,15 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, userName, setToas
         <MonitoringDashboardSection
           isAdmin={sectionProps.isAdmin}
           {...dashboardState}
+        />
+      )}
+
+      {/* キオスク記録（17手順）統計ドラフト (Issue #1871) */}
+      {userIdStr && (
+        <KioskMonitoringEvidencePanel
+          userId={userIdStr}
+          onAppendInsight={dashboardState.onAppendInsight}
+          isAdmin={sectionProps.isAdmin}
         />
       )}
 

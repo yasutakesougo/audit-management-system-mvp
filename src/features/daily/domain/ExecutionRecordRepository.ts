@@ -57,4 +57,10 @@ export interface ExecutionRecordRepository {
    * Useful for trend analysis and historical previews.
    */
   getHistoricalRecords(userId: string, scheduleItemId: string, limit?: number): Promise<ExecutionRecord[]>;
+
+  /**
+   * Get all execution records for a user within a specific date range.
+   * Useful for 90-day monitoring aggregation.
+   */
+  getRecordsInRange(userId: string, from: string, to: string): Promise<ExecutionRecord[]>;
 }
