@@ -18,7 +18,7 @@ import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core/extensions';
 import type { DefaultReactSuggestionItem } from '@blocknote/react';
 import { meetingMinutesSchema } from './blockKinds';
 
-type MeetingMinutesEditor = BlockNoteEditor<typeof meetingMinutesSchema.blockSchema>;
+export type MeetingMinutesEditor = BlockNoteEditor<typeof meetingMinutesSchema.blockSchema>;
 
 // ──────────────────────────────────────────────────────────────
 // グループ名定数
@@ -234,12 +234,27 @@ function getSecondaryItems(
  * 優先グループ → 補助グループ の順で配列する。
  */
 export function getMeetingMinutesSlashMenuItems(
-  editor: MeetingMinutesEditor
+  editor: MeetingMinutesEditor,
+  options?: {
+    onInsertMonitoringEvidence?: (editor: MeetingMinutesEditor) => void;
+  }
 ): DefaultReactSuggestionItem[] {
-  return [
+  const items = [
     ...getPrimaryItems(editor),
     ...getSecondaryItems(editor),
   ];
+
+  if (options?.onInsertMonitoringEvidence) {
+    items.push({
+      title: 'モニタリング根拠挿入',
+      onItemClick: () => options.onInsertMonitoringEvidence!(editor),
+      aliases: ['monitoring', 'evidence', 'kiosk', 'konkyo', '根拠'],
+      group: GROUP_PRIMARY,
+      subtext: '直近90日のキオスク統計・傾向を挿入',
+    });
+  }
+
+  return items;
 }
 
 /**

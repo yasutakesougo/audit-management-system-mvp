@@ -50,6 +50,8 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       F.staffAttendance,
       F.userHealthNotes,
       F.contentBlocksJson,
+      F.userId,
+      F.userName,
     ];
 
     const filter = this.buildFilter(params);
@@ -106,6 +108,8 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       F.staffAttendance,
       F.userHealthNotes,
       F.contentBlocksJson,
+      F.userId,
+      F.userName,
     ];
 
     try {
@@ -195,6 +199,8 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       staffAttendance: (item[F.staffAttendance] as string) ?? '',
       userHealthNotes: (item[F.userHealthNotes] as string) ?? '',
       contentBlocks,
+      userId: (item[F.userId] as string) ?? undefined,
+      userName: (item[F.userName] as string) ?? undefined,
       created: typeof item[F.created] === 'string' ? (item[F.created] as string) : undefined,
       modified: typeof item[F.modified] === 'string' ? (item[F.modified] as string) : undefined,
     };
@@ -223,7 +229,8 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
     const keys: (keyof typeof F)[] = [
       'title', 'meetingDate', 'category', 'summary', 'decisions', 
       'actions', 'tags', 'relatedLinks', 'isPublished', 
-      'chair', 'scribe', 'staffAttendance', 'userHealthNotes'
+      'chair', 'scribe', 'staffAttendance', 'userHealthNotes',
+      'userId', 'userName'
     ];
 
     keys.forEach(k => {

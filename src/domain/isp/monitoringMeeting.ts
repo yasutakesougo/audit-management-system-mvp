@@ -178,6 +178,8 @@ export interface MonitoringMeetingRecord {
   issueSummary?: string;
   /** 会議での検討内容（監査証跡） */
   discussionSummary: string;
+  /** 会議での検討内容（ブロックエディタ用） */
+  discussionSummaryBlocks?: MeetingMinuteBlock[];
   /** 支援計画シートの修正要否 */
   requiresPlanSheetUpdate?: boolean;
   /** 個別支援計画の修正要否 */

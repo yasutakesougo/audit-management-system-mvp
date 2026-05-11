@@ -20,6 +20,7 @@ import {
   type MonitoringMeetingFieldMapping,
   type SpMonitoringMeetingRow,
 } from '@/sharepoint/fields/monitoringMeetingFields';
+import { buildSummaryText } from '@/features/meeting-minutes/editor/blockMappers';
 import { MonitoringMeetingSchemaResolver } from './modules/MonitoringMeetingSchemaResolver';
 
 /**
@@ -209,6 +210,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       finalizedAt: (row[this.mf(mapping, 'finalizedAt')] as string | undefined) || undefined,
       finalizedBy: (row[this.mf(mapping, 'finalizedBy')] as string | undefined) || undefined,
       previousMeetingId: (row[this.mf(mapping, 'previousMeetingId')] as string | undefined) || undefined,
+      discussionSummaryBlocks: safeJsonParse<any[]>(row[this.mf(mapping, 'discussionSummaryBlocksJson')], undefined),
     };
   }
 
@@ -216,7 +218,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     const meetingDate = record.meetingDate?.slice(0, 10) ?? '';
     const nextMonitoringDate = record.nextMonitoringDate?.slice(0, 10) ?? '';
 
-    return {
+    const body: Record<string, unknown> = {
       Title: `${record.userId}_${meetingDate}`,
       [this.mf(mapping, 'recordId')]: record.id,
       [this.mf(mapping, 'userId')]: record.userId,
@@ -257,6 +259,17 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       [this.mf(mapping, 'finalizedAt')]: record.finalizedAt || '',
       [this.mf(mapping, 'finalizedBy')]: record.finalizedBy || '',
       [this.mf(mapping, 'previousMeetingId')]: record.previousMeetingId || '',
+      [this.mf(mapping, 'discussionSummaryBlocksJson')]: record.discussionSummaryBlocks ? JSON.stringify(record.discussionSummaryBlocks) : '',
     };
+
+    // Synchronize plain text for compatibility
+    if (record.discussionSummaryBlocks) {
+      const summaryText = buildSummaryText(record.discussionSummaryBlocks as any);
+      if (summaryText) {
+        body[this.mf(mapping, 'discussionSummary')] = summaryText;
+      }
+    }
+
+    return body;
   }
 }

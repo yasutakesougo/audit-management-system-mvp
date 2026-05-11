@@ -194,9 +194,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           >
             履歴・傾向を見る
           </Button>
-          {procedure.isKey && (
-            <Chip label="最優先" color="primary" sx={{ fontWeight: 'bold', px: 1 }} />
-          )}
           {isCompleted && (
             <Chip label="実施済み" color="success" icon={<CheckCircleOutlineIcon />} sx={{ fontWeight: 'bold' }} />
           )}

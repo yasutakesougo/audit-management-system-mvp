@@ -27,12 +27,13 @@ import { useCallback, useMemo, useRef } from 'react';
 import type { MeetingCategory, MeetingMinuteBlock } from '../types';
 import { meetingMinutesSchema } from '../editor/blockKinds';
 import { normalizeMeetingMinuteBlocks } from '../editor/blockNormalizer';
-import { getMeetingMinutesSlashMenuItems } from '../editor/slashMenuItems';
+import { getMeetingMinutesSlashMenuItems, type MeetingMinutesEditor } from '../editor/slashMenuItems';
 
 export type MeetingMinutesBlockEditorProps = {
   value: MeetingMinuteBlock[];
   onChange: (blocks: MeetingMinuteBlock[]) => void;
   category: MeetingCategory;
+  onInsertMonitoringEvidence?: (editor: MeetingMinutesEditor) => void;
 };
 
 /**
@@ -83,10 +84,12 @@ export function MeetingMinutesBlockEditor(
   // Slash メニュー: 議事録専用項目を先頭に、標準項目を後続に配置
   const slashMenuItems = useMemo(
     () => [
-      ...getMeetingMinutesSlashMenuItems(editor),
+      ...getMeetingMinutesSlashMenuItems(editor, {
+        onInsertMonitoringEvidence: props.onInsertMonitoringEvidence,
+      }),
       ...getDefaultReactSlashMenuItems(editor),
     ],
-    [editor]
+    [editor, props.onInsertMonitoringEvidence]
   );
 
   const handleChange = useCallback(() => {

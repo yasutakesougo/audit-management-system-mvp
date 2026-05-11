@@ -21,6 +21,8 @@ export const MEETING_MINUTES_FIELDS = {
   staffAttendance: 'StaffAttendance',
   userHealthNotes: 'UserHealthNotes',
   contentBlocksJson: 'ContentBlocksJson',
+  userId: 'UserId',
+  userName: 'UserName',
   created: 'Created',
   modified: 'Modified',
 } as const;
@@ -42,6 +44,8 @@ export const MEETING_MINUTES_SELECT_FIELDS = [
   MEETING_MINUTES_FIELDS.staffAttendance,
   MEETING_MINUTES_FIELDS.userHealthNotes,
   MEETING_MINUTES_FIELDS.contentBlocksJson,
+  MEETING_MINUTES_FIELDS.userId,
+  MEETING_MINUTES_FIELDS.userName,
   MEETING_MINUTES_FIELDS.created,
   MEETING_MINUTES_FIELDS.modified,
 ] as const;
@@ -58,6 +62,8 @@ export const MEETING_MINUTES_CANDIDATES = {
   attendees:       ['Attendees', 'attendees', 'cr013_attendees'],
   staffAttendance: ['StaffAttendance', 'staffAttendance', 'cr013_staffAttendance'],
   isPublished:     ['IsPublished', 'isPublished', 'cr013_isPublished', 'Published'],
+  userId:          ['UserId', 'userId', 'cr013_userId', 'UserCode'],
+  userName:        ['UserName', 'userName', 'cr013_userName'],
 } as const;
 
 export const MEETING_MINUTES_ESSENTIALS: (keyof typeof MEETING_MINUTES_CANDIDATES)[] = [
