@@ -13,13 +13,15 @@ import {
   List,
   ListItem,
   ListItemText,
-  Grid
+  Grid,
+  Button
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import HistoryIcon from '@mui/icons-material/History';
 import { useHistoricalRecords } from '@/features/daily/hooks/useHistoricalRecords';
 import { formatDateShort } from '@/lib/dateFormat';
 import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
+import { KioskDailyProcedureFlowPreview } from './KioskDailyProcedureFlowPreview';
 
 interface KioskProcedureHistoryPanelProps {
   userId: string;
@@ -39,6 +41,7 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
   onClose,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
+  const [selectedFlowDate, setSelectedFlowDate] = useState<string | null>(null);
   const { records, isLoading, error } = useHistoricalRecords(userId, scheduleItemId);
 
   const handleViewChange = (
@@ -124,16 +127,26 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
               <ListItem alignItems="flex-start" sx={{ px: 0, py: 2 }}>
                 <ListItemText
                   primary={
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                        {formatDateShort(record.date)}
-                      </Typography>
-                      <Chip 
-                        size="small" 
-                        label={record.status === 'completed' ? '実施' : record.status === 'triggered' ? '行動発生' : 'その他'} 
-                        color={record.status === 'completed' ? 'success' : record.status === 'triggered' ? 'warning' : 'default'}
-                        variant="outlined"
-                      />
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {formatDateShort(record.date)}
+                        </Typography>
+                        <Chip 
+                          size="small" 
+                          label={record.status === 'completed' ? '実施' : record.status === 'triggered' ? '行動発生' : 'その他'} 
+                          color={record.status === 'completed' ? 'success' : record.status === 'triggered' ? 'warning' : 'default'}
+                          variant="outlined"
+                        />
+                      </Stack>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => setSelectedFlowDate(record.date)}
+                        sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0 }}
+                      >
+                        この日の流れを見る
+                      </Button>
                     </Stack>
                   }
                   secondary={
@@ -205,6 +218,18 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
       </Box>
     );
   };
+
+  if (selectedFlowDate) {
+    return (
+      <KioskDailyProcedureFlowPreview
+        userId={userId}
+        userName={userName}
+        recordDate={selectedFlowDate}
+        onClose={onClose}
+        onBack={() => setSelectedFlowDate(null)}
+      />
+    );
+  }
 
   return (
     <Box sx={{ 
