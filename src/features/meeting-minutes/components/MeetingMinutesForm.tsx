@@ -205,13 +205,13 @@ export function MeetingMinutesForm(props: {
         <Autocomplete
           fullWidth
           options={users}
-          getOptionLabel={(u) => u.Title ?? u.userName ?? ''}
-          value={users.find(u => u.Id === value.userId) || null}
+          getOptionLabel={(u) => u.Title ?? u.FullName ?? ''}
+          value={users.find(u => u.Id.toString() === value.userId) || null}
           onChange={(_, u) => {
             onChange({
               ...value,
               userId: u?.Id?.toString(),
-              userName: u?.Title ?? u?.userName,
+              userName: u?.Title ?? u?.FullName ?? undefined,
             });
           }}
           renderInput={(params) => (

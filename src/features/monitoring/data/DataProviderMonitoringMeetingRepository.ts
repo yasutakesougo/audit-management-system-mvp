@@ -210,7 +210,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       finalizedAt: (row[this.mf(mapping, 'finalizedAt')] as string | undefined) || undefined,
       finalizedBy: (row[this.mf(mapping, 'finalizedBy')] as string | undefined) || undefined,
       previousMeetingId: (row[this.mf(mapping, 'previousMeetingId')] as string | undefined) || undefined,
-      discussionSummaryBlocks: safeJsonParse<any[]>(row[this.mf(mapping, 'discussionSummaryBlocksJson')], undefined),
+      discussionSummaryBlocks: safeJsonParse<any[] | undefined>(row[this.mf(mapping, 'discussionSummaryBlocksJson')], undefined),
     };
   }
 
