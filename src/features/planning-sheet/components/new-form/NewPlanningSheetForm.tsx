@@ -50,6 +50,7 @@ import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuse
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { tokuseiToPlanningBridge } from '../../tokuseiToPlanningBridge';
 import { buildImportPreview } from '../../buildImportPreview';
 import type { ImportPreviewResult } from '../../buildImportPreview';
@@ -83,6 +84,8 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const navigate = useNavigate();
   const { data: users } = useUsers();
   const { account } = useAuth();
+  const { role } = useUserAuthz();
+  const isAdmin = role === 'admin';
 
   // ── User selection state ──
   const [selectedUser, setSelectedUser] = React.useState<UserOption | null>(null);
@@ -695,6 +698,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 updateField={updateField}
                 renderProvenanceBadge={renderProvenanceBadge}
                 userId={selectedUser?.id}
+                isAdmin={isAdmin}
               />
             </Paper>
 
