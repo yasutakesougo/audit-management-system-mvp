@@ -854,7 +854,7 @@ export const handoffListEntries: readonly SpListEntry[] = [
       { internalName: 'UserId', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserId', 'UserID', 'cr013_userId'] },
       { internalName: 'DecisionStatus', type: 'Text', displayName: 'Decision Status', candidates: ['DecisionStatus'] },
       { internalName: 'IsCurrent', type: 'Boolean', displayName: 'Is Current', default: true },
-      { internalName: 'ISP_x0020_ID', type: 'Number', displayName: 'ISP ID', candidates: ['ISP_x0020_ID', 'ISPId', 'cr013_ispId'] },
+      { internalName: 'ISPId', type: 'Number', displayName: 'ISP ID', candidates: ['ISPId', 'ISP_x0020_ID', 'cr013_ispId'] },
       { internalName: 'TargetScene', type: 'Text', displayName: 'Target Scene', candidates: ['TargetScene', 'Scene', 'cr013_targetScene'] },
       { internalName: 'TargetDomain', type: 'Text', displayName: 'Target Domain', candidates: ['TargetDomain', 'Domain', 'cr013_targetDomain'] },
       { internalName: 'ObservationFacts', type: 'Note', displayName: 'Observation Facts', richText: false, candidates: ['ObservationFacts', 'cr013_observationFacts'] },
@@ -899,7 +899,7 @@ export const handoffListEntries: readonly SpListEntry[] = [
     essentialFields: ['UserId', 'PlanningSheetId', 'PeriodEnd'],
     provisioningFields: [
       { internalName: 'UserId', type: 'Text', displayName: 'User ID', required: true, indexed: true, isSilent: true, candidates: ['UserId', 'UserCode', 'User_x0020_ID', 'cr013_userId'] },
-      { internalName: 'Planning_x0020_Sheet_x0020_ID', type: 'Text', displayName: 'Planning Sheet ID', required: true, isSilent: true, candidates: ['PlanningSheetId', 'Planning_x0020_Sheet_x0020_ID', 'cr013_planningSheetId'] },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true, isSilent: true, candidates: ['PlanningSheetId', 'Planning_x0020_Sheet_x0020_ID', 'cr013_planningSheetId'] },
       { internalName: 'PeriodStart', type: 'DateTime', displayName: 'Period Start', dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['PeriodStart', 'PeriodStart0', 'cr013_periodStart'] },
       { internalName: 'PeriodEnd', type: 'DateTime', displayName: 'Period End', required: true, dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['PeriodEnd', 'Period_x0020_End', 'cr013_periodEnd'] },
       { internalName: 'SupportEvaluationsJson', type: 'Note', displayName: 'Support Evaluations JSON', richText: false, isSilent: true, candidates: ['SupportEvaluationsJson', 'SupportEvaluationsJson0', 'cr013_supportEvaluationsJson'] },
@@ -925,7 +925,7 @@ export const handoffListEntries: readonly SpListEntry[] = [
     lifecycle: 'required',
     essentialFields: ['PlanningSheetId', 'ReassessmentDate'],
     provisioningFields: [
-      { internalName: 'Planning_x0020_Sheet_x0020_ID', type: 'Text', displayName: 'Planning Sheet ID', required: true, indexed: true, isSilent: true, candidates: ['PlanningSheetId', 'Planning_x0020_Sheet_x0020_ID', 'cr013_planningSheetId'] },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true, indexed: true, isSilent: true, candidates: ['PlanningSheetId', 'Planning_x0020_Sheet_x0020_ID', 'cr013_planningSheetId'] },
       { internalName: 'UserId', type: 'Text', displayName: 'User ID', isSilent: true, candidates: ['UserId', 'UserCode', 'cr013_userId'] },
       { internalName: 'ReassessmentTrigger', type: 'Text', displayName: 'Reassessment Trigger', isSilent: true, candidates: ['ReassessmentTrigger', 'ReassessmentTrigger0', 'cr013_reassessmentTrigger'] },
       { internalName: 'ReassessmentDate', type: 'DateTime', displayName: 'Reassessment Date', required: true, dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['ReassessmentDate', 'Reassessment_x0020_Date', 'cr013_reassessmentDate'] },

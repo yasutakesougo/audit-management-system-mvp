@@ -154,7 +154,7 @@ export const PLANNING_SHEET_FIELDS = {
   id: 'Id',
   title: 'Title',
   userCode: 'UserCode',
-  ispId: 'ISP_x0020_ID',
+  ispId: 'ISPId',
   targetScene: 'TargetScene',
   targetDomain: 'TargetDomain',
   observationFacts: 'ObservationFacts',
@@ -318,7 +318,7 @@ export const PLANNING_SHEET_CANDIDATES = {
   id: ['Id', 'ID'],
   title: ['Title'],
   userCode: ['UserCode', 'userCode', 'User_ID', 'cr013_userCode'],
-  ispId: ['ISP_x0020_ID', 'ISPId', 'cr013_ispId'],
+  ispId: ['ISPId', 'ISP_x0020_ID', 'cr013_ispId'],
   targetScene: ['TargetScene', 'Scene', 'cr013_targetScene'],
   status: ['Status', 'UsageStatus', 'cr013_status'],
   versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
@@ -442,7 +442,7 @@ export const PROCEDURE_RECORD_CANDIDATES = {
   performedBy: ['PerformedBy', 'Staff', 'cr013_performedBy'],
   performedAt: ['PerformedAt', 'Time', 'cr013_performedAt'],
   ispId: ['ISP_x0020_ID', 'ISPId', 'cr013_ispId'],
-  handoffNotes: ['HandoffNotes', 'Handoff_x0020_Notes', 'cr013_handoffNotes'],
+  handoffNotes: ['Handoff_x0020_Notes', 'HandoffNotes', 'cr013_handoffNotes'],
 } as const;
 
 export const PROCEDURE_RECORD_ESSENTIALS: (keyof typeof PROCEDURE_RECORD_CANDIDATES)[] = [
