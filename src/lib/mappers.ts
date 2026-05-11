@@ -1,4 +1,4 @@
-﻿import {
+import {
     DAILY_FIELD_BEHAVIOR_LOG,
     DAILY_FIELD_DATE,
     DAILY_FIELD_DRAFT,
@@ -101,7 +101,7 @@ export function mapUser(item: UserRow): User {
 	const contractDateValue = toDateOnly(pickField<string>(record, 'ContractDate'));
 	const serviceStartDateValue = toDateOnly(pickField<string>(record, 'ServiceStartDate'));
 	const serviceEndDateValue = toDateOnly(pickField<string | null>(record, 'ServiceEndDate') ?? undefined);
-	const highIntensitySupport = pickField<boolean>(record, 'IsHighIntensitySupportTarget', 'severeFlag', 'SevereFlag') ?? false;
+	const highIntensitySupport = pickField<boolean>(record, 'IsHighIntensitySupportTarget', 'severeFlag') ?? false;
 	const transportToRaw = pickField<unknown>(record, 'TransportToDays', 'Transport_x0020_ToDays');
 	const transportFromRaw = pickField<unknown>(record, 'TransportFromDays', 'Transport_x0020_FromDays');
 	const attendanceRaw = pickField<unknown>(record, 'AttendanceDays');

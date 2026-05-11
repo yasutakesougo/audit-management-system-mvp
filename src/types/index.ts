@@ -7,7 +7,6 @@ export type SpUserItem = {
   FullNameKana?: string;
   AttendanceDays?: string[] | string | null;
   severeFlag?: boolean;
-  SevereFlag?: boolean;
   IsHighIntensitySupportTarget?: boolean;
   IsActive?: boolean;
   TransportToDays?: string[] | string | null;
@@ -43,6 +42,7 @@ export type User = {
   contractDate?: string | null;
   highIntensitySupport?: boolean;
   lifecycleStatus?: 'active' | 'suspended' | 'terminated' | 'unknown';
+  handoffNotes?: string;
   modified?: string;
   created?: string;
 };

@@ -154,8 +154,7 @@ export const PLANNING_SHEET_FIELDS = {
   id: 'Id',
   title: 'Title',
   userCode: 'UserCode',
-  ispLookupId: 'ISPLookupId',
-  ispId: 'ISPId',
+  ispId: 'ISP_x0020_ID',
   targetScene: 'TargetScene',
   targetDomain: 'TargetDomain',
   observationFacts: 'ObservationFacts',
@@ -196,7 +195,6 @@ export const PLANNING_SHEET_SELECT_FIELDS = [
   PLANNING_SHEET_FIELDS.id,
   PLANNING_SHEET_FIELDS.title,
   PLANNING_SHEET_FIELDS.userCode,
-  PLANNING_SHEET_FIELDS.ispLookupId,
   PLANNING_SHEET_FIELDS.ispId,
   PLANNING_SHEET_FIELDS.targetScene,
   PLANNING_SHEET_FIELDS.status,
@@ -231,8 +229,7 @@ export interface SpPlanningSheetRow {
   Id: number;
   Title: string;
   UserCode: string | null;
-  ISPLookupId: number | null;
-  ISPId: string | null;
+  ISP_x0020_ID: string | null;
   TargetScene?: string | null;
   TargetDomain?: string | null;
   ObservationFacts?: string | null;
@@ -273,8 +270,7 @@ export interface SpPlanningSheetRow {
 export interface SpPlanningSheetPayload {
   Title?: string;
   UserCode?: string;
-  ISPLookupId?: number;
-  ISPId?: string;
+  ISP_x0020_ID?: string;
   TargetScene?: string;
   TargetDomain?: string;
   ObservationFacts?: string;
@@ -322,7 +318,7 @@ export const PLANNING_SHEET_CANDIDATES = {
   id: ['Id', 'ID'],
   title: ['Title'],
   userCode: ['UserCode', 'userCode', 'User_ID', 'cr013_userCode'],
-  ispId: ['ISPId', 'ISPLookupId', 'cr013_ispId'],
+  ispId: ['ISP_x0020_ID', 'ISPId', 'cr013_ispId'],
   targetScene: ['TargetScene', 'Scene', 'cr013_targetScene'],
   status: ['Status', 'UsageStatus', 'cr013_status'],
   versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
@@ -349,9 +345,7 @@ export const PROCEDURE_RECORD_FIELDS = {
   id: 'Id',
   title: 'Title',
   userCode: 'UserCode',
-  ispLookupId: 'ISPLookupId',
-  ispId: 'ISPId',
-  planningSheetLookupId: 'PlanningSheetLookupId',
+  ispId: 'ISP_x0020_ID',
   planningSheetId: 'PlanningSheetId',
   recordDate: 'RecordDate',
   timeSlot: 'TimeSlot',
@@ -360,7 +354,7 @@ export const PROCEDURE_RECORD_FIELDS = {
   executionStatus: 'ExecutionStatus',
   userResponse: 'UserResponse',
   specialNotes: 'SpecialNotes',
-  handoffNotes: 'HandoffNotes',
+  handoffNotes: 'Handoff_x0020_Notes',
   performedBy: 'PerformedBy',
   performedAt: 'PerformedAt',
   created: 'Created',
@@ -392,9 +386,7 @@ export interface SpProcedureRecordRow {
   Id: number;
   Title: string;
   UserCode: string | null;
-  ISPLookupId?: number | null;
-  ISPId?: string | null;
-  PlanningSheetLookupId: number | null;
+  ISP_x0020_ID?: string | null;
   PlanningSheetId: string | null;
   RecordDate: string | null;
   TimeSlot?: string | null;
@@ -403,7 +395,7 @@ export interface SpProcedureRecordRow {
   ExecutionStatus: string;
   UserResponse?: string | null;
   SpecialNotes?: string | null;
-  HandoffNotes?: string | null;
+  Handoff_x0020_Notes?: string | null;
   PerformedBy: string;
   PerformedAt: string;
   Created?: string | null;
@@ -414,9 +406,7 @@ export interface SpProcedureRecordRow {
 export interface SpProcedureRecordPayload {
   Title?: string;
   UserCode?: string;
-  ISPLookupId?: number | null;
-  ISPId?: string | null;
-  PlanningSheetLookupId?: number;
+  ISP_x0020_ID?: string | null;
   PlanningSheetId?: string;
   RecordDate?: string;
   TimeSlot?: string;
@@ -425,7 +415,7 @@ export interface SpProcedureRecordPayload {
   ExecutionStatus?: string;
   UserResponse?: string;
   SpecialNotes?: string;
-  HandoffNotes?: string;
+  Handoff_x0020_Notes?: string;
   PerformedBy?: string;
   PerformedAt?: string;
 }
@@ -443,7 +433,7 @@ export const PROCEDURE_RECORD_CANDIDATES = {
   id: ['Id', 'ID'],
   title: ['Title'],
   userCode: ['UserCode', 'UserID', 'User_ID', 'cr013_userCode'],
-  planningSheetId: ['PlanningSheetId', 'PlanningSheetLookupId', 'cr013_planningSheetId'],
+  planningSheetId: ['PlanningSheetId', 'cr013_planningSheetId'],
   recordDate: ['RecordDate', 'Date', 'cr013_recordDate'],
   timeSlot: ['TimeSlot', 'Time', 'cr013_timeSlot'],
   activity: ['Activity', 'Action', 'cr013_activity'],
@@ -451,7 +441,7 @@ export const PROCEDURE_RECORD_CANDIDATES = {
   executionStatus: ['ExecutionStatus', 'Status', 'cr013_executionStatus'],
   performedBy: ['PerformedBy', 'Staff', 'cr013_performedBy'],
   performedAt: ['PerformedAt', 'Time', 'cr013_performedAt'],
-  ispId: ['ISPId', 'ISPLookupId', 'cr013_ispId'],
+  ispId: ['ISP_x0020_ID', 'ISPId', 'cr013_ispId'],
   handoffNotes: ['HandoffNotes', 'Handoff_x0020_Notes', 'cr013_handoffNotes'],
 } as const;
 
