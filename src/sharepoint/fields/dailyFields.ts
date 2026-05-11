@@ -146,7 +146,13 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   version: ['Version', 'VersionNo', 'cr013_version'],
   recordedAt: ['Recorded_x0020_At', 'RecordedAt', 'cr013_recordedAt'],
   rowKey: ['Title', 'RowKey'],
-  rowNo: ['RowNo', 'cr013_rowNo'],
+  rowNo: [
+    'RowNo', 
+    'cr013_rowNo', 
+    'RowIndex', 
+    'SlotNo', 
+    'RowNo0' // Legacy/Environment-specific drift candidate
+  ],
   memo: ['Memo', 'Observation', 'Payload', 'payload'],
   staffName: ['StaffName', 'RecordedBy'],
   bipsJSON: ['BipsJSON', 'cr013_bipsJSON'],

@@ -251,18 +251,19 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const existing = await this.getRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
 
     await this.initFields(this.childListTitle);
-    const rawBody = {
+    const rawBody: Record<string, unknown> = {
       [rf.rowKey]: rowKey,
       [rf.parentId]: parentId,
       [rf.userId]: normalizedRecord.userId,
-      [rf.rowNo]: normalizedRecord.scheduleItemId,
       [rf.status]: normalizedRecord.status,
-      [rf.memo]: normalizedRecord.memo,
-      [rf.payload]: normalizedRecord.memo, // Drift protection: map to both candidates
-      [rf.staffName]: normalizedRecord.recordedBy,
+      [rf.payload]: normalizedRecord.memo, // Standard payload fallback
       [rf.recordedAt]: normalizedRecord.recordedAt,
-      [rf.bipsJSON]: JSON.stringify(normalizedRecord.triggeredBipIds),
     };
+    
+    if (rf.rowNo) rawBody[rf.rowNo] = normalizedRecord.scheduleItemId;
+    if (rf.memo) rawBody[rf.memo] = normalizedRecord.memo;
+    if (rf.staffName) rawBody[rf.staffName] = normalizedRecord.recordedBy;
+    if (rf.bipsJSON) rawBody[rf.bipsJSON] = JSON.stringify(normalizedRecord.triggeredBipIds);
     
     // Title is needed for POST (creation) but often ignored in MERGE if it doesn't change
     if (!existing) {
@@ -330,6 +331,65 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return { completed, triggered, rate };
   }
 
+  async getHistoricalRecords(
+    userId: string,
+    scheduleItemId: string,
+    limit?: number,
+  ): Promise<ExecutionRecord[]> {
+    const normalizedUserId = normalizeExecutionUserId(userId);
+    const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
+    const rf = await this.getResolvedFields();
+    
+    // Safety: Limit history to approx 3 months to prevent large data transfers
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() - 95);
+    const thresholdStr = threshold.toISOString().split('T')[0];
+
+    // Build dynamic select to avoid querying non-existent columns
+    const selectFields = ['Id', 'Title', 'Created', 'Modified', rf.userId, rf.status, rf.payload, rf.recordedAt];
+    if (rf.rowKey) selectFields.push(rf.rowKey);
+    if (rf.rowNo) selectFields.push(rf.rowNo);
+    if (rf.memo) selectFields.push(rf.memo);
+    if (rf.staffName) selectFields.push(rf.staffName);
+    if (rf.bipsJSON) selectFields.push(rf.bipsJSON);
+    
+    const uniqueSelect = [...new Set(selectFields.filter((f): f is string => Boolean(f)))];
+
+    // 1. Primary query: Try direct filtering ONLY if rowNo is physically resolved
+    if (rf.rowNo) {
+      const filter = `${rf.userId} eq '${normalizedUserId}' and ${rf.rowNo} eq '${normalizedScheduleItemId}' and ${rf.recordedAt} ge '${thresholdStr}'`;
+      const url = `${this.resolvedChildPath}/items?$select=${uniqueSelect.join(',')}&$filter=${encodeURIComponent(filter)}&$orderby=${rf.recordedAt} desc${limit ? `&$top=${limit}` : ''}`;
+
+      const response = await this.spFetch(url);
+      if (response.ok) {
+        const data: SharePointResponse<JsonRecord> = await response.json();
+        return (data.value || []).map((item: JsonRecord) => this.mapToDomain(item, rf));
+      }
+      console.warn(`[ExecutionRepo] Primary history query failed (status: ${response.status}), falling back...`);
+    }
+
+    // 2. Fallback query: Filter by UserID + Date range and filter rows in-app
+    // This is used when rowNo is missing or primary query fails.
+    const fallbackSelect = uniqueSelect.filter(f => f !== rf.rowNo);
+    const fallbackFilter = `${rf.userId} eq '${normalizedUserId}' and (Created ge '${thresholdStr}' or ${rf.recordedAt} ge '${thresholdStr}')`;
+    const fallbackUrl = `${this.resolvedChildPath}/items?$select=${fallbackSelect.join(',')}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1000`;
+    
+    const fallbackRes = await this.spFetch(fallbackUrl);
+    if (fallbackRes.ok) {
+      const fallbackData: SharePointResponse<JsonRecord> = await fallbackRes.json();
+      const items = fallbackData.value || [];
+      return items
+        .map((item: JsonRecord) => this.mapToDomain(item, rf))
+        // Critical: filter by userId and scheduleItemId in-app
+        .filter(r => r.userId === normalizedUserId && r.scheduleItemId === normalizedScheduleItemId)
+        .sort((a, b) => (b.recordedAt || b.id).localeCompare(a.recordedAt || a.id))
+        .slice(0, limit || 150);
+    }
+
+    console.warn('[ExecutionRepo] Both primary and fallback history queries failed.');
+    return [];
+  }
+
   private pickFirstNonEmptyString(...values: unknown[]): string {
     for (const value of values) {
       if (typeof value === 'string' && value.trim().length > 0) {
@@ -343,7 +403,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const title = (item.Title || item.title || '') as string;
     let triggeredBipIds: string[] = [];
     try {
-      if (item[rf.bipsJSON]) {
+      if (rf.bipsJSON && item[rf.bipsJSON]) {
         triggeredBipIds = JSON.parse(item[rf.bipsJSON] as string);
       }
     } catch (e) {
@@ -352,7 +412,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     let date = title.slice(0, 10);
     const userId = (item[rf.userId] || '') as string;
-    let scheduleItemId = normalizeScheduleItemId(item[rf.rowNo]);
+    let scheduleItemId = rf.rowNo ? normalizeScheduleItemId(item[rf.rowNo]) : '';
 
     // Fallback: extract scheduleItemId and/or date from composite key if missing or empty
     if (!scheduleItemId || !/^\d{4}-\d{2}-\d{2}/.test(date)) {
@@ -383,13 +443,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       status: item[rf.status] as RecordStatus,
       triggeredBipIds,
       memo: this.pickFirstNonEmptyString(
-        item[rf.memo],
+        rf.memo ? item[rf.memo] : undefined,
         item[rf.payload],
         item.Observation,
         item.observation,
       ),
-      recordedBy: (item[rf.staffName] || '') as string,
-      recordedAt: (item[rf.recordedAt] || '') as string,
+      recordedBy: (rf.staffName ? item[rf.staffName] : '') as string,
+      recordedAt: (item[rf.recordedAt] || item.Created || item.Modified || '') as string,
     };
   }
 }

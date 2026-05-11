@@ -51,5 +51,10 @@ export interface ExecutionRecordRepository {
     userId: string,
     totalSlots: number,
   ): Promise<{ completed: number; triggered: number; rate: number }>;
-}
 
+  /**
+   * Get historical records for a user and procedure across multiple dates.
+   * Useful for trend analysis and historical previews.
+   */
+  getHistoricalRecords(userId: string, scheduleItemId: string, limit?: number): Promise<ExecutionRecord[]>;
+}

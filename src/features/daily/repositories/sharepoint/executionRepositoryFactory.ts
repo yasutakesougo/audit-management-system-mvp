@@ -130,6 +130,7 @@ function createLocalStorageExecutionAdapter(
       }),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       store.getCompletionRate(date, userId, totalSlots),
+    getHistoricalRecords: async () => [], // Historical records not supported in local store
   };
 }
 
@@ -145,6 +146,8 @@ function createSharePointExecutionAdapter(
       repository.upsertRecord(record),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       repository.getCompletionRate(date, userId, totalSlots),
+    getHistoricalRecords: async (userId: string, scheduleItemId: string, limit?: number) =>
+      repository.getHistoricalRecords(userId, scheduleItemId, limit),
   };
 }
 

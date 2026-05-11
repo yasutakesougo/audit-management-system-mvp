@@ -51,5 +51,15 @@ export interface ExecutionRecordRepository {
     userId: string,
     totalSlots: number,
   ): Promise<{ completed: number; triggered: number; rate: number }>;
+
+  /**
+   * Get historical records for a given user and scheduleItemId.
+   * Ordered by recordedAt descending.
+   */
+  getHistoricalRecords(
+    userId: string,
+    scheduleItemId: string,
+    limit?: number,
+  ): Promise<ExecutionRecord[]>;
 }
 

@@ -208,12 +208,12 @@ export class DailyRecordSchemaResolver {
             status: resolved.status ?? DAILY_RECORD_ROWS_FIELDS.status,
             payload: resolved.payload ?? DAILY_RECORD_ROWS_FIELDS.payload,
             recordedAt: resolved.recordedAt ?? DAILY_RECORD_ROWS_FIELDS.recordedAt,
-            // Execution record specific
+            // Execution record specific (Maintain undefined if not resolved)
             rowKey: resolved.rowKey ?? EXECUTION_RECORD_FIELDS.rowKey,
-            rowNo: resolved.rowNo ?? EXECUTION_RECORD_FIELDS.rowNo,
-            memo: resolved.memo ?? EXECUTION_RECORD_FIELDS.memo,
-            staffName: resolved.staffName ?? EXECUTION_RECORD_FIELDS.staffName,
-            bipsJSON: resolved.bipsJSON ?? EXECUTION_RECORD_FIELDS.bipsJSON,
+            rowNo: resolved.rowNo,
+            memo: resolved.memo,
+            staffName: resolved.staffName,
+            bipsJSON: resolved.bipsJSON,
         };
 
         return this.resolvedRowsFields;

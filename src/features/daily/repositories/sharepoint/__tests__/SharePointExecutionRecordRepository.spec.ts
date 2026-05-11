@@ -127,8 +127,8 @@ describe('SharePointExecutionRecordRepository', () => {
     
     expect(createCall).toBeDefined();
     const body = JSON.parse(createCall![1]!.body as string);
-    // Should include StaffName as filtering was skipped (fallback to full payload)
-    expect(body[EXECUTION_RECORD_FIELDS.staffName]).toBe('Staff A');
+    // Should NOT include StaffName as it was not in the physical schema probe (strict filtering)
+    expect(body[EXECUTION_RECORD_FIELDS.staffName]).toBeUndefined();
   });
 
   it('parses flat parent ID (no .d wrapper)', async () => {
@@ -391,6 +391,68 @@ describe('SharePointExecutionRecordRepository', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped = (repo as any).mapToDomain(mockItem, rf);
       expect(mapped.memo).toBe('');
+    });
+  });
+
+  describe('Strict Field Filtering Regressions', () => {
+    it('excludes RowNo from historical query URL when unresolved', async () => {
+      mockSpFetch.mockReset();
+      mockSpFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ value: [] }),
+      });
+
+      // Mock field resolution to NOT include RowNo
+      const mockGetFieldsNoRowNo = vi.fn().mockResolvedValue(new Set(['Title', 'UserId', 'Status', 'Payload']));
+      const repoStrict = new SharePointExecutionRecordRepository({
+        spFetch: mockSpFetch,
+        getListFieldInternalNames: mockGetFieldsNoRowNo,
+      });
+
+      await repoStrict.getHistoricalRecords('U001', 'S001');
+
+      const lastCall = mockSpFetch.mock.calls[mockSpFetch.mock.calls.length - 1];
+      const url = lastCall[0];
+      
+      expect(url).not.toContain('RowNo');
+      expect(url).not.toContain('$select=undefined');
+      expect(url).not.toContain('$filter=undefined');
+    });
+
+    it('does not include "undefined" keys in upsert payload when fields are unresolved', async () => {
+      mockSpFetch.mockReset();
+      mockSpFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ value: [] }),
+      });
+
+      // Mock field resolution to be empty (all drift-prone fields missing)
+      const mockGetFieldsEmpty = vi.fn().mockResolvedValue(new Set(['Title', 'Parent_x0020_ID', 'User_x0020_ID', 'Status', 'Payload']));
+      const repoStrict = new SharePointExecutionRecordRepository({
+        spFetch: mockSpFetch,
+        getListFieldInternalNames: mockGetFieldsEmpty,
+      });
+
+      const record: ExecutionRecord = {
+        id: 'R001',
+        date: '2024-01-01',
+        userId: 'U001',
+        scheduleItemId: 'S001',
+        status: 'completed',
+        memo: 'Test',
+        recordedAt: '2024-01-01T10:00:00Z',
+        recordedBy: 'Staff A',
+        triggeredBipIds: [],
+      };
+
+      await repoStrict.upsertRecord(record);
+
+      const upsertCall = mockSpFetch.mock.calls.find(call => call[1]?.method === 'POST');
+      const body = JSON.parse(upsertCall![1]!.body as string);
+      
+      expect(Object.keys(body)).not.toContain('undefined');
+      expect(body.RowNo).toBeUndefined();
+      expect(body.StaffName).toBeUndefined();
     });
   });
 });
