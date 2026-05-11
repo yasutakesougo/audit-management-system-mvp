@@ -46,7 +46,9 @@ function adjustPayloadWithResolvedFields(
 ): Record<string, unknown> {
   const adjusted: Record<string, unknown> = {};
 
-  const physicalToLogical: Record<string, string> = {
+  // 論理名と物理名の両方から論理キーへの逆引きマップ
+  const toLogicalMap: Record<string, string> = {
+    // Physical -> Logical
     Title: 'title',
     UserCode: 'userCode',
     ISPId: 'ispId',
@@ -61,20 +63,35 @@ function adjustPayloadWithResolvedFields(
     PlanningJson: 'planningJson',
     SupportStartDate: 'supportStartDate',
     MonitoringCycleDays: 'monitoringCycleDays',
+    // Logical -> Logical
+    title: 'title',
+    userCode: 'userCode',
+    ispId: 'ispId',
+    targetScene: 'targetScene',
+    targetDomain: 'targetDomain',
+    status: 'status',
+    versionNo: 'versionNo',
+    isCurrent: 'isCurrent',
+    formDataJson: 'formDataJson',
+    intakeJson: 'intakeJson',
+    assessmentJson: 'assessmentJson',
+    planningJson: 'planningJson',
+    supportStartDate: 'supportStartDate',
+    monitoringCycleDays: 'monitoringCycleDays',
   };
 
   for (const [key, value] of Object.entries(payload)) {
-    const logicalKey = physicalToLogical[key];
+    const logicalKey = toLogicalMap[key];
     if (logicalKey) {
       const resolvedName = fields[logicalKey];
       if (resolvedName) {
         adjusted[resolvedName] = value;
       } else {
-        // 物理スキーマに存在しない（undefined）フィールドはペイロードからオミットする
+        // 物理スキーマに存在せず、解決もできないフィールドはオミットする
         console.warn(`[DataProviderPlanningSheetRepository] Omit unresolved field from write payload: ${key}`);
       }
     } else {
-      // mapped candidatesに定義されていないフィールド（TargetDomain, ObservationFacts等）はそのまま通す
+      // マップされていないフィールドはそのまま通す (Id, Created, または新機能のフィールド)
       adjusted[key] = value;
     }
   }
@@ -228,7 +245,7 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     
     const created = await this.provider.createItem<SpPlanningSheetRow>(title, adjustedPayload);
     
-    const refreshed = await this.getById(`sp-${created.Id}`);
+    const refreshed = await this.getById(`sp-${created.id}`);
     if (!refreshed) throw new Error('[PlanningSheetRepository] Failed to reload created item');
     return refreshed;
   }

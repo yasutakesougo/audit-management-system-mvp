@@ -64,29 +64,29 @@ export const ISP_MASTER_SELECT_FIELDS = [
 
 /** ISP_Master 行の読み取り型 */
 export interface SpIspMasterRow {
-  Id: number;
-  Title: string;
-  UserCode: string | null;
-  PlanStartDate: string | null;
-  PlanEndDate: string | null;
-  UserIntent?: string | null;
-  FamilyIntent?: string | null;
-  OverallSupportPolicy?: string | null;
-  QolIssues?: string | null;
-  LongTermGoalsJson?: string | null;
-  ShortTermGoalsJson?: string | null;
-  SupportSummary?: string | null;
-  Precautions?: string | null;
-  ConsentAt?: string | null;
-  DeliveredAt?: string | null;
-  MonitoringSummary?: string | null;
-  LastMonitoringAt?: string | null;
-  NextReviewAt?: string | null;
-  Status: string;
-  VersionNo: number;
-  IsCurrent: boolean;
-  FormDataJson?: string | null;
-  UserSnapshotJson?: string | null;
+  id: number;
+  title: string;
+  userCode: string | null;
+  planStartDate: string | null;
+  planEndDate: string | null;
+  userIntent?: string | null;
+  familyIntent?: string | null;
+  overallSupportPolicy?: string | null;
+  qolIssues?: string | null;
+  longTermGoalsJson?: string | null;
+  shortTermGoalsJson?: string | null;
+  supportSummary?: string | null;
+  precautions?: string | null;
+  consentAt?: string | null;
+  deliveredAt?: string | null;
+  monitoringSummary?: string | null;
+  lastMonitoringAt?: string | null;
+  nextReviewAt?: string | null;
+  status: string;
+  versionNo: number;
+  isCurrent: boolean;
+  formDataJson?: string | null;
+  userSnapshotJson?: string | null;
   Created?: string | null;
   Modified?: string | null;
 }
@@ -226,42 +226,42 @@ export const PLANNING_SHEET_SELECT_FIELDS = [
 
 /** SupportPlanningSheet_Master 行の読み取り型 */
 export interface SpPlanningSheetRow {
-  Id: number;
-  Title: string;
-  UserCode: string | null;
-  ISP_x0020_ID: string | null;
-  TargetScene?: string | null;
-  TargetDomain?: string | null;
-  ObservationFacts?: string | null;
-  CollectedInformation?: string | null;
-  InterpretationHypothesis?: string | null;
-  SupportIssues?: string | null;
-  SupportPolicy?: string | null;
-  EnvironmentalAdjustments?: string | null;
-  ConcreteApproaches?: string | null;
-  AppliedFrom?: string | null;
-  NextReviewAt?: string | null;
-  Status: string;
-  VersionNo: number;
-  IsCurrent: boolean;
-  FormDataJson?: string | null;
+  id: number;
+  title: string;
+  userCode: string | null;
+  ispId: string | null;
+  targetScene?: string | null;
+  targetDomain?: string | null;
+  observationFacts?: string | null;
+  collectedInformation?: string | null;
+  interpretationHypothesis?: string | null;
+  supportIssues?: string | null;
+  supportPolicy?: string | null;
+  environmentalAdjustments?: string | null;
+  concreteApproaches?: string | null;
+  appliedFrom?: string | null;
+  nextReviewAt?: string | null;
+  status: string;
+  versionNo?: number | null;
+  isCurrent: boolean;
+  formDataJson?: string | null;
   // 制度項目
-  AuthoredByStaffId?: string | null;
-  AuthoredByQualification?: string | null;
-  AuthoredAt?: string | null;
-  ApplicableServiceType?: string | null;
-  ApplicableAddOnTypesJson?: string | null;
-  DeliveredToUserAt?: string | null;
-  ReviewedAt?: string | null;
-  HasMedicalCoordination?: boolean | null;
-  HasEducationCoordination?: boolean | null;
-  RegulatoryBasisSnapshotJson?: string | null;
+  authoredByStaffId?: string | null;
+  authoredByQualification?: string | null;
+  authoredAt?: string | null;
+  applicableServiceType?: string | null;
+  applicableAddOnTypesJson?: string | null;
+  deliveredToUserAt?: string | null;
+  reviewedAt?: string | null;
+  hasMedicalCoordination?: boolean | null;
+  hasEducationCoordination?: boolean | null;
+  regulatoryBasisSnapshotJson?: string | null;
   // 実務モデル JSON
-  IntakeJson?: string | null;
-  AssessmentJson?: string | null;
-  PlanningJson?: string | null;
-  SupportStartDate?: string | null;
-  MonitoringCycleDays?: number | null;
+  intakeJson?: string | null;
+  assessmentJson?: string | null;
+  planningJson?: string | null;
+  supportStartDate?: string | null;
+  monitoringCycleDays?: number | null;
   Created?: string | null;
   Modified?: string | null;
 }
@@ -317,18 +317,18 @@ export function buildPlanningSheetSelectFields(existingInternalNames?: readonly 
 export const PLANNING_SHEET_CANDIDATES = {
   id: ['Id', 'ID'],
   title: ['Title'],
-  userCode: ['UserCode', 'userCode', 'User_ID', 'cr013_userCode'],
-  ispId: ['ISPId', 'ISP_x0020_ID', 'cr013_ispId'],
+  userCode: ['UserCode', 'userCode', 'User_ID', 'userId', 'cr013_userCode'],
+  userId: ['UserId', 'UserID', 'cr013_userId'],
+  ispId: ['ISPId', 'ISP_x0020_ID', 'ISPLookupId', 'PlanningSheetId', 'PlanningSheetLookupId', 'cr013_ispId'],
   targetScene: ['TargetScene', 'Scene', 'cr013_targetScene'],
   status: ['Status', 'UsageStatus', 'cr013_status'],
-  versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
   isCurrent: ['IsCurrent', 'Current', 'cr013_isCurrent'],
   formDataJson: ['FormDataJson', 'cr013_formDataJson'],
   intakeJson: ['IntakeJson', 'cr013_intakeJson'],
   assessmentJson: ['AssessmentJson', 'cr013_assessmentJson'],
   planningJson: ['PlanningJson', 'cr013_planningJson'],
-  supportStartDate: ['SupportStartDate', 'cr013_supportStartDate'],
-  monitoringCycleDays: ['MonitoringCycleDays', 'cr013_monitoringCycleDays'],
+  // 注意: VersionNo, SupportStartDate, MonitoringCycleDays は物理リストに存在しないため、
+  // 警告を避けるために候補から除外するか、必要に応じて registry に追加してください。
 } as const;
 
 export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [
@@ -383,21 +383,21 @@ export const PROCEDURE_RECORD_SELECT_FIELDS = [
 
 /** SupportProcedureRecord_Daily 行の読み取り型 */
 export interface SpProcedureRecordRow {
-  Id: number;
-  Title: string;
-  UserCode: string | null;
-  ISP_x0020_ID?: string | null;
-  PlanningSheetId: string | null;
-  RecordDate: string | null;
-  TimeSlot?: string | null;
-  Activity?: string | null;
-  ProcedureText: string;
-  ExecutionStatus: string;
-  UserResponse?: string | null;
-  SpecialNotes?: string | null;
-  Handoff_x0020_Notes?: string | null;
-  PerformedBy: string;
-  PerformedAt: string;
+  id: number;
+  title: string;
+  userCode: string | null;
+  ispId?: string | null;
+  planningSheetId: string | null;
+  recordDate: string | null;
+  timeSlot?: string | null;
+  activity?: string | null;
+  procedureText: string;
+  executionStatus: string;
+  userResponse?: string | null;
+  specialNotes?: string | null;
+  handoffNotes?: string | null;
+  performedBy: string;
+  performedAt: string;
   Created?: string | null;
   Modified?: string | null;
 }
@@ -433,7 +433,7 @@ export const PROCEDURE_RECORD_CANDIDATES = {
   id: ['Id', 'ID'],
   title: ['Title'],
   userCode: ['UserCode', 'UserID', 'User_ID', 'cr013_userCode'],
-  planningSheetId: ['PlanningSheetId', 'cr013_planningSheetId'],
+  planningSheetId: ['PlanningSheetId', 'PlanningSheetLookupId', 'cr013_planningSheetId'],
   recordDate: ['RecordDate', 'Date', 'cr013_recordDate'],
   timeSlot: ['TimeSlot', 'Time', 'cr013_timeSlot'],
   activity: ['Activity', 'Action', 'cr013_activity'],

@@ -109,54 +109,54 @@ const EMPTY_PLANNING = {
 /** SP row → IndividualSupportPlan (full) */
 export function mapIspRowToDomain(row: SpIspMasterRow): IndividualSupportPlan {
   return individualSupportPlanSchema.parse({
-    id: `sp-${row.Id}`,
+    id: `sp-${row.id}`,
     createdAt: str(row.Created, new Date().toISOString()),
-    createdBy: str(row.UserCode, 'system'),
+    createdBy: str(row.userCode, 'system'),
     updatedAt: str(row.Modified, new Date().toISOString()),
-    updatedBy: str(row.UserCode, 'system'),
-    version: row.VersionNo ?? 1,
+    updatedBy: str(row.userCode, 'system'),
+    version: row.versionNo ?? 1,
 
-    userId: str(row.UserCode),
-    title: str(row.Title),
-    planStartDate: str(row.PlanStartDate, '1970-01-01'),
-    planEndDate: str(row.PlanEndDate, '1970-01-01'),
+    userId: str(row.userCode),
+    title: str(row.title),
+    planStartDate: str(row.planStartDate, '1970-01-01'),
+    planEndDate: str(row.planEndDate, '1970-01-01'),
 
-    userIntent: str(row.UserIntent),
-    familyIntent: str(row.FamilyIntent),
-    overallSupportPolicy: str(row.OverallSupportPolicy),
-    qolIssues: str(row.QolIssues),
+    userIntent: str(row.userIntent),
+    familyIntent: str(row.familyIntent),
+    overallSupportPolicy: str(row.overallSupportPolicy),
+    qolIssues: str(row.qolIssues),
 
-    longTermGoals: parseJsonArray(row.LongTermGoalsJson),
-    shortTermGoals: parseJsonArray(row.ShortTermGoalsJson),
+    longTermGoals: parseJsonArray(row.longTermGoalsJson),
+    shortTermGoals: parseJsonArray(row.shortTermGoalsJson),
 
-    supportSummary: str(row.SupportSummary),
-    precautions: str(row.Precautions),
+    supportSummary: str(row.supportSummary),
+    precautions: str(row.precautions),
 
-    consentAt: row.ConsentAt ?? null,
-    deliveredAt: row.DeliveredAt ?? null,
-    monitoringSummary: str(row.MonitoringSummary),
-    lastMonitoringAt: row.LastMonitoringAt ?? null,
-    nextReviewAt: row.NextReviewAt ?? null,
+    consentAt: row.consentAt ?? null,
+    deliveredAt: row.deliveredAt ?? null,
+    monitoringSummary: str(row.monitoringSummary),
+    lastMonitoringAt: row.lastMonitoringAt ?? null,
+    nextReviewAt: row.nextReviewAt ?? null,
 
-    status: row.Status ?? 'assessment',
-    isCurrent: row.IsCurrent ?? true,
+    status: row.status ?? 'assessment',
+    isCurrent: row.isCurrent ?? true,
 
     // 利用者スナップショット（作成時点の利用者マスタ属性を凍結保存）
-    userSnapshot: parseUserSnapshot(row.UserSnapshotJson),
+    userSnapshot: parseUserSnapshot(row.userSnapshotJson),
   });
 }
 
 /** SP row → IspListItem (lightweight) */
 export function mapIspRowToListItem(row: SpIspMasterRow): IspListItem {
   return ispListItemSchema.parse({
-    id: `sp-${row.Id}`,
-    userId: str(row.UserCode),
-    title: str(row.Title),
-    planStartDate: str(row.PlanStartDate, '1970-01-01'),
-    planEndDate: str(row.PlanEndDate, '1970-01-01'),
-    status: row.Status ?? 'assessment',
-    nextReviewAt: row.NextReviewAt ?? null,
-    isCurrent: row.IsCurrent ?? true,
+    id: `sp-${row.id}`,
+    userId: str(row.userCode),
+    title: str(row.title),
+    planStartDate: str(row.planStartDate, '1970-01-01'),
+    planEndDate: str(row.planEndDate, '1970-01-01'),
+    status: row.status ?? 'assessment',
+    nextReviewAt: row.nextReviewAt ?? null,
+    isCurrent: row.isCurrent ?? true,
   });
 }
 
@@ -215,53 +215,53 @@ export function mapIspUpdateInputToPayload(input: IspUpdateInput): SpIspMasterPa
 
 /** SP row → SupportPlanningSheet (full) */
 export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPlanningSheet {
-  const planning = parseJsonObject(row.PlanningJson, EMPTY_PLANNING);
+  const planning = parseJsonObject(row.planningJson, EMPTY_PLANNING);
   return supportPlanningSheetSchema.parse({
-    id: `sp-${row.Id}`,
+    id: `sp-${row.id}`,
     createdAt: str(row.Created, new Date().toISOString()),
-    createdBy: str(row.UserCode, 'system'),
+    createdBy: str(row.userCode, 'system'),
     updatedAt: str(row.Modified, new Date().toISOString()),
-    updatedBy: str(row.UserCode, 'system'),
-    version: row.VersionNo ?? 1,
+    updatedBy: str(row.userCode, 'system'),
+    version: row.versionNo ?? 1,
 
-    userId: str(row.UserCode),
-    ispId: row.ISP_x0020_ID ?? '',
-    title: str(row.Title),
+    userId: str(row.userCode),
+    ispId: row.ispId ?? '',
+    title: str(row.title),
 
-    targetScene: str(row.TargetScene),
-    targetDomain: str(row.TargetDomain),
+    targetScene: str(row.targetScene),
+    targetDomain: str(row.targetDomain),
 
-    observationFacts: str(row.ObservationFacts),
-    collectedInformation: str(row.CollectedInformation),
-    interpretationHypothesis: str(row.InterpretationHypothesis),
-    supportIssues: str(row.SupportIssues),
-    supportPolicy: str(row.SupportPolicy),
-    environmentalAdjustments: str(row.EnvironmentalAdjustments),
-    concreteApproaches: str(row.ConcreteApproaches),
+    observationFacts: str(row.observationFacts),
+    collectedInformation: str(row.collectedInformation),
+    interpretationHypothesis: str(row.interpretationHypothesis),
+    supportIssues: str(row.supportIssues),
+    supportPolicy: str(row.supportPolicy),
+    environmentalAdjustments: str(row.environmentalAdjustments),
+    concreteApproaches: str(row.concreteApproaches),
 
-    appliedFrom: row.AppliedFrom ?? null,
-    nextReviewAt: row.NextReviewAt ?? null,
+    appliedFrom: row.appliedFrom ?? null,
+    nextReviewAt: row.nextReviewAt ?? null,
 
     // 制度項目
-    authoredByStaffId: str(row.AuthoredByStaffId),
-    authoredByQualification: row.AuthoredByQualification ?? 'unknown',
-    authoredAt: row.AuthoredAt ?? null,
-    applicableServiceType: row.ApplicableServiceType ?? 'other',
-    applicableAddOnTypes: parseJsonArray(row.ApplicableAddOnTypesJson).length > 0
-      ? parseJsonArray(row.ApplicableAddOnTypesJson) as string[]
+    authoredByStaffId: str(row.authoredByStaffId),
+    authoredByQualification: row.authoredByQualification ?? 'unknown',
+    authoredAt: row.authoredAt ?? null,
+    applicableServiceType: row.applicableServiceType ?? 'other',
+    applicableAddOnTypes: parseJsonArray(row.applicableAddOnTypesJson).length > 0
+      ? parseJsonArray(row.applicableAddOnTypesJson) as string[]
       : ['none'],
-    deliveredToUserAt: row.DeliveredToUserAt ?? null,
-    reviewedAt: row.ReviewedAt ?? null,
-    hasMedicalCoordination: row.HasMedicalCoordination ?? false,
-    hasEducationCoordination: row.HasEducationCoordination ?? false,
-    regulatoryBasisSnapshot: parseJsonObject(row.RegulatoryBasisSnapshotJson, EMPTY_SNAPSHOT),
+    deliveredToUserAt: row.deliveredToUserAt ?? null,
+    reviewedAt: row.reviewedAt ?? null,
+    hasMedicalCoordination: row.hasMedicalCoordination ?? false,
+    hasEducationCoordination: row.hasEducationCoordination ?? false,
+    regulatoryBasisSnapshot: parseJsonObject(row.regulatoryBasisSnapshotJson, EMPTY_SNAPSHOT),
 
-    status: row.Status ?? 'draft',
-    isCurrent: row.IsCurrent ?? true,
+    status: row.status ?? 'draft',
+    isCurrent: row.isCurrent ?? true,
 
     // 実務モデル
-    intake: parseJsonObject(row.IntakeJson, EMPTY_INTAKE),
-    assessment: parseJsonObject(row.AssessmentJson, EMPTY_ASSESSMENT),
+    intake: parseJsonObject(row.intakeJson, EMPTY_INTAKE),
+    assessment: parseJsonObject(row.assessmentJson, EMPTY_ASSESSMENT),
     planning: planning,
 
     // §9 モニタリング（フラット化したフィールドへのマッピング）
@@ -271,31 +271,31 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     improvementResult: planning.improvementResult ?? '',
     nextSupport: planning.nextSupport ?? '',
 
-    supportStartDate: row.SupportStartDate ?? null,
-    monitoringCycleDays: row.MonitoringCycleDays ?? 90,
+    supportStartDate: row.supportStartDate ?? null,
+    monitoringCycleDays: row.monitoringCycleDays ?? 90,
   });
 }
 
 /** SP row → PlanningSheetListItem (lightweight) */
 export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): PlanningSheetListItem {
   return planningSheetListItemSchema.parse({
-    id: `sp-${row.Id}`,
-    userId: str(row.UserCode),
-    ispId: row.ISP_x0020_ID ?? '',
-    title: str(row.Title),
-    targetScene: row.TargetScene ?? null,
-    status: row.Status ?? 'draft',
-    nextReviewAt: row.NextReviewAt ?? null,
-    isCurrent: row.IsCurrent ?? true,
+    id: `sp-${row.id}`,
+    userId: str(row.userCode),
+    ispId: row.ispId ?? '',
+    title: str(row.title),
+    targetScene: row.targetScene ?? null,
+    status: row.status ?? 'draft',
+    nextReviewAt: row.nextReviewAt ?? null,
+    isCurrent: row.isCurrent ?? true,
     // 制度項目
-    applicableServiceType: row.ApplicableServiceType ?? 'other',
-    applicableAddOnTypes: parseJsonArray(row.ApplicableAddOnTypesJson).length > 0
-      ? parseJsonArray(row.ApplicableAddOnTypesJson) as string[]
+    applicableServiceType: row.applicableServiceType ?? 'other',
+    applicableAddOnTypes: parseJsonArray(row.applicableAddOnTypesJson).length > 0
+      ? parseJsonArray(row.applicableAddOnTypesJson) as string[]
       : ['none'],
-    authoredByQualification: row.AuthoredByQualification ?? 'unknown',
-    reviewedAt: row.ReviewedAt ?? null,
-    supportStartDate: row.SupportStartDate ?? null,
-    appliedFrom: row.AppliedFrom ?? null,
+    authoredByQualification: row.authoredByQualification ?? 'unknown',
+    reviewedAt: row.reviewedAt ?? null,
+    supportStartDate: row.supportStartDate ?? null,
+    appliedFrom: row.appliedFrom ?? null,
   });
 }
 
@@ -419,44 +419,44 @@ export function mapPlanningSheetUpdateInputToPayload(input: PlanningSheetUpdateI
 /** SP row → SupportProcedureRecord (full) */
 export function mapProcedureRecordRowToDomain(row: SpProcedureRecordRow): SupportProcedureRecord {
   return supportProcedureRecordSchema.parse({
-    id: `sp-${row.Id}`,
+    id: `sp-${row.id}`,
     createdAt: str(row.Created, new Date().toISOString()),
-    createdBy: str(row.PerformedBy, 'system'),
+    createdBy: str(row.performedBy, 'system'),
     updatedAt: str(row.Modified, new Date().toISOString()),
-    updatedBy: str(row.PerformedBy, 'system'),
+    updatedBy: str(row.performedBy, 'system'),
     version: 1,
 
-    userId: str(row.UserCode),
-    ispId: row.ISP_x0020_ID ?? null,
-    planningSheetId: row.PlanningSheetId ?? '',
+    userId: str(row.userCode),
+    ispId: row.ispId ?? null,
+    planningSheetId: row.planningSheetId ?? '',
 
-    recordDate: str(row.RecordDate, '1970-01-01'),
-    timeSlot: str(row.TimeSlot),
-    activity: str(row.Activity),
+    recordDate: str(row.recordDate, '1970-01-01'),
+    timeSlot: str(row.timeSlot),
+    activity: str(row.activity),
 
-    procedureText: str(row.ProcedureText),
-    executionStatus: row.ExecutionStatus ?? 'planned',
+    procedureText: str(row.procedureText),
+    executionStatus: row.executionStatus ?? 'planned',
 
-    userResponse: str(row.UserResponse),
-    specialNotes: str(row.SpecialNotes),
-    handoffNotes: str(row.Handoff_x0020_Notes),
+    userResponse: str(row.userResponse),
+    specialNotes: str(row.specialNotes),
+    handoffNotes: str(row.handoffNotes),
 
-    performedBy: str(row.PerformedBy),
-    performedAt: str(row.PerformedAt, new Date().toISOString()),
+    performedBy: str(row.performedBy),
+    performedAt: str(row.performedAt, new Date().toISOString()),
   });
 }
 
 /** SP row → ProcedureRecordListItem (lightweight) */
 export function mapProcedureRecordRowToListItem(row: SpProcedureRecordRow): ProcedureRecordListItem {
   return procedureRecordListItemSchema.parse({
-    id: `sp-${row.Id}`,
-    userId: str(row.UserCode),
-    planningSheetId: row.PlanningSheetId ?? '',
-    recordDate: str(row.RecordDate, '1970-01-01'),
-    timeSlot: row.TimeSlot ?? null,
-    activity: row.Activity ?? null,
-    executionStatus: row.ExecutionStatus ?? 'planned',
-    performedBy: str(row.PerformedBy),
+    id: `sp-${row.id}`,
+    userId: str(row.userCode),
+    planningSheetId: row.planningSheetId ?? '',
+    recordDate: str(row.recordDate, '1970-01-01'),
+    timeSlot: row.timeSlot ?? null,
+    activity: row.activity ?? null,
+    executionStatus: row.executionStatus ?? 'planned',
+    performedBy: str(row.performedBy),
   });
 }
 
