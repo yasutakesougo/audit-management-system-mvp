@@ -3,6 +3,9 @@ import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, S
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Drawer } from '@mui/material';
+import HistoryIcon from '@mui/icons-material/History';
+import { KioskProcedureHistoryPanel } from './KioskProcedureHistoryPanel';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
@@ -51,6 +54,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showSaveError, setShowSaveError] = useState(false);
   const [showValidationError, setShowValidationError] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // 観察チップ用ステート
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -164,7 +168,16 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             </Typography>
           </Box>
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<HistoryIcon />}
+            onClick={() => setShowHistory(true)}
+            sx={{ fontWeight: 'bold', borderRadius: 3 }}
+          >
+            履歴・傾向を見る
+          </Button>
           {procedure.isKey && (
             <Chip label="最優先" color="primary" sx={{ fontWeight: 'bold', px: 1 }} />
           )}
@@ -398,6 +411,23 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           手順記録の内容を1つ以上入力してください。
         </Alert>
       </Snackbar>
+
+      <Drawer
+        anchor="right"
+        open={showHistory}
+        onClose={() => setShowHistory(false)}
+        PaperProps={{
+          sx: { width: { xs: '100%', md: 450 } }
+        }}
+      >
+        <KioskProcedureHistoryPanel
+          userId={userId || ''}
+          scheduleItemId={scheduleItemId}
+          userName={user.FullName}
+          procedureName={procedure.activity}
+          onClose={() => setShowHistory(false)}
+        />
+      </Drawer>
     </Box>
   );
 };

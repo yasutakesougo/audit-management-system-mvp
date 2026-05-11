@@ -200,6 +200,24 @@ export function formatDateIso(input: DateInput, fallback: string = ''): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * 日付を M/D 形式にフォーマットする。
+ *
+ * 用途: スペースの限られた場所での日付表示（月日のみ）。
+ *
+ * @example
+ * formatDateShort(new Date(2025, 0, 15)) // => "1/15"
+ * formatDateShort(null) // => ""
+ */
+export function formatDateShort(input: DateInput, fallback: string = ''): string {
+  const d = toSafeDate(input);
+  if (!d) return fallback;
+
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${m}/${day}`;
+}
+
 // ---------------------------------------------------------------------------
 // Relative time formatting
 // ---------------------------------------------------------------------------

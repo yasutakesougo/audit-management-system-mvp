@@ -67,12 +67,12 @@ export type ResolvedRowsFields = {
     status: string;
     payload: string;
     recordedAt: string;
-    // Execution record specific
+    // Execution record specific (drift-prone)
     rowKey: string;
-    rowNo: string;
-    memo: string;
-    staffName: string;
-    bipsJSON: string;
+    rowNo?: string;
+    memo?: string;
+    staffName?: string;
+    bipsJSON?: string;
 };
 
 /**
