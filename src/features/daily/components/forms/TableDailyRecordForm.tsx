@@ -76,7 +76,7 @@ export function TableDailyRecordForm({
             <Box sx={{ flex: 1 }}>
               <TableDailyRecordUserPicker
                 {...vm.sections.picker}
-                defaultExpanded={variant === 'content'}
+                defaultExpanded={false}
                 autoFocusSearch={variant === 'content'}
               />
             </Box>
