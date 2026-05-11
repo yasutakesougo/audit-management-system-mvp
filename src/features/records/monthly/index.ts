@@ -15,6 +15,11 @@ export type {
 	MonthlyRecordSortKey,
 } from './types';
 
+export type {
+	KioskMonthlyAggregationResult,
+	KioskMonthlyEvidenceStats,
+} from './kioskEvidence';
+
 // Map/boundary helpers（境界で使うものだけ公開）
 export {
 	getCurrentYearMonth,
@@ -39,3 +44,10 @@ export {
 	getWorkingDaysInMonth,
 	toYearMonth,
 } from './aggregate';
+
+// Kiosk evidence bridge（月次集計とキオスク実施証跡の整合境界）
+export {
+	aggregateMonthlySummaryFromKioskEvidence,
+	buildMonthlyDailyRecordsFromKioskEvidence,
+	toMonthlyDailyRecordFromKioskEvidence,
+} from './kioskEvidence';
