@@ -99,6 +99,7 @@ export type ExecutionStoreHooks = {
     userId: string,
     totalSlots: number,
   ) => { completed: number; triggered: number; rate: number };
+  getRecordsInRange: (userId: string, from: string, to: string) => ExecutionRecord[];
 };
 
 // ────────────────────────────────────────────────────────────
@@ -131,6 +132,8 @@ function createLocalStorageExecutionAdapter(
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       store.getCompletionRate(date, userId, totalSlots),
     getHistoricalRecords: async () => [], // Historical records not supported in local store
+    getRecordsInRange: async (userId: string, from: string, to: string) =>
+      store.getRecordsInRange(userId, from, to),
   };
 }
 
@@ -148,6 +151,8 @@ function createSharePointExecutionAdapter(
       repository.getCompletionRate(date, userId, totalSlots),
     getHistoricalRecords: async (userId: string, scheduleItemId: string, limit?: number) =>
       repository.getHistoricalRecords(userId, scheduleItemId, limit),
+    getRecordsInRange: async (userId: string, from: string, to: string) =>
+      repository.getRecordsInRange(userId, from, to),
   };
 }
 

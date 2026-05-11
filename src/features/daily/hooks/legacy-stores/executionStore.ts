@@ -150,13 +150,34 @@ export function useExecutionStore() {
     [getRecords],
   );
 
+  /** 期間指定で全記録を取得 */
+  const getRecordsInRange = useCallback(
+    (userId: string, from: string, to: string): ExecutionRecord[] => {
+      const allRecords: ExecutionRecord[] = [];
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+
+      Object.values(snapshot).forEach((daily) => {
+        if (daily.userId !== userId) return;
+        const d = new Date(daily.date);
+        if (d >= fromDate && d <= toDate) {
+          allRecords.push(...daily.records);
+        }
+      });
+
+      return allRecords;
+    },
+    [snapshot],
+  );
+
   return useMemo(
     () => ({
       getRecords,
       getRecord,
       upsertRecord,
       getCompletionRate,
+      getRecordsInRange,
     } as const),
-    [getRecords, getRecord, upsertRecord, getCompletionRate]
+    [getRecords, getRecord, upsertRecord, getCompletionRate, getRecordsInRange]
   );
 }

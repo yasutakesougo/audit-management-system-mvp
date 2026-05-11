@@ -184,6 +184,29 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     throw new Error(`[ExecutionRepo] Failed to ensure parent record for ${dailyKey}`);
   }
 
+  async getRecordsInRange(userId: string, from: string, to: string): Promise<ExecutionRecord[]> {
+    const normalizedUserId = normalizeExecutionUserId(userId);
+    const normalizedFrom = normalizeExecutionDate(from);
+    const normalizedTo = normalizeExecutionDate(to);
+    const rf = await this.getResolvedFields();
+
+    // rowKey format: YYYY-MM-DD-userId-scheduleItemId
+    // We filter by userId and date range in rowKey.
+    // rowKey >= from and rowKey <= to + 'z' ensures we get all items for those dates.
+    const filter = `(${rf.userId} eq '${normalizedUserId}') and (${rf.rowKey} ge '${normalizedFrom}') and (${rf.rowKey} le '${normalizedTo}z')`;
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$top=5000`;
+
+    const response = await this.spFetch(url);
+    if (!response.ok) {
+      throw new Error(`[ExecutionRepo] getRecordsInRange failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data: SharePointResponse<JsonRecord> = await response.json();
+    if (!data.value) return [];
+
+    return data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
+  }
+
   async getRecords(date: string, userId: string): Promise<ExecutionRecord[]> {
     const normalizedDate = normalizeExecutionDate(date);
     const normalizedUserId = normalizeExecutionUserId(userId);

@@ -156,10 +156,22 @@ export function useProcedureStore() {
     return Object.keys(snapshot);
   }, [snapshot]);
 
+  /**
+   * 手順IDから手順情報を取得する（キオスク統計用）
+   * @param id scheduleItemId (例: procedure-1)
+   */
+  const getProcedureById = useCallback((id: string): ProcedureItem | undefined => {
+    const match = id.match(/\d+$/);
+    const rowNo = match ? parseInt(match[0], 10) : 0;
+    const base = getBaseStepsForUser('');
+    return base.find(p => p.id?.endsWith(`-${rowNo}`) || p.rowNo === rowNo);
+  }, []);
+
   return useMemo(() => ({
     getByUser,
     save,
     hasUserData,
     registeredUserIds,
-  }), [getByUser, save, hasUserData, registeredUserIds]);
+    getProcedureById,
+  }), [getByUser, save, hasUserData, registeredUserIds, getProcedureById]);
 }
