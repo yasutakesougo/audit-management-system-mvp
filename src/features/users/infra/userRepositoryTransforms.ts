@@ -168,7 +168,7 @@ export const toUserRepositoryDomain = (
         null,
     ),
     severeFlag: Boolean(
-      record.severeFlag ?? record.SevereFlag ?? rawRecord.SevereFlag ?? rawRecord.severeFlag ?? null,
+      record.severeFlag ?? rawRecord.severeFlag ?? null,
     ),
     IsActive:
       record.isActive !== undefined

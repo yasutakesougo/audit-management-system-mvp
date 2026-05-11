@@ -38,7 +38,6 @@ export const ICEBERG_PDCA_PLANNING_SHEET_FIELD_CANDIDATES = [
   'PlanningSheetID',
   'PlanningSheetId0',
   'PlanningSheetID0',
-  'PlanningSheetLookupId',
   'SupportPlanningSheetId',
   'SupportPlanningSheetID',
 ] as const;

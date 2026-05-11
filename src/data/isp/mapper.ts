@@ -225,7 +225,7 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     version: row.VersionNo ?? 1,
 
     userId: str(row.UserCode),
-    ispId: row.ISPId ?? `sp-${row.ISPLookupId ?? 0}`,
+    ispId: row.ISP_x0020_ID ?? '',
     title: str(row.Title),
 
     targetScene: str(row.TargetScene),
@@ -281,7 +281,7 @@ export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): Planning
   return planningSheetListItemSchema.parse({
     id: `sp-${row.Id}`,
     userId: str(row.UserCode),
-    ispId: row.ISPId ?? `sp-${row.ISPLookupId ?? 0}`,
+    ispId: row.ISP_x0020_ID ?? '',
     title: str(row.Title),
     targetScene: row.TargetScene ?? null,
     status: row.Status ?? 'draft',
@@ -304,7 +304,7 @@ export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateI
   return {
     Title: input.title,
     UserCode: input.userId,
-    ISPId: input.ispId,
+    ISP_x0020_ID: input.ispId,
     TargetScene: input.targetScene ?? '',
     TargetDomain: input.targetDomain ?? '',
     ObservationFacts: input.observationFacts,
@@ -427,8 +427,8 @@ export function mapProcedureRecordRowToDomain(row: SpProcedureRecordRow): Suppor
     version: 1,
 
     userId: str(row.UserCode),
-    ispId: row.ISPId ?? null,
-    planningSheetId: row.PlanningSheetId ?? `sp-${row.PlanningSheetLookupId ?? 0}`,
+    ispId: row.ISP_x0020_ID ?? null,
+    planningSheetId: row.PlanningSheetId ?? '',
 
     recordDate: str(row.RecordDate, '1970-01-01'),
     timeSlot: str(row.TimeSlot),
@@ -439,7 +439,7 @@ export function mapProcedureRecordRowToDomain(row: SpProcedureRecordRow): Suppor
 
     userResponse: str(row.UserResponse),
     specialNotes: str(row.SpecialNotes),
-    handoffNotes: str(row.HandoffNotes),
+    handoffNotes: str(row.Handoff_x0020_Notes),
 
     performedBy: str(row.PerformedBy),
     performedAt: str(row.PerformedAt, new Date().toISOString()),
@@ -451,7 +451,7 @@ export function mapProcedureRecordRowToListItem(row: SpProcedureRecordRow): Proc
   return procedureRecordListItemSchema.parse({
     id: `sp-${row.Id}`,
     userId: str(row.UserCode),
-    planningSheetId: row.PlanningSheetId ?? `sp-${row.PlanningSheetLookupId ?? 0}`,
+    planningSheetId: row.PlanningSheetId ?? '',
     recordDate: str(row.RecordDate, '1970-01-01'),
     timeSlot: row.TimeSlot ?? null,
     activity: row.Activity ?? null,
@@ -465,7 +465,7 @@ export function mapProcedureRecordCreateInputToPayload(input: ProcedureRecordCre
   return {
     Title: `${input.userId}_${input.recordDate}_${input.timeSlot ?? ''}`.trim(),
     UserCode: input.userId,
-    ISPId: input.ispId ?? undefined,
+    ISP_x0020_ID: input.ispId ?? undefined,
     PlanningSheetId: input.planningSheetId,
     RecordDate: input.recordDate,
     TimeSlot: input.timeSlot ?? '',
@@ -474,7 +474,7 @@ export function mapProcedureRecordCreateInputToPayload(input: ProcedureRecordCre
     ExecutionStatus: input.executionStatus ?? 'planned',
     UserResponse: input.userResponse ?? '',
     SpecialNotes: input.specialNotes ?? '',
-    HandoffNotes: input.handoffNotes ?? '',
+    Handoff_x0020_Notes: input.handoffNotes ?? '',
     PerformedBy: input.performedBy,
     PerformedAt: input.performedAt,
   };
@@ -491,7 +491,7 @@ export function mapProcedureRecordUpdateInputToPayload(input: ProcedureRecordUpd
   if (input.executionStatus !== undefined) payload.ExecutionStatus = input.executionStatus;
   if (input.userResponse !== undefined) payload.UserResponse = input.userResponse;
   if (input.specialNotes !== undefined) payload.SpecialNotes = input.specialNotes;
-  if (input.handoffNotes !== undefined) payload.HandoffNotes = input.handoffNotes;
+  if (input.handoffNotes !== undefined) payload.Handoff_x0020_Notes = input.handoffNotes;
   if (input.performedBy !== undefined) payload.PerformedBy = input.performedBy;
   if (input.performedAt !== undefined) payload.PerformedAt = input.performedAt;
 

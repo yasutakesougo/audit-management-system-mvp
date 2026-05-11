@@ -394,7 +394,7 @@ export class SharePointUserRepository implements UserRepository {
         get<boolean | null>(fields.isHighIntensitySupportTarget) ?? null,
       IsSupportProcedureTarget:
         get<boolean | null>(fields.isSupportProcedureTarget) ?? null,
-      severeFlag: get<boolean | null>('SevereFlag') ?? get<boolean | null>('severeFlag') ?? null,
+      severeFlag: get<boolean | null>('severeFlag') ?? null,
       IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
