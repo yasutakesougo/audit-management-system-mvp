@@ -21,6 +21,7 @@ import {
   type SpMonitoringMeetingRow,
 } from '@/sharepoint/fields/monitoringMeetingFields';
 import { buildSummaryText } from '@/features/meeting-minutes/editor/blockMappers';
+import type { MeetingMinuteBlock } from '@/features/meeting-minutes/types';
 import { MonitoringMeetingSchemaResolver } from './modules/MonitoringMeetingSchemaResolver';
 
 /**
@@ -210,7 +211,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       finalizedAt: (row[this.mf(mapping, 'finalizedAt')] as string | undefined) || undefined,
       finalizedBy: (row[this.mf(mapping, 'finalizedBy')] as string | undefined) || undefined,
       previousMeetingId: (row[this.mf(mapping, 'previousMeetingId')] as string | undefined) || undefined,
-      discussionSummaryBlocks: safeJsonParse<any[] | undefined>(row[this.mf(mapping, 'discussionSummaryBlocksJson')], undefined),
+      discussionSummaryBlocks: safeJsonParse<MeetingMinuteBlock[] | undefined>(row[this.mf(mapping, 'discussionSummaryBlocksJson')], undefined),
     };
   }
 
@@ -264,7 +265,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
 
     // Synchronize plain text for compatibility
     if (record.discussionSummaryBlocks) {
-      const summaryText = buildSummaryText(record.discussionSummaryBlocks as any);
+      const summaryText = buildSummaryText(record.discussionSummaryBlocks as MeetingMinuteBlock[]);
       if (summaryText) {
         body[this.mf(mapping, 'discussionSummary')] = summaryText;
       }

@@ -69,8 +69,8 @@ describe('monitoringKioskAnalytics', () => {
 
     it('should sort procedures by row number in ID', () => {
       const records: ExecutionRecord[] = [
-        { id: '1', date: '2026-05-01', userId: 'u1', scheduleItemId: 'proc-10', status: 'completed' } as any,
-        { id: '2', date: '2026-05-01', userId: 'u1', scheduleItemId: 'proc-2', status: 'completed' } as any,
+        { id: '1', date: '2026-05-01', userId: 'u1', scheduleItemId: 'proc-10', status: 'completed' } as unknown as ExecutionRecord,
+        { id: '2', date: '2026-05-01', userId: 'u1', scheduleItemId: 'proc-2', status: 'completed' } as unknown as ExecutionRecord,
       ];
       const summary = aggregateKioskRecords(records, { userId: 'u1', from: 'a', to: 'b' });
       expect(summary.procedures[0].scheduleItemId).toBe('proc-2');

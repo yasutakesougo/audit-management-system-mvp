@@ -183,6 +183,7 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
     }));
 
     editor.insertBlocks(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       blocks as any,
       editor.getTextCursorPosition().block,
       'after'
