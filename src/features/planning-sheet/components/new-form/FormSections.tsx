@@ -32,6 +32,8 @@ import type { FormState } from './types';
 import { BEHAVIOR_FUNCTIONS, TRAINING_LEVELS, ICEBERG_FACTORS } from './constants';
 import { calculateMonitoringSchedule } from '@/features/planning-sheet/monitoringSchedule';
 import { useReverseBridge } from '../../hooks/useReverseBridge';
+import KioskMonitoringEvidencePanel from '@/features/monitoring/components/KioskMonitoringEvidencePanel';
+
 
 // ─────────────────────────────────────────────
 // SectionTitle — 共通ヘッダー
@@ -221,13 +223,14 @@ interface FormSectionsProps {
   updateField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   renderProvenanceBadge: (fieldKey: string) => React.ReactNode;
   userId?: string;
+  isAdmin?: boolean;
 }
 
 // ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
 
-const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, renderProvenanceBadge, userId }) => {
+const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, renderProvenanceBadge, userId, isAdmin = true }) => {
   const { suggestions, isLoading: isBridgeLoading, error: bridgeError } = useReverseBridge(userId, form.supportStartDate);
 
   const schedule = React.useMemo(() => {
@@ -464,6 +467,18 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
           {schedulePreview}
           <TextField label="評価方法" value={form.evaluationMethod} onChange={e => updateField('evaluationMethod', e.target.value)} fullWidth multiline minRows={2}
             placeholder="ABC記録集計、グラフ化、カンファレンス" />
+
+          {/* キオスク記録（17手順）統計ドラフト (Issue #1873) */}
+          {userId && (
+            <KioskMonitoringEvidencePanel
+              userId={userId}
+              onAppendInsight={(text) => {
+                const current = form.improvementResult || '';
+                updateField('improvementResult', current ? `${current}\n\n${text}` : text);
+              }}
+              isAdmin={isAdmin}
+            />
+          )}
 
           {/* L3-to-L2 Reverse-Bridge 自動提案 */}
           {userId && (
