@@ -51,3 +51,9 @@ export {
 	buildMonthlyDailyRecordsFromKioskEvidence,
 	toMonthlyDailyRecordFromKioskEvidence,
 } from './kioskEvidence';
+
+export {
+	executeKioskMonthlyAggregation,
+	type KioskMonthlyAggregationParams,
+} from './kioskMonthlyAggregationUseCase';
+
