@@ -189,7 +189,7 @@ export class DataProviderIspRepository implements IspRepository {
     const payload = mapIspCreateInputToPayload(input);
     
     const created = await this.provider.createItem<SpIspMasterRow>(title, payload as unknown as Record<string, unknown>);
-    return this.getById(`sp-${created.Id}`) as Promise<IndividualSupportPlan>;
+    return this.getById(`sp-${created.id}`) as Promise<IndividualSupportPlan>;
   }
 
   async update(id: string, input: IspUpdateInput): Promise<IndividualSupportPlan> {

@@ -147,7 +147,7 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
     
     const created = await this.provider.createItem<SpProcedureRecordRow>(title, payload as unknown as Record<string, unknown>);
     
-    const refreshed = await this.getById(`sp-${created.Id}`);
+    const refreshed = await this.getById(`sp-${created.id}`);
     if (!refreshed) throw new Error('[ProcedureRecordRepository] Failed to reload created item');
     return refreshed;
   }
