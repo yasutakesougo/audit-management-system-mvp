@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar, TextField } from '@mui/material';
+import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar, TextField, CircularProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -121,8 +121,24 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     }
   };
 
-  if (isUserLoading || isLoading) {
-    return <Box sx={{ p: 4 }}>読み込み中...</Box>;
+  // Show initial loading state only. 
+  // Background re-fetches (triggered by store updates) should not unmount the entire UI,
+  // otherwise the History Drawer state will be reset.
+  if (isUserLoading || (isLoading && !isInitialized)) {
+    return (
+      <Box sx={{ 
+        p: 4, 
+        height: '100dvh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        bgcolor: 'background.default'
+      }}>
+        <CircularProgress size={48} sx={{ mb: 2 }} />
+        <Typography color="text.secondary">読み込み中...</Typography>
+      </Box>
+    );
   }
 
   if (!user || !procedure) {

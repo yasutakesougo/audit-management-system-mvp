@@ -38,6 +38,7 @@ export const KioskDailyProcedureFlowPreview: React.FC<KioskDailyProcedureFlowPre
 }) => {
   const { steps, isLoading, error } = useDailyProcedureFlowPreview(userId, recordDate);
 
+
   const getStatusConfig = (status?: string) => {
     switch (status) {
       case 'completed':
