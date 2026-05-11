@@ -139,20 +139,32 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
                           variant="outlined"
                         />
                       </Stack>
-                      <Button
-                        size="small"
-                        variant="text"
-                        onClick={() => setSelectedFlowDate(record.date)}
-                        sx={{ fontSize: '0.75rem', fontWeight: 'bold', py: 0 }}
-                      >
-                        この日の流れを見る
-                      </Button>
                     </Stack>
                   }
                   secondary={
-                    <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {record.memo || '（メモなし）'}
-                    </Typography>
+                    <Stack spacing={1.5} sx={{ mt: 1 }}>
+                      <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {record.memo || '（メモなし）'}
+                      </Typography>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="medium"
+                        onClick={() => setSelectedFlowDate(record.date)}
+                        sx={{ 
+                          borderRadius: 2, 
+                          fontWeight: 'bold', 
+                          py: 0.75,
+                          borderColor: 'primary.light',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            borderColor: 'primary.main',
+                          }
+                        }}
+                      >
+                        この日の流れ（1日全体のプレビュー）を見る
+                      </Button>
+                    </Stack>
                   }
                 />
               </ListItem>
