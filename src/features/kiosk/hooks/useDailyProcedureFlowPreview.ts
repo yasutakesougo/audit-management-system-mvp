@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
@@ -19,6 +19,12 @@ export function useDailyProcedureFlowPreview(
   recordDate: string
 ): UseDailyProcedureFlowPreviewResult {
   const { getRecords } = useExecutionData();
+  const getRecordsRef = useRef(getRecords);
+  
+  useEffect(() => {
+    getRecordsRef.current = getRecords;
+  }, [getRecords]);
+
   const procedureStore = useProcedureStore();
   
   const [rawRecords, setRawRecords] = useState<ExecutionRecord[]>([]);
@@ -34,7 +40,7 @@ export function useDailyProcedureFlowPreview(
     setIsLoading(true);
     setError(null);
     try {
-      const records = await getRecords(recordDate, userId);
+      const records = await getRecordsRef.current(recordDate, userId);
       setRawRecords(records);
     } catch (err) {
       console.error('[useDailyProcedureFlowPreview] Failed to fetch daily records:', err);
@@ -42,7 +48,7 @@ export function useDailyProcedureFlowPreview(
     } finally {
       setIsLoading(false);
     }
-  }, [getRecords, userId, recordDate]);
+  }, [userId, recordDate]);
 
   useEffect(() => {
     void fetchDailyRecords();
@@ -65,3 +71,4 @@ export function useDailyProcedureFlowPreview(
     refresh: fetchDailyRecords,
   };
 }
+

@@ -66,24 +66,26 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
   // 以前の保存記録からステートを復元する（1回限り）
   React.useEffect(() => {
-    if (isLoading || isInitialized || !record) return;
+    if (isLoading || isInitialized) return;
     
-    const memoText = record.memo || '';
-    const moodMatch = memoText.match(/【様子】([^\n]+)/);
-    const actionMatch = memoText.match(/【対応】([^\n]+)/);
-    const resultMatch = memoText.match(/【変化】([^\n]+)/);
-    const textMatch = memoText.match(/【メモ】([\s\S]+)/);
-    
-    if (moodMatch) setSelectedMood(moodMatch[1].trim());
-    if (actionMatch) setSelectedAction(actionMatch[1].trim());
-    if (resultMatch) setSelectedResult(resultMatch[1].trim());
-    
-    if (textMatch) {
-      setTextMemo(textMatch[1].trim());
-    } else if (memoText.trim()) {
-      const hasLabels = memoText.includes('【様子】') || memoText.includes('【対応】') || memoText.includes('【変化】');
-      if (!hasLabels) {
-        setTextMemo(memoText.trim());
+    if (record) {
+      const memoText = record.memo || '';
+      const moodMatch = memoText.match(/【様子】([^\n]+)/);
+      const actionMatch = memoText.match(/【対応】([^\n]+)/);
+      const resultMatch = memoText.match(/【変化】([^\n]+)/);
+      const textMatch = memoText.match(/【メモ】([\s\S]+)/);
+      
+      if (moodMatch) setSelectedMood(moodMatch[1].trim());
+      if (actionMatch) setSelectedAction(actionMatch[1].trim());
+      if (resultMatch) setSelectedResult(resultMatch[1].trim());
+      
+      if (textMatch) {
+        setTextMemo(textMatch[1].trim());
+      } else if (memoText.trim()) {
+        const hasLabels = memoText.includes('【様子】') || memoText.includes('【対応】') || memoText.includes('【変化】');
+        if (!hasLabels) {
+          setTextMemo(memoText.trim());
+        }
       }
     }
     
