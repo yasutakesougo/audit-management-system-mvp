@@ -27,7 +27,7 @@ export function getBaseStepsForUser(userId: string | number): ProcedureItem[] {
     instruction: row.instructionDetail || '',
     activityDetail: row.activityDetail,
     instructionDetail: row.instructionDetail,
-    isKey: [1, 5, 7, 10, 12, 14, 15].includes(row.rowNo), // 主要なステップをKey設定
+    isKey: false,
     block: row.category === 'external' ? 'outing' : (row.rowNo <= 5 ? 'morning' : 'afternoon')
   }));
 }

@@ -15,6 +15,7 @@ import {
   Checkbox,
   FormControlLabel,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -34,6 +35,14 @@ import { useStaff } from '@/features/staff/store';
 import { Staff } from '@/types';
 import { MonitoringMeetingPDFAction } from '../reports/MonitoringMeetingPDFAction';
 import type { MetricDefinition } from '@/domain/isp/metricDefinition';
+import { useMonitoringKioskAnalytics } from '../hooks/useMonitoringKioskAnalytics';
+import type { MeetingMinutesEditor } from '@/features/meeting-minutes/editor/slashMenuItems';
+
+const MeetingMinutesBlockEditor = React.lazy(() =>
+  import('@/features/meeting-minutes/components/MeetingMinutesBlockEditor').then((m) => ({
+    default: m.MeetingMinutesBlockEditor,
+  }))
+);
 
 export type ImprovementInput = {
   patchId: string;
@@ -74,6 +83,9 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const { data: staffMaster = [] } = useStaff();
   const isFinalized = draft.status === 'finalized';
+
+  // キオスク集計データの取得 (根拠挿入用)
+  const { insightLines } = useMonitoringKioskAnalytics(draft.userId);
 
   const set = <K extends keyof MonitoringMeetingDraft>(key: K, value: MonitoringMeetingDraft[K]) => {
     if (isFinalized) return;
@@ -159,6 +171,23 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
     if (validateImprovement()) {
       onFinalize?.();
     }
+  };
+
+  const handleInsertMonitoringEvidence = (editor: MeetingMinutesEditor) => {
+    if (insightLines.length === 0) return;
+    
+    // 現在のカーソル位置の後にブロックとして挿入
+    const blocks = insightLines.map(line => ({
+      type: 'paragraph',
+      content: [{ type: 'text', text: line, styles: {} }],
+    }));
+
+    editor.insertBlocks(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      blocks as any,
+      editor.getTextCursorPosition().block,
+      'after'
+    );
   };
 
   return (
@@ -362,18 +391,36 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
             </Typography>
             <Alert severity="info" sx={{ mb: 2 }}>
               検討の経緯を具体的に記録してください。誰がどのような意見を出し、どのように結論に至ったかが重要です。
+              <br />
+              💡 <strong>「/」</strong> を入力すると、キオスク記録の統計・傾向を挿入できます。
             </Alert>
+            <React.Suspense
+              fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={28} />
+                </Box>
+              }
+            >
+              <MeetingMinutesBlockEditor
+                value={draft.discussionSummaryBlocks ?? []}
+                onChange={(blocks) => onUpdate({ discussionSummaryBlocks: blocks })}
+                category="その他"
+                onInsertMonitoringEvidence={handleInsertMonitoringEvidence}
+              />
+            </React.Suspense>
+            {/* フォールバック・隠し同期用のテキストエリア（Phase 1 互換） */}
             <TextField
               fullWidth
               multiline
-              rows={8}
-              label="具体的検討内容"
-              placeholder="〇〇氏より、△△の場面での対応について提案があり、検討した結果、次回の支援計画では◇◇を取り入れることとした..."
+              rows={4}
+              label="具体的検討内容（プレーンテキスト）"
+              placeholder="ブロックエディタで入力した内容はこちらにも同期されます..."
               value={draft.discussionSummary}
               onChange={(e) => set('discussionSummary', e.target.value)}
               required
-              error={!draft.discussionSummary}
+              error={!draft.discussionSummary && !draft.discussionSummaryBlocks?.length}
               disabled={isFinalized}
+              sx={{ mt: 2, display: 'none' }} // 通常は隠しておく
             />
           </CardContent>
         </Card>

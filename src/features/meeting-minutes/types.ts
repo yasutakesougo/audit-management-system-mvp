@@ -14,6 +14,8 @@ export type MeetingMinuteBlock = {
 
 export type MeetingMinutes = {
   id: number;
+  userId?: string;
+  userName?: string;
   title: string;
   meetingDate: string; // YYYY-MM-DD
   category: MeetingCategory;

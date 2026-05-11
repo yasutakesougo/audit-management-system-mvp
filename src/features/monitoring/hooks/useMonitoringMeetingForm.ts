@@ -33,6 +33,7 @@ export function useMonitoringMeetingForm(initial?: Partial<MonitoringMeetingDraf
     effectiveSupportSummary: initial?.effectiveSupportSummary ?? '',
     issueSummary: initial?.issueSummary ?? '',
     discussionSummary: initial?.discussionSummary ?? '',
+    discussionSummaryBlocks: initial?.discussionSummaryBlocks ?? [],
     requiresPlanSheetUpdate: initial?.requiresPlanSheetUpdate ?? false,
     requiresIspUpdate: initial?.requiresIspUpdate ?? false,
     nextActions: initial?.nextActions ?? [],

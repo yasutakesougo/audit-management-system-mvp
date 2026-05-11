@@ -10,6 +10,7 @@
 //   - 「少なくとも6月に1回以上」のモニタリング実施義務
 //   - サービス管理責任者による目標達成状況の確認
 // ---------------------------------------------------------------------------
+import type { MeetingMinuteBlock } from '@/features/meeting-minutes/types';
 
 // ---------------------------------------------------------------------------
 // Enum Values
@@ -178,6 +179,8 @@ export interface MonitoringMeetingRecord {
   issueSummary?: string;
   /** 会議での検討内容（監査証跡） */
   discussionSummary: string;
+  /** 会議での検討内容（ブロックエディタ用） */
+  discussionSummaryBlocks?: MeetingMinuteBlock[];
   /** 支援計画シートの修正要否 */
   requiresPlanSheetUpdate?: boolean;
   /** 個別支援計画の修正要否 */

@@ -27,9 +27,22 @@ describe('slashMenuItems', () => {
   // ── 全体構造 ──────────────────────────────────────────────────
 
   describe('getMeetingMinutesSlashMenuItems', () => {
-    it('should return 10 menu items', () => {
+    it('should return 10 menu items when no options provided', () => {
       const items = getMeetingMinutesSlashMenuItems(editor);
       expect(items.length).toBe(10);
+    });
+
+    it('should return 11 menu items including monitoring evidence when callback provided', () => {
+      let triggered = false;
+      const items = getMeetingMinutesSlashMenuItems(editor, {
+        onInsertMonitoringEvidence: () => { triggered = true; }
+      });
+      expect(items.length).toBe(11);
+      const evidenceItem = items.find(i => i.title === 'モニタリング根拠挿入');
+      expect(evidenceItem).toBeDefined();
+      expect(evidenceItem?.group).toBe('議事録');
+      evidenceItem?.onItemClick();
+      expect(triggered).toBe(true);
     });
 
     it('should contain all expected titles', () => {

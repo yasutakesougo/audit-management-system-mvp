@@ -78,8 +78,8 @@ export function aggregateKioskRecords(
 
   // 手順IDの末尾数字でソート
   const sortedProcedures = Array.from(procedureMap.values()).sort((a, b) => {
-    const na = parseInt(a.scheduleItemId.split('-').pop() || '0', 10);
-    const nb = parseInt(b.scheduleItemId.split('-').pop() || '0', 10);
+    const na = parseInt(a.scheduleItemId.split('-').pop() || '', 10) || 0;
+    const nb = parseInt(b.scheduleItemId.split('-').pop() || '', 10) || 0;
     return na - nb;
   });
 
@@ -123,6 +123,16 @@ export function buildKioskInsightText(summary: KioskMonitoringSummary): string[]
     
   if (memoProcedures.length > 0) {
      lines.push(`【記録から見える傾向】${memoProcedures[0].activityName}を中心に${memoProcedures.length}の手順でメモが残されています。活動の変化や本人の状態について詳細な確認を推奨します。`);
+  }
+  
+  // スキップが多い手順
+  const skippedProcedures = summary.procedures
+    .filter(p => p.skippedCount > 0)
+    .sort((a, b) => b.skippedCount - a.skippedCount);
+    
+  if (skippedProcedures.length > 0) {
+    const sText = skippedProcedures.slice(0, 3).map(p => `${p.activityName}(スキップ ${p.skippedCount}回)`).join('・');
+    lines.push(`【スキップ傾向】${sText}などがスキップされています。手順の妥当性や本人の拒否・状況の変化を検討してください。`);
   }
   
   return lines;

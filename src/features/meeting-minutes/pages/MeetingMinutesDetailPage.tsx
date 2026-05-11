@@ -109,6 +109,9 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
               <Chip size="small" label={minutes.category} />
               <Chip size="small" label={minutes.meetingDate || '日付未設定'} />
+              {minutes.userName && (
+                <Chip size="small" label={`対象者: ${minutes.userName}`} color="info" variant="outlined" />
+              )}
             </Stack>
           </Box>
           <Stack direction="row" spacing={1}>

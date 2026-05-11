@@ -4,6 +4,10 @@ import * as React from 'react';
 
 import type { MeetingCategory, MeetingMinuteBlock, MeetingMinutes } from '../types';
 import { DailyMeetingExtension } from './DailyMeetingExtension';
+import { useUsers } from '@/features/users/useUsers';
+import { useMonitoringKioskAnalytics } from '@/features/monitoring/hooks/useMonitoringKioskAnalytics';
+import type { MeetingMinutesEditor } from '../editor/slashMenuItems';
+import { Autocomplete } from '@mui/material';
 
 // Lazy-load BlockNote editor to keep @blocknote out of the App chunk (~500kB reduction)
 const MeetingMinutesBlockEditor = React.lazy(
@@ -42,6 +46,8 @@ export function createDefaultDraft(): MeetingMinutesDraft {
     staffAttendance: '',
     userHealthNotes: '',
     contentBlocks: [],
+    userId: undefined,
+    userName: undefined,
   };
 }
 
@@ -130,13 +136,33 @@ export function MeetingMinutesForm(props: {
     onChange({ ...value, [key]: v });
 
   const isDailyMeeting = value.category === '朝会' || value.category === '夕会';
+  const { users } = useUsers();
 
   const handleBlocksChange = React.useCallback(
     (blocks: MeetingMinuteBlock[]) => {
       onChange({ ...value, contentBlocks: blocks });
     },
-    [onChange]
+    [onChange, value]
   );
+
+  // モニタリング根拠挿入ロジック
+  const { insightLines } = useMonitoringKioskAnalytics(value.userId ?? '');
+
+  const handleInsertMonitoringEvidence = React.useCallback((editor: MeetingMinutesEditor) => {
+    if (insightLines.length === 0) return;
+    
+    const blocks = insightLines.map(line => ({
+      type: 'paragraph',
+      content: [{ type: 'text', text: line, styles: {} }],
+    }));
+
+    editor.insertBlocks(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      blocks as any,
+      editor.getTextCursorPosition().block,
+      'after'
+    );
+  }, [insightLines]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -176,6 +202,27 @@ export function MeetingMinutesForm(props: {
             ))}
           </TextField>
         </Stack>
+
+        <Autocomplete
+          fullWidth
+          options={users}
+          getOptionLabel={(u) => u.Title ?? u.FullName ?? ''}
+          value={users.find(u => u.Id.toString() === value.userId) || null}
+          onChange={(_, u) => {
+            onChange({
+              ...value,
+              userId: u?.Id?.toString(),
+              userName: u?.Title ?? u?.FullName ?? undefined,
+            });
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="対象利用者（任意）"
+              placeholder="特定の利用者に関する会議（ケース会議等）の場合に選択してください"
+            />
+          )}
+        />
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
@@ -221,6 +268,7 @@ export function MeetingMinutesForm(props: {
             value={value.contentBlocks ?? []}
             onChange={handleBlocksChange}
             category={value.category}
+            onInsertMonitoringEvidence={handleInsertMonitoringEvidence}
           />
         </React.Suspense>
 

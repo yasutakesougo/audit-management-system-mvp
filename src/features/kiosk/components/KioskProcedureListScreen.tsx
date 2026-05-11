@@ -192,7 +192,7 @@ export const KioskProcedureListScreen: React.FC = () => {
                   borderRadius: 3,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                   borderLeft: '6px solid',
-                  borderLeftColor: step.isKey ? 'primary.main' : 'divider',
+                  borderLeftColor: 'divider',
                   bgcolor: isRecorded ? 'success.lighter' : 'background.paper',
                   opacity: isRecorded ? 0.8 : 1,
                   transition: 'all 0.2s',

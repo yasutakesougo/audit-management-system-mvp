@@ -57,6 +57,7 @@ export const MONITORING_MEETING_FIELDS = {
   hasPracticalTrainedMember: 'cr014_hasPractTrained',
   qualificationCheckStatus: 'cr014_qualCheckStatus',
   nextActions: 'cr014_nextActions',
+  discussionSummaryBlocksJson: 'cr014_discSummaryBlocksJson',
 
   // ── 監査ステータス ──
   status: 'cr014_status',
@@ -139,6 +140,7 @@ export type SpMonitoringMeetingRow = {
   cr014_hasPractTrained?: boolean;
   cr014_qualCheckStatus?: string;
   cr014_nextActions?: string;
+  cr014_discSummaryBlocksJson?: string;
 
   cr014_status?: string;
   cr014_finalizedAt?: string;
@@ -187,6 +189,7 @@ export const MONITORING_MEETING_CANDIDATES = {
   hasPracticalTrainedMember: [MONITORING_MEETING_FIELDS.hasPracticalTrainedMember, 'HasPracticalTrainedMember', 'hasPractTrained'],
   qualificationCheckStatus: [MONITORING_MEETING_FIELDS.qualificationCheckStatus, 'QualificationCheckStatus', 'qualCheckStatus'],
   nextActions: [MONITORING_MEETING_FIELDS.nextActions, 'NextActions', 'nextActions'],
+  discussionSummaryBlocksJson: [MONITORING_MEETING_FIELDS.discussionSummaryBlocksJson, 'DiscussionSummaryBlocksJson', 'discussionSummaryBlocksJson'],
   status: [MONITORING_MEETING_FIELDS.status, 'Status', 'status'],
   finalizedAt: [MONITORING_MEETING_FIELDS.finalizedAt, 'FinalizedAt', 'finalizedAt'],
   finalizedBy: [MONITORING_MEETING_FIELDS.finalizedBy, 'FinalizedBy', 'finalizedBy'],
@@ -254,6 +257,7 @@ export const MONITORING_MEETING_ENSURE_FIELDS = [
   { internalName: MONITORING_MEETING_FIELDS.hasPracticalTrainedMember, type: 'Boolean', required: false },
   { internalName: MONITORING_MEETING_FIELDS.qualificationCheckStatus, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.nextActions, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.discussionSummaryBlocksJson, type: 'Note', required: false },
   { internalName: MONITORING_MEETING_FIELDS.status, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.finalizedAt, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.finalizedBy, type: 'Text', required: false },
