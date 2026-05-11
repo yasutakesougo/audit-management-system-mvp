@@ -3,7 +3,7 @@
 //
 // Storeへのアクセスを抽象化し、UI側が日付とタイムスタンプを意識せずに済む。
 // ---------------------------------------------------------------------------
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { type RecordStatus, makeRecordId, type ExecutionRecord } from '../domain/executionRecordTypes';
 import { useExecutionData } from './useExecutionData';
 import { normalizeScheduleItemId } from '../utils/normalizeScheduleItemId';
@@ -18,15 +18,23 @@ export function useExecutionRecord(
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
+  const getRecordRef = useRef(getRecord);
+  const upsertRecordRef = useRef(upsertRecord);
+
+  useEffect(() => {
+    getRecordRef.current = getRecord;
+    upsertRecordRef.current = upsertRecord;
+  }, [getRecord, upsertRecord]);
+
   const fetchRecord = useCallback(async () => {
     setIsLoading(true);
-    let resolved = await getRecord(date, userId, scheduleItemId);
+    let resolved = await getRecordRef.current(date, userId, scheduleItemId);
 
     if (!resolved && fallbackScheduleItemIds && fallbackScheduleItemIds.length > 0) {
       for (const fallbackId of fallbackScheduleItemIds) {
         const normalizedFallbackId = normalizeScheduleItemId(fallbackId);
         if (!normalizedFallbackId || normalizedFallbackId === scheduleItemId) continue;
-        const fallbackRecord = await getRecord(date, userId, normalizedFallbackId);
+        const fallbackRecord = await getRecordRef.current(date, userId, normalizedFallbackId);
         if (fallbackRecord) {
           resolved = fallbackRecord;
           break;
@@ -36,7 +44,7 @@ export function useExecutionRecord(
 
     setRecord(resolved);
     setIsLoading(false);
-  }, [getRecord, date, userId, scheduleItemId, fallbackScheduleItemIds]);
+  }, [date, userId, scheduleItemId, fallbackScheduleItemIds]);
 
   useEffect(() => {
     void fetchRecord();
@@ -56,9 +64,9 @@ export function useExecutionRecord(
         recordedAt: new Date().toISOString(),
       };
       setRecord(next);
-      await upsertRecord(next);
+      await upsertRecordRef.current(next);
     },
-    [date, userId, scheduleItemId, record, upsertRecord],
+    [date, userId, scheduleItemId, record],
   );
 
   const setMemo = useCallback(
@@ -70,9 +78,9 @@ export function useExecutionRecord(
         recordedAt: new Date().toISOString(),
       };
       setRecord(next);
-      await upsertRecord(next);
+      await upsertRecordRef.current(next);
     },
-    [record, upsertRecord],
+    [record],
   );
 
   const saveRecord = useCallback(
@@ -89,9 +97,9 @@ export function useExecutionRecord(
         recordedAt: new Date().toISOString(),
       };
       setRecord(next);
-      await upsertRecord(next);
+      await upsertRecordRef.current(next);
     },
-    [date, userId, scheduleItemId, record, upsertRecord],
+    [date, userId, scheduleItemId, record],
   );
 
   return { record, setStatus, setMemo, saveRecord, isLoading, refresh: fetchRecord } as const;

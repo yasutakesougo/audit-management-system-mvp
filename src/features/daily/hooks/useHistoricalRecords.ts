@@ -1,9 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useExecutionData } from './useExecutionData';
 import type { ExecutionRecord } from '../domain/legacy/executionRecordTypes';
 
 export function useHistoricalRecords(userId: string, scheduleItemId: string) {
   const { getHistoricalRecords } = useExecutionData();
+  const getHistoricalRecordsRef = useRef(getHistoricalRecords);
+
+  useEffect(() => {
+    getHistoricalRecordsRef.current = getHistoricalRecords;
+  }, [getHistoricalRecords]);
+
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -14,7 +20,7 @@ export function useHistoricalRecords(userId: string, scheduleItemId: string) {
     setIsLoading(true);
     setError(null);
     try {
-      const history = await getHistoricalRecords(userId, scheduleItemId, 150);
+      const history = await getHistoricalRecordsRef.current(userId, scheduleItemId, 150);
       setRecords(history);
     } catch (err) {
       console.error('[useHistoricalRecords] Failed to fetch history:', err);
@@ -22,7 +28,7 @@ export function useHistoricalRecords(userId: string, scheduleItemId: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [getHistoricalRecords, userId, scheduleItemId]);
+  }, [userId, scheduleItemId]);
 
   useEffect(() => {
     void fetchHistory();
@@ -30,3 +36,4 @@ export function useHistoricalRecords(userId: string, scheduleItemId: string) {
 
   return { records, isLoading, error, refresh: fetchHistory };
 }
+
