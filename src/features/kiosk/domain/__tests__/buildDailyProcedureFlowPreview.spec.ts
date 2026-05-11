@@ -87,4 +87,78 @@ describe('buildDailyProcedureFlowPreview', () => {
     expect(result[2].record?.status).toBe('triggered');
     expect(result[2].record?.memo).toBe('不穏あり。一時中断。');
   });
+
+  it('generates fallback steps chronologically from records when slots are empty', () => {
+    const mockRecords: ExecutionRecord[] = [
+      {
+        id: 'R002',
+        date: '2024-01-01',
+        userId: 'U001',
+        scheduleItemId: 'user-4-row-15',
+        status: 'completed',
+        memo: 'おやつ。完食。',
+        recordedAt: '2024-01-01T15:00:00Z',
+        recordedBy: 'Staff B',
+        triggeredBipIds: [],
+      },
+      {
+        id: 'R001',
+        date: '2024-01-01',
+        userId: 'U001',
+        scheduleItemId: '2',
+        status: 'completed',
+        memo: '水分補給完了。',
+        recordedAt: '2024-01-01T09:45:00Z',
+        recordedBy: 'Staff A',
+        triggeredBipIds: [],
+      },
+    ];
+
+    const result = buildDailyProcedureFlowPreview([], mockRecords);
+
+    // Should build fallback steps from empty slots input
+    expect(result).toHaveLength(2);
+
+    // Records should be sorted chronologically by recordedAt (R001: 09:45 -> R002: 15:00)
+    expect(result[0].rowNo).toBe(2); // Extracted from '2'
+    expect(result[0].time).toBe('09:45');
+    expect(result[0].record?.memo).toBe('水分補給完了。');
+
+    expect(result[1].rowNo).toBe(15); // Extracted from trailing digits of 'user-4-row-15'
+    expect(result[1].time).toBe('15:00');
+    expect(result[1].record?.memo).toBe('おやつ。完食。');
+  });
+
+  it('matches slots to records robustly with trailing digit logic', () => {
+    const customSlots: ProcedureItem[] = [
+      {
+        id: 'procedure-15',
+        rowNo: 15,
+        time: '15:00',
+        activity: 'おやつ',
+        instruction: '',
+        isKey: false,
+        block: 'afternoon',
+      }
+    ];
+
+    const customRecords: ExecutionRecord[] = [
+      {
+        id: 'R15',
+        date: '2024-01-01',
+        userId: 'U001',
+        scheduleItemId: 'user-4-row-15', // different prefix but ends with 15
+        status: 'completed',
+        memo: '美味しく食べました。',
+        recordedAt: '2024-01-01T15:05:00Z',
+        recordedBy: 'Staff C',
+        triggeredBipIds: [],
+      }
+    ];
+
+    const result = buildDailyProcedureFlowPreview(customSlots, customRecords);
+    expect(result[0].record).toBeDefined();
+    expect(result[0].record?.memo).toBe('美味しく食べました。');
+  });
 });
+
