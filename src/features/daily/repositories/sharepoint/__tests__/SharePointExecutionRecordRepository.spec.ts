@@ -455,4 +455,65 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(body.StaffName).toBeUndefined();
     });
   });
+
+  describe('OData Filter Robustness', () => {
+    it('escapes single quotes in userId and scheduleItemId in historical query', async () => {
+      mockSpFetch.mockReset();
+      mockSpFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ value: [] }),
+      });
+
+      // userId with quote
+      await repo.getHistoricalRecords("O'Connor", "Slot'1");
+
+      const call = mockSpFetch.mock.calls.find(c => c[0].includes('$filter'));
+      const url = decodeURIComponent(call![0]);
+      
+      expect(url).toContain("UserId eq 'O''Connor'"); // Match mock schema casing
+      expect(url).toContain("RowNo eq 'Slot''1'");
+    });
+
+    it('falls back to numeric filtering if quoted RowNo returns no results', async () => {
+      mockSpFetch.mockReset();
+      // First call (quoted) returns empty
+      mockSpFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ value: [] }),
+      });
+      // Second call (numeric) returns data
+      mockSpFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ value: [{ Id: 123, Title: 'Matched', User_x0020_ID: 'U001', RowNo: 123 }] }),
+      });
+
+      const results = await repo.getHistoricalRecords("U001", "123");
+
+      expect(mockSpFetch).toHaveBeenCalledTimes(2);
+      
+      const firstCall = decodeURIComponent(mockSpFetch.mock.calls[0][0]);
+      expect(firstCall).toContain("RowNo eq '123'");
+      
+      const secondCall = decodeURIComponent(mockSpFetch.mock.calls[1][0]);
+      expect(secondCall).toContain("RowNo eq 123");
+      
+      expect(results.length).toBe(1);
+    });
+
+    it('escapes single quotes in startswith query', async () => {
+      mockSpFetch.mockReset();
+      mockSpFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ value: [] }),
+      });
+
+      // userId with quote in rowKey prefix
+      await repo.getRecords('2024-01-01', "O'Connor");
+
+      const call = mockSpFetch.mock.calls.find(c => c[0].includes('startswith'));
+      const url = decodeURIComponent(call![0]);
+      
+      expect(url).toContain("startswith(Title, '2024-01-01-O''Connor')");
+    });
+  });
 });
