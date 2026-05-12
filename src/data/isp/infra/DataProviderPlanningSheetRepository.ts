@@ -224,8 +224,9 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     const userField = fields.userCode || 'UserCode';
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
+    const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpPlanningSheetRow>(title, {
-      filter: `${userField} eq '${userId}' and ${isCurrentField} eq true`,
+      filter: `${userField} eq '${escapedUserId}' and ${isCurrentField} eq true`,
       orderby: 'Created desc',
       top: SP_QUERY_LIMITS.default,
     });
