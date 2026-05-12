@@ -14,8 +14,9 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎', ServiceStartDate: undefined as string | undefined } as unknown as Record<string, unknown>, status: 'success' }));
 vi.mock('@/features/users/useUsers', () => ({
-  useUser: () => ({ data: { FullName: '田中 太郎' }, status: 'success' }),
+  useUser: () => mockUseUser(),
 }));
 
 const mockProcedures = [
@@ -54,6 +55,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
+    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
     mockGetRecords.mockResolvedValue([]);
@@ -361,6 +363,40 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(screen.getByText('記録の取得に失敗しました。再読み込みしてください。')).toBeInTheDocument();
+    });
+  });
+
+  it('renders service start date when user has ServiceStartDate', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      status: 'success',
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/支援手順兼記録開始日: 2026年4月1日（90日参考・利用者マスタ）/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders unset message when user does not have ServiceStartDate', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/支援手順兼記録開始日: 未設定（90日参考）/)).toBeInTheDocument();
     });
   });
 });

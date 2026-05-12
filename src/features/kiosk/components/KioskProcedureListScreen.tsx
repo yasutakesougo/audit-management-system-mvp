@@ -157,9 +157,20 @@ export const KioskProcedureListScreen: React.FC = () => {
             <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
               {user.FullName} 様
             </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              {selectedDateStr} の支援手順
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+              <Typography variant="subtitle1" color="text.secondary">
+                {selectedDateStr} の支援手順
+              </Typography>
+              {user.ServiceStartDate ? (
+                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
+                  • 支援手順兼記録開始日: {formatDateJapanese(user.ServiceStartDate)}（90日参考・利用者マスタ）
+                </Typography>
+              ) : (
+                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
+                  • 支援手順兼記録開始日: 未設定（90日参考）
+                </Typography>
+              )}
+            </Box>
           </Box>
         </Box>
 
