@@ -510,3 +510,22 @@ export function extractSpId(id: string): number | null {
   const num = id.startsWith('sp-') ? Number(id.slice(3)) : Number(id);
   return Number.isFinite(num) && num > 0 ? num : null;
 }
+
+/**
+ * DataProvider (SharePoint / InMemory) の作成応答から ID を型安全かつ大文字小文字無視で抽出する。
+ * sp-undefined を防ぐためのゲートウェイ関数。
+ */
+export function extractCreatedItemId(created: unknown): string {
+  if (!created || typeof created !== 'object') {
+    throw new Error('[DataProvider] createItem did not return an item object');
+  }
+
+  const row = created as Record<string, unknown>;
+  const rawId = row.id ?? row.Id ?? row.ID;
+
+  if (rawId == null || rawId === '') {
+    throw new Error('[DataProvider] createItem response did not include id / Id / ID');
+  }
+
+  return String(rawId);
+}

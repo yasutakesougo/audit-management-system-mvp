@@ -26,7 +26,8 @@ import {
   mapProcedureRecordRowToListItem, 
   mapProcedureRecordCreateInputToPayload, 
   mapProcedureRecordUpdateInputToPayload,
-  extractSpId
+  extractSpId,
+  extractCreatedItemId
 } from '@/data/isp/mapper';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
@@ -147,7 +148,8 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
     
     const created = await this.provider.createItem<SpProcedureRecordRow>(title, payload as unknown as Record<string, unknown>);
     
-    const refreshed = await this.getById(`sp-${created.id}`);
+    const createdId = extractCreatedItemId(created);
+    const refreshed = await this.getById(`sp-${createdId}`);
     if (!refreshed) throw new Error('[ProcedureRecordRepository] Failed to reload created item');
     return refreshed;
   }

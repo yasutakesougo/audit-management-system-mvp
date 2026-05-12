@@ -26,7 +26,8 @@ import {
   mapPlanningSheetRowToListItem, 
   mapPlanningSheetCreateInputToPayload, 
   mapPlanningSheetUpdateInputToPayload,
-  extractSpId
+  extractSpId,
+  extractCreatedItemId
 } from '@/data/isp/mapper';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
@@ -258,7 +259,8 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     
     const created = await this.provider.createItem<SpPlanningSheetRow>(title, adjustedPayload);
     
-    const refreshed = await this.getById(`sp-${created.id}`);
+    const createdId = extractCreatedItemId(created);
+    const refreshed = await this.getById(`sp-${createdId}`);
     if (!refreshed) throw new Error('[PlanningSheetRepository] Failed to reload created item');
     return refreshed;
   }
