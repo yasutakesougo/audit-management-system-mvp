@@ -166,7 +166,7 @@ export class DataProviderIspRepository implements IspRepository {
 
     const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
-      filter: `${userField} eq '${escapedUserId}' and ${isCurrentField} eq 1`,
+      filter: `${userField} eq '${escapedUserId}' and ${isCurrentField} eq true`,
       top: 1,
     });
 
@@ -180,7 +180,7 @@ export class DataProviderIspRepository implements IspRepository {
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
-      filter: `${isCurrentField} eq 1`,
+      filter: `${isCurrentField} eq true`,
       top: SP_QUERY_LIMITS.recommended,
     });
 

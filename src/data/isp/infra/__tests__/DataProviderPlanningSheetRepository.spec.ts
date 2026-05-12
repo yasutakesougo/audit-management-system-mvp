@@ -205,7 +205,7 @@ describe('DataProviderPlanningSheetRepository', () => {
       
       const issued = provider.lastFilters.at(-1) ?? '';
       expect(issued).toContain("UserCode eq 'U-001'");
-      expect(issued).toContain('IsCurrent eq 1');
+      expect(issued).toContain('IsCurrent eq true');
     });
   });
 

@@ -226,7 +226,7 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
 
     const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpPlanningSheetRow>(title, {
-      filter: `${userField} eq '${escapedUserId}' and ${isCurrentField} eq 1`,
+      filter: `${userField} eq '${escapedUserId}' and ${isCurrentField} eq true`,
       orderby: 'Created desc',
       top: SP_QUERY_LIMITS.default,
     });
