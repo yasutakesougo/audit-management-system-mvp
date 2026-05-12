@@ -198,6 +198,12 @@ export {
     type SpBehaviorMonitoringRow, type SpPlanningSheetReassessmentRow
 } from './pdcaCycleFields';
 
+// ── ABC Records ──
+export {
+    buildAbcRecordSelectFields, FIELD_MAP_ABC_RECORD,
+    ABC_RECORD_CANDIDATES, ABC_RECORD_ESSENTIALS
+} from './abcRecordFields';
+
 // ──────────────────────────────────────────────────────────────
 // 統合 FIELD_MAP（後方互換用）
 //

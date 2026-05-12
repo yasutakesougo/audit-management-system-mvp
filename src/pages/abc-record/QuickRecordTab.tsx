@@ -33,7 +33,7 @@ import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import type { AbcRecord, AbcRecordCreateInput, AbcRecordSourceContext } from '@/domain/abc/abcRecord';
 import { ABC_INTENSITY_VALUES, ABC_INTENSITY_DISPLAY } from '@/domain/abc/abcRecord';
 import type { AbcIntensity } from '@/domain/abc/abcRecord';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 
 // ── Local ──
 import type { UserOption } from './types';
@@ -53,6 +53,7 @@ interface QuickRecordTabProps {
 
 const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, onSaved, initialUserId, todayRecords, sourceContext, initialBehavior }) => {
   const navigate = useNavigate();
+  const abcRecordRepo = useAbcRecordRepository();
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
@@ -106,7 +107,7 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
         notes: form.notes.trim(),
         ...(sourceContext ? { sourceContext } : {}),
       };
-      await localAbcRecordRepository.save(input);
+      await abcRecordRepo.save(input);
       setSaveSuccess(true);
       setLastSavedUserId(selectedUser.id);
       // リセット（利用者は維持）
@@ -122,7 +123,7 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
     } finally {
       setIsSaving(false);
     }
-  }, [selectedUser, form, canSave, recorderName, onSaved]);
+  }, [selectedUser, form, canSave, recorderName, onSaved, abcRecordRepo]);
 
   return (
     <Stack spacing={2.5}>

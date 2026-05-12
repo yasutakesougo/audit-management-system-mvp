@@ -36,6 +36,17 @@ function generateId(): string {
   return `abc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
@@ -47,7 +58,10 @@ export const localAbcRecordRepository: AbcRecordRepository = {
     const saved: AbcRecord = {
       ...input,
       id: generateId(),
+      abcRecordId: input.abcRecordId || generateUUID(),
+      createdBy: input.createdBy || 'system',
       createdAt: new Date().toISOString(),
+      isDeleted: false,
     };
 
     // 新規レコードを先頭に追加
@@ -66,26 +80,56 @@ export const localAbcRecordRepository: AbcRecordRepository = {
     const records = readAll();
     const idx = records.findIndex((r) => r.id === id);
     if (idx === -1) return null;
-    const updated: AbcRecord = { ...records[idx], ...fields };
+
+    const original = records[idx];
+
+    // 不変フィールド (id, abcRecordId, createdAt, createdBy, recorderName) を上書き不可にする
+    const safeFields = { ...fields };
+    delete (safeFields as Record<string, unknown>).id;
+    delete (safeFields as Record<string, unknown>).abcRecordId;
+    delete (safeFields as Record<string, unknown>).createdAt;
+    delete (safeFields as Record<string, unknown>).createdBy;
+    delete (safeFields as Record<string, unknown>).recorderName;
+
+    const updated: AbcRecord = {
+      ...original,
+      ...safeFields,
+      updatedAt: new Date().toISOString(),
+      updatedBy: fields.updatedBy || 'system',
+    };
+
     records[idx] = updated;
     writeAll(records);
     return updated;
   },
 
   async getAll(): Promise<AbcRecord[]> {
-    return readAll();
+    return readAll().filter((r) => r.isDeleted !== true);
   },
 
   async getByUserId(userId: string): Promise<AbcRecord[]> {
-    return readAll().filter((r) => r.userId === userId);
+    return readAll()
+      .filter((r) => r.userId === userId)
+      .filter((r) => r.isDeleted !== true);
   },
 
   async getById(id: string): Promise<AbcRecord | null> {
-    return readAll().find((r) => r.id === id) ?? null;
+    const found = readAll().find((r) => r.id === id);
+    if (!found || found.isDeleted === true) return null;
+    return found;
   },
 
   async delete(id: string): Promise<void> {
-    const records = readAll().filter((r) => r.id !== id);
-    writeAll(records);
+    const records = readAll();
+    const idx = records.findIndex((r) => r.id === id);
+    if (idx !== -1) {
+      records[idx] = {
+        ...records[idx],
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'system',
+      };
+      writeAll(records);
+    }
   },
 };

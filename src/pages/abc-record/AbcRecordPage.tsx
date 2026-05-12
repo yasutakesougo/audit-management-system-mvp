@@ -28,7 +28,7 @@ import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 
 // ── Domain ──
 import type { AbcRecord, AbcRecordSourceContext } from '@/domain/abc/abcRecord';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
 
@@ -39,6 +39,7 @@ import LogTab from './LogTab';
 
 const AbcRecordPage: React.FC = () => {
   const [tab, setTab] = useState(0);
+  const abcRecordRepo = useAbcRecordRepository();
   const [records, setRecords] = useState<AbcRecord[]>([]);
   const { data: users } = useUsers();
   const { account } = useAuth();
@@ -97,9 +98,9 @@ const AbcRecordPage: React.FC = () => {
   }, [urlUserId, users]);
 
   const loadRecords = useCallback(async () => {
-    const all = await localAbcRecordRepository.getAll();
+    const all = await abcRecordRepo.getAll();
     setRecords(all);
-  }, []);
+  }, [abcRecordRepo]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 

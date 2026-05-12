@@ -28,7 +28,7 @@ import FactCheckIcon from '@mui/icons-material/FactCheck';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
 import type { IcebergEvent } from '@/features/ibd/analysis/iceberg/icebergTypes';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import SearchIcon from '@mui/icons-material/Search';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
@@ -54,6 +54,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
   onUpdateNode, onDeleteNode, onUpdateLink, onDeleteLink,
   isReadOnly = false, logs = [] 
 }) => {
+  const abcRecordRepo = useAbcRecordRepository();
   const [tabValue, setTabValue] = useState(0);
   const [showAllLogs, setShowAllLogs] = useState(false);
   
@@ -97,18 +98,18 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
         setLinkedRecords([]);
         return;
       }
-      const all = await localAbcRecordRepository.getAll();
+      const all = await abcRecordRepo.getAll();
       setLinkedRecords(all.filter(r => ids.includes(r.id)));
     };
     fetchLinked();
-  }, [node?.evidenceRecordIds, link?.evidenceRecordIds, isLinkMode]);
+  }, [node?.evidenceRecordIds, link?.evidenceRecordIds, isLinkMode, abcRecordRepo]);
 
   useEffect(() => {
     if (tabValue === 1) {
       const fetchRecords = async () => {
         setIsSearching(true);
         const query = searchQuery.trim().toLowerCase();
-        const all = await localAbcRecordRepository.getAll();
+        const all = await abcRecordRepo.getAll();
         const filtered = all.filter(r => {
           if (userId && r.userId !== userId) return false;
           const text = (r.behavior + r.antecedent + r.consequence + (r.notes || '')).toLowerCase();
@@ -119,7 +120,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
       };
       fetchRecords();
     }
-  }, [tabValue, searchQuery, userId]);
+  }, [tabValue, searchQuery, userId, abcRecordRepo]);
 
   const toggleEvidence = (recordId: string) => {
     if (isLinkMode && link && onUpdateLink) {

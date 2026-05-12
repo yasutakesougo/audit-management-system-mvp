@@ -21,7 +21,7 @@ import {
 import WavesRoundedIcon from '@mui/icons-material/WavesRounded';
 
 import type { AbcRecord, AbcIntensity } from '@/domain/abc/abcRecord';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 
 // ════════════════════════════════════════════════
 // Constants
@@ -449,17 +449,18 @@ function OverviewPanel({ layers }: { layers: LayerData }) {
 export const IcebergStructureTab: React.FC<Props> = ({ userId }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const abcRecordRepo = useAbcRecordRepository();
 
   const [records, setRecords] = React.useState<AbcRecord[]>([]);
   const [activeLayer, setActiveLayer] = React.useState<IcebergLayerKey | null>(null);
 
   React.useEffect(() => {
     let disposed = false;
-    localAbcRecordRepository.getByUserId(userId).then(r => {
+    abcRecordRepo.getByUserId(userId).then(r => {
       if (!disposed) setRecords(r);
     });
     return () => { disposed = true; };
-  }, [userId]);
+  }, [userId, abcRecordRepo]);
 
   const layers = React.useMemo(() => buildLayerData(records), [records]);
 

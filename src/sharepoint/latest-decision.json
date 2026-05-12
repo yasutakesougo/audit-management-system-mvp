@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "date": "2026-05-09",
+  "date": "2100-01-13",
   "final": {
-    "label": "action_required",
-    "emoji": "🔴",
-    "line": "🔴 Action Required（明日対応必須）"
+    "label": "watch",
+    "emoji": "🟡",
+    "line": "🟡 Watch（軽微な懸念あり）"
   },
   "thresholds": {
     "healthScoreWarn": 80,
@@ -41,16 +41,16 @@
     ]
   },
   "inputs": {
-    "patrolJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/2026-05-09.json",
-    "classificationJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/classification-2026-05-09.json",
-    "dashboardMd": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/dashboard-2026-05-09.md",
+    "patrolJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/2100-01-13.json",
+    "classificationJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/classification-2100-01-13.json",
+    "dashboardMd": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/dashboard-2100-01-13.md",
     "laneAssertionJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/lane-assertion-result.json",
     "actWarningJson": "",
-    "exceptionCenterJson": "",
+    "exceptionCenterJson": "/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/nightly-decision-p1ZFTf/exception-broken.json",
     "kpiJson": "",
     "driftJson": "",
-    "adminStatusJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/admin-status-summary-",
-    "logFile": "/Users/yasutakesougo/audit-management-system-mvp/logs/today.auto.log"
+    "adminStatusJson": "/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/nightly-decision-p1ZFTf/admin-broken.json",
+    "logFile": "/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/nightly-decision-p1ZFTf/nightly.log"
   },
   "metrics": {
     "driftCount": 0,
@@ -59,8 +59,8 @@
     "autoHealingSuccessCount": 0,
     "autoHealingFailedCount": 0,
     "autoHealingSuccessRate": null,
-    "healthScore": 6,
-    "healthGrade": "F",
+    "healthScore": 88,
+    "healthGrade": "A",
     "actionResolveRate": null,
     "mttrMinutes": null,
     "falsePositiveRate": null,
@@ -69,7 +69,7 @@
     "staleExceptions": 0,
     "recurringExceptions": 0,
     "actWarnings": 0,
-    "classificationOverall": "monitor",
+    "classificationOverall": "stable",
     "laneErrors": 0,
     "laneWarnings": 0,
     "adminOverall": "unknown",
@@ -80,14 +80,14 @@
       "id": "admin-status",
       "label": "/admin/status",
       "status": "warn",
-      "value": "overall=n/a, fail=0, warn=0",
+      "value": "overall=unknown, fail=0, warn=0",
       "note": "入力欠損（観測信頼性低下）"
     },
     {
       "id": "patrol-overall",
       "label": "Nightly Patrol 分類",
-      "status": "warn",
-      "value": "monitor",
+      "status": "pass",
+      "value": "stable",
       "note": "classification-<date>.json"
     },
     {
@@ -114,9 +114,9 @@
     {
       "id": "drift-count",
       "label": "Drift Count",
-      "status": "warn",
-      "value": "candidate=0, residual=32",
-      "note": "未管理候補: 0 / 吸収済み残差: 32"
+      "status": "pass",
+      "value": "candidate=0, residual=0",
+      "note": "未管理候補: 0 / 吸収済み残差: 0"
     },
     {
       "id": "schema-mismatch",
@@ -142,8 +142,8 @@
     {
       "id": "health-score",
       "label": "OS Health Score",
-      "status": "fail",
-      "value": "6/100 (Grade F)",
+      "status": "pass",
+      "value": "88/100 (Grade A)",
       "note": "dashboard-<date>.md 解析"
     },
     {
@@ -197,48 +197,27 @@
     }
   ],
   "reasons": {
-    "fail": [
-      "Health score 6/100"
-    ],
+    "fail": [],
     "warn": [
       "/admin/status summary が欠損（判定信頼性低下）",
-      "Nightly Patrol が monitor",
-      "Drift residual 32 (管理済み残差あり)",
       "ExceptionCenter summary が欠損（判定信頼性低下）"
     ]
   },
   "reasonCodes": {
-    "fail": [
-      "HEALTH_SCORE_LOW"
-    ],
+    "fail": [],
     "warn": [
       "ADMIN_STATUS_SUMMARY_MISSING",
-      "PATROL_MONITOR",
-      "DRIFT_COUNT_PRESENT",
       "EXCEPTION_CENTER_SUMMARY_MISSING"
     ]
   },
   "runbook": {
     "path": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md",
     "reasonCodeLinks": {
-      "fail": [
-        {
-          "code": "HEALTH_SCORE_LOW",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-health-score"
-        }
-      ],
+      "fail": [],
       "warn": [
         {
           "code": "ADMIN_STATUS_SUMMARY_MISSING",
           "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
-        },
-        {
-          "code": "PATROL_MONITOR",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
-        },
-        {
-          "code": "DRIFT_COUNT_PRESENT",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
         },
         {
           "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
@@ -247,16 +226,7 @@
       ]
     },
     "reasonCodeActions": {
-      "fail": [
-        {
-          "code": "HEALTH_SCORE_LOW",
-          "normalizedCode": "HEALTH_SCORE_LOW",
-          "owner": "Release Owner",
-          "severity": "blocked",
-          "firstAction": "health score 低下要因を優先順に解消し、GO 判定を保留する。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-health-score"
-        }
-      ],
+      "fail": [],
       "warn": [
         {
           "code": "ADMIN_STATUS_SUMMARY_MISSING",
@@ -265,22 +235,6 @@
           "severity": "watch",
           "firstAction": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。",
           "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
-        },
-        {
-          "code": "PATROL_MONITOR",
-          "normalizedCode": "PATROL_MONITOR",
-          "owner": "Ops On-call",
-          "severity": "watch",
-          "firstAction": "monitor/auto-fixable の対象を確認し、継続発生時は escalation する。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
-        },
-        {
-          "code": "DRIFT_COUNT_PRESENT",
-          "normalizedCode": "DRIFT_COUNT_PRESENT",
-          "owner": "Data Platform Owner",
-          "severity": "watch",
-          "firstAction": "drift 件数の推移を監視し、増加時は根本原因分析を開始する。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
         },
         {
           "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
@@ -298,27 +252,9 @@
     "signals": [
       {
         "type": "zombie",
-        "severity": "critical",
-        "message": "HEALTH_SCORE_LOW",
-        "recommendation": "health score 低下要因を優先順に解消し、GO 判定を保留する。"
-      },
-      {
-        "type": "zombie",
         "severity": "warn",
         "message": "ADMIN_STATUS_SUMMARY_MISSING",
         "recommendation": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。"
-      },
-      {
-        "type": "zombie",
-        "severity": "warn",
-        "message": "PATROL_MONITOR",
-        "recommendation": "monitor/auto-fixable の対象を確認し、継続発生時は escalation する。"
-      },
-      {
-        "type": "drift",
-        "severity": "warn",
-        "message": "DRIFT_COUNT_PRESENT",
-        "recommendation": "drift 件数の推移を監視し、増加時は根本原因分析を開始する。"
       },
       {
         "type": "zombie",
