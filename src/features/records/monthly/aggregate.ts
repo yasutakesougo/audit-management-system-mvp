@@ -48,19 +48,16 @@ export function getTotalDaysInMonth(yearMonth: YearMonth): number {
   return new Date(year, month, 0).getDate();
 }
 
-/**
- * 日次記録から月次KPIを集計
- * emptyRows は整合性を保つため、plannedRows - completedRows - inProgressRows で計算
- */
 export function aggregateMonthlyKpi(
   dailyRecords: DailyRecord[],
   yearMonth: YearMonth,
   options: {
     useWorkingDays?: boolean;
     rowsPerDay?: number;
+    source?: 'daily-manual' | 'kiosk-execution' | 'hybrid' | string;
   } = {}
 ): MonthlyKpi {
-  const { useWorkingDays = true, rowsPerDay = 17 } = options;
+  const { useWorkingDays = true, rowsPerDay = 17, source = 'daily-manual' } = options;
 
   // 月内の基準日数
   const totalDays = useWorkingDays
@@ -72,12 +69,27 @@ export function aggregateMonthlyKpi(
 
   // 実績の集計
   const completedRows = dailyRecords.filter(r => r.completed).length;
-  const inProgressRows = dailyRecords.filter(r => !r.completed && !r.isEmpty).length;
   const specialNotes = dailyRecords.filter(r => r.hasSpecialNotes).length;
   const incidents = dailyRecords.filter(r => r.hasIncidents).length;
 
-  // emptyRows は整合性保証: plannedRows - completedRows - inProgressRows（負にならない）
-  const emptyRows = Math.max(0, plannedRows - completedRows - inProgressRows);
+  // 詳細集計（拡張項目）
+  const skippedRows = dailyRecords.filter(r => r.isSkipped).length;
+  const triggeredRows = dailyRecords.filter(r => r.isTriggered).length;
+  const memoRows = dailyRecords.filter(r => r.hasMemo).length;
+
+  // inProgressRows は完了でも空でもない行。
+  // 二重計上を防ぐため、isSkipped もしくは isTriggered の拡張項目が true の場合は inProgressRows から除外する。
+  const inProgressRows = dailyRecords.filter(
+    r => !r.completed && !r.isEmpty && !r.isSkipped && !r.isTriggered
+  ).length;
+
+  // emptyRows は整合性保証：計画行数から、実際に何かしらの記録があった行数を引く。
+  // completed, inProgress, skipped, triggered は互いに排他であるため、単純に引いてよい。
+  // memoRows は独立した属性（completed や triggered と重複しうる）なので、ここでは引かない。
+  const emptyRows = Math.max(
+    0,
+    plannedRows - completedRows - inProgressRows - skippedRows - triggeredRows
+  );
 
   return {
     totalDays,
@@ -87,6 +99,10 @@ export function aggregateMonthlyKpi(
     emptyRows,
     specialNotes,
     incidents,
+    skippedRows,
+    triggeredRows,
+    memoRows,
+    source,
   };
 }
 
@@ -127,6 +143,7 @@ export function aggregateMonthlySummary(
   options?: {
     useWorkingDays?: boolean;
     rowsPerDay?: number;
+    source?: 'daily-manual' | 'kiosk-execution' | 'hybrid' | string;
   }
 ): MonthlySummary {
   // KPI集計

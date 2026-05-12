@@ -59,10 +59,14 @@ describe('executeKioskMonthlyAggregation use case', () => {
       totalDays: 31,
       plannedRows: 31,
       completedRows: 2,
-      inProgressRows: 1,
+      inProgressRows: 0,
       emptyRows: 28,
       specialNotes: 1,
       incidents: 1,
+      skippedRows: 0,
+      triggeredRows: 1,
+      memoRows: 1,
+      source: 'kiosk-execution',
     });
 
     expect(result.evidence).toEqual({

@@ -24,6 +24,10 @@ export interface MonthlyKpi {
   emptyRows: number;        // 未入力（生成時に invariant 保証: emptyRows = max(0, plannedRows - completedRows - inProgressRows)）
   specialNotes: number;     // 特記事項あり件数
   incidents: number;        // 事故/ヒヤリ等のタグ件数（拡張）
+  skippedRows?: number;     // スキップされた行数（拡張）
+  triggeredRows?: number;   // トリガー（行動発生）された行数（拡張）
+  memoRows?: number;        // メモが記入された行数（拡張）
+  source?: 'daily-manual' | 'kiosk-execution' | 'hybrid' | string; // 集計ソース
 }
 
 export interface MonthlySummary extends MonthlyRecordKey {
@@ -47,6 +51,9 @@ export interface DailyRecord {
   hasSpecialNotes: boolean;
   hasIncidents: boolean;
   isEmpty: boolean;         // 全フィールドが空の場合
+  isSkipped?: boolean;      // スキップされた行（拡張）
+  isTriggered?: boolean;    // トリガーされた行（拡張）
+  hasMemo?: boolean;        // 個別メモがある行（拡張）
 }
 
 // 月次サマリー操作の結果
