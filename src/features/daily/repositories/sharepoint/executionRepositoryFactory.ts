@@ -52,12 +52,17 @@ const shouldUseLocalRepository = (): boolean => {
 
   const { isDev } = getAppConfig();
   const isTest = isTestMode();
+  const isE2E = readBool('VITE_E2E', false) || readBool('VITE_E2E_MSAL_MOCK', false);
   const isKioskRuntime =
     typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
 
   // Kiosk must rely on SharePoint so history and cross-device consistency work.
   // Keep tests isolated by allowing local mode only while running test runtime.
   if (isKioskRuntime && !isTest) {
+    // E2E local/memory runs intentionally validate kiosk UI behavior without SharePoint dependency.
+    if ((providerHint === 'local' || providerHint === 'memory') && isE2E) {
+      return true;
+    }
     if (providerHint === 'local' || providerHint === 'memory' || shouldSkipLogin()) {
       console.warn(
         '[ExecutionRepositoryFactory] local/memory hint detected in kiosk runtime; forcing SharePoint adapter.',

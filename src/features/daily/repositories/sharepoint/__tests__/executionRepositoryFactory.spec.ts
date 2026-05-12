@@ -8,6 +8,7 @@ const envState = {
   shouldSkipLogin: false,
   forceSharePoint: false,
   dataProvider: undefined as string | undefined,
+  e2e: false,
 };
 
 vi.mock('@/lib/env', () => ({
@@ -16,7 +17,11 @@ vi.mock('@/lib/env', () => ({
   isForceDemoEnabled: () => envState.isForceDemoEnabled,
   isTestMode: () => envState.isTestMode,
   shouldSkipLogin: () => envState.shouldSkipLogin,
-  readBool: (key: string, fallback = false) => (key === 'VITE_FORCE_SHAREPOINT' ? envState.forceSharePoint : fallback),
+  readBool: (key: string, fallback = false) => {
+    if (key === 'VITE_FORCE_SHAREPOINT') return envState.forceSharePoint;
+    if (key === 'VITE_E2E') return envState.e2e;
+    return fallback;
+  },
   readOptionalEnv: (key: string) => (key === 'VITE_DATA_PROVIDER' ? envState.dataProvider : undefined),
 }));
 
@@ -31,6 +36,7 @@ describe('executionRepositoryFactory', () => {
     envState.shouldSkipLogin = false;
     envState.forceSharePoint = false;
     envState.dataProvider = undefined;
+    envState.e2e = false;
     window.history.pushState({}, '', '/');
   });
 
@@ -54,5 +60,12 @@ describe('executionRepositoryFactory', () => {
 
     expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
   });
-});
 
+  it('respects local/memory provider hint in kiosk runtime during e2e', () => {
+    envState.e2e = true;
+    envState.dataProvider = 'memory';
+    window.history.pushState({}, '', '/kiosk/users/10/procedures/0');
+
+    expect(getCurrentExecutionRepositoryKind()).toBe('local');
+  });
+});
