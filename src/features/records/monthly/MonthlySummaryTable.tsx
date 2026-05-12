@@ -1,3 +1,4 @@
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -343,9 +344,30 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
                   完了率
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="right">完了</TableCell>
-              <TableCell align="right">進行中</TableCell>
-              <TableCell align="right">未入力</TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                  完了
+                  <Tooltip title="支援が提供され、完了チェックされた項目数（キオスク集計時: completed ステータス）">
+                    <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                  </Tooltip>
+                </Box>
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                  進行中
+                  <Tooltip title="入力開始されているが、未完了の項目数。キオスク集計時、スキップや行動発生（トリガー）の行はここに計上されます。">
+                    <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                  </Tooltip>
+                </Box>
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                  未入力
+                  <Tooltip title="計画（営業日×17行）に対して、記録が全く存在しない項目数。二重計上を防ぐ不変ロジックで計算されています。">
+                    <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                  </Tooltip>
+                </Box>
+              </TableCell>
               <TableCell align="center">特記事項</TableCell>
               <TableCell>
                 <TableSortLabel
@@ -378,7 +400,71 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
                       </Typography>
                     </Box>
                   </TableCell>
-                  <TableCell>{summary.yearMonth}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {summary.yearMonth}
+                      {summary.kpi.source === 'kiosk-execution' ? (
+                        <Tooltip title={
+                          <Box sx={{ p: 0.5 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                              集計根拠: キオスク実施記録
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・完了: {summary.kpi.completedRows} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・トリガー(行動発生): {summary.kpi.triggeredRows ?? 0} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・スキップ: {summary.kpi.skippedRows ?? 0} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・未入力: {summary.kpi.emptyRows} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・メモ記載: {summary.kpi.memoRows ?? 0} 件
+                            </Typography>
+                          </Box>
+                        }>
+                          <Chip
+                            label="キオスク"
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem', height: 20 }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title={
+                          <Box sx={{ p: 0.5 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>
+                              集計根拠: 日次手動入力
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・完了: {summary.kpi.completedRows} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・進行中: {summary.kpi.inProgressRows} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・未入力: {summary.kpi.emptyRows} 件
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              ・特記事項: {summary.kpi.specialNotes} 件
+                            </Typography>
+                          </Box>
+                        }>
+                          <Chip
+                            label="手動"
+                            size="small"
+                            color="default"
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem', height: 20 }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell align="right">
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
                       <Chip

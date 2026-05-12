@@ -109,6 +109,9 @@ export function toMonthlyDailyRecordFromKioskEvidence(record: ExecutionRecord): 
     hasSpecialNotes: hasMemo(record),
     hasIncidents: hasIncidentEvidence(record, status),
     isEmpty,
+    isSkipped: status === 'skipped',
+    isTriggered: status === 'triggered',
+    hasMemo: hasMemo(record),
   };
 }
 
@@ -204,6 +207,7 @@ export function aggregateMonthlySummaryFromKioskEvidence(
   const summary = aggregateMonthlySummary(userId, displayName, dailyRecords, yearMonth, {
     useWorkingDays,
     rowsPerDay,
+    source: 'kiosk-execution',
   });
 
   return {

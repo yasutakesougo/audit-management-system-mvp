@@ -79,10 +79,14 @@ describe('monthly kiosk evidence bridge', () => {
       totalDays: 31,
       plannedRows: 31,
       completedRows: 1,
-      inProgressRows: 2,
+      inProgressRows: 0,
       emptyRows: 28,
       specialNotes: 2,
       incidents: 1,
+      skippedRows: 1,
+      triggeredRows: 1,
+      memoRows: 2,
+      source: 'kiosk-execution',
     });
 
     expect(result.evidence).toEqual({
@@ -105,9 +109,9 @@ describe('monthly kiosk evidence bridge', () => {
     expect(result.summary.firstEntryDate).toBe(result.evidence.firstEntryDate);
     expect(result.summary.lastEntryDate).toBe(result.evidence.lastEntryDate);
     expect(result.summary.kpi.completedRows).toBe(result.evidence.completedRows);
-    expect(result.summary.kpi.inProgressRows).toBe(
-      result.evidence.triggeredRows + result.evidence.skippedRows
-    );
+    expect(result.summary.kpi.skippedRows).toBe(result.evidence.skippedRows);
+    expect(result.summary.kpi.triggeredRows).toBe(result.evidence.triggeredRows);
+    expect(result.summary.kpi.memoRows).toBe(result.evidence.memoRows);
     expect(result.summary.kpi.incidents).toBe(result.evidence.incidentRows);
   });
 });
