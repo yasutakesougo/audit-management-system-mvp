@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import { auditLog } from '@/lib/debugLogger';
 
@@ -16,6 +16,7 @@ export interface AbcRecordOrchestratorDeps {
  */
 export function useAbcRecordOrchestrator(deps: AbcRecordOrchestratorDeps) {
   const { onRefresh, setSaving, showSnack } = deps;
+  const abcRecordRepo = useAbcRecordRepository();
 
   /**
    * 記録の更新
@@ -25,7 +26,7 @@ export function useAbcRecordOrchestrator(deps: AbcRecordOrchestratorDeps) {
     try {
       auditLog.info('ABC_RECORD:UPDATE_START', { id });
       
-      const updated = await localAbcRecordRepository.update(id, data);
+      const updated = await abcRecordRepo.update(id, data);
       
       auditLog.info('ABC_RECORD:UPDATE_SUCCESS', { id });
       onRefresh();
@@ -37,7 +38,7 @@ export function useAbcRecordOrchestrator(deps: AbcRecordOrchestratorDeps) {
     } finally {
       setSaving?.(false);
     }
-  }, [onRefresh, setSaving, showSnack]);
+  }, [onRefresh, setSaving, showSnack, abcRecordRepo]);
 
   /**
    * 記録の削除
@@ -46,7 +47,7 @@ export function useAbcRecordOrchestrator(deps: AbcRecordOrchestratorDeps) {
     try {
       auditLog.info('ABC_RECORD:DELETE_START', { id });
       
-      await localAbcRecordRepository.delete(id);
+      await abcRecordRepo.delete(id);
       
       auditLog.info('ABC_RECORD:DELETE_SUCCESS', { id });
       onRefresh();
@@ -55,7 +56,7 @@ export function useAbcRecordOrchestrator(deps: AbcRecordOrchestratorDeps) {
       showSnack?.('error', '記録の削除に失敗しました。');
       throw error;
     }
-  }, [onRefresh, showSnack]);
+  }, [onRefresh, showSnack, abcRecordRepo]);
 
   return {
     handleUpdateRecord,

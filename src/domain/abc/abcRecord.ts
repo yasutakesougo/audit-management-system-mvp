@@ -32,8 +32,12 @@ export interface AbcRecordSourceContext {
   planId?: string;
   /** 時間帯スロットキー (例: "09:00|朝の受け入れ") */
   slotId?: string;
+  /** タイムスロット名 (例: "朝の受け入れ") */
+  slotLabel?: string;
   /** 対象日 (YYYY-MM-DD) */
   date?: string;
+  /** 戻り先 URL (任意) */
+  returnUrl?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -73,6 +77,24 @@ export interface AbcRecord {
   createdAt: string;
   /** 作成元コンテキスト（daily-support 起源の場合に設定） */
   sourceContext?: AbcRecordSourceContext;
+
+  // ─────────────────────────────────────────────
+  // 監査・本番硬化用の追加プロパティ
+  // ─────────────────────────────────────────────
+  /** 安定UUID（SharePoint等との永続的なID連携用） */
+  abcRecordId?: string;
+  /** 作成者コード・アカウントID */
+  createdBy?: string;
+  /** 更新日時 (ISO string) */
+  updatedAt?: string;
+  /** 更新者コード・アカウントID */
+  updatedBy?: string;
+  /** 論理削除フラグ */
+  isDeleted?: boolean;
+  /** 削除日時 (ISO string) */
+  deletedAt?: string;
+  /** 削除者コード・アカウントID */
+  deletedBy?: string;
 }
 
 export type AbcRecordCreateInput = Omit<AbcRecord, 'id' | 'createdAt'>;

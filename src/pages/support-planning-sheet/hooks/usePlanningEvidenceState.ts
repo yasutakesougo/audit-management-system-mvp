@@ -3,7 +3,7 @@ import type { EvidenceLinkMap } from '@/domain/isp/evidenceLink';
 import { createEmptyEvidenceLinkMap } from '@/domain/isp/evidenceLink';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 
 type UsePlanningEvidenceStateResult = {
@@ -17,6 +17,7 @@ export function usePlanningEvidenceState(
   planningSheetId: string | undefined,
   userId: string | undefined,
 ): UsePlanningEvidenceStateResult {
+  const abcRecordRepo = useAbcRecordRepository();
   const [evidenceLinks, setEvidenceLinksRaw] = React.useState<EvidenceLinkMap>(createEmptyEvidenceLinkMap());
   const [abcRecords, setAbcRecords] = React.useState<AbcRecord[]>([]);
   const [pdcaItems, setPdcaItems] = React.useState<IcebergPdcaItem[]>([]);
@@ -43,7 +44,7 @@ export function usePlanningEvidenceState(
       return;
     }
 
-    localAbcRecordRepository.getByUserId(userId).then((records) => {
+    abcRecordRepo.getByUserId(userId).then((records) => {
       if (!disposed) setAbcRecords(records);
     });
 
@@ -58,7 +59,7 @@ export function usePlanningEvidenceState(
     }
 
     return () => { disposed = true; };
-  }, [userId]);
+  }, [userId, abcRecordRepo]);
 
   return {
     evidenceLinks,

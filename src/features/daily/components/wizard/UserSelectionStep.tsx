@@ -20,7 +20,7 @@ import { computeMonitoringDeadlineFromSupportStart, type MonitoringDeadlineState
 import type { DailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
 import type { IUserMaster } from '@/features/users/types';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 
 
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
@@ -73,6 +73,7 @@ interface AbcSummary {
 }
 
 function useAbcSummary(): AbcSummary {
+  const abcRecordRepo = useAbcRecordRepository();
   const [summary, setSummary] = useState<AbcSummary>({
     todayCounts: new Map(),
     latestDates: new Map(),
@@ -82,7 +83,7 @@ function useAbcSummary(): AbcSummary {
     let mounted = true;
     (async () => {
       try {
-        const all: AbcRecord[] = await localAbcRecordRepository.getAll();
+        const all: AbcRecord[] = await abcRecordRepo.getAll();
         const today = new Date().toISOString().slice(0, 10);
         const todayCounts = new Map<string, number>();
         const latestDates = new Map<string, string>();
@@ -104,7 +105,7 @@ function useAbcSummary(): AbcSummary {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [abcRecordRepo]);
 
   return summary;
 }

@@ -18,7 +18,7 @@ import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interv
 import { computeMonitoringDeadlineFromSupportStart, type MonitoringDeadlineState } from '@/features/daily/components/MonitoringCountdown';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
@@ -83,6 +83,7 @@ type AbcTodayData = {
 };
 
 function useAbcTodayCount(userId?: string): AbcTodayData {
+  const abcRecordRepo = useAbcRecordRepository();
   const [data, setData] = useState<AbcTodayData>({
     todayCount: 0,
     latestDate: null,
@@ -95,7 +96,7 @@ function useAbcTodayCount(userId?: string): AbcTodayData {
     let mounted = true;
     (async () => {
       try {
-        const all: AbcRecord[] = await localAbcRecordRepository.getAll();
+        const all: AbcRecord[] = await abcRecordRepo.getAll();
         const today = new Date().toISOString().slice(0, 10);
         let count = 0;
         let latest: string | null = null;
@@ -111,7 +112,7 @@ function useAbcTodayCount(userId?: string): AbcTodayData {
       }
     })();
     return () => { mounted = false; };
-  }, [userId]);
+  }, [userId, abcRecordRepo]);
 
   return data;
 }

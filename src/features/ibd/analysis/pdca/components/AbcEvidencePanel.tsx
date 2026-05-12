@@ -41,7 +41,7 @@ import {
   getTopReferencedPdcaItems,
   type TopReferencedItem,
 } from '@/domain/isp/getTopReferencedEvidence';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 
 // ── Constants ──
@@ -118,6 +118,7 @@ function buildSummary(records: AbcRecord[]): AbcSummary {
 // ── Component ──
 export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) => {
   const navigate = useNavigate();
+  const abcRecordRepo = useAbcRecordRepository();
   const [records, setRecords] = React.useState<AbcRecord[]>([]);
   const [expanded, setExpanded] = React.useState(true);
   const [adoptionCounts, setAdoptionCounts] = React.useState<StrategyAdoptionCounts | null>(null);
@@ -126,11 +127,11 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
 
   React.useEffect(() => {
     let disposed = false;
-    localAbcRecordRepository.getByUserId(userId).then(r => {
+    abcRecordRepo.getByUserId(userId).then(r => {
       if (!disposed) setRecords(r);
     });
     return () => { disposed = true; };
-  }, [userId]);
+  }, [userId, abcRecordRepo]);
 
   // 戦略別採用件数 + よく参照される根拠を取得
   React.useEffect(() => {
