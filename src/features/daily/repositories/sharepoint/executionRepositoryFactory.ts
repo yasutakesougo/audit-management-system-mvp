@@ -55,9 +55,9 @@ const shouldUseLocalRepository = (): boolean => {
   const isKioskRuntime =
     typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
 
-  // Kiosk in non-dev runtime must never rely on local-only records.
-  // Even when demo/skip flags are accidentally enabled, prefer SharePoint.
-  if (isKioskRuntime && !isDev && !isTest) {
+  // Kiosk must rely on SharePoint so history and cross-device consistency work.
+  // Keep tests isolated by allowing local mode only while running test runtime.
+  if (isKioskRuntime && !isTest) {
     if (providerHint === 'local' || providerHint === 'memory' || shouldSkipLogin()) {
       console.warn(
         '[ExecutionRepositoryFactory] local/memory hint detected in kiosk runtime; forcing SharePoint adapter.',

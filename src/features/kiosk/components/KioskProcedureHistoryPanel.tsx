@@ -25,7 +25,9 @@ import { KioskDailyProcedureFlowPreview } from './KioskDailyProcedureFlowPreview
 
 interface KioskProcedureHistoryPanelProps {
   userId: string;
+  fallbackUserIds?: string[];
   scheduleItemId: string;
+  fallbackScheduleItemIds?: string[];
   userName: string;
   procedureName: string;
   onClose: () => void;
@@ -35,14 +37,21 @@ type ViewMode = 'daily' | '7d' | '1m' | '3m';
 
 export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProps> = ({
   userId,
+  fallbackUserIds = [],
   scheduleItemId,
+  fallbackScheduleItemIds = [],
   userName,
   procedureName,
   onClose,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [selectedFlowDate, setSelectedFlowDate] = useState<string | null>(null);
-  const { records, isLoading, error } = useHistoricalRecords(userId, scheduleItemId);
+  const { records, isLoading, error } = useHistoricalRecords(
+    userId,
+    scheduleItemId,
+    fallbackScheduleItemIds,
+    fallbackUserIds,
+  );
 
   const handleViewChange = (
     _event: React.MouseEvent<HTMLElement>,
@@ -289,4 +298,3 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
     </Box>
   );
 };
-
