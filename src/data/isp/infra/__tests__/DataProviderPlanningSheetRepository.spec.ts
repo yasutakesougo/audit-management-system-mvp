@@ -127,9 +127,9 @@ function parseFilter(filter: string): Array<(row: Record<string, unknown>) => bo
     const [, field, rawValue] = match;
     const value = rawValue.startsWith("'")
       ? rawValue.slice(1, -1).replace(/''/g, "'")
-      : rawValue === 'true'
+      : rawValue === 'true' || rawValue === '1'
         ? true
-        : rawValue === 'false'
+        : rawValue === 'false' || rawValue === '0'
           ? false
           : Number(rawValue);
     return (r) => {
@@ -186,6 +186,26 @@ describe('DataProviderPlanningSheetRepository', () => {
       const issued = provider.lastFilters.at(-1) ?? '';
       expect(issued).toContain("UserCode eq 'U-001'");
       expect(issued).not.toContain('IsCurrent');
+    });
+  });
+
+  describe('listCurrentByUser', () => {
+    it('returns only current versions for the given user', async () => {
+      provider.seed('any', [
+        row({ Id: 1, UserCode: 'U-001', VersionNo: 1, IsCurrent: false }),
+        row({ Id: 2, UserCode: 'U-001', VersionNo: 2, IsCurrent: true }),
+        row({ Id: 3, UserCode: 'U-002', VersionNo: 1, IsCurrent: true }),
+      ]);
+
+      const items = await repo.listCurrentByUser('U-001');
+
+      expect(items).toHaveLength(1);
+      expect(items[0].id).toBe('sp-2');
+      expect(items[0].userId).toBe('U-001');
+      
+      const issued = provider.lastFilters.at(-1) ?? '';
+      expect(issued).toContain("UserCode eq 'U-001'");
+      expect(issued).toContain('IsCurrent eq 1');
     });
   });
 

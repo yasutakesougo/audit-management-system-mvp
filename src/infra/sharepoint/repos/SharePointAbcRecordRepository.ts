@@ -163,9 +163,15 @@ export class SharePointAbcRecordRepository implements AbcRecordRepository {
     };
 
     // SharePoint への新規作成 POST
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const created = await this.client.createItem<any>(this.listName, payload as any);
-    const createdId = Number(created?.Id ?? created?.d?.Id ?? created?.data?.Id);
+    const created = await this.client.createItem<Record<string, unknown>>(
+      this.listName,
+      payload as unknown as Record<string, unknown>
+    );
+    const createdId = Number(
+      created?.Id ??
+        (created?.d as Record<string, unknown> | undefined)?.Id ??
+        (created?.data as Record<string, unknown> | undefined)?.Id
+    );
 
     if (!createdId || !Number.isFinite(createdId)) {
       console.error('[SharePointAbcRecordRepository] Failed to extract ID from create response', created);

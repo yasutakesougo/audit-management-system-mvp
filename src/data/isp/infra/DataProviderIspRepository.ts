@@ -133,8 +133,9 @@ export class DataProviderIspRepository implements IspRepository {
     const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
     
+    const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
-      filter: `${userField} eq '${userId}'`,
+      filter: `${userField} eq '${escapedUserId}'`,
       orderby: 'Modified desc',
       top: SP_QUERY_LIMITS.default,
     });
@@ -147,8 +148,9 @@ export class DataProviderIspRepository implements IspRepository {
     const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
     
+    const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
-      filter: `${userField} eq '${userId}'`,
+      filter: `${userField} eq '${escapedUserId}'`,
       orderby: 'Modified desc',
       top: SP_QUERY_LIMITS.default,
     });
@@ -162,8 +164,9 @@ export class DataProviderIspRepository implements IspRepository {
     const userField = fields.userCode || 'UserCode';
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
+    const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
-      filter: `${userField} eq '${userId}' and ${isCurrentField} eq true`,
+      filter: `${userField} eq '${escapedUserId}' and ${isCurrentField} eq 1`,
       top: 1,
     });
 
@@ -177,7 +180,7 @@ export class DataProviderIspRepository implements IspRepository {
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
-      filter: `${isCurrentField} eq true`,
+      filter: `${isCurrentField} eq 1`,
       top: SP_QUERY_LIMITS.recommended,
     });
 

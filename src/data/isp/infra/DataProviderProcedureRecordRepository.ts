@@ -132,8 +132,9 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
     const userField = fields.userCode || 'UserCode';
     const dateField = fields.recordDate || 'RecordDate';
 
+    const escapedUserId = userId.replace(/'/g, "''");
     const rows = await this.provider.listItems<SpProcedureRecordRow>(title, {
-      filter: `${userField} eq '${userId}' and ${dateField} eq '${recordDate}'`,
+      filter: `${userField} eq '${escapedUserId}' and ${dateField} eq '${recordDate}'`,
       orderby: 'TimeSlot asc',
       top: SP_QUERY_LIMITS.default,
     });
