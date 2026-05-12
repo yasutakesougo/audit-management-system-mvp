@@ -28,7 +28,8 @@ import {
   mapIspRowToListItem, 
   mapIspCreateInputToPayload, 
   mapIspUpdateInputToPayload,
-  extractSpId
+  extractSpId,
+  extractCreatedItemId
 } from '@/data/isp/mapper';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
@@ -189,7 +190,8 @@ export class DataProviderIspRepository implements IspRepository {
     const payload = mapIspCreateInputToPayload(input);
     
     const created = await this.provider.createItem<SpIspMasterRow>(title, payload as unknown as Record<string, unknown>);
-    return this.getById(`sp-${created.id}`) as Promise<IndividualSupportPlan>;
+    const createdId = extractCreatedItemId(created);
+    return this.getById(`sp-${createdId}`) as Promise<IndividualSupportPlan>;
   }
 
   async update(id: string, input: IspUpdateInput): Promise<IndividualSupportPlan> {
