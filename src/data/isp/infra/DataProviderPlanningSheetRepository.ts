@@ -125,10 +125,23 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
 
       const isHealthy = areEssentialFieldsResolved(resolved, PLANNING_SHEET_ESSENTIALS as unknown as string[]);
       
+      // 物理スキーマに存在しない可能性のある非必須・オプショナルな拡張フィールドは、
+      // 解決できなくても画面上に「一部列名不一致」データ警告バナーを出さないようにサイレント化
+      const silentFields = ['versionNo', 'supportStartDate', 'monitoringCycleDays'];
+      const enrichedFieldStatus = { ...fieldStatus } as Record<string, { resolvedName?: string; candidates: string[]; isSilent?: boolean }>;
+      for (const key of silentFields) {
+        if (enrichedFieldStatus[key]) {
+          enrichedFieldStatus[key] = {
+            ...enrichedFieldStatus[key],
+            isSilent: true
+          };
+        }
+      }
+
       reportResourceResolution({
         resourceName: 'PlanningSheet',
         resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: enrichedFieldStatus,
         essentials: PLANNING_SHEET_ESSENTIALS as unknown as string[],
       });
 
