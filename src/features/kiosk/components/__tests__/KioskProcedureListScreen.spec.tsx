@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { MemoryRouter } from 'react-router-dom';
+import type { SupportPlanningSheet } from '@/domain/isp/schema';
 
 // Mock dependencies
 vi.mock('react-router-dom', async () => {
@@ -20,13 +21,14 @@ vi.mock('@/features/users/useUsers', () => ({
 }));
 
 const mockProcedures = [
-  { id: '1', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります' },
-  { id: 'P002', rowNo: 2, time: '12:00', activity: '昼食の介助', instruction: '見守りを行います' }
+  { id: '1', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります', planningSheetId: 'S001' },
+  { id: 'P002', rowNo: 2, time: '12:00', activity: '昼食の介助', instruction: '見守りを行います', planningSheetId: 'S001' }
 ];
 
+const mockGetByUser = vi.fn(() => mockProcedures);
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
   useProcedureData: () => ({
-    getByUser: () => mockProcedures
+    getByUser: () => mockGetByUser()
   }),
 }));
 
@@ -50,6 +52,15 @@ vi.mock('@/features/daily/repositories/sharepoint/executionRepositoryFactory', (
   getCurrentExecutionRepositoryKind: () => mockGetCurrentExecutionRepositoryKind(),
 }));
 
+const mockUsePlanningSheetData = vi.fn(() => ({ data: null, isLoading: false }));
+vi.mock('@/features/planning-sheet/hooks/usePlanningSheetData', () => ({
+  usePlanningSheetData: () => mockUsePlanningSheetData(),
+}));
+
+vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
+  usePlanningSheetRepositories: () => ({}),
+}));
+
 describe('KioskProcedureListScreen (includes local/memory-style recorded-state checks)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -58,6 +69,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
+    mockGetByUser.mockReturnValue(mockProcedures);
+    mockUsePlanningSheetData.mockReturnValue({ data: null, isLoading: false });
     mockGetRecords.mockResolvedValue([]);
   });
 
@@ -366,10 +379,35 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
-  it('renders service start date when user has ServiceStartDate', async () => {
+  it('Case 1: renders supportStartDate from planningSheet when planningSheet.supportStartDate is present', async () => {
     mockUseUser.mockReturnValue({
       data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
       status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { supportStartDate: '2026-05-01' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/支援手順兼記録開始日: 2026年5月1日（90日参考・支援計画）/)).toBeInTheDocument();
+    });
+  });
+
+  it('Case 2: renders ServiceStartDate from user master when planningSheet.supportStartDate is not present', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { supportStartDate: undefined } as unknown as SupportPlanningSheet,
+      isLoading: false,
     });
 
     render(
@@ -383,10 +421,38 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
-  it('renders unset message when user does not have ServiceStartDate', async () => {
+  it('Case 3: renders appliedFrom from planningSheet when supportStartDate and ServiceStartDate are both absent', async () => {
     mockUseUser.mockReturnValue({
       data: { FullName: '田中 太郎', ServiceStartDate: undefined },
       status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { supportStartDate: undefined, appliedFrom: '2026-03-01' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/\[暫定\] 支援手順兼記録開始日: 2026年3月1日（90日参考・計画適用日）/)).toBeInTheDocument();
+    });
+  });
+
+  it('Case 4: renders unset message when planningSheetId, supportStartDate, ServiceStartDate and appliedFrom are all absent', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+    mockGetByUser.mockReturnValue([
+      { id: '1', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります' }
+    ]);
+    mockUsePlanningSheetData.mockReturnValue({
+      data: null,
+      isLoading: false,
     });
 
     render(
@@ -397,6 +463,27 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(screen.getByText(/支援手順兼記録開始日: 未設定（90日参考）/)).toBeInTheDocument();
+    });
+  });
+
+  it('Loading case: renders confirmation message during loading when planningSheetId is present but data is not loaded yet', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: null,
+      isLoading: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/支援手順兼記録開始日: 確認中（90日参考）/)).toBeInTheDocument();
     });
   });
 });

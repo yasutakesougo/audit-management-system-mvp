@@ -14,6 +14,9 @@ import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
+import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
 
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -41,6 +44,25 @@ export const KioskProcedureListScreen: React.FC = () => {
     }
     return keys;
   }, [procedures]);
+
+  const targetPlanningSheetId = React.useMemo(() => {
+    return procedures?.find((procedure) => procedure.planningSheetId)?.planningSheetId;
+  }, [procedures]);
+
+  const planningRepo = usePlanningSheetRepositories();
+
+  const {
+    data: planningSheet,
+    isLoading: isLoadingPlanningSheet,
+  } = usePlanningSheetData(targetPlanningSheetId, planningRepo);
+
+  const resolvedStartDate = React.useMemo(() => {
+    return resolveSupportStartDateDetailed(
+      planningSheet?.supportStartDate,
+      user?.ServiceStartDate,
+      planningSheet?.appliedFrom
+    );
+  }, [planningSheet?.supportStartDate, planningSheet?.appliedFrom, user?.ServiceStartDate]);
 
   const { getRecords: getStoreRecords } = useExecutionStore();
   const storeRecords = getStoreRecords(selectedDateIso || '', userId || '');
@@ -161,15 +183,30 @@ export const KioskProcedureListScreen: React.FC = () => {
               <Typography variant="subtitle1" color="text.secondary">
                 {selectedDateStr} の支援手順
               </Typography>
-              {user.ServiceStartDate ? (
-                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
-                  • 支援手順兼記録開始日: {formatDateJapanese(user.ServiceStartDate)}（90日参考・利用者マスタ）
-                </Typography>
-              ) : (
-                <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
-                  • 支援手順兼記録開始日: 未設定（90日参考）
-                </Typography>
-              )}
+              <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
+                • {(() => {
+                  const { date, source } = resolvedStartDate;
+
+                  if (!date || source === 'none') {
+                    return targetPlanningSheetId && isLoadingPlanningSheet
+                      ? '支援手順兼記録開始日: 確認中（90日参考）'
+                      : '支援手順兼記録開始日: 未設定（90日参考）';
+                  }
+
+                  const dateStr = formatDateJapanese(date);
+
+                  switch (source) {
+                    case 'planning':
+                      return `支援手順兼記録開始日: ${dateStr}（90日参考・支援計画）`;
+                    case 'master':
+                      return `支援手順兼記録開始日: ${dateStr}（90日参考・利用者マスタ）`;
+                    case 'fallback':
+                      return `[暫定] 支援手順兼記録開始日: ${dateStr}（90日参考・計画適用日）`;
+                    default:
+                      return `支援手順兼記録開始日: ${dateStr}（90日参考）`;
+                  }
+                })()}
+              </Typography>
             </Box>
           </Box>
         </Box>
