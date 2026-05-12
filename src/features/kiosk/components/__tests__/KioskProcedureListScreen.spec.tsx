@@ -396,7 +396,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/支援手順兼記録開始日: 2026年5月1日（90日参考・支援計画）/)).toBeInTheDocument();
+      expect(screen.getByText(/支援開始日: 2026年5月1日（90日参考・支援計画）/)).toBeInTheDocument();
     });
   });
 
@@ -417,7 +417,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/支援手順兼記録開始日: 2026年4月1日（90日参考・利用者マスタ）/)).toBeInTheDocument();
+      expect(screen.getByText(/支援開始日: 2026年4月1日（90日参考・利用者マスタ）/)).toBeInTheDocument();
     });
   });
 
@@ -438,7 +438,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/\[暫定\] 支援手順兼記録開始日: 2026年3月1日（90日参考・計画適用日）/)).toBeInTheDocument();
+      expect(screen.getByText(/\[暫定\] 支援開始日: 2026年3月1日（90日参考・計画適用日）/)).toBeInTheDocument();
     });
   });
 
@@ -462,7 +462,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/支援手順兼記録開始日: 未設定（90日参考）/)).toBeInTheDocument();
+      expect(screen.getByText(/支援開始日: 未設定（90日参考）/)).toBeInTheDocument();
     });
   });
 
@@ -483,7 +483,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/支援手順兼記録開始日: 確認中（90日参考）/)).toBeInTheDocument();
+      expect(screen.getByText(/支援開始日: 確認中（90日参考）/)).toBeInTheDocument();
     });
   });
 });

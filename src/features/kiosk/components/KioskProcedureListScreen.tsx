@@ -189,21 +189,21 @@ export const KioskProcedureListScreen: React.FC = () => {
 
                   if (!date || source === 'none') {
                     return targetPlanningSheetId && isLoadingPlanningSheet
-                      ? '支援手順兼記録開始日: 確認中（90日参考）'
-                      : '支援手順兼記録開始日: 未設定（90日参考）';
+                      ? '支援開始日: 確認中（90日参考）'
+                      : '支援開始日: 未設定（90日参考）';
                   }
 
                   const dateStr = formatDateJapanese(date);
 
                   switch (source) {
                     case 'planning':
-                      return `支援手順兼記録開始日: ${dateStr}（90日参考・支援計画）`;
+                      return `支援開始日: ${dateStr}（90日参考・支援計画）`;
                     case 'master':
-                      return `支援手順兼記録開始日: ${dateStr}（90日参考・利用者マスタ）`;
+                      return `支援開始日: ${dateStr}（90日参考・利用者マスタ）`;
                     case 'fallback':
-                      return `[暫定] 支援手順兼記録開始日: ${dateStr}（90日参考・計画適用日）`;
+                      return `[暫定] 支援開始日: ${dateStr}（90日参考・計画適用日）`;
                     default:
-                      return `支援手順兼記録開始日: ${dateStr}（90日参考）`;
+                      return `支援開始日: ${dateStr}（90日参考）`;
                   }
                 })()}
               </Typography>
