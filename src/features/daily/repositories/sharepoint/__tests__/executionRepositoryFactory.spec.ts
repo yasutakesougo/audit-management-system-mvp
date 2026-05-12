@@ -41,6 +41,14 @@ describe('executionRepositoryFactory', () => {
     expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
   });
 
+  it('forces sharepoint in kiosk runtime even during dev', () => {
+    envState.isDev = true;
+    envState.dataProvider = 'local';
+    window.history.pushState({}, '', '/kiosk/users/10/procedures/0');
+
+    expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
+  });
+
   it('respects local provider hint outside kiosk runtime', () => {
     envState.dataProvider = 'local';
     window.history.pushState({}, '', '/daily/activity');
@@ -55,4 +63,3 @@ describe('executionRepositoryFactory', () => {
     expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
   });
 });
-
