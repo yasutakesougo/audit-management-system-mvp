@@ -270,7 +270,7 @@ export interface SpPlanningSheetRow {
 export interface SpPlanningSheetPayload {
   Title?: string;
   UserCode?: string;
-  ISP_x0020_ID?: string;
+  ISPId?: string;
   TargetScene?: string;
   TargetDomain?: string;
   ObservationFacts?: string;
@@ -327,8 +327,14 @@ export const PLANNING_SHEET_CANDIDATES = {
   intakeJson: ['IntakeJson', 'cr013_intakeJson'],
   assessmentJson: ['AssessmentJson', 'cr013_assessmentJson'],
   planningJson: ['PlanningJson', 'cr013_planningJson'],
-  // 注意: VersionNo, SupportStartDate, MonitoringCycleDays は物理リストに存在しないため、
-  // 警告を避けるために候補から除外するか、必要に応じて registry に追加してください。
+  observationFacts: ['ObservationFacts', 'cr013_observationFacts'],
+  interpretationHypothesis: ['InterpretationHypothesis', 'cr013_interpretationHypothesis'],
+  supportIssues: ['SupportIssues', 'cr013_supportIssues'],
+  supportPolicy: ['SupportPolicy', 'cr013_supportPolicy'],
+  concreteApproaches: ['ConcreteApproaches', 'cr013_concreteApproaches'],
+  versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
+  supportStartDate: ['SupportStartDate', 'cr013_supportStartDate'],
+  monitoringCycleDays: ['MonitoringCycleDays', 'cr013_monitoringCycleDays'],
 } as const;
 
 export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [

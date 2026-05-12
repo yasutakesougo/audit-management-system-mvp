@@ -304,7 +304,7 @@ export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateI
   return {
     Title: input.title,
     UserCode: input.userId,
-    ISP_x0020_ID: input.ispId,
+    ISPId: input.ispId,
     TargetScene: input.targetScene ?? '',
     TargetDomain: input.targetDomain ?? '',
     ObservationFacts: input.observationFacts,
