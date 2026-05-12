@@ -39,6 +39,24 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const scheduleItemId = normalizeScheduleItemId(procedure?.rowNo) ||
     normalizeScheduleItemId(procedure?.id) ||
     normalizeScheduleItemId(slotKey);
+  const historyScheduleItemIds = React.useMemo(() => {
+    const indexValue = Number.parseInt(String(slotKey ?? ''), 10);
+    const indexPlusOne = Number.isNaN(indexValue) ? '' : normalizeScheduleItemId(indexValue + 1);
+    return [
+      normalizeScheduleItemId(procedure?.rowNo),
+      normalizeScheduleItemId(procedure?.id),
+      normalizeScheduleItemId(slotKey),
+      indexPlusOne,
+    ].filter((value, idx, arr): value is string => Boolean(value) && arr.indexOf(value) === idx);
+  }, [procedure?.id, procedure?.rowNo, slotKey]);
+  const historyUserIds = React.useMemo(() => {
+    const rawUserId = String(userId ?? '').trim();
+    const masterUserId = String(user?.UserID ?? '').trim();
+    const compactMasterUserId = masterUserId.replace(/-/g, '');
+    return [rawUserId, masterUserId, compactMasterUserId].filter(
+      (value, idx, arr): value is string => Boolean(value) && arr.indexOf(value) === idx,
+    );
+  }, [user?.UserID, userId]);
   const fallbackScheduleItemIds = React.useMemo(
     () => [normalizeScheduleItemId(slotKey)].filter((value): value is string => Boolean(value)),
     [slotKey],
@@ -437,7 +455,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       >
         <KioskProcedureHistoryPanel
           userId={userId || ''}
+          fallbackUserIds={historyUserIds}
           scheduleItemId={scheduleItemId}
+          fallbackScheduleItemIds={historyScheduleItemIds}
           userName={user.FullName}
           procedureName={procedure.activity}
           onClose={() => setShowHistory(false)}
