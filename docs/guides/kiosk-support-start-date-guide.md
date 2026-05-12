@@ -9,8 +9,7 @@
 ## 🌸 Part 1: 現場職員向け運用ガイド
 
 ### 1. 「支援手順兼記録開始日」とは？
-強度行動障害支援の17手順を運用する際の、**90日モニタリング参考起点**となる日（あるいは予定日）です。
-この日付を起点として、**90日（3ヶ月）ごとのモニタリングサイクル（見直し・評価期限）** の予定日が自動計算されます。
+強度行動障害支援の17行手順モデルを運用する際に、90日モニタリングの参考起点として画面上で確認する日付です。
 
 > [!IMPORTANT]
 > **「個別支援計画（ISP）」の6ヶ月更新日とは別物です！**
@@ -46,7 +45,7 @@ flowchart TD
 
 #### ③ 保存する
 1. フォームの入力内容を保存・確定します。
-2. これにより、L3キオスク側に自動的に日付と次回期限が連動して表示されるようになります。
+2. これにより、L3キオスク側に **「支援手順兼記録開始日」** として自動反映されます。
 
 ---
 
@@ -71,7 +70,7 @@ flowchart TD
 ---
 
 ### 2. 日付解決ロジックと優先順位
-システムは、[resolveSupportStartDateDetailed](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/planning-sheet/monitoringSchedule.ts) 関数を使用して、以下の優先順位（1〜5）で表示用日付およびその「参照ソース（情報元）」を自動的に解決します。
+システムは、[`monitoringSchedule.ts`](../../src/features/planning-sheet/monitoringSchedule.ts) 関数を使用して、以下の優先順位（1〜5）で表示用日付およびその「参照ソース（情報元）」を自動的に解決します。
 
 | 優先度 | 状態・該当データ | 表示されるテキスト形式 | 解決ソース定義 (`source`) |
 | :---: | :--- | :--- | :---: |
@@ -86,20 +85,26 @@ flowchart TD
 ### 3. データフロー
 
 ```text
- [SPS List/Editor] (L2)           [User Master] (M)
-    | supportStartDate / appliedFrom  | ServiceStartDate
-    v                                 v
-+───────────────────────────────────────────────────+
-|      resolveSupportStartDateDetailed (L2)         |  <-- 日付解決関数
-+───────────────────────────────────────────────────+
-                        |
-                        v (Resolved Date & Source)
-+───────────────────────────────────────────────────+
-|     usePlanningSheetData (React Hook)             |  <-- L3キオスク用カスタムフック
-+───────────────────────────────────────────────────+
-                        |
-                        v (UI State & Labels)
- [KioskProcedureListScreen] (L3 / UI Rendering)
+[SPS List/Editor]       [User Master]
+ supportStartDate        ServiceStartDate
+ appliedFrom
+        |                    |
+        v                    v
++------------------------------------------+
+| usePlanningSheetData                     |
+| planningSheetId から SPS を取得          |
++------------------------------------------+
+        |
+        v
++------------------------------------------+
+| resolveSupportStartDateDetailed          |
+| supportStartDate > ServiceStartDate      |
+| > appliedFrom > none                     |
++------------------------------------------+
+        |
+        v
+[KioskProcedureListScreen]
+支援手順兼記録開始日として表示
 ```
 
 ---
@@ -108,14 +113,14 @@ flowchart TD
 
 | ファイルパス | 責務 |
 | :--- | :--- |
-| [monitoringSchedule.ts](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/planning-sheet/monitoringSchedule.ts) | 日付の解決・計算コアロジックを実装。`resolveSupportStartDateDetailed` をエクスポートする。 |
-| [usePlanningSheetData.ts](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/planning-sheet/hooks/usePlanningSheetForm.ts) | キオスク側で `planningSheetId` から該当シートのデータをロードし、解決日付を提供する React Hook。 |
-| [KioskProcedureListScreen.tsx](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/kiosk/components/KioskProcedureListScreen.tsx) | キオスク支援手順画面。ヘッダー内に「支援手順兼記録開始日」として解決されたラベルを描画する。 |
+| [`monitoringSchedule.ts`](../../src/features/planning-sheet/monitoringSchedule.ts) | 日付の解決・計算コアロジックを実装。`resolveSupportStartDateDetailed` をエクスポートする。 |
+| [`usePlanningSheetData.ts`](../../src/features/planning-sheet/hooks/usePlanningSheetData.ts) | キオスク側で `planningSheetId` から該当シートのデータをロードし、解決日付を提供する React Hook。 |
+| [`KioskProcedureListScreen.tsx`](../../src/features/kiosk/components/KioskProcedureListScreen.tsx) | キオスク支援手順画面。ヘッダー内に「支援手順兼記録開始日」として解決されたラベルを描画する。 |
 
 ---
 
 ### 5. 品質保証（テスト観点）
-実装された自動テスト（[KioskProcedureListScreen.spec.tsx](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/kiosk/components/__tests__/KioskProcedureListScreen.spec.tsx)）は、以下の4つのエッジケースを検証し、リグレッションを完全に防止しています。
+実装された自動テスト（[`KioskProcedureListScreen.spec.tsx`](../../src/features/kiosk/components/__tests__/KioskProcedureListScreen.spec.tsx)）は、以下の4つのエッジケースを検証し、リグレッションを完全に防止しています。
 
 * **Case 1: `planning` 最優先**
   * 条件: SPSの `supportStartDate`、利用者マスタ `ServiceStartDate`、SPSの `appliedFrom` が全て存在。
