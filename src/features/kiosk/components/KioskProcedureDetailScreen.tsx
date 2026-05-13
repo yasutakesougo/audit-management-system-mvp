@@ -26,6 +26,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const procedureRepo = useProcedureData();
   
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
+  const deepLinkUserId = React.useMemo(() => {
+    const canonical = String(user?.UserID ?? '').trim();
+    if (canonical) return canonical;
+    return String(userId ?? '').trim();
+  }, [user?.UserID, userId]);
   
   const procedure = React.useMemo(() => {
     if (!userId || slotKey === undefined) return null;
@@ -70,16 +75,17 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   }, [procedure?.activity, procedure?.time]);
 
   const abcRecordLink = React.useMemo(() => {
-    if (!userId || !abcSlotId) return '/abc-record';
+    if (!deepLinkUserId || !abcSlotId) return '/abc-record';
+    const returnParams = new URLSearchParams({ date: selectedDateIso });
     const params = new URLSearchParams({
-      userId,
+      userId: deepLinkUserId,
       source: 'daily-support',
       date: selectedDateIso,
       slotId: abcSlotId,
-      returnUrl: appendKioskSearchParams(`/kiosk/users/${userId}/procedures/${slotKey ?? ''}`, location.search),
+      returnUrl: `/kiosk/users/${encodeURIComponent(deepLinkUserId)}/procedures/${encodeURIComponent(String(slotKey ?? ''))}?${returnParams.toString()}`,
     });
     return `/abc-record?${params.toString()}`;
-  }, [abcSlotId, location.search, selectedDateIso, slotKey, userId]);
+  }, [abcSlotId, deepLinkUserId, selectedDateIso, slotKey, userId]);
   const { record, saveRecord, isLoading } = useExecutionRecord(
     selectedDateIso,
     userId || '',
