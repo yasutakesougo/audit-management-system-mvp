@@ -1,4 +1,8 @@
 import type { ExecutionRecord, RecordStatus } from '@/features/daily/domain/executionRecordTypes';
+import {
+  reconcileRecordStatus,
+  hasRecordMemo,
+} from '@/features/daily/domain/executionRecordReconciliation';
 
 import { aggregateMonthlySummary } from './aggregate';
 import type {
@@ -73,18 +77,6 @@ function getEvidenceYearMonth(date: IsoDate): YearMonth {
   return date.slice(0, 7) as YearMonth;
 }
 
-function hasMemo(record: ExecutionRecord): boolean {
-  return typeof record.memo === 'string' && record.memo.trim().length > 0;
-}
-
-function hasIncidentEvidence(record: ExecutionRecord, status: RecordStatus): boolean {
-  return status === 'triggered' || (record.triggeredBipIds ?? []).length > 0;
-}
-
-function isEmptyKioskEvidence(record: ExecutionRecord, status: RecordStatus): boolean {
-  return status === 'unrecorded' && !hasMemo(record) && !hasIncidentEvidence(record, status);
-}
-
 /**
  * Convert one kiosk ExecutionRecord into the Monthly DailyRecord contract.
  *
@@ -97,21 +89,20 @@ export function toMonthlyDailyRecordFromKioskEvidence(record: ExecutionRecord): 
   const recordDate = parseEvidenceIsoDate(record.date);
   if (!recordDate) return null;
 
-  const status = normalizeStatus(record.status);
-  const isEmpty = isEmptyKioskEvidence(record, status);
+  const reconciled = reconcileRecordStatus(record);
 
   return {
     id: record.id,
     userId: record.userId,
     userName: '',
     recordDate,
-    completed: status === 'completed',
-    hasSpecialNotes: hasMemo(record),
-    hasIncidents: hasIncidentEvidence(record, status),
-    isEmpty,
-    isSkipped: status === 'skipped',
-    isTriggered: status === 'triggered',
-    hasMemo: hasMemo(record),
+    completed: reconciled === 'completed',
+    hasSpecialNotes: hasRecordMemo(record),
+    hasIncidents: reconciled === 'triggered',
+    isEmpty: reconciled === 'empty',
+    isSkipped: reconciled === 'skipped',
+    isTriggered: reconciled === 'triggered',
+    hasMemo: hasRecordMemo(record),
   };
 }
 
@@ -168,18 +159,20 @@ function summarizeKioskMonthlyEvidence(
   const nonEmptyRecords = included.filter(({ dailyRecord }) => !dailyRecord.isEmpty);
   const nonEmptyDates = [...new Set(nonEmptyRecords.map(({ dailyRecord }) => dailyRecord.recordDate))].sort();
 
+  const reconciledStats = included.map(({ sourceRecord }) => reconcileRecordStatus(sourceRecord));
+
   return {
     source: 'kiosk-execution',
     userId: target.userId,
     yearMonth: target.yearMonth,
     sourceRows: included.length,
     recordedRows: nonEmptyRecords.length,
-    completedRows: included.filter(({ status }) => status === 'completed').length,
-    triggeredRows: included.filter(({ status }) => status === 'triggered').length,
-    skippedRows: included.filter(({ status }) => status === 'skipped').length,
-    unrecordedRows: included.filter(({ dailyRecord }) => dailyRecord.isEmpty).length,
-    memoRows: included.filter(({ dailyRecord }) => dailyRecord.hasSpecialNotes).length,
-    incidentRows: included.filter(({ dailyRecord }) => dailyRecord.hasIncidents).length,
+    completedRows: reconciledStats.filter(s => s === 'completed').length,
+    triggeredRows: reconciledStats.filter(s => s === 'triggered').length,
+    skippedRows: reconciledStats.filter(s => s === 'skipped').length,
+    unrecordedRows: reconciledStats.filter(s => s === 'empty').length,
+    memoRows: included.filter(({ sourceRecord }) => hasRecordMemo(sourceRecord)).length,
+    incidentRows: reconciledStats.filter(s => s === 'triggered').length,
     recordedDays: nonEmptyDates.length,
     firstEntryDate: nonEmptyDates[0],
     lastEntryDate: nonEmptyDates[nonEmptyDates.length - 1],

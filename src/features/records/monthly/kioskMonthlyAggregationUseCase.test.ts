@@ -59,7 +59,7 @@ describe('executeKioskMonthlyAggregation use case', () => {
       totalDays: 31,
       plannedRows: 31,
       completedRows: 2,
-      inProgressRows: 0,
+      inProgressRows: 1,
       emptyRows: 28,
       specialNotes: 1,
       incidents: 1,

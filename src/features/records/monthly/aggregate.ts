@@ -77,19 +77,13 @@ export function aggregateMonthlyKpi(
   const triggeredRows = dailyRecords.filter(r => r.isTriggered).length;
   const memoRows = dailyRecords.filter(r => r.hasMemo).length;
 
-  // inProgressRows は完了でも空でもない行。
-  // 二重計上を防ぐため、isSkipped もしくは isTriggered の拡張項目が true の場合は inProgressRows から除外する。
-  const inProgressRows = dailyRecords.filter(
-    r => !r.completed && !r.isEmpty && !r.isSkipped && !r.isTriggered
-  ).length;
+  // inProgressRows は完了でも空でもないすべての行（進行中）。
+  // skippedRows, triggeredRows, および「未完了だがメモ記入ありの行」がすべて含まれます。
+  const inProgressRows = dailyRecords.filter(r => !r.completed && !r.isEmpty).length;
 
-  // emptyRows は整合性保証：計画行数から、実際に何かしらの記録があった行数を引く。
-  // completed, inProgress, skipped, triggered は互いに排他であるため、単純に引いてよい。
-  // memoRows は独立した属性（completed や triggered と重複しうる）なので、ここでは引かない。
-  const emptyRows = Math.max(
-    0,
-    plannedRows - completedRows - inProgressRows - skippedRows - triggeredRows
-  );
+  // emptyRows は整合性保証：計画行数から、実際に記録があった行（完了、進行中）を引きます。
+  // memoRows は重複属性のため、ここでは引かない。
+  const emptyRows = Math.max(0, plannedRows - completedRows - inProgressRows);
 
   return {
     totalDays,
