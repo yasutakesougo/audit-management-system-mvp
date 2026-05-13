@@ -31,6 +31,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     if (canonical) return canonical;
     return String(userId ?? '').trim();
   }, [user?.UserID, userId]);
+  const returnRouteUserId = React.useMemo(() => {
+    const routeId = String(userId ?? '').trim();
+    if (routeId) return routeId;
+    return deepLinkUserId;
+  }, [deepLinkUserId, userId]);
   
   const procedure = React.useMemo(() => {
     if (!userId || slotKey === undefined) return null;
@@ -82,10 +87,10 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       source: 'daily-support',
       date: selectedDateIso,
       slotId: abcSlotId,
-      returnUrl: `/kiosk/users/${encodeURIComponent(deepLinkUserId)}/procedures/${encodeURIComponent(String(slotKey ?? ''))}?${returnParams.toString()}`,
+      returnUrl: `/kiosk/users/${encodeURIComponent(returnRouteUserId)}/procedures/${encodeURIComponent(String(slotKey ?? ''))}?${returnParams.toString()}`,
     });
     return `/abc-record?${params.toString()}`;
-  }, [abcSlotId, deepLinkUserId, selectedDateIso, slotKey, userId]);
+  }, [abcSlotId, deepLinkUserId, returnRouteUserId, selectedDateIso, slotKey]);
   const { record, saveRecord, isLoading } = useExecutionRecord(
     selectedDateIso,
     userId || '',
