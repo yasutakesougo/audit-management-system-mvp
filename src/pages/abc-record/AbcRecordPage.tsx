@@ -92,12 +92,25 @@ const AbcRecordPage: React.FC = () => {
   }, [currentPathWithSearch, urlReturnUrl]);
 
   const fallbackKioskReturnUrl = useMemo(() => {
-    if (source !== 'daily-support' || !urlUserId) return null;
+    if (source !== 'daily-support') return null;
+    let fallbackUserId = urlUserId ?? '';
+    if (urlReturnUrl) {
+      try {
+        const parsed = new URL(urlReturnUrl, window.location.origin);
+        const matched = parsed.pathname.match(/^\/kiosk\/users\/([^/]+)\/procedures(?:\/.*)?$/);
+        if (matched?.[1]) {
+          fallbackUserId = decodeURIComponent(matched[1]);
+        }
+      } catch {
+        // no-op
+      }
+    }
+    if (!fallbackUserId) return null;
     const params = new URLSearchParams();
     if (urlDate) params.set('date', urlDate);
     const query = params.toString();
-    return `/kiosk/users/${encodeURIComponent(urlUserId)}/procedures${query ? `?${query}` : ''}`;
-  }, [source, urlDate, urlUserId]);
+    return `/kiosk/users/${encodeURIComponent(fallbackUserId)}/procedures${query ? `?${query}` : ''}`;
+  }, [source, urlDate, urlReturnUrl, urlUserId]);
 
   // ── daily-support からの遷移コンテキスト ──
   const supportContext = useMemo(() => {

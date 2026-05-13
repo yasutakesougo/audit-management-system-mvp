@@ -34,6 +34,11 @@ export const KioskProcedureListScreen: React.FC = () => {
     if (canonical) return canonical;
     return String(userId ?? '').trim();
   }, [user?.UserID, userId]);
+  const returnRouteUserId = React.useMemo(() => {
+    const routeId = String(userId ?? '').trim();
+    if (routeId) return routeId;
+    return deepLinkUserId;
+  }, [deepLinkUserId, userId]);
 
   const procedures = React.useMemo(() => {
     if (!userId) return [];
@@ -84,10 +89,10 @@ export const KioskProcedureListScreen: React.FC = () => {
       source: 'daily-support',
       date: selectedDateIso,
       slotId,
-      returnUrl: `/kiosk/users/${encodeURIComponent(deepLinkUserId)}/procedures?${returnParams.toString()}`,
+      returnUrl: `/kiosk/users/${encodeURIComponent(returnRouteUserId)}/procedures?${returnParams.toString()}`,
     });
     return `/abc-record?${params.toString()}`;
-  }, [deepLinkUserId, selectedDateIso]);
+  }, [deepLinkUserId, returnRouteUserId, selectedDateIso]);
 
   // 実施記録の取得
   useEffect(() => {
