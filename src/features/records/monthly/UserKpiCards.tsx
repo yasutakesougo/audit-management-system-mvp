@@ -1,5 +1,6 @@
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -10,6 +11,7 @@ import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import type { MonthlySummary } from './types';
@@ -116,22 +118,37 @@ export const UserKpiCards: React.FC<UserKpiCardsProps> = ({
               </Typography>
 
               <Stack spacing={1}>
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2">完了</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="body2">完了</Typography>
+                    <Tooltip title="予定通り「完了」と記録された手順の総数です。">
+                      <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                    </Tooltip>
+                  </Stack>
                   <Typography variant="body1" color="success.main">
                     {kpi.completedRows} / {kpi.plannedRows}
                   </Typography>
                 </Stack>
 
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2">進行中</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="body2">進行中</Typography>
+                    <Tooltip title="行動発生(triggered)、スキップ(skipped)、または未完了だがメモ記入がある手順の総数です。">
+                      <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                    </Tooltip>
+                  </Stack>
                   <Typography variant="body1" color="warning.main">
                     {kpi.inProgressRows}
                   </Typography>
                 </Stack>
 
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography variant="body2">未記入</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="body2">未記入</Typography>
+                    <Tooltip title="記録が一切ない手順枠の総数です。(計算式: 計画行数 - 完了 - 進行中)">
+                      <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                    </Tooltip>
+                  </Stack>
                   <Typography variant="body1" color="error.main">
                     {kpi.emptyRows}
                   </Typography>
@@ -148,9 +165,14 @@ export const UserKpiCards: React.FC<UserKpiCardsProps> = ({
               <Stack direction="row" spacing={2} alignItems="center">
                 <ScheduleIcon color="info" />
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" color="text.secondary">
-                    特記事項
-                  </Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="h6" color="text.secondary">
+                      特記事項
+                    </Typography>
+                    <Tooltip title="手順に「メモ」が記入された総数です。完了や行動発生などのステータスに関わらず、重複してカウントされます。">
+                      <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                    </Tooltip>
+                  </Stack>
                   <Typography variant="h4" color="info.main">
                     {kpi.specialNotes}
                   </Typography>
@@ -170,9 +192,14 @@ export const UserKpiCards: React.FC<UserKpiCardsProps> = ({
               <Stack direction="row" spacing={2} alignItems="center">
                 <ErrorIcon color={incidentSeverity.color} />
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" color="text.secondary">
-                    インシデント
-                  </Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Typography variant="h6" color="text.secondary">
+                      インシデント
+                    </Typography>
+                    <Tooltip title="「行動発生」(triggered)と判定された手順の総数です。">
+                      <HelpOutlineIcon sx={{ fontSize: 16, color: 'text.secondary', cursor: 'help' }} />
+                    </Tooltip>
+                  </Stack>
                   <Stack direction="row" spacing={1} alignItems="baseline">
                     <Typography variant="h4" color={`${incidentSeverity.color}.main`}>
                       {kpi.incidents}

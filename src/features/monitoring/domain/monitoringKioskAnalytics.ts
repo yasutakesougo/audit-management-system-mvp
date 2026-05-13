@@ -5,6 +5,10 @@
  */
 
 import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+import {
+  reconcileRecordStatus,
+  hasRecordMemo,
+} from '@/features/daily/domain/executionRecordReconciliation';
 
 export interface KioskProcedureSummary {
   scheduleItemId: string;
@@ -43,7 +47,8 @@ export function aggregateKioskRecords(
   const recordedDates = new Set<string>();
 
   for (const record of records) {
-    if (record.status === 'unrecorded') continue;
+    const reconciled = reconcileRecordStatus(record);
+    if (reconciled === 'empty') continue;
     
     recordedDates.add(record.date);
     
@@ -64,11 +69,11 @@ export function aggregateKioskRecords(
     }
 
     summary.totalCount++;
-    if (record.status === 'completed') summary.completedCount++;
-    else if (record.status === 'triggered') summary.triggeredCount++;
-    else if (record.status === 'skipped') summary.skippedCount++;
+    if (reconciled === 'completed') summary.completedCount++;
+    else if (reconciled === 'triggered') summary.triggeredCount++;
+    else if (reconciled === 'skipped') summary.skippedCount++;
 
-    if (record.memo && record.memo.trim()) {
+    if (hasRecordMemo(record)) {
       summary.memoCount++;
       if (summary.representativeMemos.length < 5) {
         summary.representativeMemos.push(record.memo);

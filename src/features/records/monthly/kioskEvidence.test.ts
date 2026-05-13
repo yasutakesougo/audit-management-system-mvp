@@ -7,6 +7,7 @@ import {
   buildMonthlyDailyRecordsFromKioskEvidence,
   toMonthlyDailyRecordFromKioskEvidence,
 } from './kioskEvidence';
+import { aggregateKioskRecords } from '@/features/monitoring/domain/monitoringKioskAnalytics';
 
 function record(overrides: Partial<ExecutionRecord>): ExecutionRecord {
   return {
@@ -79,7 +80,7 @@ describe('monthly kiosk evidence bridge', () => {
       totalDays: 31,
       plannedRows: 31,
       completedRows: 1,
-      inProgressRows: 0,
+      inProgressRows: 2,
       emptyRows: 28,
       specialNotes: 2,
       incidents: 1,
@@ -113,5 +114,55 @@ describe('monthly kiosk evidence bridge', () => {
     expect(result.summary.kpi.triggeredRows).toBe(result.evidence.triggeredRows);
     expect(result.summary.kpi.memoRows).toBe(result.evidence.memoRows);
     expect(result.summary.kpi.incidents).toBe(result.evidence.incidentRows);
+  });
+
+  it('guarantees SSOT reconciliation: monthly KPI/evidence counts align perfectly with monitoring digest summary', () => {
+    const rawRecords = [
+      record({ id: 'r1', date: '2026-05-01', scheduleItemId: 'row-1', status: 'completed', memo: '順調' }),
+      record({ id: 'r2', date: '2026-05-01', scheduleItemId: 'row-2', status: 'triggered', triggeredBipIds: ['bip-1'] }),
+      record({ id: 'r3', date: '2026-05-02', scheduleItemId: 'row-3', status: 'skipped', memo: '本人拒否' }),
+      record({ id: 'r4', date: '2026-05-03', scheduleItemId: 'row-1', status: 'unrecorded', memo: 'スタッフ代行' }), // unrecorded but has memo
+      record({ id: 'r5', date: '2026-05-04', scheduleItemId: 'row-2', status: 'unrecorded', memo: '' }), // empty
+    ];
+
+    // 1. Calculate Monthly summary & evidence
+    const monthlyResult = aggregateMonthlySummaryFromKioskEvidence(rawRecords, {
+      userId: 'I001',
+      displayName: '利用者A',
+      yearMonth: '2026-05',
+      useWorkingDays: false,
+      rowsPerDay: 1,
+    });
+
+    // 2. Calculate Monitoring summary
+    const monitoringResult = aggregateKioskRecords(rawRecords, {
+      userId: 'I001',
+      from: '2026-05-01',
+      to: '2026-05-31',
+    });
+
+    // 3. Sum up counts from monitoring procedures
+    let totalCompleted = 0;
+    let totalTriggered = 0;
+    let totalSkipped = 0;
+    let totalMemo = 0;
+
+    for (const p of monitoringResult.procedures) {
+      totalCompleted += p.completedCount;
+      totalTriggered += p.triggeredCount;
+      totalSkipped += p.skippedCount;
+      totalMemo += p.memoCount;
+    }
+
+    // 4. Assert perfect alignment
+    expect(monthlyResult.evidence.completedRows).toBe(totalCompleted);
+    expect(monthlyResult.evidence.triggeredRows).toBe(totalTriggered);
+    expect(monthlyResult.evidence.skippedRows).toBe(totalSkipped);
+    expect(monthlyResult.evidence.memoRows).toBe(totalMemo);
+
+    expect(monthlyResult.summary.kpi.completedRows).toBe(totalCompleted);
+    expect(monthlyResult.summary.kpi.triggeredRows).toBe(totalTriggered);
+    expect(monthlyResult.summary.kpi.skippedRows).toBe(totalSkipped);
+    expect(monthlyResult.summary.kpi.memoRows).toBe(totalMemo);
   });
 });
