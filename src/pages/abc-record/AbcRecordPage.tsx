@@ -61,6 +61,29 @@ const AbcRecordPage: React.FC = () => {
   const [deepLinkProcessed, setDeepLinkProcessed] = useState(false);
   const [deepLinkBanner, setDeepLinkBanner] = useState(false);
 
+  const safeReturnUrl = useMemo(() => {
+    if (!urlReturnUrl) return null;
+    try {
+      const parsed = new URL(urlReturnUrl, window.location.origin);
+      // ループ防止: /abc-record への戻りは許可しない
+      if (parsed.pathname === '/abc-record') return null;
+
+      // キオスク戻りは date のみ残してクエリ増殖を防ぐ
+      if (parsed.pathname.startsWith('/kiosk/')) {
+        const params = new URLSearchParams();
+        const date = parsed.searchParams.get('date');
+        if (date) params.set('date', date);
+        const query = params.toString();
+        return `${parsed.pathname}${query ? `?${query}` : ''}`;
+      }
+
+      return `${parsed.pathname}${parsed.search}`;
+    } catch {
+      if (urlReturnUrl.startsWith('/abc-record')) return null;
+      return urlReturnUrl;
+    }
+  }, [urlReturnUrl]);
+
   // ── daily-support からの遷移コンテキスト ──
   const supportContext = useMemo(() => {
     if (source !== 'daily-support' || !urlSlotId) return null;
@@ -138,15 +161,15 @@ const AbcRecordPage: React.FC = () => {
   const handleBack = useCallback(() => {
     if (source === 'support-planning') {
       navigate(-1);
-    } else if (source === 'daily-support' && urlReturnUrl) {
+    } else if (source === 'daily-support' && safeReturnUrl) {
       // 支援手順の元のユーザー・ステップへ正確に戻る
-      navigate(urlReturnUrl);
+      navigate(safeReturnUrl, { replace: true });
     } else if (source === 'daily-support') {
       navigate(-1);
     } else {
       navigate('/daily/support');
     }
-  }, [source, navigate, urlReturnUrl]);
+  }, [source, navigate, safeReturnUrl]);
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4, maxWidth: 800, mx: 'auto' }}>
