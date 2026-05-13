@@ -9,7 +9,7 @@
  */
 
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import { buildEq, buildNe, joinAnd } from '@/sharepoint/query/builders';
+import { buildEq, buildNe, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
 import { LIST_CONFIG, ListKeys } from '@/sharepoint/fields/listRegistry';
 import { buildAbcRecordSelectFields } from '@/sharepoint/fields/abcRecordFields';
 import type {
@@ -279,6 +279,34 @@ export class SharePointAbcRecordRepository implements AbcRecordRepository {
     const filter = joinAnd([
       buildEq('UserId', userId),
       buildNe('IsDeleted', true),
+    ]);
+
+    const rows = await this.client.listItems<SpAbcRecordRow>(this.listName, {
+      select,
+      filter,
+      orderby: 'RecordDate desc, OccurredAt desc',
+    });
+
+    return rows
+      .map((row) => this.mapSpToDomain(row))
+      .filter((record) => record.isDeleted !== true);
+  }
+
+  /**
+   * 利用者 ID と日付範囲で絞り込み (IsDeleted=true除外、期間境界値含む)
+   */
+  async findByUserIdAndDateRange(input: {
+    userId: string;
+    from: string;
+    to: string;
+  }): Promise<AbcRecord[]> {
+    const { userId, from, to } = input;
+    const select = [...buildAbcRecordSelectFields()];
+    const filter = joinAnd([
+      buildEq('UserId', userId),
+      buildNe('IsDeleted', true),
+      buildGe('RecordDate', from),
+      buildLe('RecordDate', to),
     ]);
 
     const rows = await this.client.listItems<SpAbcRecordRow>(this.listName, {

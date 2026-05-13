@@ -235,5 +235,38 @@ describe('SharePointAbcRecordRepository', () => {
       const record = await repository.getById('505');
       expect(record).toBeNull();
     });
+
+    it('findByUserIdAndDateRange で指定期間内かつ論理削除されていないデータを取得できること', async () => {
+      mockDataProvider.listItems.mockResolvedValue([
+        {
+          Id: 601,
+          UserId: 'user-01',
+          RecordDate: '2026-05-10',
+          IsDeleted: false,
+        },
+        {
+          Id: 602,
+          UserId: 'user-01',
+          RecordDate: '2026-05-12',
+          IsDeleted: false,
+        },
+      ]);
+
+      const records = await repository.findByUserIdAndDateRange({
+        userId: 'user-01',
+        from: '2026-05-10',
+        to: '2026-05-12',
+      });
+
+      const listOptions = mockDataProvider.listItems.mock.calls[0][1];
+      expect(listOptions.filter).toContain("UserId eq 'user-01'");
+      expect(listOptions.filter).toContain("IsDeleted ne true");
+      expect(listOptions.filter).toContain("RecordDate ge '2026-05-10'");
+      expect(listOptions.filter).toContain("RecordDate le '2026-05-12'");
+
+      expect(records).toHaveLength(2);
+      expect(records[0].id).toBe('601');
+      expect(records[1].id).toBe('602');
+    });
   });
 });
