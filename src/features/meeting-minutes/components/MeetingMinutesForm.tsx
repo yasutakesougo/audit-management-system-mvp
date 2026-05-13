@@ -131,6 +131,7 @@ export function MeetingMinutesForm(props: {
   errorMessage?: string;
 }) {
   const { mode, value, onChange, onSave, onCancel, isSaving, errorMessage } = props;
+  type InsertBlocksInput = Parameters<MeetingMinutesEditor['insertBlocks']>[0];
 
   const set = <K extends keyof MeetingMinutesDraft>(key: K, v: MeetingMinutesDraft[K]) =>
     onChange({ ...value, [key]: v });
@@ -157,8 +158,7 @@ export function MeetingMinutesForm(props: {
     }));
 
     editor.insertBlocks(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      blocks as any,
+      blocks as InsertBlocksInput,
       editor.getTextCursorPosition().block,
       'after'
     );
