@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress, Snackbar, Alert, Button } from '@mui/material';
+import { Box, Typography, Grid, Card, IconButton, Chip, LinearProgress, Snackbar, Alert, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -269,9 +269,17 @@ export const KioskProcedureListScreen: React.FC = () => {
                 }}
                 data-testid={`kiosk-procedure-card-${index}`}
               >
-                <CardActionArea 
+                <Box
                   onClick={() => navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures/${index}`, location.search))}
-                  sx={{ p: 2.5 }}
+                  sx={{ p: 2.5, cursor: 'pointer' }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures/${index}`, location.search));
+                    }
+                  }}
                 >
                   <Grid container alignItems="center" spacing={2}>
                     <Grid size={2} sx={{ textAlign: 'center' }}>
@@ -327,7 +335,7 @@ export const KioskProcedureListScreen: React.FC = () => {
                       )}
                     </Grid>
                   </Grid>
-                </CardActionArea>
+                </Box>
               </Card>
             </Grid>
           );
