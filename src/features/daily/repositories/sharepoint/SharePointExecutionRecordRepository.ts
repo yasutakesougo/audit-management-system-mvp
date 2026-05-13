@@ -44,6 +44,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   private initPromises = new Map<string, Promise<void>>();
   private entityTypes = new Map<string, string>();
 
+  private escapeODataString(value: string): string {
+    return value.replace(/'/g, "''");
+  }
+
   constructor(options: SharePointExecutionRecordRepositoryOptions) {
     this.spFetch = options.spFetch;
     this.getListFieldInternalNames = options.getListFieldInternalNames;
@@ -361,6 +365,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   ): Promise<ExecutionRecord[]> {
     const normalizedUserId = normalizeExecutionUserId(userId);
     const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
+    const escapedUserId = this.escapeODataString(normalizedUserId);
+    const escapedScheduleItemId = this.escapeODataString(normalizedScheduleItemId);
     const rf = await this.getResolvedFields();
     
     // Safety: Limit history to approx 3 months to prevent large data transfers
@@ -380,21 +386,33 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     // 1. Primary query: Try direct filtering ONLY if rowNo is physically resolved
     if (rf.rowNo) {
-      const filter = `${rf.userId} eq '${normalizedUserId}' and ${rf.rowNo} eq '${normalizedScheduleItemId}' and ${rf.recordedAt} ge '${thresholdStr}'`;
-      const url = `${this.resolvedChildPath}/items?$select=${uniqueSelect.join(',')}&$filter=${encodeURIComponent(filter)}&$orderby=${rf.recordedAt} desc${limit ? `&$top=${limit}` : ''}`;
-
-      const response = await this.spFetch(url);
-      if (response.ok) {
+      const runPrimary = async (rowNoExpr: string): Promise<ExecutionRecord[] | null> => {
+        const filter = `${rf.userId} eq '${escapedUserId}' and ${rf.rowNo} eq ${rowNoExpr} and ${rf.recordedAt} ge '${thresholdStr}'`;
+        const url = `${this.resolvedChildPath}/items?$select=${uniqueSelect.join(',')}&$filter=${encodeURIComponent(filter)}&$orderby=${rf.recordedAt} desc${limit ? `&$top=${limit}` : ''}`;
+        const response = await this.spFetch(url);
+        if (!response.ok) {
+          console.warn(`[ExecutionRepo] Primary history query failed (status: ${response.status}), fallback step next...`);
+          return null;
+        }
         const data: SharePointResponse<JsonRecord> = await response.json();
         return (data.value || []).map((item: JsonRecord) => this.mapToDomain(item, rf));
+      };
+
+      // Step 1: text comparison
+      const textPrimary = await runPrimary(`'${escapedScheduleItemId}'`);
+      if (textPrimary && textPrimary.length > 0) return textPrimary;
+
+      // Step 2: numeric fallback (for Number rowNo columns)
+      if (/^\d+$/.test(normalizedScheduleItemId)) {
+        const numberPrimary = await runPrimary(String(Number.parseInt(normalizedScheduleItemId, 10)));
+        if (numberPrimary && numberPrimary.length > 0) return numberPrimary;
       }
-      console.warn(`[ExecutionRepo] Primary history query failed (status: ${response.status}), falling back...`);
     }
 
     // 2. Fallback query: Filter by UserID + Date range and filter rows in-app
     // This is used when rowNo is missing or primary query fails.
     const fallbackSelect = uniqueSelect.filter(f => f !== rf.rowNo);
-    const fallbackFilter = `${rf.userId} eq '${normalizedUserId}' and (Created ge '${thresholdStr}' or ${rf.recordedAt} ge '${thresholdStr}')`;
+    const fallbackFilter = `${rf.userId} eq '${escapedUserId}' and (Created ge '${thresholdStr}' or ${rf.recordedAt} ge '${thresholdStr}')`;
     const fallbackUrl = `${this.resolvedChildPath}/items?$select=${fallbackSelect.join(',')}&$filter=${encodeURIComponent(fallbackFilter)}&$top=1000`;
     
     const fallbackRes = await this.spFetch(fallbackUrl);

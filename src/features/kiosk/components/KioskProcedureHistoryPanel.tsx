@@ -150,6 +150,7 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
                       </Stack>
                     </Stack>
                   }
+                  secondaryTypographyProps={{ component: 'div' }}
                   secondary={
                     <Stack spacing={1.5} sx={{ mt: 1 }}>
                       <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
