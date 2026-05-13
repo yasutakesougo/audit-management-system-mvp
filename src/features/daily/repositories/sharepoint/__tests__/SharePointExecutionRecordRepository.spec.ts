@@ -395,6 +395,45 @@ describe('SharePointExecutionRecordRepository', () => {
   });
 
   describe('Strict Field Filtering Regressions', () => {
+    it('retries historical query with numeric RowNo when text comparison returns empty', async () => {
+      mockSpFetch.mockReset();
+      mockSpFetch.mockImplementation(async (url: string) => {
+        if (url.includes('/items?$select=') && url.includes('$orderby=')) {
+          const decoded = decodeURIComponent(url);
+          if (decoded.includes("RowNo eq '1'")) {
+            return { ok: true, json: async () => ({ value: [] }) };
+          }
+          if (decoded.includes('RowNo eq 1')) {
+            return {
+              ok: true,
+              json: async () => ({
+                value: [
+                  {
+                    Id: 1,
+                    Title: '2026-05-10-U010-1',
+                    UserId: 'U010',
+                    RowNo: 1,
+                    Status: 'completed',
+                    Payload: 'memo',
+                    RecordedAt: '2026-05-10T09:00:00Z',
+                    Created: '2026-05-10T09:00:00Z',
+                  },
+                ],
+              }),
+            };
+          }
+        }
+        return { ok: true, json: async () => ({ value: [] }) };
+      });
+
+      const records = await repo.getHistoricalRecords('U010', '1');
+      expect(records.length).toBe(1);
+
+      const calls = mockSpFetch.mock.calls.map((call) => decodeURIComponent(String(call[0])));
+      expect(calls.some((u) => u.includes("RowNo eq '1'"))).toBe(true);
+      expect(calls.some((u) => u.includes('RowNo eq 1'))).toBe(true);
+    });
+
     it('excludes RowNo from historical query URL when unresolved', async () => {
       mockSpFetch.mockReset();
       mockSpFetch.mockResolvedValue({
