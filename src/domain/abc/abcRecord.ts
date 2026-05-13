@@ -112,6 +112,12 @@ export interface AbcRecordRepository {
   getAll(): Promise<AbcRecord[]>;
   /** 利用者 ID で絞り込み */
   getByUserId(userId: string): Promise<AbcRecord[]>;
+  /** 利用者 ID と日付範囲で絞り込み (IsDeleted=true除外、期間境界値含む) */
+  findByUserIdAndDateRange(input: {
+    userId: string;
+    from: string;
+    to: string;
+  }): Promise<AbcRecord[]>;
   /** ID で1件取得 */
   getById(id: string): Promise<AbcRecord | null>;
   /** 削除 */

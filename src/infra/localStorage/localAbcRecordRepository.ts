@@ -132,4 +132,21 @@ export const localAbcRecordRepository: AbcRecordRepository = {
       writeAll(records);
     }
   },
+
+  async findByUserIdAndDateRange(input: {
+    userId: string;
+    from: string;
+    to: string;
+  }): Promise<AbcRecord[]> {
+    const fromDate = new Date(input.from);
+    const toDate = new Date(input.to);
+
+    return readAll()
+      .filter((r) => r.userId === input.userId)
+      .filter((r) => r.isDeleted !== true)
+      .filter((r) => {
+        const d = new Date(r.occurredAt.slice(0, 10));
+        return d >= fromDate && d <= toDate;
+      });
+  },
 };

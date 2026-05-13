@@ -63,6 +63,7 @@ import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/ice
 import { buildIcebergImportResult } from '../../icebergToPlanningBridge';
 import { useImportAuditStore } from '../../stores/importAuditStore';
 import type { IcebergSession, IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import { useMonitoringAbcEvidence } from '@/features/monitoring/hooks/useMonitoringAbcEvidence';
 
 // ── Local (split) ──
 import type { NewPlanningSheetFormProps, UserOption, FormState } from './types';
@@ -140,6 +141,18 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   });
   const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
   const [monitoringImported, setMonitoringImported] = React.useState(false);
+
+  // ── Dedicated ABC エビデンス取得 ──
+  const {
+    records: abcEvidenceRecords,
+    loading: abcEvidenceLoading,
+    error: abcEvidenceError,
+    period: abcEvidencePeriod,
+  } = useMonitoringAbcEvidence(
+    selectedUser?.id,
+    form.supportStartDate,
+    form.monitoringCycleDays,
+  );
 
   // ── Helpers ──
   const userOptions = React.useMemo<UserOption[]>(
@@ -699,6 +712,10 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 renderProvenanceBadge={renderProvenanceBadge}
                 userId={selectedUser?.id}
                 isAdmin={isAdmin}
+                abcEvidenceRecords={abcEvidenceRecords}
+                abcEvidenceLoading={abcEvidenceLoading}
+                abcEvidencePeriod={abcEvidencePeriod}
+                abcEvidenceError={abcEvidenceError}
               />
             </Paper>
 

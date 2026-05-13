@@ -33,6 +33,8 @@ import { BEHAVIOR_FUNCTIONS, TRAINING_LEVELS, ICEBERG_FACTORS } from './constant
 import { calculateMonitoringSchedule } from '@/features/planning-sheet/monitoringSchedule';
 import { useReverseBridge } from '../../hooks/useReverseBridge';
 import KioskMonitoringEvidencePanel from '@/features/monitoring/components/KioskMonitoringEvidencePanel';
+import { AbcEvidenceListPanel, type AbcEvidenceListPanelProps } from '@/features/monitoring/components/AbcEvidenceListPanel';
+import type { AbcRecord } from '@/domain/abc/abcRecord';
 
 
 // ─────────────────────────────────────────────
@@ -224,13 +226,28 @@ interface FormSectionsProps {
   renderProvenanceBadge: (fieldKey: string) => React.ReactNode;
   userId?: string;
   isAdmin?: boolean;
+  abcEvidenceRecords?: AbcRecord[];
+  abcEvidenceLoading?: boolean;
+  abcEvidencePeriod?: AbcEvidenceListPanelProps['period'];
+  abcEvidenceError?: Error | null;
 }
 
 // ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
 
-const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, renderProvenanceBadge, userId, isAdmin = true }) => {
+const FormSections: React.FC<FormSectionsProps> = ({
+  step,
+  form,
+  updateField,
+  renderProvenanceBadge,
+  userId,
+  isAdmin = true,
+  abcEvidenceRecords = [],
+  abcEvidenceLoading = false,
+  abcEvidencePeriod = null,
+  abcEvidenceError = null,
+}) => {
   const { suggestions, isLoading: isBridgeLoading, error: bridgeError } = useReverseBridge(userId, form.supportStartDate);
 
   const schedule = React.useMemo(() => {
@@ -467,6 +484,16 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
           {schedulePreview}
           <TextField label="評価方法" value={form.evaluationMethod} onChange={e => updateField('evaluationMethod', e.target.value)} fullWidth multiline minRows={2}
             placeholder="ABC記録集計、グラフ化、カンファレンス" />
+
+          {/* Dedicated ABC 記録 (評価根拠候補) */}
+          {userId && (
+            <AbcEvidenceListPanel
+              records={abcEvidenceRecords}
+              loading={abcEvidenceLoading}
+              error={abcEvidenceError}
+              period={abcEvidencePeriod}
+            />
+          )}
 
           {/* キオスク記録（17手順）統計ドラフト (Issue #1873) */}
           {userId && (
