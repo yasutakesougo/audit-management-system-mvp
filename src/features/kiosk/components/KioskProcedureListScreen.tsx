@@ -87,7 +87,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       returnUrl: `/kiosk/users/${encodeURIComponent(deepLinkUserId)}/procedures?${returnParams.toString()}`,
     });
     return `/abc-record?${params.toString()}`;
-  }, [deepLinkUserId, selectedDateIso, userId]);
+  }, [deepLinkUserId, selectedDateIso]);
 
   // 実施記録の取得
   useEffect(() => {
