@@ -196,8 +196,8 @@ function isRetryableStatus(status: number): boolean {
   return status === 429 || status === 503;
 }
 
-function isThrottleRedirect(url: string): boolean {
-  return url.includes('/_layouts/15/Throttle.htm');
+function isThrottleRedirect(url: unknown): boolean {
+  return typeof url === 'string' && url.includes('/_layouts/15/Throttle.htm');
 }
 
 function isLikelyCorsOrRedirectFailure(error: unknown): boolean {
@@ -413,15 +413,16 @@ export function createSpFetch(deps: SpFetchDeps) {
           const response = await fetch(url, { ...init, headers, signal: mergedSignal });
 
           if (isThrottleRedirect(response.url)) {
+            const responseUrl = typeof response.url === 'string' ? response.url : '';
             if (!hasWarnedThrottleRedirect) {
               hasWarnedThrottleRedirect = true;
               auditLog.warn('sp:fetch', 'throttle_redirect_detected_retry_stopped', {
-                url: response.url.split('?')[0],
+                url: responseUrl.split('?')[0],
                 method,
                 lane,
               });
             }
-            throw new SpThrottleRedirectError(response.url);
+            throw new SpThrottleRedirectError(responseUrl);
           }
 
           const retryAfterMs = parseRetryAfterMs(response);
