@@ -65,6 +65,12 @@ interface SpAbcRecordRow {
   Modified?: string;
 }
 
+type SpCreateItemResponse = {
+  Id?: number;
+  d?: { Id?: number };
+  data?: { Id?: number };
+};
+
 export class SharePointAbcRecordRepository implements AbcRecordRepository {
   private listName = LIST_CONFIG[ListKeys.AbcBehaviorRecords].title;
 
@@ -163,8 +169,10 @@ export class SharePointAbcRecordRepository implements AbcRecordRepository {
     };
 
     // SharePoint への新規作成 POST
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const created = await this.client.createItem<any>(this.listName, payload as any);
+    const created = await this.client.createItem<SpCreateItemResponse>(
+      this.listName,
+      payload as Record<string, unknown>
+    );
     const createdId = Number(created?.Id ?? created?.d?.Id ?? created?.data?.Id);
 
     if (!createdId || !Number.isFinite(createdId)) {

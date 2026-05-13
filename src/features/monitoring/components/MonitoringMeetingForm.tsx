@@ -79,6 +79,7 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
   improvementInput,
   onImprovementInputChange,
 }) => {
+  type InsertBlocksInput = Parameters<MeetingMinutesEditor['insertBlocks']>[0];
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const { data: staffMaster = [] } = useStaff();
@@ -183,8 +184,7 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
     }));
 
     editor.insertBlocks(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      blocks as any,
+      blocks as InsertBlocksInput,
       editor.getTextCursorPosition().block,
       'after'
     );
