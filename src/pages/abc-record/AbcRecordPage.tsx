@@ -61,6 +61,8 @@ const AbcRecordPage: React.FC = () => {
   const [deepLinkProcessed, setDeepLinkProcessed] = useState(false);
   const [deepLinkBanner, setDeepLinkBanner] = useState(false);
 
+  const currentPathWithSearch = `${location.pathname}${location.search}`;
+
   const safeReturnUrl = useMemo(() => {
     if (!urlReturnUrl) return null;
     try {
@@ -74,15 +76,41 @@ const AbcRecordPage: React.FC = () => {
         const date = parsed.searchParams.get('date');
         if (date) params.set('date', date);
         const query = params.toString();
-        return `${parsed.pathname}${query ? `?${query}` : ''}`;
+        const sanitized = `${parsed.pathname}${query ? `?${query}` : ''}`;
+        if (sanitized === currentPathWithSearch) return null;
+        return sanitized;
       }
 
-      return `${parsed.pathname}${parsed.search}`;
+      const direct = `${parsed.pathname}${parsed.search}`;
+      if (direct === currentPathWithSearch) return null;
+      return direct;
     } catch {
       if (urlReturnUrl.startsWith('/abc-record')) return null;
+      if (urlReturnUrl === currentPathWithSearch) return null;
       return urlReturnUrl;
     }
-  }, [urlReturnUrl]);
+  }, [currentPathWithSearch, urlReturnUrl]);
+
+  const fallbackKioskReturnUrl = useMemo(() => {
+    if (source !== 'daily-support') return null;
+    let fallbackUserId = urlUserId ?? '';
+    if (urlReturnUrl) {
+      try {
+        const parsed = new URL(urlReturnUrl, window.location.origin);
+        const matched = parsed.pathname.match(/^\/kiosk\/users\/([^/]+)\/procedures(?:\/.*)?$/);
+        if (matched?.[1]) {
+          fallbackUserId = decodeURIComponent(matched[1]);
+        }
+      } catch {
+        // no-op
+      }
+    }
+    if (!fallbackUserId) return null;
+    const params = new URLSearchParams();
+    if (urlDate) params.set('date', urlDate);
+    const query = params.toString();
+    return `/kiosk/users/${encodeURIComponent(fallbackUserId)}/procedures${query ? `?${query}` : ''}`;
+  }, [source, urlDate, urlReturnUrl, urlUserId]);
 
   // ── daily-support からの遷移コンテキスト ──
   const supportContext = useMemo(() => {
@@ -161,15 +189,18 @@ const AbcRecordPage: React.FC = () => {
   const handleBack = useCallback(() => {
     if (source === 'support-planning') {
       navigate(-1);
-    } else if (source === 'daily-support' && safeReturnUrl) {
-      // 支援手順の元のユーザー・ステップへ正確に戻る
-      navigate(safeReturnUrl, { replace: true });
     } else if (source === 'daily-support') {
-      navigate(-1);
+      // returnUrl が自己参照/壊れていても、kiosk 側へ戻す
+      const backTarget = safeReturnUrl ?? fallbackKioskReturnUrl;
+      if (backTarget) {
+        navigate(backTarget, { replace: true });
+      } else {
+        navigate(-1);
+      }
     } else {
       navigate('/daily/support');
     }
-  }, [source, navigate, safeReturnUrl]);
+  }, [source, navigate, safeReturnUrl, fallbackKioskReturnUrl]);
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4, maxWidth: 800, mx: 'auto' }}>
