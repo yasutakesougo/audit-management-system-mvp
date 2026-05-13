@@ -157,4 +157,34 @@ describe('executeKioskMonthlyAggregation use case', () => {
     expect(result.summary.kpi.plannedRows).toBe(0);
     expect(result.evidence.sourceRows).toBe(0);
   });
+
+  it('applies contractWeekdays, holidays, and absences to limit plannedRows calculation', async () => {
+    const mockRepository = {
+      getRecords: vi.fn(),
+      getRecord: vi.fn(),
+      upsertRecord: vi.fn(),
+      getCompletionRate: vi.fn(),
+      getHistoricalRecords: vi.fn(),
+      getRecordsInRange: vi.fn().mockResolvedValue([]), // No records found
+    } satisfies ExecutionRecordRepository;
+
+    // In May 2026:
+    // contractWeekdays: [1, 3, 5] (Mon, Wed, Fri) -> Usually 13 days (1, 4, 6, 8, 11, 13, 15, 18, 20, 22, 25, 27, 29)
+    // holidays: ['2026-05-04', '2026-05-05', '2026-05-06'] -> Mon (4), Tue (5), Wed (6). Overlapping on contract weekdays: 4 (Mon) and 6 (Wed)
+    // absences: ['2026-05-15'] -> 15 (Fri). Overlapping on contract weekdays: 15 (Fri)
+    // Net contract days = 13 total - 2 holidays - 1 absence = 10 days
+    const result = await executeKioskMonthlyAggregation(mockRepository, {
+      userId: 'I001',
+      displayName: 'Test User',
+      yearMonth: '2026-05',
+      useWorkingDays: true,
+      rowsPerDay: 10,
+      contractWeekdays: [1, 3, 5],
+      holidays: ['2026-05-04', '2026-05-05', '2026-05-06'],
+      absences: ['2026-05-15'],
+    });
+
+    // 10 contract days * 10 rows per day = 100 planned rows
+    expect(result.summary.kpi.plannedRows).toBe(100);
+  });
 });
