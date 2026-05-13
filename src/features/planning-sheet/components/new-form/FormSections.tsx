@@ -35,6 +35,7 @@ import { useReverseBridge } from '../../hooks/useReverseBridge';
 import KioskMonitoringEvidencePanel from '@/features/monitoring/components/KioskMonitoringEvidencePanel';
 import { AbcEvidenceListPanel, type AbcEvidenceListPanelProps } from '@/features/monitoring/components/AbcEvidenceListPanel';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
+import type { MonitoringEvidenceLink } from '@/domain/isp/schema/ispPlanningSheetSchema';
 
 
 // ─────────────────────────────────────────────
@@ -488,10 +489,46 @@ const FormSections: React.FC<FormSectionsProps> = ({
           {/* Dedicated ABC 記録 (評価根拠候補) */}
           {userId && (
             <AbcEvidenceListPanel
-              records={abcEvidenceRecords}
-              loading={abcEvidenceLoading}
-              error={abcEvidenceError}
-              period={abcEvidencePeriod}
+              records={abcEvidenceRecords || []}
+              loading={abcEvidenceLoading || false}
+              error={abcEvidenceError || null}
+              period={abcEvidencePeriod || null}
+              monitoringCycleDays={form.monitoringCycleDays || 90}
+              isCited={(form.monitoringEvidenceLinks || []).some(
+                (link: MonitoringEvidenceLink) => link.source === 'dedicated-abc' &&
+                               link.recordIds.some((id: string) => (abcEvidenceRecords || []).map((r: AbcRecord) => r.id).includes(id))
+              )}
+              onCiteDraft={(draft, recordIds) => {
+                const appendText = (current: string | undefined, append: string) => {
+                  const cur = (current || '').trim();
+                  if (!cur) return append;
+                  if (cur.includes(append.trim())) return cur;
+                  return `${cur}\n\n${append}`;
+                };
+
+                const nextEvaluationMethod = appendText(form.evaluationMethod, draft.evaluationMethod);
+                const nextImprovementResult = appendText(form.improvementResult, draft.improvementResult);
+                const nextNextSupport = appendText(form.nextSupport, draft.nextSupport);
+
+                const newLink = {
+                  source: 'dedicated-abc' as const,
+                  sourceList: 'AbcBehaviorRecords' as const,
+                  recordIds: recordIds,
+                  period: {
+                    from: abcEvidencePeriod?.from || '',
+                    to: abcEvidencePeriod?.to || '',
+                  },
+                  generatedAt: new Date().toISOString(),
+                  citedFields: ['evaluationMethod', 'improvementResult', 'nextSupport'] as ('evaluationMethod' | 'improvementResult' | 'nextSupport')[],
+                };
+
+                const nextLinks = [...(form.monitoringEvidenceLinks || []), newLink];
+
+                updateField('evaluationMethod', nextEvaluationMethod);
+                updateField('improvementResult', nextImprovementResult);
+                updateField('nextSupport', nextNextSupport);
+                updateField('monitoringEvidenceLinks', nextLinks);
+              }}
             />
           )}
 

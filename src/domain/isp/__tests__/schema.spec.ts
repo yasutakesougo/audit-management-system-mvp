@@ -511,6 +511,62 @@ describe('第2層: 支援計画シート', () => {
         expect(result.data.environmentalAdjustments).toBe('');
       }
     });
+
+    it('monitoringEvidenceLinks が欠落していてもデフォルトで空配列が割り当てられ、パースに成功する (後方互換性)', () => {
+      const data = {
+        ...baseAudit,
+        userId: 'U002',
+        ispId: 'isp-002',
+        title: 'おやつ場面の支援計画',
+        observationFacts: '行動観察事実',
+        interpretationHypothesis: '解釈仮説',
+        supportIssues: '課題',
+        supportPolicy: '方針',
+        concreteApproaches: '具体策',
+        status: 'draft',
+      };
+      // monitoringEvidenceLinks を意図的に省略
+      const result = supportPlanningSheetSchema.safeParse(data);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.monitoringEvidenceLinks).toEqual([]);
+      }
+    });
+
+    it('正しい構造の monitoringEvidenceLinks が渡された場合、正しく受理・格納される', () => {
+      const data = {
+        ...baseAudit,
+        userId: 'U002',
+        ispId: 'isp-002',
+        title: 'おやつ場面の支援計画',
+        observationFacts: '行動観察事実',
+        interpretationHypothesis: '解釈仮説',
+        supportIssues: '課題',
+        supportPolicy: '方針',
+        concreteApproaches: '具体策',
+        status: 'draft',
+        monitoringEvidenceLinks: [
+          {
+            source: 'dedicated-abc',
+            sourceList: 'AbcBehaviorRecords',
+            recordIds: ['abc_rec_001', 'abc_rec_002'],
+            period: {
+              from: '2026-04-01',
+              to: '2026-04-30',
+            },
+            generatedAt: '2026-05-01T10:00:00Z',
+            citedFields: ['evaluationMethod', 'improvementResult'],
+          }
+        ],
+      };
+      const result = supportPlanningSheetSchema.safeParse(data);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.monitoringEvidenceLinks).toHaveLength(1);
+        expect(result.data.monitoringEvidenceLinks[0].source).toBe('dedicated-abc');
+        expect(result.data.monitoringEvidenceLinks[0].recordIds).toEqual(['abc_rec_001', 'abc_rec_002']);
+      }
+    });
   });
 
   describe('planningSheetSpRowSchema', () => {

@@ -95,6 +95,7 @@ function sheetToFormValues(sheet: SupportPlanningSheet): PlanningSheetFormValues
     nextSupport: sheet.nextSupport ?? '',
     supportStartDate: sheet.supportStartDate ?? undefined,
     monitoringCycleDays: sheet.monitoringCycleDays ?? 90,
+    monitoringEvidenceLinks: sheet.monitoringEvidenceLinks ?? [],
     status: sheet.status,
   };
 }
@@ -189,6 +190,7 @@ export function usePlanningSheetForm(
         nextSupport: '',
         supportStartDate: undefined,
         monitoringCycleDays: 90,
+        monitoringEvidenceLinks: [],
         status: 'draft',
       } satisfies PlanningSheetFormValues;
     }
@@ -216,6 +218,7 @@ export function usePlanningSheetForm(
     evaluationMethod: '',
     improvementResult: '',
     nextSupport: '',
+    monitoringEvidenceLinks: [],
   };
 
   const [assessmentState, setAssessmentState] = useState<PlanningAssessment>(sheet?.assessment ?? defaultAssessment);

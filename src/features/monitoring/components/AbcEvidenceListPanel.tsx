@@ -10,9 +10,13 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
+import { buildAbcEvidenceEvaluationDraft } from '@/features/planning-sheet/logic/abcRecordEvidenceBridge';
 
 export interface AbcEvidenceListPanelProps {
   records: AbcRecord[];
@@ -24,6 +28,10 @@ export interface AbcEvidenceListPanelProps {
     isProvisional: boolean;
     source: 'planning' | 'master' | 'fallback' | 'none';
   } | null;
+  // ★ 新規追加 (PR3)
+  onCiteDraft?: (draft: { evaluationMethod: string; improvementResult: string; nextSupport: string }, recordIds: string[]) => void;
+  isCited?: boolean;
+  monitoringCycleDays?: number;
 }
 
 export const AbcEvidenceListPanel: React.FC<AbcEvidenceListPanelProps> = ({
@@ -31,6 +39,9 @@ export const AbcEvidenceListPanel: React.FC<AbcEvidenceListPanelProps> = ({
   loading,
   error,
   period,
+  onCiteDraft,
+  isCited = false,
+  monitoringCycleDays: _monitoringCycleDays = 90,
 }) => {
   if (loading) {
     return (
@@ -58,6 +69,15 @@ export const AbcEvidenceListPanel: React.FC<AbcEvidenceListPanelProps> = ({
   if (!period) {
     return null;
   }
+
+  const draft = records.length > 0 ? buildAbcEvidenceEvaluationDraft({
+    records,
+    period: {
+      from: period.from || '',
+      to: period.to || '',
+      isProvisional: period.isProvisional,
+    },
+  }) : null;
 
   return (
     <Card
@@ -214,6 +234,57 @@ export const AbcEvidenceListPanel: React.FC<AbcEvidenceListPanelProps> = ({
                 );
               })}
             </List>
+
+            {/* 🤖 評価ドラフトの生成とプレビュー (PR3) */}
+            {draft && onCiteDraft && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  bgcolor: '#f8fafc',
+                  borderRadius: 2.5,
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <Typography variant="caption" fontWeight={800} color="primary.dark" gutterBottom display="block">
+                  🤖 Dedicated ABC 記録からの自動評価ドラフトプレビュー
+                </Typography>
+
+                <Stack spacing={1.5} sx={{ mb: 2, mt: 1 }}>
+                  <Box>
+                    <Typography variant="caption" fontWeight={700} color="text.primary">【評価方法】</Typography>
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', pl: 1, borderLeft: '2px solid #3b82f6' }}>
+                      {draft.evaluationMethod}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" fontWeight={700} color="text.primary">【改善実績】</Typography>
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', pl: 1, borderLeft: '2px solid #10b981' }}>
+                      {draft.improvementResult}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" fontWeight={700} color="text.primary">【今後の支援】</Typography>
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', pl: 1, borderLeft: '2px solid #f59e0b' }}>
+                      {draft.nextSupport}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Button
+                  variant="contained"
+                  color={isCited ? 'success' : 'primary'}
+                  size="small"
+                  startIcon={<AssignmentTurnedInIcon />}
+                  onClick={() => onCiteDraft(draft, records.map(r => r.id))}
+                  disabled={isCited}
+                  fullWidth
+                  sx={{ py: 1, fontWeight: 700 }}
+                >
+                  {isCited ? 'すでに評価欄へ引用済み' : 'このドラフト内容を評価欄へ引用（追記）する'}
+                </Button>
+              </Box>
+            )}
           </Stack>
         )}
       </CardContent>
