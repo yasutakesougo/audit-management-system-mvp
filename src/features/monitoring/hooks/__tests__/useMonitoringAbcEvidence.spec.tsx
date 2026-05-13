@@ -1,10 +1,8 @@
-import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useMonitoringAbcEvidence } from '../useMonitoringAbcEvidence';
 import { useUser } from '@/features/users/useUsers';
 import { useDataProvider } from '@/lib/data/useDataProvider';
-import { SharePointAbcRecordRepository } from '@/infra/sharepoint/repos/SharePointAbcRecordRepository';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 
 // ── モックセットアップ ──────────────────────────────────────
@@ -18,6 +16,7 @@ vi.mock('@/lib/data/useDataProvider', () => ({
   useDataProvider: vi.fn(),
 }));
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockFindByUserIdAndDateRange = vi.fn<any>();
 
 vi.mock('@/infra/sharepoint/repos/SharePointAbcRecordRepository', () => {
@@ -31,8 +30,10 @@ vi.mock('@/infra/sharepoint/repos/SharePointAbcRecordRepository', () => {
 describe('useMonitoringAbcEvidence', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (useDataProvider as any).mockReturnValue({ provider: {} });
-    (useUser as any).mockReturnValue({ data: null, isLoading: false });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (useUser as any).mockReturnValue({ data: null, status: 'idle' });
     mockFindByUserIdAndDateRange.mockResolvedValue([]);
   });
 
@@ -50,15 +51,25 @@ describe('useMonitoringAbcEvidence', () => {
       {
         id: '1',
         userId: 'U001',
-        date: '2026-05-10',
-        slotId: '9:30頃|通所・朝の準備',
-        isDeleted: false,
+        userName: 'User 1',
+        occurredAt: '2026-05-10T09:30:00.000Z',
+        setting: '通所',
         antecedent: 'Antecedent 1',
         behavior: 'Behavior 1',
         consequence: 'Consequence 1',
-        intensity: 3,
-        source: 'daily-support',
-      } as any,
+        intensity: 'medium',
+        durationMinutes: 5,
+        riskFlag: false,
+        recorderName: 'Staff 1',
+        tags: [],
+        notes: '',
+        createdAt: '2026-05-10T09:30:00.000Z',
+        sourceContext: {
+          source: 'daily-support',
+          date: '2026-05-10',
+          slotId: '9:30頃|通所・朝の準備',
+        },
+      },
     ];
     mockFindByUserIdAndDateRange.mockResolvedValue(mockRecords);
 
@@ -102,9 +113,10 @@ describe('useMonitoringAbcEvidence', () => {
   });
 
   it('supportStartDate がなく、UserMaster.ServiceStartDate がある場合はそれを使用する', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (useUser as any).mockReturnValue({
       data: { ServiceStartDate: '2026-04-01' },
-      isLoading: false,
+      status: 'success',
     });
 
     const { result } = renderHook(() =>
@@ -125,9 +137,10 @@ describe('useMonitoringAbcEvidence', () => {
   });
 
   it('supportStartDate も ServiceStartDate もなく、appliedFrom がある場合は provisional fallback とする', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (useUser as any).mockReturnValue({
       data: null,
-      isLoading: false,
+      status: 'success',
     });
 
     const { result } = renderHook(() =>
