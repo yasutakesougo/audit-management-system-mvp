@@ -10,6 +10,8 @@ import type {
     YearMonth
 } from './types';
 
+import { calculateDetailedPlannedRows } from './plannedRowsCalculator';
+
 /**
  * 日付から YearMonth 形式に変換
  */
@@ -55,9 +57,19 @@ export function aggregateMonthlyKpi(
     useWorkingDays?: boolean;
     rowsPerDay?: number;
     source?: 'daily-manual' | 'kiosk-execution' | 'hybrid' | string;
+    contractWeekdays?: number[];
+    holidays?: string[];
+    absences?: string[];
   } = {}
 ): MonthlyKpi {
-  const { useWorkingDays = true, rowsPerDay = 17, source = 'daily-manual' } = options;
+  const {
+    useWorkingDays = true,
+    rowsPerDay = 17,
+    source = 'daily-manual',
+    contractWeekdays,
+    holidays,
+    absences,
+  } = options;
 
   // 月内の基準日数
   const totalDays = useWorkingDays
@@ -65,7 +77,19 @@ export function aggregateMonthlyKpi(
     : getTotalDaysInMonth(yearMonth);
 
   // 計画行数 = 基準日数 × 1日あたりの行数
-  const plannedRows = totalDays * rowsPerDay;
+  const hasDetailedOptions =
+    contractWeekdays !== undefined ||
+    holidays !== undefined ||
+    absences !== undefined;
+
+  const plannedRows = hasDetailedOptions
+    ? calculateDetailedPlannedRows(yearMonth, {
+        contractWeekdays,
+        holidays,
+        absences,
+        rowsPerDay,
+      })
+    : totalDays * rowsPerDay;
 
   // 実績の集計
   const completedRows = dailyRecords.filter(r => r.completed).length;
@@ -138,6 +162,9 @@ export function aggregateMonthlySummary(
     useWorkingDays?: boolean;
     rowsPerDay?: number;
     source?: 'daily-manual' | 'kiosk-execution' | 'hybrid' | string;
+    contractWeekdays?: number[];
+    holidays?: string[];
+    absences?: string[];
   }
 ): MonthlySummary {
   // KPI集計
@@ -174,6 +201,9 @@ export function aggregateMultipleUsers(
   options?: {
     useWorkingDays?: boolean;
     rowsPerDay?: number;
+    contractWeekdays?: number[];
+    holidays?: string[];
+    absences?: string[];
   }
 ): MonthlyAggregationResult[] {
   return userRecords.map(({ userId, displayName, dailyRecords }) => {

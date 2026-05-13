@@ -4,6 +4,8 @@ import CardContent from '@mui/material/CardContent';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import React from 'react';
 import type { MonthlySummary } from './types';
 
@@ -141,9 +143,14 @@ export const UserProgressChart: React.FC<UserProgressChartProps> = ({ summary })
                 {completionRate}%
               </Typography>
             </Stack>
-            <Typography variant="caption" color="text.secondary">
-              {kpi.completedRows} / {kpi.plannedRows} 行完了
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Typography variant="caption" color="text.secondary">
+                {kpi.completedRows} / {kpi.plannedRows} 行完了
+              </Typography>
+              <Tooltip title="予定行数：利用契約曜日、祝日、および承認済みの欠席連絡を考慮して自動計算された今月の目標記録行数です。" arrow>
+                <HelpOutlineIcon sx={{ fontSize: 14, color: 'text.disabled', cursor: 'help' }} />
+              </Tooltip>
+            </Stack>
           </Box>
         </Stack>
       </CardContent>
