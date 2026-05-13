@@ -182,6 +182,7 @@ export const KATSURAGAWA_SEVERE_SUPPORT_SHEET: SupportPlanningSheet = {
     crisisThresholds: null,
     restraintPolicy: 'prohibited_except_emergency',
     reviewCycleDays: 180, evaluationIndicator: "", evaluationPeriod: "", evaluationMethod: "", improvementResult: "", nextSupport: "",
+    monitoringEvidenceLinks: [],
   },
 
   status: 'active',
@@ -224,6 +225,7 @@ export const KATSURAGAWA_SEVERE_SUPPORT_SHEET: SupportPlanningSheet = {
   authoredAt: '2026-04-10',
   appliedFrom: '2026-04-01',
   nextReviewAt: '2026-09-30', evaluationIndicator: "", evaluationPeriod: "", evaluationMethod: "", improvementResult: "", nextSupport: "",
+  monitoringEvidenceLinks: [],
   createdAt: '2026-05-01T00:00:00Z',
   updatedAt: '2026-05-01T00:00:00Z',
   createdBy: 'staff-watanabe',

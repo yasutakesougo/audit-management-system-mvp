@@ -48,6 +48,7 @@ function toCreateInput(sheet: SupportPlanningSheet): PlanningSheetCreateInput {
     intake: sheet.intake,
     assessment: sheet.assessment,
     planning: sheet.planning,
+    monitoringEvidenceLinks: sheet.monitoringEvidenceLinks ?? [],
   };
 }
 
@@ -83,6 +84,7 @@ function toUpdateInput(sheet: SupportPlanningSheet): PlanningSheetUpdateInput {
     intake: sheet.intake,
     assessment: sheet.assessment,
     planning: sheet.planning,
+    monitoringEvidenceLinks: sheet.monitoringEvidenceLinks ?? [],
   };
 }
 

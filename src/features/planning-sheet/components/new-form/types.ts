@@ -2,6 +2,7 @@
  * NewPlanningSheetForm — 共有型定義
  */
 import type { PlanningSheetRepository, IspRepository } from '@/domain/isp/port';
+import type { MonitoringEvidenceLink } from '@/domain/isp/schema/ispPlanningSheetSchema';
 
 export interface NewPlanningSheetFormProps {
   planningSheetRepo: PlanningSheetRepository;
@@ -77,6 +78,7 @@ export interface FormState {
   improvementResult: string;
   nextSupport: string;
   monitoringCycleDays: number;
+  monitoringEvidenceLinks?: MonitoringEvidenceLink[];
   // §10 チーム共有
   sharingMethod: string;
   training: string;

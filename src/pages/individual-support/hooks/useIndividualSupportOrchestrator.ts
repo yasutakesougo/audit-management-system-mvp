@@ -64,6 +64,7 @@ function buildAutoPlanningSheetInput(
     hasEducationCoordination: false,
     status: 'active',
     isCurrent: true,
+    monitoringEvidenceLinks: [],
   };
 }
 

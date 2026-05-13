@@ -58,6 +58,7 @@ export const INITIAL_FORM: FormState = {
   familyContact: '', safetyMethod: '', hasMedicalCoordination: false,
   evaluationIndicator: '', evaluationPeriod: '', evaluationMethod: '',
   improvementResult: '', nextSupport: '', monitoringCycleDays: 90,
+  monitoringEvidenceLinks: [],
   sharingMethod: '', training: '', personInCharge: '', confirmationDate: '', teamConsensusNote: '',
 };
 
@@ -122,6 +123,7 @@ export const SAMPLE_FORM: FormState = {
   improvementResult: '',
   nextSupport: '',
   monitoringCycleDays: 90,
+  monitoringEvidenceLinks: [],
   // §10
   sharingMethod: '①朝礼での当日の留意点共有 ②週1回の支援会議で進捗報告 ③支援計画シートを休憩室に掲示（個人情報はコード化）',
   training: '新任職員向けOJT（ベテラン職員がモデリング）。月1回の事例検討会で本ケースを共有。',

@@ -92,6 +92,7 @@ export function buildCreateInput(
     evaluationMethod: form.evaluationMethod,
     improvementResult: form.improvementResult,
     nextSupport: form.nextSupport,
+    monitoringEvidenceLinks: form.monitoringEvidenceLinks || [],
     status: 'draft',
   };
 }

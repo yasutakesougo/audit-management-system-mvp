@@ -100,6 +100,8 @@ const EMPTY_PLANNING = {
   restraintPolicy: 'prohibited_except_emergency' as const, reviewCycleDays: 180,
   evaluationIndicator: '', evaluationPeriod: '', evaluationMethod: '',
   improvementResult: '', nextSupport: '',
+  // ★ 新規追加 (PR3)
+  monitoringEvidenceLinks: [],
 };
 
 // ═════════════════════════════════════════════
@@ -270,6 +272,8 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     evaluationMethod: planning.evaluationMethod ?? '',
     improvementResult: planning.improvementResult ?? '',
     nextSupport: planning.nextSupport ?? '',
+    // ★ 新規追加 (PR3)
+    monitoringEvidenceLinks: planning.monitoringEvidenceLinks ?? [],
 
     supportStartDate: row.supportStartDate ?? null,
     monitoringCycleDays: row.monitoringCycleDays ?? 90,
@@ -343,6 +347,8 @@ export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateI
       evaluationMethod: input.evaluationMethod ?? input.planning?.evaluationMethod ?? '',
       improvementResult: input.improvementResult ?? input.planning?.improvementResult ?? '',
       nextSupport: input.nextSupport ?? input.planning?.nextSupport ?? '',
+      // ★ 新規追加 (PR3)
+      monitoringEvidenceLinks: input.monitoringEvidenceLinks ?? input.planning?.monitoringEvidenceLinks ?? [],
     }),
     SupportStartDate: input.supportStartDate ?? null,
     MonitoringCycleDays: input.monitoringCycleDays ?? 90,
@@ -392,7 +398,8 @@ export function mapPlanningSheetUpdateInputToPayload(input: PlanningSheetUpdateI
     input.evaluationPeriod !== undefined ||
     input.evaluationMethod !== undefined ||
     input.improvementResult !== undefined ||
-    input.nextSupport !== undefined
+    input.nextSupport !== undefined ||
+    input.monitoringEvidenceLinks !== undefined
   ) {
     // 部分更新時の §9 項目反映（既存の PlanningJson が不明な場合は空ベースになるため注意が必要だが、
     // 基本的に create 時か一括 update 時に渡される想定）
@@ -403,6 +410,7 @@ export function mapPlanningSheetUpdateInputToPayload(input: PlanningSheetUpdateI
       evaluationMethod: input.evaluationMethod ?? '',
       improvementResult: input.improvementResult ?? '',
       nextSupport: input.nextSupport ?? '',
+      monitoringEvidenceLinks: input.monitoringEvidenceLinks ?? [],
     });
   }
 

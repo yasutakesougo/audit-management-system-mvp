@@ -188,6 +188,21 @@ export type CrisisThresholds = z.infer<typeof crisisThresholdsSchema>;
 export const restraintPolicyValues = ['prohibited_except_emergency', 'not_applicable'] as const;
 export const restraintPolicySchema = z.enum(restraintPolicyValues);
 
+/** 証跡リンク（monitoringEvidenceLinks）の構造定義 (PR3) */
+export const monitoringEvidenceLinkSchema = z.object({
+  source: z.literal('dedicated-abc'),
+  sourceList: z.literal('AbcBehaviorRecords'),
+  recordIds: z.array(z.string()),
+  period: z.object({
+    from: z.string(),
+    to: z.string(),
+  }),
+  generatedAt: z.string(),
+  citedFields: z.array(z.enum(['evaluationMethod', 'improvementResult', 'nextSupport'])),
+});
+
+export type MonitoringEvidenceLink = z.infer<typeof monitoringEvidenceLinkSchema>;
+
 /** プランニング（支援設計）セクション */
 export const planningDesignSchema = z.object({
   supportPriorities: z.array(z.string()).default([]),
@@ -204,6 +219,8 @@ export const planningDesignSchema = z.object({
   evaluationMethod: z.string().default(''),
   improvementResult: z.string().default(''),
   nextSupport: z.string().default(''),
+  // ★ 新規追加 (PR3)
+  monitoringEvidenceLinks: z.array(monitoringEvidenceLinkSchema).optional().default([]),
 }).default({
   supportPriorities: [],
   antecedentStrategies: [],
@@ -218,6 +235,8 @@ export const planningDesignSchema = z.object({
   evaluationMethod: '',
   improvementResult: '',
   nextSupport: '',
+  // ★ 新規追加 (PR3)
+  monitoringEvidenceLinks: [],
 });
 
 export type PlanningDesign = z.infer<typeof planningDesignSchema>;
@@ -277,6 +296,8 @@ export const planningSheetFormSchema = z.object({
   evaluationMethod: z.string().optional(),
   improvementResult: z.string().optional(),
   nextSupport: z.string().optional(),
+  // ★ 新規追加 (PR3)
+  monitoringEvidenceLinks: z.array(monitoringEvidenceLinkSchema).optional().default([]),
 
   // ── 制度項目 ──
   authoredByStaffId: z.string().max(100).default(''),
@@ -325,6 +346,8 @@ export const supportPlanningSheetSchema = baseAuditFieldsSchema.extend({
   evaluationMethod: z.string().default(''),
   improvementResult: z.string().default(''),
   nextSupport: z.string().default(''),
+  // ★ 新規追加 (PR3)
+  monitoringEvidenceLinks: z.array(monitoringEvidenceLinkSchema).optional().default([]),
 
   // ── 制度項目 ──
   authoredByStaffId: z.string().default(''),
