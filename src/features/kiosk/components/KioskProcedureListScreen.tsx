@@ -89,6 +89,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       source: 'daily-support',
       date: selectedDateIso,
       slotId,
+      kiosk: '1',
       returnUrl: `/kiosk/users/${encodeURIComponent(returnRouteUserId)}/procedures?${returnParams.toString()}`,
     });
     return `/abc-record?${params.toString()}`;
