@@ -193,8 +193,32 @@ function computeBackoffMs(
 }
 
 function isRetryableStatus(status: number): boolean {
-  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+  return status === 429 || status === 503;
 }
+
+function isThrottleRedirect(url: unknown): boolean {
+  return typeof url === 'string' && url.includes('/_layouts/15/Throttle.htm');
+}
+
+function isLikelyCorsOrRedirectFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('cors')
+  );
+}
+
+class SpThrottleRedirectError extends Error {
+  constructor(public readonly responseUrl: string) {
+    super('[SharePoint] Throttled: redirected to Throttle.htm. Retry stopped to avoid request storm.');
+    this.name = 'SpThrottleRedirectError';
+  }
+}
+
+let hasWarnedThrottleRedirect = false;
+let hasWarnedCorsOrRedirectFailure = false;
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   if (ms <= 0) return Promise.resolve();
@@ -387,6 +411,20 @@ export function createSpFetch(deps: SpFetchDeps) {
         try {
           // eslint-disable-next-line no-restricted-globals
           const response = await fetch(url, { ...init, headers, signal: mergedSignal });
+
+          if (isThrottleRedirect(response.url)) {
+            const responseUrl = typeof response.url === 'string' ? response.url : '';
+            if (!hasWarnedThrottleRedirect) {
+              hasWarnedThrottleRedirect = true;
+              auditLog.warn('sp:fetch', 'throttle_redirect_detected_retry_stopped', {
+                url: responseUrl.split('?')[0],
+                method,
+                lane,
+              });
+            }
+            throw new SpThrottleRedirectError(responseUrl);
+          }
+
           const retryAfterMs = parseRetryAfterMs(response);
 
           if (response.ok) {
@@ -484,6 +522,19 @@ export function createSpFetch(deps: SpFetchDeps) {
             throw error;
           }
 
+          if (error instanceof SpThrottleRedirectError) {
+            recordTelemetry('sp:request_failed', {
+              url: url.split('?')[0],
+              method,
+              lane,
+              attempt,
+              durationMs: Date.now() - attemptStartedAt,
+              message: error.message,
+            });
+            span.error('SpThrottleRedirectError', attempt - 1);
+            throw error;
+          }
+
           if (isAbortError(error)) {
             recordTelemetry('sp:request_failed', {
               url: url.split('?')[0],
@@ -497,7 +548,17 @@ export function createSpFetch(deps: SpFetchDeps) {
             throw error;
           }
 
-          const retryable = !skipRetry && attempt <= maxRetries;
+          const retryableNetwork = !isLikelyCorsOrRedirectFailure(error);
+          if (!retryableNetwork && !hasWarnedCorsOrRedirectFailure) {
+            hasWarnedCorsOrRedirectFailure = true;
+            auditLog.warn('sp:fetch', 'cors_or_redirect_failure_retry_stopped', {
+              method,
+              lane,
+              message: error instanceof Error ? error.message : 'NetworkError',
+            });
+          }
+
+          const retryable = !skipRetry && attempt <= maxRetries && retryableNetwork;
           if (retryable) {
             const delayMs = computeBackoffMs(attempt, baseDelay, capDelay);
             recordTelemetry('sp:retry', {
