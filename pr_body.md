@@ -1,28 +1,36 @@
 ## Summary
-- Add Today monitoring governance alert builder
-- Reuse Support Date Governance resolution logic from planning-sheet
-- Replace direct ServiceStartDate reads with Planning Sheet > User Master > appliedFrom resolution
-- Add Today signals for provisional / unset / invalid monitoring origins
-- Convert overdue / dueSoon / unset / invalid monitoring signals into monitoring_deadline action sources
-- Keep provisional-only signals out of the priority Action Queue to avoid noisy daily actions
-- Add tests for Today alert classification and signal mapping
 
-## Design note
-Today does not own or store the monitoring origin.
-Today consumes the L2-owned resolved origin and surfaces operational alerts.
+- Add ABC record CTA from Kiosk procedure list and procedure detail screens
+- Navigate to Dedicated ABC (`/abc-record`) with deep link query parameters
+- Preserve `userId`, `source`, `date`, `slotId`, and `returnUrl`
+- Pass `draftBehavior` / `draftSlotId` via navigation state
+- Align Kiosk CTA labels with Entry Consolidation Rule: procedure detail is the primary entry, list CTA is secondary guidance
 
-Resolution priority remains:
-1. SupportPlanningSheet.SupportStartDate
-2. UserMaster.ServiceStartDate
-3. appliedFrom as provisional fallback
+## Scope
 
-Display rule:
-- overdue / dueSoon / unset / invalid are surfaced as priority actions
-- provisional-only is retained as a signal but not promoted to the Action Queue
-- provisional + dueSoon / overdue is surfaced through the due/overdue monitoring action
+Phase 1: deep link only / no sync
+
+This PR only adds navigation from Kiosk to Dedicated ABC (`/abc-record`).
+Created records are saved to `AbcBehaviorRecords`.
+This PR does not sync or duplicate records into `DailyActivityRecords`.
+
+## Acceptance Criteria
+
+- Kiosk procedure list can navigate to `/abc-record`
+- Kiosk procedure slot rows can navigate to `/abc-record`
+- Kiosk procedure detail can navigate to `/abc-record`
+- Deep link preserves `userId`, `date`, `slotId`, `source`, and `returnUrl`
+- `returnUrl` and `slotId` are encoded via `URLSearchParams`
+- Saved records are treated as Dedicated ABC records
+- No expectation that records appear in Daily Behavior / `DailyActivityRecords`
+
+## Review Notes
+
+This follows `docs/architecture/abc-record-boundary.md`.
+
+Kiosk-originated ABC records created through `/abc-record` are Dedicated ABC records in Phase 1.
+Procedure detail is the primary entry. List-level CTA is secondary guidance.
 
 ## Checks
-- npm run typecheck
-- npx vitest run src/features/today
-- npx vitest run src/features/planning-sheet/__tests__/monitoringSchedule.spec.ts
-- npx vitest run src/features/daily/components/__tests__/MonitoringCountdown.spec.tsx
+
+- `npm run -s typecheck`

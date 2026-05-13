@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Grid, Card, IconButton, Chip, LinearProgress, Snackbar, Alert, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -29,6 +29,11 @@ export const KioskProcedureListScreen: React.FC = () => {
   
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
   const selectedDateStr = formatDateJapanese(selectedDateIso);
+  const deepLinkUserId = React.useMemo(() => {
+    const canonical = String(user?.UserID ?? '').trim();
+    if (canonical) return canonical;
+    return String(userId ?? '').trim();
+  }, [user?.UserID, userId]);
 
   const procedures = React.useMemo(() => {
     if (!userId) return [];
@@ -70,6 +75,19 @@ export const KioskProcedureListScreen: React.FC = () => {
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [showFetchError, setShowFetchError] = useState(false);
+
+  const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
+    if (!deepLinkUserId) return '/abc-record';
+    const returnParams = new URLSearchParams({ date: selectedDateIso });
+    const params = new URLSearchParams({
+      userId: deepLinkUserId,
+      source: 'daily-support',
+      date: selectedDateIso,
+      slotId,
+      returnUrl: `/kiosk/users/${encodeURIComponent(deepLinkUserId)}/procedures?${returnParams.toString()}`,
+    });
+    return `/abc-record?${params.toString()}`;
+  }, [deepLinkUserId, selectedDateIso]);
 
   // 実施記録の取得
   useEffect(() => {
@@ -251,9 +269,17 @@ export const KioskProcedureListScreen: React.FC = () => {
                 }}
                 data-testid={`kiosk-procedure-card-${index}`}
               >
-                <CardActionArea 
+                <Box
                   onClick={() => navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures/${index}`, location.search))}
-                  sx={{ p: 2.5 }}
+                  sx={{ p: 2.5, cursor: 'pointer' }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures/${index}`, location.search));
+                    }
+                  }}
                 >
                   <Grid container alignItems="center" spacing={2}>
                     <Grid size={2} sx={{ textAlign: 'center' }}>
@@ -275,6 +301,23 @@ export const KioskProcedureListScreen: React.FC = () => {
                       </Typography>
                     </Grid>
                     <Grid size={3} sx={{ textAlign: 'right' }}>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const slotId = `${step.time}|${step.activity}`;
+                          navigate(buildKioskAbcRecordLink(slotId), {
+                            state: {
+                              draftBehavior: `${step.time} ${step.activity}の時間帯に問題行動あり`,
+                              draftSlotId: slotId,
+                            },
+                          });
+                        }}
+                        sx={{ mb: 1, textTransform: 'none' }}
+                      >
+                        この手順でABC記録
+                      </Button>
                       {isRecorded ? (
                         <Chip 
                           icon={<CheckCircleIcon />} 
@@ -292,7 +335,7 @@ export const KioskProcedureListScreen: React.FC = () => {
                       )}
                     </Grid>
                   </Grid>
-                </CardActionArea>
+                </Box>
               </Card>
             </Grid>
           );

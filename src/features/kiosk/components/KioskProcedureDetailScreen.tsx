@@ -26,6 +26,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const procedureRepo = useProcedureData();
   
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
+  const deepLinkUserId = React.useMemo(() => {
+    const canonical = String(user?.UserID ?? '').trim();
+    if (canonical) return canonical;
+    return String(userId ?? '').trim();
+  }, [user?.UserID, userId]);
   
   const procedure = React.useMemo(() => {
     if (!userId || slotKey === undefined) return null;
@@ -61,6 +66,26 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     () => [normalizeScheduleItemId(slotKey)].filter((value): value is string => Boolean(value)),
     [slotKey],
   );
+
+  const abcSlotId = React.useMemo(() => {
+    const time = procedure?.time ?? '';
+    const activity = procedure?.activity ?? '';
+    if (!time || !activity) return '';
+    return `${time}|${activity}`;
+  }, [procedure?.activity, procedure?.time]);
+
+  const abcRecordLink = React.useMemo(() => {
+    if (!deepLinkUserId || !abcSlotId) return '/abc-record';
+    const returnParams = new URLSearchParams({ date: selectedDateIso });
+    const params = new URLSearchParams({
+      userId: deepLinkUserId,
+      source: 'daily-support',
+      date: selectedDateIso,
+      slotId: abcSlotId,
+      returnUrl: `/kiosk/users/${encodeURIComponent(deepLinkUserId)}/procedures/${encodeURIComponent(String(slotKey ?? ''))}?${returnParams.toString()}`,
+    });
+    return `/abc-record?${params.toString()}`;
+  }, [abcSlotId, deepLinkUserId, selectedDateIso, slotKey, userId]);
   const { record, saveRecord, isLoading } = useExecutionRecord(
     selectedDateIso,
     userId || '',
@@ -205,6 +230,23 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           </Box>
         </Box>
         <Stack direction="row" spacing={2} alignItems="center">
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() =>
+              navigate(abcRecordLink, {
+                state: {
+                  draftBehavior: `${procedure.time} ${procedure.activity}の時間帯に問題行動あり`,
+                  draftSlotId: abcSlotId,
+                },
+              })
+            }
+            disabled={!abcSlotId}
+            sx={{ fontWeight: 'bold', borderRadius: 3 }}
+            data-testid="kiosk-procedure-detail-abc-record"
+          >
+            この手順でABC記録
+          </Button>
           <Button
             variant="outlined"
             color="primary"
