@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress, Snackbar, Alert, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
@@ -70,6 +71,24 @@ export const KioskProcedureListScreen: React.FC = () => {
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [showFetchError, setShowFetchError] = useState(false);
+
+  const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
+    if (!userId) return '/abc-record';
+    const params = new URLSearchParams({
+      userId,
+      source: 'daily-support',
+      date: selectedDateIso,
+      slotId,
+      returnUrl: appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search),
+    });
+    return `/abc-record?${params.toString()}`;
+  }, [location.search, selectedDateIso, userId]);
+
+  const defaultAbcSlotId = React.useMemo(() => {
+    const first = procedures[0];
+    if (!first) return '';
+    return `${first.time}|${first.activity}`;
+  }, [procedures]);
 
   // 実施記録の取得
   useEffect(() => {
@@ -213,6 +232,17 @@ export const KioskProcedureListScreen: React.FC = () => {
 
         {/* 進捗サマリー */}
         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<EditNoteRoundedIcon />}
+            onClick={() => navigate(buildKioskAbcRecordLink(defaultAbcSlotId))}
+            disabled={!defaultAbcSlotId}
+            sx={{ mb: 1.5, textTransform: 'none', fontWeight: 700 }}
+            data-testid="kiosk-procedure-list-abc-record"
+          >
+            手順を選んでABC記録
+          </Button>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             実施状況: {recordedCount} / {totalCount}
           </Typography>
@@ -275,6 +305,23 @@ export const KioskProcedureListScreen: React.FC = () => {
                       </Typography>
                     </Grid>
                     <Grid size={3} sx={{ textAlign: 'right' }}>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const slotId = `${step.time}|${step.activity}`;
+                          navigate(buildKioskAbcRecordLink(slotId), {
+                            state: {
+                              draftBehavior: `${step.time} ${step.activity}の時間帯に問題行動あり`,
+                              draftSlotId: slotId,
+                            },
+                          });
+                        }}
+                        sx={{ mb: 1, textTransform: 'none' }}
+                      >
+                        この手順でABC記録
+                      </Button>
                       {isRecorded ? (
                         <Chip 
                           icon={<CheckCircleIcon />} 
