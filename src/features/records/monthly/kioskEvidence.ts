@@ -191,9 +191,21 @@ export function aggregateMonthlySummaryFromKioskEvidence(
     displayName: string;
     useWorkingDays?: boolean;
     rowsPerDay?: number;
+    contractWeekdays?: number[];
+    holidays?: string[];
+    absences?: string[];
   }
 ): KioskMonthlyAggregationResult {
-  const { userId, yearMonth, displayName, useWorkingDays, rowsPerDay } = options;
+  const {
+    userId,
+    yearMonth,
+    displayName,
+    useWorkingDays,
+    rowsPerDay,
+    contractWeekdays,
+    holidays,
+    absences,
+  } = options;
   const target = { userId, yearMonth };
   const { included, skippedRecords, errors } = collectKioskEvidenceRecords(records, target);
   const dailyRecords = included.map(({ dailyRecord }) => dailyRecord);
@@ -201,6 +213,9 @@ export function aggregateMonthlySummaryFromKioskEvidence(
     useWorkingDays,
     rowsPerDay,
     source: 'kiosk-execution',
+    contractWeekdays,
+    holidays,
+    absences,
   });
 
   return {

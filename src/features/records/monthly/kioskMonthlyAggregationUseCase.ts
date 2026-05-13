@@ -12,6 +12,9 @@ export interface KioskMonthlyAggregationParams {
   yearMonth: YearMonth;
   useWorkingDays?: boolean;
   rowsPerDay?: number;
+  contractWeekdays?: number[];
+  holidays?: string[];
+  absences?: string[];
 }
 
 /**
@@ -24,7 +27,16 @@ export async function executeKioskMonthlyAggregation(
   repository: ExecutionRecordRepository,
   params: KioskMonthlyAggregationParams
 ): Promise<KioskMonthlyAggregationResult> {
-  const { userId, displayName, yearMonth, useWorkingDays, rowsPerDay } = params;
+  const {
+    userId,
+    displayName,
+    yearMonth,
+    useWorkingDays,
+    rowsPerDay,
+    contractWeekdays,
+    holidays,
+    absences,
+  } = params;
 
   // 1. Calculate from/to date range for the target YearMonth (inclusive)
   const totalDays = getTotalDaysInMonth(yearMonth);
@@ -42,6 +54,9 @@ export async function executeKioskMonthlyAggregation(
       displayName,
       useWorkingDays,
       rowsPerDay,
+      contractWeekdays,
+      holidays,
+      absences,
     });
   } catch (error) {
     // Return a graceful failure result in case of repository or system errors
