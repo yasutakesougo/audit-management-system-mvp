@@ -6,7 +6,8 @@ import {
   getRowsListTitle, 
   DAILY_RECORD_FIELDS,
   SharePointResponse,
-  type ResolvedRowsFields 
+  type ResolvedRowsFields,
+  type ResolvedParentFields
 } from './constants';
 import type { JsonRecord } from '@/lib/sp/types';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
@@ -38,6 +39,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   private readonly resolver: DailyRecordSchemaResolver;
   
   private resolvedFields: ResolvedRowsFields | null = null;
+  private resolvedParentFields: ResolvedParentFields | null = null;
   private resolvedParentPath: string | null = null;
   private resolvedChildPath: string | null = null;
   private availableFields = new Map<string, Set<string>>();
@@ -100,6 +102,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
        this.resolvedChildPath = `lists/getbytitle('${this.childListTitle}')`;
     }
 
+    this.resolvedParentFields = await this.resolver.resolveParentFields(this.resolvedParentPath);
     this.resolvedFields = await this.resolver.resolveRowsFields(this.resolvedChildPath);
     return this.resolvedFields!;
   }
@@ -160,7 +163,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
   private async ensureParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
     await this.getResolvedFields(); // Ensure paths resolved
-    const filter = `${DAILY_RECORD_FIELDS.title} eq '${dailyKey}'`;
+    const pf = this.resolvedParentFields!;
+    const filter = `${pf.title} eq '${dailyKey}'`;
     const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
     
     const response = await this.spFetch(url, { method: 'GET' });
@@ -175,11 +179,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     
     await this.initFields(this.parentListTitle);
     const rawBody = {
-      [DAILY_RECORD_FIELDS.title]: dailyKey,
-      [DAILY_RECORD_FIELDS.recordDate]: date,
-      [DAILY_RECORD_FIELDS.userCount]: 1,
-      [DAILY_RECORD_FIELDS.latestVersion]: 1,
-      [DAILY_RECORD_FIELDS.userRowsJSON]: '[]',
+      [pf.title]: dailyKey,
+      [pf.recordDate]: date,
+      [pf.userCount]: 1,
+      [pf.userRowsJSON]: '[]',
     };
     const body = this.filterPayload(this.parentListTitle, rawBody);
 
@@ -312,7 +315,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     
     // Title is needed for POST (creation) but often ignored in MERGE if it doesn't change
     if (!existing) {
-        rawBody[DAILY_RECORD_FIELDS.title] = normalizedRecord.id;
+        rawBody[this.resolvedParentFields?.title ?? DAILY_RECORD_FIELDS.title] = normalizedRecord.id;
     }
 
     const body = this.filterPayload(this.childListTitle, rawBody);

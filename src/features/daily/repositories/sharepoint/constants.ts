@@ -75,6 +75,18 @@ export type ResolvedRowsFields = {
     bipsJSON?: string;
 };
 
+export type ResolvedParentFields = {
+    title: string;
+    recordDate: string;
+    reporterName: string;
+    reporterRole: string;
+    userRowsJSON: string;
+    userCount: string;
+    approvalStatus?: string;
+    approvedBy?: string;
+    approvedAt?: string;
+};
+
 /**
  * Raw item as it comes directly from SharePoint response.
  * Uses physical internal names.

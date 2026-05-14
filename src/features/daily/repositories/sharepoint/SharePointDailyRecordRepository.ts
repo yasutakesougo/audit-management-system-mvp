@@ -71,11 +71,12 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     if (!listPath) {
         throw new Error(`Daily records list not found: ${this.listTitle}`);
     }
+    const resolvedParentFields = await this.schema.resolveParentFields(listPath);
     const rowsListPath = buildListPath(this.getRowsListTitle());
     const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
     const existingItem = await this.data.findItemByDate(input.date, listPath, params?.signal);
 
-    return this.saver.save(input, listPath, rowsListPath, existingItem, resolvedRowsFields, params);
+    return this.saver.save(input, listPath, rowsListPath, existingItem, resolvedRowsFields, resolvedParentFields, params);
   }
 
   async load(date: string): Promise<DailyRecordItem | null> {
@@ -102,13 +103,14 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
   ): Promise<DailyRecordItem> {
     const listPath = await this.schema.resolveListPath();
     if (!listPath) throw new Error(`Daily records list not found: ${this.listTitle}`);
+    const resolvedParentFields = await this.schema.resolveParentFields(listPath);
 
     const existingItem = await this.data.findItemByDate(input.date, listPath, params?.signal);
     if (!existingItem) {
         throw new Error(`Record not found for date: ${input.date}`);
     }
 
-    return this.saver.approve(input, listPath, existingItem, params);
+    return this.saver.approve(input, listPath, existingItem, resolvedParentFields, params);
   }
 
   async scanIntegrity(dates: string[], signal?: AbortSignal): Promise<DailyIntegrityException[]> {

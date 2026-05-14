@@ -306,6 +306,28 @@ describe('useTableDailyRecordRowHandlers', () => {
       expect(result.current.visibleRows).toHaveLength(1);
       expect(result.current.visibleRows[0].userId).toBe('u2');
     });
+
+    it('showUnsentOnly=true で全行が空のときは selectedUserIds に合致する全行を返す（フォールバック）', () => {
+      const initialRows = [
+        makeRow({ userId: 'u1' }), // 空行
+        makeRow({ userId: 'u2', userName: '佐藤花子' }), // 空行
+      ];
+
+      const { result } = renderHook(() =>
+        useRowHandlersTestWrapper(
+          makeInitialFormData(initialRows),
+          {
+            showUnsentOnly: true,
+            selectedUsers: [USERS[0], USERS[1]],
+            selectedUserIds: ['u1', 'u2'],
+          },
+        ),
+      );
+
+      expect(result.current.visibleRows).toHaveLength(2);
+      expect(result.current.visibleRows[0].userId).toBe('u1');
+      expect(result.current.visibleRows[1].userId).toBe('u2');
+    });
   });
 
   describe('unsentRowCount', () => {

@@ -493,5 +493,62 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(body.RowNo).toBeUndefined();
       expect(body.StaffName).toBeUndefined();
     });
+
+    it('ensureParentRecord uses resolved parent date field (Date) when RecordDate is missing', async () => {
+      const mockSpFetchDate = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+        if (url.includes('SupportRecord_Daily') && init?.method === 'POST') {
+          return { ok: true, json: async () => ({ d: { Id: 999 } }) };
+        }
+        if (url.includes('DailyRecordRows') && init?.method === 'POST') {
+          return { ok: true, json: async () => ({ d: { Id: 1000 } }) };
+        }
+        if (url.includes('items?$top=1')) {
+          if (url.includes('SupportRecord_Daily')) {
+            return { ok: true, json: async () => ({ value: [{ Title: 'key', Date: '2026-05-14' }] }) };
+          }
+        }
+        return { ok: true, json: async () => ({ value: [] }) };
+      });
+
+      const mockGetFieldsDate = vi.fn().mockResolvedValue(new Set([
+        'Title',
+        'Date', // Uses Date instead of RecordDate
+        'UserId',
+        EXECUTION_RECORD_FIELDS.rowKey,
+        EXECUTION_RECORD_FIELDS.status,
+        EXECUTION_RECORD_FIELDS.parentId,
+        EXECUTION_RECORD_FIELDS.userId,
+        EXECUTION_RECORD_FIELDS.rowNo,
+        EXECUTION_RECORD_FIELDS.recordedAt,
+      ]));
+
+      const repoDate = new SharePointExecutionRecordRepository({
+        spFetch: mockSpFetchDate,
+        getListFieldInternalNames: mockGetFieldsDate,
+      });
+
+      const record: ExecutionRecord = {
+        id: 'R001',
+        date: '2024-01-01',
+        userId: 'U001',
+        scheduleItemId: 'S001',
+        status: 'completed',
+        memo: 'Test',
+        recordedAt: '2024-01-01T10:00:00Z',
+        recordedBy: 'Staff A',
+        triggeredBipIds: [],
+      };
+
+      await repoDate.upsertRecord(record);
+
+      const parentCreateCall = mockSpFetchDate.mock.calls.find(call =>
+        call[0].includes('SupportRecord_Daily') && call[1]?.method === 'POST'
+      );
+      expect(parentCreateCall).toBeDefined();
+      const body = JSON.parse(parentCreateCall![1]!.body as string);
+
+      expect(body.Date).toBe('2024-01-01');
+      expect(body.RecordDate).toBeUndefined();
+    });
   });
 });
