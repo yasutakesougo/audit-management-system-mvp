@@ -16,6 +16,14 @@ import type { MonthlySummary, YearMonth } from '../types';
  * Hook to fetch and aggregate monthly summaries for all active users.
  * Supports both demo (mock) and production (SharePoint) data sources.
  */
+interface SharePointRow {
+  UserID?: string;
+  UserCode?: string;
+  Date?: string;
+  RecordDate?: string;
+  Status?: string;
+}
+
 export function useMonthlySummaries(yearMonth: YearMonth) {
   const { users, isLoading: loadingUsers } = useUsers();
   const repository = useExecutionData();
@@ -57,7 +65,7 @@ export function useMonthlySummaries(yearMonth: YearMonth) {
 
       // A. Fetch Absences for all users in one batch
       // Use the internal names defined in the registry (UserID, Date, Status)
-      const absenceRows = await listItems<any>(DAILY_ATTENDANCE_LIST_TITLE, {
+      const absenceRows = await listItems<SharePointRow>(DAILY_ATTENDANCE_LIST_TITLE, {
         select: ['UserID', 'UserCode', 'Date', 'RecordDate', 'Status'],
         filter: `(Date ge '${from}T00:00:00Z' and Date le '${to}T23:59:59Z') or (RecordDate ge '${from}T00:00:00Z' and RecordDate le '${to}T23:59:59Z')`,
         top: 2000,
@@ -82,12 +90,12 @@ export function useMonthlySummaries(yearMonth: YearMonth) {
       });
 
       // B. Fetch Dynamic Holidays (Optional, fallback to static HOLIDAYS)
-      const holidayRows = await listItems<any>(HOLIDAY_MASTER_LIST_TITLE, {
+      const holidayRows = await listItems<SharePointRow>(HOLIDAY_MASTER_LIST_TITLE, {
         select: ['Date'],
         filter: `Date ge '${from}T00:00:00Z' and Date le '${to}T23:59:59Z'`,
       }).catch(() => []);
 
-      const dynamicHolidayDates = holidayRows.map(h => h.Date?.split('T')[0]).filter(Boolean);
+      const dynamicHolidayDates = holidayRows.map(h => h.Date?.split('T')[0]).filter((d): d is string => !!d);
       const staticHolidayDates = Object.keys(HOLIDAYS).filter(d => d.startsWith(yearMonth));
       const holidays = Array.from(new Set([...staticHolidayDates, ...dynamicHolidayDates]));
 
