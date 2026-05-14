@@ -112,7 +112,7 @@ vi.mock('@/features/planning-sheet/hooks/useStrategyUsageCounts', () => ({ useSt
 vi.mock('@/features/planning-sheet/hooks/useStrategyUsageTrend', () => ({ useStrategyUsageTrend: () => ({ result: null, days: 30, setDays: vi.fn(), loading: false }) }));
 vi.mock('@/features/assessment/stores/assessmentStore', () => ({ useAssessmentStore: () => ({ getByUserId: vi.fn() }) }));
 vi.mock('@/features/planning-sheet/hooks/useLatestBehaviorMonitoring', () => ({ useLatestBehaviorMonitoring: () => ({ record: null }) }));
-vi.mock('@/features/monitoring/repositories/createMonitoringMeetingRepository', () => ({ useMonitoringMeetingRepository: () => ({ listByUser: vi.fn(async () => []) }) }));
+vi.mock('@/features/monitoring/data/useMonitoringMeetingRepository', () => ({ useMonitoringMeetingRepository: () => ({ listByUser: vi.fn(async () => []) }) }));
 vi.mock('@/features/ibd/analysis/pdca/queries/usePdcaCycleState', () => ({ usePdcaCycleState: () => ({ state: {} }) }));
 vi.mock('@/app/services/bridgeProxy', () => ({
   getPlanningWorkflowPhaseForSheet: vi.fn(() => ({ phase: 'active_plan' })),
