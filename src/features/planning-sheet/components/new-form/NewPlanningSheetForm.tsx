@@ -57,7 +57,7 @@ import type { ImportPreviewResult } from '../../buildImportPreview';
 import { ImportPreviewDialog } from '../ImportPreviewDialog';
 import { ImportMonitoringDialog } from '../ImportMonitoringDialog';
 import { useLatestBehaviorMonitoring } from '../../hooks/useLatestBehaviorMonitoring';
-import { useMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
 import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
 import { buildIcebergImportResult } from '../../icebergToPlanningBridge';
@@ -128,9 +128,8 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
 
   // ── モニタリング読込 ──
   // NOTE:
-  // Repository is resolved via createMonitoringMeetingRepository factory.
+  // Repository is resolved by the monitoring data-layer hook.
   // Do not import localMonitoringMeetingRepository directly in UI components.
-  // SP_ENABLED のときは sharepoint モードで SP リストから取得する。
   const monitoringRepo = useMonitoringMeetingRepository();
   const {
     record: latestMonitoringRecord,

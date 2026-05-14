@@ -10,7 +10,7 @@ import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore
 import { useImportAuditStore } from '@/features/planning-sheet/stores/importAuditStore';
 import { filterAuditHistoryRecords } from '@/features/planning-sheet/domain/filterAuditHistory';
 import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
-import { useMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
 import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
 import { useStrategyUsageTrend, type TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { useUsers } from '@/features/users/useUsers';
