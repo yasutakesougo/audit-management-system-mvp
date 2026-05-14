@@ -44,7 +44,7 @@ export function useHealthChecks(ctx: HealthContext) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { acquireToken } = useAuth();
+  const { acquireToken, isAuthenticated, tokenReady, loading: authLoading } = useAuth();
   const sp = useMemo(() => createSpAdapterWithAuth(acquireToken), [acquireToken]);
 
   const run = async () => {
@@ -54,7 +54,11 @@ export function useHealthChecks(ctx: HealthContext) {
     setError(null);
     try {
       console.log("=== RUNNING runHealthChecks ===");
-      const results = await runHealthChecks(ctx, sp);
+      const results = await runHealthChecks(ctx, sp, {
+        hasActiveAccount: isAuthenticated,
+        tokenReady,
+        tokenPending: authLoading,
+      });
       console.log("=== HEALTH CHECKS COMPLETED ===", results.length, "results");
       if (typeof window !== 'undefined') {
         (window as unknown as Record<string, unknown>).__HEALTH_CHECKS__ = results;

@@ -6,6 +6,7 @@
  */
 
 import { useMsalContext } from '@/auth/MsalProvider';
+import { useAuth } from '@/auth/useAuth';
 import { getAppConfig, isDemoModeEnabled, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import Box from '@mui/material/Box';
@@ -54,6 +55,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   const sharePointFeatureEnabled = readBool('VITE_FEATURE_SCHEDULES_SP', false);
   const { spFetch } = useSP();
   const { accounts } = useMsalContext();
+  const { tokenReady, loading: authLoading } = useAuth();
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
   const skipLogin = SKIP_LOGIN_RAW();
@@ -81,6 +83,12 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
     }
 
     if (!bypassAccountGate && accountsCount === 0) {
+      setState('signedOut');
+      return;
+    }
+
+    // Badge and diagnostics must share token readiness conditions.
+    if (!bypassAccountGate && (!tokenReady || authLoading)) {
       setState('signedOut');
       return;
     }
@@ -115,7 +123,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
       cancelled = true;
       controller.abort();
     };
-  }, [isDemoMode, accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled]);
+  }, [isDemoMode, accountsCount, bypassAccountGate, forceSharePoint, sharePointFeatureEnabled, sharePointDisabled, tokenReady, authLoading]);
 
   const { label, background } = useMemo(() => {
     switch (state) {

@@ -2,12 +2,23 @@ import { HealthCheckResult, HealthContext } from "../types";
 import { SpAdapter } from "../spAdapter";
 import { pass, fail, safe } from "./utils";
 
+export type AuthConnectivityCheckSummary = {
+  currentUserStatus: "pass" | "fail";
+  currentUserDetail?: string;
+  webStatus: "pass" | "fail";
+  webDetail?: string;
+};
+
 export async function runAuthAndConnectivityChecks(
   ctx: HealthContext,
   sp: SpAdapter,
   results: HealthCheckResult[]
-): Promise<void> {
+): Promise<AuthConnectivityCheckSummary> {
   const isSkipSharePoint = ctx.env["VITE_SKIP_SHAREPOINT"] === "1";
+  let currentUserStatus: "pass" | "fail" = "fail";
+  let currentUserDetail: string | undefined;
+  let webStatus: "pass" | "fail" = "fail";
+  let webDetail: string | undefined;
 
   // --- B) Auth / Connectivity ---
   const currentUser = isSkipSharePoint
@@ -32,6 +43,8 @@ export async function runAuthAndConnectivityChecks(
         ],
       })
     );
+    currentUserStatus = "fail";
+    currentUserDetail = currentUser.err;
   } else {
     results.push(
       pass({
@@ -42,6 +55,7 @@ export async function runAuthAndConnectivityChecks(
         evidence: currentUser.v,
       })
     );
+    currentUserStatus = "pass";
   }
 
   const webTitle = isSkipSharePoint
@@ -58,6 +72,8 @@ export async function runAuthAndConnectivityChecks(
         evidence: { siteUrl: ctx.siteUrl },
       })
     );
+    webStatus = "fail";
+    webDetail = webTitle.err;
   } else {
     results.push(
       pass({
@@ -68,5 +84,13 @@ export async function runAuthAndConnectivityChecks(
         evidence: { siteUrl: ctx.siteUrl, webTitle: webTitle.v },
       })
     );
+    webStatus = "pass";
   }
+
+  return {
+    currentUserStatus,
+    currentUserDetail,
+    webStatus,
+    webDetail,
+  };
 }
