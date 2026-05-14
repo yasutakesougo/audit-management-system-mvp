@@ -32,7 +32,10 @@ export class SharePointDataProvider implements IDataProvider {
    * (Users_Master など、プログラム上のキーを実環境名に変換)
    */
   private resolveResource(name: string): string {
-    const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => e.key.toLowerCase() === name.toLowerCase());
+    const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => 
+      e.key.toLowerCase() === name.toLowerCase() || 
+      e.resolve().toLowerCase() === name.toLowerCase()
+    );
     return entry ? entry.resolve() : name;
   }
 
@@ -50,9 +53,12 @@ export class SharePointDataProvider implements IDataProvider {
         return;
       }
 
-      const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => e.key.toLowerCase() === name.toLowerCase());
+      const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => 
+        e.key.toLowerCase() === name.toLowerCase() || 
+        e.resolve().toLowerCase() === name.toLowerCase()
+      );
       if (entry?.provisioningFields && entry.provisioningFields.length > 0) {
-        if (entry.lifecycle === 'required') {
+        if (entry.lifecycle === 'required' || entry.lifecycle === 'optional') {
           const listName = entry.resolve();
           try {
             await this.client.ensureListExists(listName, [...entry.provisioningFields]);
@@ -163,6 +169,7 @@ export class SharePointDataProvider implements IDataProvider {
   }
 
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
+    await this.ensureResource(resourceName);
     const actualName = this.resolveResource(resourceName);
     return this.client.getListFieldInternalNames(actualName);
   }

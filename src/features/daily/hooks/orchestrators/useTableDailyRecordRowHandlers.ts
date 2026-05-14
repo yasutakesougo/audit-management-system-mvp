@@ -129,8 +129,15 @@ export function useTableDailyRecordRowHandlers({
       return formData.userRows;
     }
 
-    return formData.userRows.filter(hasRowContent);
-  }, [formData.userRows, showUnsentOnly]);
+    const contentBasedRows = formData.userRows.filter(hasRowContent);
+    if (contentBasedRows.length > 0) {
+      return contentBasedRows;
+    }
+
+    // Fallback: If no rows have content (e.g., brand new day or sync error),
+    // show all rows corresponding to the selected users so they can be edited.
+    return formData.userRows.filter(row => selectedUserIds.includes(row.userId));
+  }, [formData.userRows, showUnsentOnly, selectedUserIds]);
 
   // ── ハンドラ ───────────────────────────────────────
 

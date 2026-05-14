@@ -6,6 +6,7 @@ import {
     readNonEmptyEnv,
     type RowAggregateSource, 
     type ResolvedRowsFields,
+    type ResolvedParentFields,
     type SharePointFieldItem, 
     type SharePointResponse 
 } from '../constants';
@@ -30,6 +31,7 @@ export class DailyRecordSchemaResolver {
     private rowsPathResolutionFailed = false;
     private resolvedRowsFields: ResolvedRowsFields | null = null;
     private rowsFieldsResolutionFailed = false;
+    private resolvedParentFields: ResolvedParentFields | null = null;
 
     constructor(
         private readonly spFetch: SpFetchFn,
@@ -156,6 +158,58 @@ export class DailyRecordSchemaResolver {
 
         this.rowsPathResolutionFailed = true;
         return null;
+    }
+
+    public async resolveParentFields(listPath: string): Promise<ResolvedParentFields> {
+        if (this.resolvedParentFields) return this.resolvedParentFields;
+
+        // Optimization for E2E stubs
+        if (readNonEmptyEnv('VITE_E2E') === '1') {
+            this.resolvedParentFields = {
+                title: DAILY_RECORD_FIELDS.title,
+                recordDate: DAILY_RECORD_FIELDS.recordDate,
+                reporterName: DAILY_RECORD_FIELDS.reporterName,
+                reporterRole: DAILY_RECORD_FIELDS.reporterRole,
+                userRowsJSON: DAILY_RECORD_FIELDS.userRowsJSON,
+                userCount: DAILY_RECORD_FIELDS.userCount,
+            };
+            return this.resolvedParentFields;
+        }
+
+        const fieldNames = await this.getListFieldNames(listPath);
+        if (!fieldNames) {
+            return {
+                title: DAILY_RECORD_FIELDS.title,
+                recordDate: DAILY_RECORD_FIELDS.recordDate,
+                reporterName: DAILY_RECORD_FIELDS.reporterName,
+                reporterRole: DAILY_RECORD_FIELDS.reporterRole,
+                userRowsJSON: DAILY_RECORD_FIELDS.userRowsJSON,
+                userCount: DAILY_RECORD_FIELDS.userCount,
+            };
+        }
+
+        // We need DAILY_RECORD_CANONICAL_CANDIDATES here.
+        // We will import it dynamically or just use the local import.
+        // Wait, DAILY_RECORD_CANONICAL_CANDIDATES is exported from dailyFields.ts. Let's add the import.
+
+        // I will add the import at the top of the file in another chunk.
+
+        const { DAILY_RECORD_CANONICAL_CANDIDATES } = await import('@/sharepoint/fields/dailyFields');
+        const resolved = resolveInternalNames(fieldNames, DAILY_RECORD_CANONICAL_CANDIDATES);
+
+        this.resolvedParentFields = {
+            title: resolved.title ?? DAILY_RECORD_FIELDS.title,
+            recordDate: resolved.recordDate ?? DAILY_RECORD_FIELDS.recordDate,
+            reporterName: resolved.reporterName ?? DAILY_RECORD_FIELDS.reporterName,
+            reporterRole: resolved.reporterRole ?? DAILY_RECORD_FIELDS.reporterRole,
+            userRowsJSON: resolved.userRowsJSON ?? DAILY_RECORD_FIELDS.userRowsJSON,
+            userCount: resolved.userCount ?? DAILY_RECORD_FIELDS.userCount,
+            approvalStatus: resolved.approvalStatus,
+            approvedBy: resolved.approvedBy,
+            approvedAt: resolved.approvedAt,
+        };
+
+        return this.resolvedParentFields;
     }
 
     public async resolveRowsFields(rowsListPath: string): Promise<ResolvedRowsFields> {
@@ -317,15 +371,16 @@ export class DailyRecordSchemaResolver {
     private async probeDailyRecordSchema(listPath: string): Promise<{ matches: boolean; missingFields: string[] }> {
         const names = await this.getListFieldNames(listPath);
         if (!names) return { matches: false, missingFields: [] };
-        const required = [
-            DAILY_RECORD_FIELDS.title,
-            DAILY_RECORD_FIELDS.recordDate,
-            DAILY_RECORD_FIELDS.reporterName,
-            DAILY_RECORD_FIELDS.reporterRole,
-            DAILY_RECORD_FIELDS.userRowsJSON,
-            DAILY_RECORD_FIELDS.userCount,
-        ];
-        const missingFields = required.filter((field) => !names.has(field));
+
+        const { DAILY_RECORD_CANONICAL_CANDIDATES } = await import('@/sharepoint/fields/dailyFields');
+        const resolved = resolveInternalNames(names, DAILY_RECORD_CANONICAL_CANDIDATES);
+
+        const missingFields: string[] = [];
+        if (!resolved.title) missingFields.push('title');
+        if (!resolved.recordDate) missingFields.push('recordDate');
+        if (!resolved.reporterName) missingFields.push('reporterName');
+        if (!resolved.userRowsJSON) missingFields.push('userRowsJSON');
+
         return { matches: missingFields.length === 0, missingFields };
     }
 }

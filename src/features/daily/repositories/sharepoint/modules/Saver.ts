@@ -1,8 +1,8 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
-import { 
-    DAILY_RECORD_FIELDS, 
+import {
     type SharePointItem,
-    type ResolvedRowsFields
+    type ResolvedRowsFields,
+    type ResolvedParentFields
 } from '../constants';
 import { 
     SaveDailyRecordInput, 
@@ -25,6 +25,7 @@ export class DailyRecordSaver {
         rowsListPath: string,
         existingItem: SharePointItem | null,
         resolvedRowsFields: ResolvedRowsFields,
+        resolvedParentFields: ResolvedParentFields,
         _params?: DailyRecordRepositoryMutationParams
     ): Promise<void> {
         const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, {
@@ -36,12 +37,12 @@ export class DailyRecordSaver {
             const mode = existingItem ? 'update' : 'create';
             const itemData: SharePointDailyRecordPayload = buildDailyRecordPayload(input);
             const spPayload = {
-                [DAILY_RECORD_FIELDS.title]: itemData.Title,
-                [DAILY_RECORD_FIELDS.recordDate]: itemData.RecordDate,
-                [DAILY_RECORD_FIELDS.reporterName]: itemData.ReporterName,
-                [DAILY_RECORD_FIELDS.reporterRole]: itemData.ReporterRole,
-                [DAILY_RECORD_FIELDS.userRowsJSON]: itemData.UserRowsJSON,
-                [DAILY_RECORD_FIELDS.userCount]: itemData.UserCount,
+                [resolvedParentFields.title]: itemData.Title,
+                [resolvedParentFields.recordDate]: itemData.RecordDate,
+                [resolvedParentFields.reporterName]: itemData.ReporterName,
+                [resolvedParentFields.reporterRole]: itemData.ReporterRole,
+                [resolvedParentFields.userRowsJSON]: itemData.UserRowsJSON,
+                [resolvedParentFields.userCount]: itemData.UserCount,
             };
             
             let parentId: number;
@@ -68,7 +69,7 @@ export class DailyRecordSaver {
                     },
                     body: JSON.stringify({
                         ...spPayload,
-                        [DAILY_RECORD_FIELDS.userRowsJSON]: '', 
+                        [resolvedParentFields.userRowsJSON]: '',
                     }),
                 });
                 const created = await res.json();
@@ -123,7 +124,7 @@ export class DailyRecordSaver {
                     'X-HTTP-Method': 'MERGE',
                 },
                 body: JSON.stringify({
-                    [DAILY_RECORD_FIELDS.userRowsJSON]: '', 
+                    [resolvedParentFields.userRowsJSON]: '',
                 }),
             });
 
@@ -139,6 +140,7 @@ export class DailyRecordSaver {
         input: ApproveRecordInput, 
         listPath: string, 
         existingItem: SharePointItem,
+        resolvedParentFields: ResolvedParentFields,
         params?: DailyRecordRepositoryMutationParams
     ): Promise<DailyRecordItem> {
         if (params?.signal?.aborted) {
@@ -153,9 +155,9 @@ export class DailyRecordSaver {
         try {
             const updateUrl = `${listPath}/items(${existingItem.Id})`;
             const approvalData = {
-                ApprovalStatus: 'approved',
-                ApprovedBy: input.approverName,
-                ApprovedAt: new Date().toISOString(),
+                [resolvedParentFields.approvalStatus ?? 'ApprovalStatus']: 'approved',
+                [resolvedParentFields.approvedBy ?? 'ApprovedBy']: input.approverName,
+                [resolvedParentFields.approvedAt ?? 'ApprovedAt']: new Date().toISOString(),
             };
 
             await this.spFetch(updateUrl, {
