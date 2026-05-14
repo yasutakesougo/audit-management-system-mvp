@@ -99,9 +99,16 @@ export function useMonthlySummaries(yearMonth: YearMonth) {
       const staticHolidayDates = Object.keys(HOLIDAYS).filter(d => d.startsWith(yearMonth));
       const holidays = Array.from(new Set([...staticHolidayDates, ...dynamicHolidayDates]));
 
-      // C. Aggregate data for each user in parallel
+      // C. Sort users by Furigana (or FullNameKana as fallback) for consistent display order
+      const sortedUsers = [...users].sort((a, b) => {
+        const kanaA = a.Furigana || a.FullNameKana || '';
+        const kanaB = b.Furigana || b.FullNameKana || '';
+        return kanaA.localeCompare(kanaB, 'ja');
+      });
+
+      // D. Aggregate data for each user in parallel
       const results = await Promise.all(
-        users.map((user) => {
+        sortedUsers.map((user) => {
           const userAbsences = absencesByUserId[user.UserID] || [];
           const contractWeekdays = user.AttendanceDays 
             ? convertJapaneseWeekdaysToNumbers(user.AttendanceDays)
