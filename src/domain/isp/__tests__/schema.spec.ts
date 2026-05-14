@@ -204,7 +204,7 @@ function makeProcedureRecordSpRow(overrides: Record<string, unknown> = {}) {
     ExecutionStatus: 'done',
     UserResponse: '自力で食べた',
     SpecialNotes: null,
-    HandoffNotes: null,
+    Handoff_x0020_Notes: null,
     PerformedBy: 'staff-A',
     PerformedAt: '2026-02-01T12:30:00Z',
     Created: '2026-02-01T13:00:00Z',
@@ -923,7 +923,7 @@ describe('第3層: 支援手順書兼記録', () => {
       const row = makeProcedureRecordSpRow({
         ISPId: null,
         SpecialNotes: null,
-        HandoffNotes: null,
+        Handoff_x0020_Notes: null,
         TimeSlot: null,
         Activity: null,
         UserResponse: null,
@@ -932,7 +932,7 @@ describe('第3層: 支援手順書兼記録', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.SpecialNotes).toBeNull();
-        expect(result.data.HandoffNotes).toBeNull();
+        expect(result.data.Handoff_x0020_Notes).toBeNull();
       }
     });
 
