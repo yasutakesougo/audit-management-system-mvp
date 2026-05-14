@@ -27,9 +27,14 @@ import RequireAudience from '../components/RequireAudience';
 import { MonthlySummaryTable } from '../features/records/monthly/MonthlySummaryTable';
 import { UserKpiCards } from '../features/records/monthly/UserKpiCards';
 import { UserProgressChart } from '../features/records/monthly/UserProgressChart';
-import { DEFAULT_MONTH, useDemoSummaries, type E2ESeedWindow } from '../features/records/monthly/monthlyRecordSeedData';
-import type { MonthlySummary, YearMonth } from '../features/records/monthly/types';
+import { DEFAULT_MONTH, type E2ESeedWindow } from '../features/records/monthly/monthlyRecordSeedData';
+import type { YearMonth } from '../features/records/monthly/types';
+import { useMonthlySummaries } from '../features/records/monthly/hooks/useMonthlySummaries';
 import { TESTIDS } from '../testids';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
 
 const srOnly = {
   border: 0,
@@ -48,20 +53,27 @@ type TabKey = 'summary' | 'user-detail' | 'pdf';
 export default function MonthlyRecordPage() {
   const [params, setParams] = useSearchParams();
   const { role } = useUserAuthz();
-  const [summaries] = React.useState<MonthlySummary[]>(useDemoSummaries());
-  const [loading] = React.useState(false);
+  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(DEFAULT_MONTH);
+  const { summaries, loading, error, refresh, isDemo } = useMonthlySummaries(selectedMonth);
+  const [keyword, setKeyword] = React.useState('');
 
   const e2e = isE2E();
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
   const debugSeed = e2e ? w.__E2E_SEED__ : 'none';
 
-  const [selectedMonth, setSelectedMonth] = React.useState<YearMonth>(DEFAULT_MONTH);
-  const [keyword, setKeyword] = React.useState('');
-
-  const monthOptions = React.useMemo<YearMonth[]>(
-    () => Array.from(new Set(summaries.map((s) => s.yearMonth))) as YearMonth[],
-    [summaries],
-  );
+  const monthOptions = React.useMemo<YearMonth[]>(() => {
+    // 過去12ヶ月分をデフォルトの選択肢とする
+    const options: YearMonth[] = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` as YearMonth;
+      options.push(ym);
+    }
+    // データがある月も追加して重複排除
+    const dataMonths = summaries.map(s => s.yearMonth);
+    return Array.from(new Set([...options, ...dataMonths])).sort().reverse() as YearMonth[];
+  }, [summaries]);
 
   const filteredSummaries = React.useMemo(
     () =>
@@ -229,13 +241,40 @@ export default function MonthlyRecordPage() {
       <Box sx={{ py: 3 }}>
         {/* ヘッダー */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h4" component="h1">
-            月次記録
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            利用者の月次活動記録を集計・分析し、完了率や進捗状況を管理します
-          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Box>
+              <Typography variant="h4" component="h1">
+                月次記録
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                利用者の月次活動記録を集計・分析し、完了率や進捗状況を管理します
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip
+                label={isDemo ? 'デモモード' : '本番データ'}
+                color={isDemo ? 'warning' : 'success'}
+                variant="outlined"
+                size="small"
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />}
+                onClick={() => refresh()}
+                disabled={loading}
+              >
+                再集計
+              </Button>
+            </Stack>
+          </Stack>
         </Box>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            データの取得に失敗しました: {error}
+          </Alert>
+        )}
 
         {/* フィルターバー */}
         <Box sx={{ mb: 2 }}>

@@ -143,6 +143,21 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return activePayload;
   }
 
+  private getSelectFields(rf: ResolvedRowsFields): string {
+    const fields = new Set<string>(['Id', 'Title', 'Created', 'Modified']);
+    fields.add(rf.parentId);
+    fields.add(rf.userId);
+    fields.add(rf.status);
+    fields.add(rf.payload);
+    fields.add(rf.recordedAt);
+    fields.add(rf.rowKey);
+    if (rf.rowNo) fields.add(rf.rowNo);
+    if (rf.memo) fields.add(rf.memo);
+    if (rf.staffName) fields.add(rf.staffName);
+    if (rf.bipsJSON) fields.add(rf.bipsJSON);
+    return Array.from(fields).join(',');
+  }
+
   private async ensureParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
     await this.getResolvedFields(); // Ensure paths resolved
     const filter = `${DAILY_RECORD_FIELDS.title} eq '${dailyKey}'`;
@@ -198,7 +213,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     // We filter by userId and date range in rowKey.
     // rowKey >= from and rowKey <= to + 'z' ensures we get all items for those dates.
     const filter = `(${rf.userId} eq '${normalizedUserId}') and (${rf.rowKey} ge '${normalizedFrom}') and (${rf.rowKey} le '${normalizedTo}z')`;
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$top=5000`;
+    const select = this.getSelectFields(rf);
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=5000`;
 
     const response = await this.spFetch(url);
     if (!response.ok) {
@@ -222,7 +238,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     // However, resolveInternalNames is supposed to be accurate. 
     // We lowercase startswith for maximum compatibility.
     const filter = `startswith(${rf.rowKey}, '${rowKeyPrefix}')`;
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}`;
+    const select = this.getSelectFields(rf);
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
 
     const response = await this.spFetch(url);
     if (!response.ok) {
@@ -249,7 +266,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rf = await this.getResolvedFields();
     const rowKey = `${normalizedDate}-${normalizedUserId}-${normalizedScheduleItemId}`;
     const filter = `${rf.rowKey} eq '${rowKey}'`;
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}`;
+    const select = this.getSelectFields(rf);
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
 
     const response = await this.spFetch(url);
     if (!response.ok) return undefined;
