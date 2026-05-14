@@ -3,6 +3,13 @@ import { SpAdapter } from "./spAdapter";
 import { runConfigChecks } from "./checks/configChecks";
 import { runAuthAndConnectivityChecks } from "./checks/authChecks";
 import { runAllListChecks } from "./checks/listChecks";
+import { warn } from "./checks/utils";
+
+export type HealthCheckAuthGate = {
+  hasActiveAccount: boolean;
+  tokenReady: boolean;
+  tokenPending: boolean;
+};
 
 /**
  * 統合 Health 診断実行。
@@ -10,7 +17,8 @@ import { runAllListChecks } from "./checks/listChecks";
  */
 export async function runHealthChecks(
   ctx: HealthContext,
-  sp: SpAdapter
+  sp: SpAdapter,
+  authGate?: HealthCheckAuthGate
 ): Promise<HealthCheckResult[]> {
   const results: HealthCheckResult[] = [];
 
@@ -22,8 +30,58 @@ export async function runHealthChecks(
     return results;
   }
 
+  if (authGate && (!authGate.hasActiveAccount || !authGate.tokenReady || authGate.tokenPending)) {
+    results.push(
+      warn({
+        key: "auth.tokenReadiness",
+        label: "認証トークン準備状態",
+        category: "auth",
+        summary: "診断を保留しました。認証トークンの準備が完了していません。",
+        detail: "AUTH_TOKEN_NOT_READY",
+        evidence: {
+          hasActiveAccount: authGate.hasActiveAccount,
+          tokenReady: authGate.tokenReady,
+          tokenPending: authGate.tokenPending,
+        },
+      })
+    );
+    results.push(
+      warn({
+        key: "lists.authGate",
+        label: "リスト/スキーマ診断の実行可否",
+        category: "lists",
+        summary: "認証準備待ちのため、リスト/スキーマ/権限チェックをスキップしました。",
+        detail: "SKIPPED_AUTH_REQUIRED",
+        evidence: {
+          skippedCategories: ["lists", "schema", "permissions"],
+        },
+      })
+    );
+    return results;
+  }
+
   // B) 認証・接続性チェック
-  await runAuthAndConnectivityChecks(ctx, sp, results);
+  const authSummary = await runAuthAndConnectivityChecks(ctx, sp, results);
+  if (
+    authSummary.currentUserStatus === "fail" &&
+    typeof authSummary.currentUserDetail === "string" &&
+    authSummary.currentUserDetail.includes("AUTH_REQUIRED")
+  ) {
+    results.push(
+      warn({
+        key: "lists.authGate",
+        label: "リスト/スキーマ診断の実行可否",
+        category: "lists",
+        summary: "AUTH_REQUIRED 検出のため、リスト/スキーマ/権限チェックをスキップしました。",
+        detail: "SKIPPED_AUTH_REQUIRED",
+        evidence: {
+          skippedCategories: ["lists", "schema", "permissions"],
+          blocker: "auth.currentUser",
+        },
+      })
+    );
+    return results;
+  }
 
   // D/E) リスト・スキーマ・権限チェック（全てのリストに対してループ実行）
   await runAllListChecks(ctx, sp, results);
