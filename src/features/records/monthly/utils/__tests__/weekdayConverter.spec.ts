@@ -12,6 +12,20 @@ describe('convertJapaneseWeekdaysToNumbers', () => {
     expect(convertJapaneseWeekdaysToNumbers([' 日曜 ', '木曜'])).toEqual([0, 4]);
   });
 
+  it('correctly handles strings without separators (e.g. 月火水)', () => {
+    expect(convertJapaneseWeekdaysToNumbers(['月火水'])).toEqual([1, 2, 3]);
+    expect(convertJapaneseWeekdaysToNumbers(['123', '56'])).toEqual([1, 2, 3, 5, 6]);
+  });
+
+  it('correctly handles English abbreviations and mixed cases', () => {
+    expect(convertJapaneseWeekdaysToNumbers(['Mon', 'wed', 'FRI'])).toEqual([1, 3, 5]);
+    expect(convertJapaneseWeekdaysToNumbers(['Monday', 'TUESDAY'])).toEqual([1, 2]);
+  });
+
+  it('handles mixed formats in a single array', () => {
+    expect(convertJapaneseWeekdaysToNumbers(['月火', 'Wed', '5', 'Saturday'])).toEqual([1, 2, 3, 5, 6]);
+  });
+
   it('handles invalid inputs gracefully by filtering them out', () => {
     // Non-existent weekdays should be ignored
     expect(convertJapaneseWeekdaysToNumbers(['祝', '月', 'None'])).toEqual([1]);
