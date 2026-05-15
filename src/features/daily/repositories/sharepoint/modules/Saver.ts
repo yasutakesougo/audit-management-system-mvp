@@ -105,7 +105,7 @@ export class DailyRecordSaver {
                     Title: rowIdentityKey,
                     [resolvedRowsFields.parentId]: parentId,
                     [resolvedRowsFields.userId]: row.userId,
-                    [resolvedRowsFields.status]: 'done',
+                    [resolvedRowsFields.status]: 'completed',
                     [resolvedRowsFields.payload]: JSON.stringify(row),
                     [resolvedRowsFields.recordedAt]: new Date().toISOString(),
                     [resolvedRowsFields.rowKey]: rowIdentityKey,

@@ -107,7 +107,7 @@ export function scanDailyRecordIntegrity(
 
   // 3. stale_pending: 10分以上経っても committed にならない孤立行（全子レコードを直接走査）
   children.forEach(child => {
-    if (child.status !== 'committed' && child.status !== 'done') {
+    if (child.status !== 'committed' && child.status !== 'done' && child.status !== 'completed') {
       const recordedAtTime = new Date(child.recordedAt).getTime();
       if (now.getTime() - recordedAtTime > STALE_THRESHOLD_MS) {
         exceptions.push({

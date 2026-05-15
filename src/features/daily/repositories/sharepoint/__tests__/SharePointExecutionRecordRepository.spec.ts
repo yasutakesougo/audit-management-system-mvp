@@ -392,6 +392,42 @@ describe('SharePointExecutionRecordRepository', () => {
       const mapped = (repo as any).mapToDomain(mockItem, rf);
       expect(mapped.memo).toBe('');
     });
+
+    it('maps "done" and "committed" to "completed"', () => {
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      const itemDone = {
+        Title: '2026-05-08-4-1',
+        User_x0020_ID: '4',
+        Status: 'done',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedDone = (repo as any).mapToDomain(itemDone, rf);
+      expect(mappedDone.status).toBe('completed');
+
+      const itemCommitted = {
+        Title: '2026-05-08-4-1',
+        User_x0020_ID: '4',
+        Status: 'committed',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedCommitted = (repo as any).mapToDomain(itemCommitted, rf);
+      expect(mappedCommitted.status).toBe('completed');
+    });
   });
 
   describe('Strict Field Filtering Regressions', () => {
