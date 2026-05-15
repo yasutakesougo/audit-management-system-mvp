@@ -17,13 +17,14 @@ const createMockProvider = (overrides: Partial<IDataProvider> = {}): IDataProvid
 
 describe('DataProviderAttendanceRepository Fallback', () => {
   it('should pass onFieldRemoved callback to provider in getDailyByDate', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const listItems = vi.fn(async (resource: string, options: any) => {
       // Simulate field removal by calling the callback
       if (options.onFieldRemoved) {
         options.onFieldRemoved('CheckInAt', 400, 'Field not found');
       }
       return [];
-    }) as any;
+    }) as unknown as any;
 
     const provider = createMockProvider({ listItems });
     const repo = new DataProviderAttendanceRepository({ provider });
@@ -37,12 +38,13 @@ describe('DataProviderAttendanceRepository Fallback', () => {
   });
 
   it('should pass onCriticalFallback callback to provider in getDailyByDate', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const listItems = vi.fn(async (resource: string, options: any) => {
       if (options.onCriticalFallback) {
         options.onCriticalFallback(500, 'Server error');
       }
       return [];
-    }) as any;
+    }) as unknown as any;
 
     const provider = createMockProvider({ listItems });
     const repo = new DataProviderAttendanceRepository({ provider });
