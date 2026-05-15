@@ -497,12 +497,17 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       }
     }
 
+    const rawStatus = item[rf.status];
+    const status = (rawStatus === 'done' || rawStatus === 'committed')
+      ? 'completed'
+      : (rawStatus as RecordStatus);
+
     return {
       id: title,
       date, 
       userId,
       scheduleItemId,
-      status: item[rf.status] as RecordStatus,
+      status: status,
       triggeredBipIds,
       memo: this.pickFirstNonEmptyString(
         rf.memo ? item[rf.memo] : undefined,
