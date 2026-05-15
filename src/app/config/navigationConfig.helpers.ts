@@ -58,6 +58,14 @@ export function isNavVisible(item: NavItem, navAudience: NavAudience): boolean {
 
 export type BuildVisibleNavItemsOptions = {
   showMore: boolean;
+  /**
+   * Navigation display-mode flag.
+   *
+   * Note: this flag does NOT enable/disable page features themselves.
+   * It only enables tier-based sidebar behavior:
+   * - tier=more is collapsed unless showMore=true
+   * - tier=admin is hidden for non-admin
+   */
   todayLiteNavV2: boolean;
   isKiosk: boolean;
   hiddenGroups: string[];
@@ -94,7 +102,7 @@ export function buildVisibleNavItems(
     const FORCED_PILLARS = ['/records/monthly', '/support-plan-guide', '/planning-sheet-list', '/assessment'];
     if (FORCED_PILLARS.includes(item.to)) return true;
 
-    // 1. Feature Tier/Lite Nav filtering
+    // 1. Lite Nav display-mode filtering (tier behavior only)
     if (opts.todayLiteNavV2) {
       const tier = item.tier ?? DEFAULT_TIER;
       if (tier === 'admin' && role !== 'admin') return false;
