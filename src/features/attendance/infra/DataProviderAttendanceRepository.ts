@@ -65,7 +65,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     this.usersResolver = new AttendanceSchemaResolver<AttendanceUsersCandidateKey>({
       provider: this.provider,
       listTitle: this.listTitleUsers,
-      listTitleFallbacks: ['Users_Master', 'AttendanceUsers', 'UsersMaster'],
+      listTitleFallbacks: ['AttendanceUsers', 'Users_Master', 'UsersMaster', 'Attendance_Users'],
       candidates: ATTENDANCE_USERS_CANDIDATES,
       essentials: ATTENDANCE_USERS_ESSENTIALS,
       logCategory: 'attendance:repo',
@@ -83,7 +83,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     this.dailyResolver = new AttendanceSchemaResolver<AttendanceDailyCandidateKey>({
       provider: this.provider,
       listTitle: this.listTitleDaily,
-      listTitleFallbacks: ['AttendanceDaily', 'Daily_Attendance', 'SupportRecord_Daily'],
+      listTitleFallbacks: ['AttendanceDaily', 'Daily_Attendance', 'Attendance_Daily', 'SupportRecord_Daily'],
       candidates: ATTENDANCE_DAILY_CANDIDATES,
       essentials: ATTENDANCE_DAILY_ESSENTIALS,
       logCategory: 'attendance:repo',
@@ -121,6 +121,14 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         filter: isActiveResolved ? buildEq(this.uf(schema.mapping, 'isActive'), 1) : undefined,
         orderby: this.uf(schema.mapping, 'userCode'),
         signal,
+        onFieldRemoved: (fieldName, status, error) => {
+          emitDriftRecord(schema.listTitle, fieldName, 'fallback', 'resolution_failure');
+          auditLog.warn('attendance:repo', `Field removed during getActiveUsers: ${fieldName} (${status})`, { error });
+        },
+        onCriticalFallback: (status, error) => {
+          emitDriftRecord(schema.listTitle, 'Id', 'fallback', 'fallback_to_minimal_fields');
+          auditLog.error('attendance:repo', `Critical fallback during getActiveUsers (${status})`, { error });
+        },
       });
 
       const refDate = date || new Date().toISOString().split('T')[0];
@@ -153,6 +161,14 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         select: [...schema.select],
         filter: buildEq(this.df(schema.mapping, 'recordDate'), params.recordDate),
         signal: params.signal,
+        onFieldRemoved: (fieldName, status, error) => {
+          emitDriftRecord(schema.listTitle, fieldName, 'fallback', 'resolution_failure');
+          auditLog.warn('attendance:repo', `Field removed during getDailyByDate: ${fieldName} (${status})`, { error });
+        },
+        onCriticalFallback: (status, error) => {
+          emitDriftRecord(schema.listTitle, 'Id', 'fallback', 'fallback_to_minimal_fields');
+          auditLog.error('attendance:repo', `Critical fallback during getDailyByDate (${status})`, { error });
+        },
       });
 
       return rows
@@ -187,6 +203,10 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         filter,
         top: 1,
         signal: params?.signal,
+        onCriticalFallback: (status, error) => {
+          emitDriftRecord(schema.listTitle, 'Id', 'fallback', 'fallback_to_minimal_fields');
+          auditLog.error('attendance:repo', `Critical fallback during upsert check (${status})`, { error });
+        },
       });
 
       const payload: Record<string, unknown> = {};
@@ -244,6 +264,14 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleNurse, {
         select: fields.select as string[],
         filter: buildSubstringOf(fields.dateField as string, recordDate),
+        onFieldRemoved: (fieldName, status, error) => {
+          emitDriftRecord(this.listTitleNurse, fieldName, 'fallback', 'resolution_failure');
+          auditLog.warn('attendance:repo', `Field removed during getObservationsByDate: ${fieldName} (${status})`, { error });
+        },
+        onCriticalFallback: (status, error) => {
+          emitDriftRecord(this.listTitleNurse, 'Id', 'fallback', 'fallback_to_minimal_fields');
+          auditLog.error('attendance:repo', `Critical fallback during getObservationsByDate (${status})`, { error });
+        },
       });
 
       return rows
