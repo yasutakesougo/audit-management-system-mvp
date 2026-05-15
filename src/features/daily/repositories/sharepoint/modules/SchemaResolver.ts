@@ -220,6 +220,7 @@ export class DailyRecordSchemaResolver {
             this.resolvedRowsFields = {
                 parentId: DAILY_RECORD_ROWS_FIELDS.parentId,
                 userId: DAILY_RECORD_ROWS_FIELDS.userId,
+                recordDate: 'RecordDate',
                 version: DAILY_RECORD_ROWS_FIELDS.version,
                 status: DAILY_RECORD_ROWS_FIELDS.status,
                 payload: DAILY_RECORD_ROWS_FIELDS.payload,
@@ -258,6 +259,7 @@ export class DailyRecordSchemaResolver {
         this.resolvedRowsFields = {
             parentId: resolved.parentId ?? DAILY_RECORD_ROWS_FIELDS.parentId,
             userId: resolved.userId ?? DAILY_RECORD_ROWS_FIELDS.userId,
+            recordDate: resolved.recordDate,
             version: resolved.version ?? DAILY_RECORD_ROWS_FIELDS.version,
             status: resolved.status ?? DAILY_RECORD_ROWS_FIELDS.status,
             payload: resolved.payload ?? DAILY_RECORD_ROWS_FIELDS.payload,

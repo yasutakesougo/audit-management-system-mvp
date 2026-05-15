@@ -96,4 +96,95 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
     expect(capturedBody!.Date).toContain('2026-05-14');
     expect(capturedBody!.RecordDate).toBeUndefined();
   });
+
+  it('persists recordDate to DailyRecordRows child payload via resolved rows date field', async () => {
+    const childBodies: Record<string, unknown>[] = [];
+
+    const spFetch = vi.fn(async (path: string, init?: RequestInit) => {
+      if (path.includes('lists?$select=Title')) {
+        return jsonResponse({
+          value: [
+            { Title: 'SupportRecord_Daily' },
+            { Title: 'DailyRecordRows' },
+          ],
+        });
+      }
+      if (path.includes("lists/getbytitle('SupportRecord_Daily')/fields")) {
+        return jsonResponse({
+          value: [
+            { InternalName: 'Title' },
+            { InternalName: 'Date' },
+            { InternalName: 'ReporterName' },
+            { InternalName: 'ReporterRole' },
+            { InternalName: 'UserRowsJSON' },
+            { InternalName: 'UserCount' },
+          ],
+        });
+      }
+      if (path.includes("lists/getbytitle('DailyRecordRows')/fields")) {
+        return jsonResponse({
+          value: [
+            { InternalName: 'ParentID' },
+            { InternalName: 'UserID' },
+            { InternalName: 'Date' },
+            { InternalName: 'Status' },
+            { InternalName: 'Observation' },
+            { InternalName: 'Recorded_x0020_At' },
+          ],
+        });
+      }
+      if (path.includes("lists/getbytitle('SupportRecord_Daily')/items?$filter=")) {
+        return jsonResponse({ value: [] });
+      }
+      if (path.includes("lists/getbytitle('SupportRecord_Daily')/items") && init?.method === 'POST' && !path.includes('items(')) {
+        return jsonResponse({ Id: 9001 });
+      }
+      if (path.includes("lists/getbytitle('SupportRecord_Daily')/items(") && init?.method === 'POST') {
+        return new Response(null, { status: 204 });
+      }
+      if (path.includes("lists/getbytitle('DailyRecordRows')/items?$filter=")) {
+        return jsonResponse({ value: [] });
+      }
+      if (path.includes("lists/getbytitle('DailyRecordRows')/items") && init?.method === 'POST') {
+        childBodies.push(JSON.parse(String(init.body)));
+        return jsonResponse({ Id: 10001 });
+      }
+      return jsonResponse({ value: [] });
+    });
+
+    const repo = new SharePointDailyRecordRepository({
+      spFetch,
+      listTitle: 'SupportRecord_Daily',
+    });
+
+    await repo.save({
+      id: '2026-05-15',
+      date: '2026-05-15',
+      reporter: { name: 'Reporter', role: 'Staff' },
+      userRows: [
+        {
+          userId: 'I005',
+          userName: '石渡',
+          amActivity: '活動',
+          pmActivity: '',
+          lunchAmount: '',
+          problemBehavior: {
+            selfHarm: false,
+            otherInjury: false,
+            loudVoice: false,
+            pica: false,
+            other: false,
+          },
+          specialNotes: '',
+          behaviorTags: [],
+        },
+      ],
+      userCount: 1,
+      status: 'draft',
+    });
+
+    expect(childBodies.length).toBeGreaterThan(0);
+    expect(childBodies[0].Date).toContain('2026-05-15');
+    expect(childBodies[0].UserID).toBe('I005');
+  });
 });
