@@ -99,7 +99,12 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     fireEvent.click(submitBtn);
 
     const expectedMemo = `【様子】不安そう\n【対応】声かけ\n【変化】途中で落ち着いた\n【メモ】追加メモテスト`;
-    expect(mockSaveRecord).toHaveBeenCalledWith('completed', expectedMemo);
+    await waitFor(() => {
+      expect(mockSaveRecord).toHaveBeenCalledWith('completed', expectedMemo);
+    });
+    await waitFor(() => {
+      expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
+    });
     expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
   });
 
@@ -136,7 +141,6 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
   it('preserves date query in return URL after save', async () => {
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory&date=2026-05-07' });
-    vi.useFakeTimers();
 
     render(
       <MemoryRouter>
@@ -146,11 +150,15 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
     fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(mockSaveRecord).toHaveBeenCalled();
-    await vi.runAllTimersAsync();
-    expect(mockNavigate).toHaveBeenCalledWith('/kiosk/users/U001/procedures?kiosk=1&provider=memory&date=2026-05-07');
+    await waitFor(() => {
+      expect(mockSaveRecord).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/kiosk/users/U001/procedures?kiosk=1&provider=memory&date=2026-05-07');
+    }, { timeout: 2500 });
+    await waitFor(() => {
+      expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
+    });
   });
 
   it('does not render multiple completion actions', () => {
