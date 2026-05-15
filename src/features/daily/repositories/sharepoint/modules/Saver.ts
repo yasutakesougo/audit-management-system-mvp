@@ -99,13 +99,16 @@ export class DailyRecordSaver {
 
             // Save new children
             for (const row of input.userRows) {
-                const rowPayload = {
+                const rowPayload: Record<string, unknown> = {
                     [resolvedRowsFields.parentId]: parentId,
                     [resolvedRowsFields.userId]: row.userId,
                     [resolvedRowsFields.status]: 'done',
                     [resolvedRowsFields.payload]: JSON.stringify(row),
                     [resolvedRowsFields.recordedAt]: new Date().toISOString(),
                 };
+                if (resolvedRowsFields.recordDate) {
+                    rowPayload[resolvedRowsFields.recordDate] = itemData.RecordDate;
+                }
                 await this.spFetch(`${rowsListPath}/items`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json;odata=nometadata', 'Accept': 'application/json;odata=nometadata' },

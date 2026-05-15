@@ -63,6 +63,7 @@ export type RowAggregateSource = {
 export type ResolvedRowsFields = {
     parentId: string;
     userId: string;
+    recordDate?: string;
     version: string;
     status: string;
     payload: string;
@@ -148,4 +149,3 @@ export const getRowsListTitle = (): string => {
     'DailyRecordRows'
   );
 };
-
