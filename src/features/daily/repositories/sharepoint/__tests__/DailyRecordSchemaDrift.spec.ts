@@ -124,8 +124,10 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
       if (path.includes("lists/getbytitle('DailyRecordRows')/fields")) {
         return jsonResponse({
           value: [
+            { InternalName: 'Title' },
             { InternalName: 'ParentID' },
             { InternalName: 'UserID' },
+            { InternalName: 'RowNo' },
             { InternalName: 'Date' },
             { InternalName: 'Status' },
             { InternalName: 'Observation' },
@@ -184,7 +186,9 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
     });
 
     expect(childBodies.length).toBeGreaterThan(0);
+    expect(childBodies[0].Title).toBe('2026-05-15-I005-1');
     expect(childBodies[0].Date).toContain('2026-05-15');
     expect(childBodies[0].UserID).toBe('I005');
+    expect(childBodies[0].RowNo).toBe(1);
   });
 });

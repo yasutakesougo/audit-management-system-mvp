@@ -98,14 +98,21 @@ export class DailyRecordSaver {
             }
 
             // Save new children
-            for (const row of input.userRows) {
+            for (const [index, row] of input.userRows.entries()) {
+                const rowNo = index + 1;
+                const rowIdentityKey = `${input.date}-${row.userId}-${rowNo}`;
                 const rowPayload: Record<string, unknown> = {
+                    Title: rowIdentityKey,
                     [resolvedRowsFields.parentId]: parentId,
                     [resolvedRowsFields.userId]: row.userId,
                     [resolvedRowsFields.status]: 'done',
                     [resolvedRowsFields.payload]: JSON.stringify(row),
                     [resolvedRowsFields.recordedAt]: new Date().toISOString(),
+                    [resolvedRowsFields.rowKey]: rowIdentityKey,
                 };
+                if (resolvedRowsFields.rowNo) {
+                    rowPayload[resolvedRowsFields.rowNo] = rowNo;
+                }
                 if (resolvedRowsFields.recordDate) {
                     rowPayload[resolvedRowsFields.recordDate] = itemData.RecordDate;
                 }
