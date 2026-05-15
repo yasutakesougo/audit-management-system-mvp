@@ -27,7 +27,8 @@ export type ProvenanceSource =
   | 'planning_sheet'       // 支援計画シート（→手順書兼記録へのブリッジ）
   | 'monitoring'           // モニタリング: 総合所見・意向
   | 'monitoring_goal'      // モニタリング: 目標達成評価
-  | 'monitoring_decision'; // モニタリング: 決定事項
+  | 'monitoring_decision'  // モニタリング: 決定事項
+  | 'iceberg_session';     // 氷山分析セッション（BIP → 支援計画シートへのブリッジ）
 
 /** 変換根拠の1エントリ */
 export interface ProvenanceEntry {

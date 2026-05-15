@@ -126,5 +126,92 @@ describe('icebergToPlanningBridge', () => {
         strategyCount: 2, // '予防A', '事後A'
       });
     });
+
+    it('should return empty provenance and null sourceRef when sessionRef is omitted (backward compat)', () => {
+      const result = buildIcebergImportResult(mockDrafts);
+      expect(result.provenance).toEqual([]);
+      expect(result.sourceRef).toBeNull();
+    });
+  });
+
+  describe('buildIcebergImportResult with sessionRef (provenance contract)', () => {
+    const sessionRef = { id: 'session-abc', updatedAt: '2026-05-15T10:00:00.000Z' };
+
+    const mockDrafts: BehaviorInterventionPlan[] = [
+      {
+        id: '1',
+        userId: 'user1',
+        targetBehavior: 'パニック',
+        targetBehaviorNodeId: 'node-b1',
+        triggerFactors: [
+          { label: '指示された', nodeId: 'f1' },
+          { label: '騒がしい部屋', nodeId: 'f2' },
+        ],
+        strategies: {
+          prevention: 'イヤーマフ装着',
+          alternative: '「静かにして」と伝える',
+          reactive: '静かな場所に移動',
+        },
+        createdAt: '',
+        updatedAt: '',
+      },
+    ];
+
+    it('should include session ID in sourceLabel of each provenance entry', () => {
+      const result = buildIcebergImportResult(mockDrafts, sessionRef);
+      expect(result.provenance.length).toBeGreaterThan(0);
+      result.provenance.forEach(entry => {
+        expect(entry.sourceLabel).toContain('session-abc');
+      });
+    });
+
+    it('should set source to iceberg_session for all provenance entries', () => {
+      const result = buildIcebergImportResult(mockDrafts, sessionRef);
+      result.provenance.forEach(entry => {
+        expect(entry.source).toBe('iceberg_session');
+      });
+    });
+
+    it('affectedFields in sourceRef should include fields present in formPatches', () => {
+      const result = buildIcebergImportResult(mockDrafts, sessionRef);
+      expect(result.sourceRef).not.toBeNull();
+      const affectedFields = result.sourceRef!.affectedFields;
+      // 空文字でないパッチキーのみ affectedFields に含まれることを確認
+      // （desiredBehavior: '' は手動入力プレースホルダーのため追跡対象外）
+      const nonEmptyPatchKeys = Object.entries(result.formPatches)
+        .filter(([, v]) => typeof v === 'string' && v.trim() !== '')
+        .map(([k]) => k);
+      nonEmptyPatchKeys.forEach(key => {
+        expect(affectedFields).toContain(key);
+      });
+    });
+
+
+    it('importedAt in each provenance entry should be ISO 8601', () => {
+      const result = buildIcebergImportResult(mockDrafts, sessionRef);
+      result.provenance.forEach(entry => {
+        expect(() => new Date(entry.importedAt).toISOString()).not.toThrow();
+        expect(new Date(entry.importedAt).toISOString()).toBe(entry.importedAt);
+      });
+    });
+
+    it('behaviorNodeIds in sourceRef should match draft targetBehaviorNodeIds', () => {
+      const result = buildIcebergImportResult(mockDrafts, sessionRef);
+      expect(result.sourceRef?.behaviorNodeIds).toEqual(['node-b1']);
+    });
+
+    it('sourceRef.sessionId should match the provided sessionRef.id', () => {
+      const result = buildIcebergImportResult(mockDrafts, sessionRef);
+      expect(result.sourceRef?.sessionId).toBe('session-abc');
+      expect(result.sourceRef?.sessionUpdatedAt).toBe('2026-05-15T10:00:00.000Z');
+    });
+
+    it('should return empty provenance and null sourceRef when draft list is empty with sessionRef', () => {
+      const result = buildIcebergImportResult([], sessionRef);
+      // 空 drafts では formPatches も空なので provenance エントリも生成されない
+      expect(result.provenance).toEqual([]);
+      expect(result.sourceRef?.affectedFields).toEqual([]);
+      expect(result.sourceRef?.behaviorNodeIds).toEqual([]);
+    });
   });
 });

@@ -32,6 +32,7 @@ const SOURCE_COLORS: Record<ProvenanceSource, 'primary' | 'secondary' | 'success
   monitoring: 'warning',
   monitoring_goal: 'warning',
   monitoring_decision: 'warning',
+  iceberg_session: 'info',
 };
 
 const SOURCE_ICON_LABEL: Record<ProvenanceSource, string> = {
@@ -43,6 +44,7 @@ const SOURCE_ICON_LABEL: Record<ProvenanceSource, string> = {
   monitoring: 'モニタ',
   monitoring_goal: '目標評価',
   monitoring_decision: '決定事項',
+  iceberg_session: '氷山',
 };
 
 // ---------------------------------------------------------------------------
