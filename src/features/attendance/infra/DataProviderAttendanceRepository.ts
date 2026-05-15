@@ -122,10 +122,11 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         orderby: this.uf(schema.mapping, 'userCode'),
         signal,
         onFieldRemoved: (fieldName, status, error) => {
-          emitDriftRecord(schema.listTitle, fieldName, 'fallback', 'odata_400');
+          emitDriftRecord(schema.listTitle, fieldName, 'fallback', 'resolution_failure');
           auditLog.warn('attendance:repo', `Field removed during getActiveUsers: ${fieldName} (${status})`, { error });
         },
         onCriticalFallback: (status, error) => {
+          emitDriftRecord(schema.listTitle, 'Id', 'fallback', 'fallback_to_minimal_fields');
           auditLog.error('attendance:repo', `Critical fallback during getActiveUsers (${status})`, { error });
         },
       });
@@ -161,10 +162,11 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         filter: buildEq(this.df(schema.mapping, 'recordDate'), params.recordDate),
         signal: params.signal,
         onFieldRemoved: (fieldName, status, error) => {
-          emitDriftRecord(schema.listTitle, fieldName, 'fallback', 'odata_400');
+          emitDriftRecord(schema.listTitle, fieldName, 'fallback', 'resolution_failure');
           auditLog.warn('attendance:repo', `Field removed during getDailyByDate: ${fieldName} (${status})`, { error });
         },
         onCriticalFallback: (status, error) => {
+          emitDriftRecord(schema.listTitle, 'Id', 'fallback', 'fallback_to_minimal_fields');
           auditLog.error('attendance:repo', `Critical fallback during getDailyByDate (${status})`, { error });
         },
       });
@@ -202,6 +204,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         top: 1,
         signal: params?.signal,
         onCriticalFallback: (status, error) => {
+          emitDriftRecord(schema.listTitle, 'Id', 'fallback', 'fallback_to_minimal_fields');
           auditLog.error('attendance:repo', `Critical fallback during upsert check (${status})`, { error });
         },
       });
@@ -262,10 +265,11 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         select: fields.select as string[],
         filter: buildSubstringOf(fields.dateField as string, recordDate),
         onFieldRemoved: (fieldName, status, error) => {
-          emitDriftRecord(this.listTitleNurse, fieldName, 'fallback', 'odata_400');
+          emitDriftRecord(this.listTitleNurse, fieldName, 'fallback', 'resolution_failure');
           auditLog.warn('attendance:repo', `Field removed during getObservationsByDate: ${fieldName} (${status})`, { error });
         },
         onCriticalFallback: (status, error) => {
+          emitDriftRecord(this.listTitleNurse, 'Id', 'fallback', 'fallback_to_minimal_fields');
           auditLog.error('attendance:repo', `Critical fallback during getObservationsByDate (${status})`, { error });
         },
       });
