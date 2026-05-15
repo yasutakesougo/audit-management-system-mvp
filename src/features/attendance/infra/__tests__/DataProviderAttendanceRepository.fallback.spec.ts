@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, vi } from 'vitest';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { DataProviderAttendanceRepository } from '../DataProviderAttendanceRepository';
@@ -17,7 +18,6 @@ const createMockProvider = (overrides: Partial<IDataProvider> = {}): IDataProvid
 
 describe('DataProviderAttendanceRepository Fallback', () => {
   it('should pass onFieldRemoved callback to provider in getDailyByDate', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const listItems = vi.fn(async (resource: string, options: any) => {
       // Simulate field removal by calling the callback
       if (options.onFieldRemoved) {
@@ -38,7 +38,6 @@ describe('DataProviderAttendanceRepository Fallback', () => {
   });
 
   it('should pass onCriticalFallback callback to provider in getDailyByDate', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const listItems = vi.fn(async (resource: string, options: any) => {
       if (options.onCriticalFallback) {
         options.onCriticalFallback(500, 'Server error');
