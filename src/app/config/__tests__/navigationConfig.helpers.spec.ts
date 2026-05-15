@@ -38,7 +38,7 @@ const items: NavItem[] = [
 ];
 
 describe('buildVisibleNavItems', () => {
-  it('returns all items when feature flag is off', () => {
+  it('does not apply tier-based collapsing when todayLiteNavV2 is off', () => {
     const result = buildVisibleNavItems(items, 'staff', {
       showMore: false,
       todayLiteNavV2: false,
@@ -55,7 +55,7 @@ describe('buildVisibleNavItems', () => {
     ]);
   });
 
-  it('viewer sees only core when showMore is false', () => {
+  it('applies lite-nav collapsing when todayLiteNavV2 is on and showMore is false', () => {
     const result = buildVisibleNavItems(items, 'staff', {
       showMore: false,
       todayLiteNavV2: true,
@@ -67,7 +67,7 @@ describe('buildVisibleNavItems', () => {
     expect(result.map((x) => x.label)).toEqual(['Today', 'Daily Table']);
   });
 
-  it('viewer sees more items when showMore is true', () => {
+  it('reveals tier=more items when todayLiteNavV2 is on and showMore is true', () => {
     const result = buildVisibleNavItems(items, 'staff', {
       showMore: true,
       todayLiteNavV2: true,
@@ -83,7 +83,7 @@ describe('buildVisibleNavItems', () => {
     ]);
   });
 
-  it('admin can see admin tier items', () => {
+  it('keeps tier=admin visible only for admin when todayLiteNavV2 is on', () => {
     const result = buildVisibleNavItems(items, 'admin', {
       showMore: true,
       todayLiteNavV2: true,
@@ -93,6 +93,26 @@ describe('buildVisibleNavItems', () => {
     });
 
     expect(result.some((x) => x.label === 'Analysis')).toBe(true);
+  });
+
+  it('treats tier=more as collapsed-by-default, not removed', () => {
+    const collapsed = buildVisibleNavItems(items, 'staff', {
+      showMore: false,
+      todayLiteNavV2: true,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
+    });
+    const expanded = buildVisibleNavItems(items, 'staff', {
+      showMore: true,
+      todayLiteNavV2: true,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
+    });
+
+    expect(collapsed.some((x) => x.label === 'Meeting Minutes')).toBe(false);
+    expect(expanded.some((x) => x.label === 'Meeting Minutes')).toBe(true);
   });
 });
 
@@ -105,4 +125,3 @@ describe('splitNavItemsByTier', () => {
     expect(result.admin.map((x) => x.label)).toEqual(['Analysis']);
   });
 });
-
