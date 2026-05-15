@@ -95,6 +95,10 @@ const FIELD_LABELS: Record<string, { label: string; section: string }> = {
   // §8 危機対応
   dangerousBehavior: { label: '危険行動', section: '§8 危機対応' },
   medicalCoordination: { label: '医療連携', section: '§8 危機対応' },
+  // §6 代替行動 (追加)
+  reinforcementMethod: { label: '強化方法', section: '§6 代替行動' },
+  // §10 チーム共有 (追加)
+  teamConsensusNote: { label: 'チーム合意事項', section: '§10 チーム共有' },
 };
 
 // ---------------------------------------------------------------------------

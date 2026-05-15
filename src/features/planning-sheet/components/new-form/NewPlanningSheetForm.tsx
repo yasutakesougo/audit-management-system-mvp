@@ -41,6 +41,7 @@ import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded';
 import WorkspacesIcon from '@mui/icons-material/Workspaces';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 
 // ── Domain ──
 import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
@@ -103,7 +104,11 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   // ── 特性アンケート読込 ──
-  const { responses: tokuseiResponses, status: tokuseiStatus } = useTokuseiSurveyResponses();
+  const { 
+    responses: tokuseiResponses, 
+    status: tokuseiStatus,
+    refresh: refreshTokusei
+  } = useTokuseiSurveyResponses();
   const [selectedTokusei, setSelectedTokusei] = React.useState<TokuseiSurveyResponse | null>(null);
   const [tokuseiImported, setTokuseiImported] = React.useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
@@ -217,21 +222,39 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     const normalizedTarget = normalizeName(userName);
 
     const matches = tokuseiResponses.filter(r => {
+      const normalizedSource = normalize(r.targetUserName || '');
       const normalizedSourceName = normalizeName(r.targetUserName || '');
-      const normalizedSourceRaw = normalize(r.targetUserName || '');
-      const idMatch = normalize(r.targetUserName || '') === normalize(selectedUser.id);
+      const targetId = normalize(selectedUser.id);
+      
+      const idMatch = normalizedSource === targetId || normalizedSource.includes(`(${targetId})`) || normalizedSource.includes(targetId);
       const nameMatch =
         normalizedSourceName === normalizedTarget ||
-        normalizedSourceName.includes(normalizedTarget) ||
-        normalizedTarget.includes(normalizedSourceName) ||
-        normalizedSourceRaw === normalizedTarget;
+        (normalizedTarget.length > 1 && normalizedSourceName.includes(normalizedTarget)) ||
+        (normalizedSourceName.length > 1 && normalizedTarget.includes(normalizedSourceName));
 
       return idMatch || nameMatch;
     });
 
-    const hasExactMatch = matches.length > 0;
+    // 優先度順にソート（ID一致 -> 名前完全一致 -> 名前部分一致）
+    matches.sort((a, b) => {
+      const aSource = normalize(a.targetUserName || '');
+      const bSource = normalize(b.targetUserName || '');
+      const targetId = normalize(selectedUser.id);
+      
+      const aIdMatch = aSource === targetId ? 2 : (aSource.includes(targetId) ? 1 : 0);
+      const bIdMatch = bSource === targetId ? 2 : (bSource.includes(targetId) ? 1 : 0);
+      
+      if (aIdMatch !== bIdMatch) return bIdMatch - aIdMatch;
+      
+      const aNameMatch = normalizeName(a.targetUserName || '') === normalizedTarget ? 1 : 0;
+      const bNameMatch = normalizeName(b.targetUserName || '') === normalizedTarget ? 1 : 0;
+      
+      return bNameMatch - aNameMatch;
+    });
+
+    const hasExactMatch = matches.some(r => normalize(r.targetUserName || '').includes(normalize(selectedUser.id)));
     return {
-      matchedResponses: hasExactMatch ? matches : tokuseiResponses,
+      matchedResponses: matches.length > 0 ? matches : tokuseiResponses,
       hasExactMatch
     };
   }, [selectedUser, tokuseiResponses]);
@@ -590,6 +613,16 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 <Typography variant="subtitle1" fontWeight={600}>
                   特性アンケートから読込
                 </Typography>
+                <Button 
+                  size="small" 
+                  variant="text" 
+                  startIcon={tokuseiStatus === 'loading' ? <CircularProgress size={14} /> : <RefreshRoundedIcon />}
+                  onClick={() => refreshTokusei()}
+                  disabled={tokuseiStatus === 'loading'}
+                  sx={{ ml: 1 }}
+                >
+                  最新に更新
+                </Button>
                 {tokuseiImported && (
                   <Chip icon={<CheckCircleRoundedIcon />} label="取込済" size="small" color="success" variant="outlined" />
                 )}

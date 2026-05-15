@@ -53,6 +53,7 @@ export enum ListKeys {
   Approval_Logs = 'Approval_Logs',
   User_Feature_Flags = 'User_Feature_Flags',
   AbcBehaviorRecords = 'AbcBehaviorRecords',
+  SurveyTokuseiV2 = 'List2', // 特性確認シート
 }
 
 
@@ -64,7 +65,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.DailyActivityRecords]: { title: 'DailyActivityRecords' },
   [ListKeys.IcebergAnalysis]: { title: 'Iceberg_Analysis' },
   [ListKeys.IcebergPdca]: { title: 'Iceberg_PDCA' },
-  [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' },
+  [ListKeys.SurveyTokusei]: { title: 'FormsResponses_Tokusei' }, // 互換性維持のため
   [ListKeys.OrgMaster]: { title: 'Org_Master' },
   [ListKeys.StaffAttendance]: { title: 'Staff_Attendance' },
   [ListKeys.DiagnosticsReports]: { title: 'Diagnostics_Reports' },
@@ -104,5 +105,6 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.Approval_Logs]: { title: 'Approval_Logs' },
   [ListKeys.User_Feature_Flags]: { title: 'User_Feature_Flags' },
   [ListKeys.AbcBehaviorRecords]: { title: 'AbcBehaviorRecords' },
+  [ListKeys.SurveyTokuseiV2]: { title: 'List2' }, // 特性確認シート
 };
 
