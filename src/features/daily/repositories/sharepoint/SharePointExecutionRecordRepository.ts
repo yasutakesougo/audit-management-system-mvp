@@ -497,10 +497,24 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       }
     }
 
-    const rawStatus = item[rf.status];
-    const status = (rawStatus === 'done' || rawStatus === 'committed')
-      ? 'completed'
-      : (rawStatus as RecordStatus);
+    const rawStatus = String(item[rf.status] || '').trim();
+    let status: RecordStatus = 'unrecorded';
+    const s = rawStatus.toLowerCase();
+
+    // Normalization logic for English & Japanese statuses
+    if (s === 'completed' || s === 'done' || s === 'committed' || s === '完了' || s === '済') {
+      status = 'completed';
+    } else if (s === 'triggered' || s === '行動発生') {
+      status = 'triggered';
+    } else if (s === 'skipped' || s === 'スキップ' || s === '中止') {
+      status = 'skipped';
+    } else {
+      // Fallback to strict domain enum if it matches exactly (already handled by toLowerCase above for English)
+      if (['completed', 'triggered', 'skipped', 'unrecorded'].includes(s)) {
+        status = s as RecordStatus;
+      }
+    }
+
 
     return {
       id: title,

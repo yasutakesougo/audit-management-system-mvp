@@ -427,7 +427,41 @@ describe('SharePointExecutionRecordRepository', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedCommitted = (repo as any).mapToDomain(itemCommitted, rf);
       expect(mappedCommitted.status).toBe('completed');
+
+      // English case variations
+      const itemDoneUpper = { ...itemDone, Status: 'Done' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedDoneUpper = (repo as any).mapToDomain(itemDoneUpper, rf);
+      expect(mappedDoneUpper.status).toBe('completed');
+
+      const itemCompletedUpper = { ...itemDone, Status: 'COMPLETED' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedCompletedUpper = (repo as any).mapToDomain(itemCompletedUpper, rf);
+      expect(mappedCompletedUpper.status).toBe('completed');
+
+      // Japanese statuses
+      const itemKanryo = { ...itemDone, Status: '完了' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedKanryo = (repo as any).mapToDomain(itemKanryo, rf);
+      expect(mappedKanryo.status).toBe('completed');
+
+      const itemSai = { ...itemDone, Status: '済' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedSai = (repo as any).mapToDomain(itemSai, rf);
+      expect(mappedSai.status).toBe('completed');
+
+      const itemTriggeredJp = { ...itemDone, Status: '行動発生' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedTriggeredJp = (repo as any).mapToDomain(itemTriggeredJp, rf);
+      expect(mappedTriggeredJp.status).toBe('triggered');
+
+      const itemSkippedJp = { ...itemDone, Status: 'スキップ' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mappedSkippedJp = (repo as any).mapToDomain(itemSkippedJp, rf);
+      expect(mappedSkippedJp.status).toBe('skipped');
+
     });
+
   });
 
   describe('Strict Field Filtering Regressions', () => {
