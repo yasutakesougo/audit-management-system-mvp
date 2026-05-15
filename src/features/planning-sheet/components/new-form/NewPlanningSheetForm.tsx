@@ -60,9 +60,9 @@ import { useLatestBehaviorMonitoring } from '../../hooks/useLatestBehaviorMonito
 import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
 import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
-import { buildIcebergImportResult } from '../../icebergToPlanningBridge';
+import { buildIcebergImportResult, type IcebergImportResult } from '../../icebergToPlanningBridge';
 import { useImportAuditStore } from '../../stores/importAuditStore';
-import type { IcebergSession, IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { useMonitoringAbcEvidence } from '@/features/monitoring/hooks/useMonitoringAbcEvidence';
 
 // ── Local (split) ──
@@ -117,6 +117,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   // ── 氷山分析読込 ──
   const icebergRepo = useIcebergRepository();
   const [icebergImported, setIcebergImported] = React.useState(false);
+  const [icebergImportResult, setIcebergImportResult] = React.useState<IcebergImportResult | null>(null);
   const [isIcebergLoading, setIsIcebergLoading] = React.useState(false);
   const [importSource, setImportSource] = React.useState<'tokusei' | 'iceberg' | null>(null);
   const autoIcebergHandledRef = React.useRef(false);
@@ -266,13 +267,21 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
         return;
       }
 
-      const drafts = icebergToInterventionDrafts({ ...latest, targetUserId: (latest as unknown as IcebergSnapshot).userId } as unknown as IcebergSession);
-      const result = buildIcebergImportResult(drafts);
+      const sessionLike = { ...latest, id: latest.sessionId, targetUserId: latest.userId } as unknown as IcebergSession;
+      const drafts = icebergToInterventionDrafts(sessionLike);
+
+      const sessionRef = {
+        id: latest.sessionId,
+        updatedAt: latest.updatedAt,
+      };
+
+      const result = buildIcebergImportResult(drafts, sessionRef);
       
       const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>, result.summary);
       setImportPreview(preview);
       // 特性アンケートのブリッジ結果と構造が同じなので再利用
       setLastBridgeResult({ formPatches: result.formPatches } as unknown as ReturnType<typeof tokuseiToPlanningBridge>);
+      setIcebergImportResult(result);
       setImportSource('iceberg');
       setPreviewDialogOpen(true);
     } catch (err) {
@@ -422,6 +431,21 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           affectedFields: ['iceberg_differential_completion'],
           provenance: [],
           summaryText: `氷山分析の差分基づき改訂を確定: ${diffSummary}`,
+        });
+      }
+
+      // 氷山分析からインポートした場合の監査記録
+      if (icebergImported && icebergImportResult && icebergImportResult.provenance.length > 0) {
+        saveAuditRecord({
+          planningSheetId: created.id,
+          importedAt: new Date().toISOString(),
+          importedBy: createdBy,
+          assessmentId: null,
+          tokuseiResponseId: null,
+          mode: 'iceberg',
+          affectedFields: icebergImportResult.formPatches ? Object.keys(icebergImportResult.formPatches) : [],
+          provenance: icebergImportResult.provenance,
+          summaryText: `氷山分析から取込完了: 行動${icebergImportResult.summary.behaviorCount}件, きっかけ${icebergImportResult.summary.triggerCount}件, 環境${icebergImportResult.summary.environmentFactorCount}件, 対応${icebergImportResult.summary.strategyCount}件`,
         });
       }
 
