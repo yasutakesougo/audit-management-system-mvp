@@ -250,6 +250,57 @@ describe('useAuth', () => {
       expect(result.current.account).toBe(account);
     });
 
+    it('isAuthenticated=true when activeAccount/accounts are empty but getAllAccounts has cached account', () => {
+      const cached = makeAccount('cached@corp.com');
+      const instance = createMockMsalInstance({
+        getActiveAccount: vi.fn(() => null),
+        getAllAccounts: vi.fn(() => [cached]),
+      });
+      setupMsalContext({ instance, accounts: [] });
+
+      const { result } = renderHook(() => useAuth());
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.account).toBe(cached);
+    });
+
+    it('sets fallback account as active when rawAccount is available', () => {
+      const cached = makeAccount('cache-only@corp.com');
+      const instance = createMockMsalInstance({
+        getActiveAccount: vi.fn(() => null),
+        getAllAccounts: vi.fn(() => [cached]),
+        setActiveAccount: vi.fn(),
+      });
+      setupMsalContext({ instance, accounts: [] });
+
+      renderHook(() => useAuth());
+
+      expect(instance.setActiveAccount).toHaveBeenCalledWith(cached);
+    });
+
+    it('does not authenticate from spToken only', () => {
+      const store = new Map<string, string>();
+      store.set('spToken', 'token-only');
+      vi.stubGlobal('sessionStorage', {
+        getItem: vi.fn((key: string) => store.get(key) ?? null),
+        setItem: vi.fn((key: string, val: string) => store.set(key, val)),
+        removeItem: vi.fn((key: string) => store.delete(key)),
+        clear: vi.fn(() => store.clear()),
+        get length() { return store.size; },
+        key: vi.fn(),
+      });
+      const instance = createMockMsalInstance({
+        getActiveAccount: vi.fn(() => null),
+        getAllAccounts: vi.fn(() => []),
+      });
+      setupMsalContext({ instance, accounts: [], inProgress: 'none' });
+
+      const { result } = renderHook(() => useAuth());
+
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.tokenReady).toBe(false);
+    });
+
     it('tokenReady=true when authenticated and inProgress=none', () => {
       const account = makeAccount();
       const instance = createMockMsalInstance({
@@ -271,6 +322,20 @@ describe('useAuth', () => {
 
       const { result } = renderHook(() => useAuth());
 
+      expect(result.current.tokenReady).toBe(false);
+    });
+
+    it('keeps tokenReady contract: isAuthenticated && inProgress===none', () => {
+      const account = makeAccount('contract@corp.com');
+      const instance = createMockMsalInstance({
+        getActiveAccount: vi.fn(() => account),
+        getAllAccounts: vi.fn(() => [account]),
+      });
+      setupMsalContext({ instance, accounts: [account], inProgress: 'acquireToken' });
+
+      const { result } = renderHook(() => useAuth());
+
+      expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.tokenReady).toBe(false);
     });
 

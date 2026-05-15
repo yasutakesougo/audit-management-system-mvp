@@ -49,6 +49,14 @@ declare module "@azure/msal-browser" {
 
 declare global {
   interface Window {
+    __AUTH_STATE__?: {
+      isAuthenticated: boolean;
+      tokenReady: boolean;
+      accounts: number;
+      allAccounts: number;
+      active: boolean;
+      inProgress: string;
+    };
     __AUDIT_BATCH_METRICS__?: {
       total: number;
       success: number;

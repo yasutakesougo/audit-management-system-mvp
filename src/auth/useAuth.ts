@@ -119,7 +119,13 @@ export const useAuth = () => {
   // MSAL returns new object references for account on every context change (even if same user).
   // We stabilize by comparing homeAccountId so downstream useMemo deps don't thrash.
   const stableAccountRef = useRef<BasicAccountInfo | null>(null);
-  const rawAccount = (instance.getActiveAccount() ?? accounts[0] ?? null) as BasicAccountInfo | null;
+  const allAccounts = (instance.getAllAccounts() as BasicAccountInfo[]) ?? [];
+  const rawAccount = (
+    instance.getActiveAccount() ??
+    accounts[0] ??
+    allAccounts[0] ??
+    null
+  ) as BasicAccountInfo | null;
   const rawAccountId = rawAccount?.homeAccountId ?? rawAccount?.username ?? null;
   const prevAccountId = stableAccountRef.current?.homeAccountId ?? stableAccountRef.current?.username ?? null;
   if (rawAccountId !== prevAccountId) {
@@ -145,10 +151,10 @@ export const useAuth = () => {
   useEffect(() => {
     if (isE2eMock || skipLogin) return;
     const current = instance.getActiveAccount();
-    if (!current && accounts[0]) {
-      instance.setActiveAccount(accounts[0]);
+    if (!current && rawAccount) {
+      instance.setActiveAccount(rawAccount);
     }
-  }, [instance, accounts, isE2eMock, skipLogin]);
+  }, [instance, rawAccount, isE2eMock, skipLogin]);
 
   // Ensure active account is restored on initial load
   useEffect(() => {
@@ -469,6 +475,34 @@ export const useAuth = () => {
   const isInProgressNone = inProgress === InteractionStatus.None || inProgress === 'none';
   const tokenReady = isAuthenticated && isInProgressNone;
   const accountId = resolvedAccount?.homeAccountId ?? resolvedAccount?.username ?? null;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const all = instance.getAllAccounts();
+    const active = instance.getActiveAccount();
+    const shouldExpose = authConfig.isDev || isE2eMock;
+    if (shouldExpose) {
+      (window as Window & {
+        __AUTH_STATE__?: {
+          isAuthenticated: boolean;
+          tokenReady: boolean;
+          accounts: number;
+          allAccounts: number;
+          active: boolean;
+          inProgress: string;
+        };
+      }).__AUTH_STATE__ = {
+        isAuthenticated,
+        tokenReady,
+        accounts: accounts.length,
+        allAccounts: all.length,
+        active: Boolean(active),
+        inProgress: String(inProgress),
+      };
+      return;
+    }
+    delete (window as Window & { __AUTH_STATE__?: unknown }).__AUTH_STATE__;
+  }, [instance, accounts.length, inProgress, isAuthenticated, tokenReady, isE2eMock]);
 
   const authFunctions = useMemo(() => ({
     signIn,
