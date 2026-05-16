@@ -140,6 +140,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     }),
     PLANNING_ROUTES.SUPPORT_PLAN_GUIDE(isFieldStaffShell),
     PLANNING_ROUTES.ISP_EDITOR(isFieldStaffShell),
+    PLANNING_ROUTES.PLANNING_SHEET_LIST(isFieldStaffShell),
     
     SEVERE_ROUTES.SUPPORT_REVIEW_HUB(isFieldStaffShell),
 

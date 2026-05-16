@@ -46,6 +46,7 @@ export interface PlanningSheetListActionHandlers {
   onOpenIceberg: (userId: string) => void;
   onCreateFromIceberg: (userId: string) => void;
   onReviseFromIceberg: (userId: string, currentSheetId: string) => void;
+  onDeleteSheet: (id: string) => void;
   onBackToIsp: () => void;
 }
 

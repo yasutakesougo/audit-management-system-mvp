@@ -64,6 +64,13 @@ function adjustPayloadWithResolvedFields(
     PlanningJson: 'planningJson',
     SupportStartDate: 'supportStartDate',
     MonitoringCycleDays: 'monitoringCycleDays',
+    AppliedFrom: 'appliedFrom',
+    NextReviewAt: 'nextReviewAt',
+    TargetDomain: 'targetDomain',
+    CollectedInformation: 'collectedInformation',
+    EnvironmentalAdjustments: 'environmentalAdjustments',
+    AuthoredByStaffId: 'authoredByStaffId',
+    ApplicableServiceType: 'applicableServiceType',
     // Logical -> Logical
     title: 'title',
     userCode: 'userCode',
@@ -79,6 +86,12 @@ function adjustPayloadWithResolvedFields(
     planningJson: 'planningJson',
     supportStartDate: 'supportStartDate',
     monitoringCycleDays: 'monitoringCycleDays',
+    appliedFrom: 'appliedFrom',
+    nextReviewAt: 'nextReviewAt',
+    collectedInformation: 'collectedInformation',
+    environmentalAdjustments: 'environmentalAdjustments',
+    authoredByStaffId: 'authoredByStaffId',
+    applicableServiceType: 'applicableServiceType',
   };
 
   for (const [key, value] of Object.entries(payload)) {
@@ -279,5 +292,13 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     const updated = await this.getById(id);
     if (!updated) throw new Error(`[PlanningSheetRepository] Failed to reload updated item: ${id}`);
     return updated;
+  }
+  
+  async deleteItem(id: string): Promise<void> {
+    const numericId = extractSpId(id);
+    if (numericId === null) throw new Error(`Invalid ID: ${id}`);
+    
+    const { title } = await this.resolveSource();
+    await this.provider.deleteItem(title, numericId);
   }
 }

@@ -30,6 +30,9 @@ export function usePlanningSheetListOrchestrator(): {
   const [latestIcebergSnapshot, setLatestIcebergSnapshot] = useState<IcebergSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refresh = () => setRefreshTrigger(v => v + 1);
 
   useEffect(() => {
     let isCancelled = false;
@@ -47,7 +50,7 @@ export function usePlanningSheetListOrchestrator(): {
       try {
         // Parallel fetch
         const [items, iceberg] = await Promise.all([
-          repo.listCurrentByUser(userId),
+          repo.listByUser(userId),
           icebergRepo ? icebergRepo.getLatestByUser(userId) : Promise.resolve(null),
         ]);
 
@@ -70,7 +73,7 @@ export function usePlanningSheetListOrchestrator(): {
     return () => {
       isCancelled = true;
     };
-  }, [userId, repo, icebergRepo]);
+  }, [userId, repo, icebergRepo, refreshTrigger]);
 
   // 現行シートの詳細をフェッチ
   useEffect(() => {
@@ -116,6 +119,20 @@ export function usePlanningSheetListOrchestrator(): {
         .join(' / ');
       const diffQuery = diffSummary ? `&diffSummary=${encodeURIComponent(diffSummary)}` : '';
       navigate(`/support-planning-sheet/new?userId=${uid}&source=iceberg&baseSheetId=${sid}${diffQuery}`);
+    },
+    onDeleteSheet: async (id) => {
+      if (!window.confirm('この支援計画シートを削除してもよろしいですか？\n削除したデータは元に戻せません。')) {
+        return;
+      }
+      try {
+        setIsLoading(true);
+        await repo.deleteItem(id);
+        refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setIsLoading(false);
+      }
     },
     onBackToIsp: () => navigate('/support-plan-guide'),
   };
