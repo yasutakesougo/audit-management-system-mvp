@@ -756,3 +756,71 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 | ℹ️ 注記 | GitHub Actions 変数に `ADMIN_STATUS_RAW_URL` がなく、nightly と同一経路での `/admin/status` 生JSON再取得はこのセッションでは未実施 |
 
 **成果**: リスト不存在起因の FAIL は再現せず（welfare 環境）
+
+### 2026-05-15 — Monthly KPI / DailyRecordRows evidence hardening 🏁
+
+**ワークフロー**: `/debug` → `/implement` → `/test`
+**対象**: Monthly KPI 集計、`Daily_Attendance` OData 回復、実行証跡の正規化
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `Daily_Attendance` の OData 400/500 エラー回避のための field-pruning & critical fallback |
+| ✅ 採用 | 実行ステータスのローカライズ不整合（「完了」等）を吸収する正規化ロジックの導入 |
+| ✅ 採用 | 期間集計（Monthly KPI）における `completedRows` の集計精度向上 |
+| ✅ 採用 | `DailyRecordRows` スキーマ・ドリフト発生時の自動検知・警告（emitDriftRecord） |
+
+**成果**: PR #1922, #1921, #1920, #1919 / SharePoint 通信の安定性向上
+**効果測定**:
+- OData エラー発生率: 激減（正常系への自動復帰を確認）
+- 月次KPI 整合性: 実運用データにおいて Kiosk 記録が正確に反映されることを確認
+**学び**:
+- 本番環境の SharePoint スキーマは予期せず変化するため、厳格な型チェックだけでなく「致命的な失敗を避けるフォールバック」が可用性の鍵となる。
+**所要時間**: 約 20min
+
+#foundation #sharepoint #stability #kpi #skill-matrix-20260515-1
+
+### 2026-05-15 — Iceberg import provenance audit trail 🏁
+
+**ワークフロー**: `/architect` → `/implement` → `/test`
+**対象**: Iceberg 外部連携データの来歴管理（Provenance）および監査証跡
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `ImportAuditStore` による永続的な来歴記録（sourceType, sourceId, importedAt） |
+| ✅ 採用 | `ProvenanceBadge` UI コンポーネントによる「外部データ由来」の視覚的明示 |
+| ✅ 採用 | 保存済み ISP（個別支援計画）との 1:1 紐付けによる監査説明可能性の確保 |
+| ❌ 却下 | インポート時に常に最新の Iceberg データを上書き同期し続ける案 |
+| 💡 却下理由 | 「いつの時点のどのデータを見て計画を立てたか」という証跡を固定する必要があるため、明示的なインポート操作に基づくスナップショット記録を採用 |
+
+**成果**: PR #1924, #1923, #1859 / 監査対応力の強化
+**効果測定**:
+- 監査対応時間: 大幅削減（どのデータがどこから来たか、画面上で即座に説明可能）
+- データ整合性: 計画書とインポート元データの不一致リスクを低減
+**学び**:
+- 外部連携機能においては、単なるデータ同期だけでなく「来歴（Provenance）」をドメインモデルの一部として扱うことで、福祉システムの法的要件を充足できる。
+**所要時間**: 約 25min
+
+#compliance #isp #audit-trail #iceberg #skill-matrix-20260515-2
+
+### 2026-05-15 — Tokusei survey dual-list migration and nav semantics cleanup 🏁
+
+**ワークフロー**: `/architect` → `/implement` → `/verify-sp`
+**対象**: 特性確認シート（Forms回答）の新リスト（List2）移行、ナビゲーション整合性
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `FormsResponses_Tokusei` (List2) への完全移行と List1 への安全なフォールバック |
+| ✅ 採用 | `mapSpRowToTokuseiResponse` による感覚・行動特性フィールドの正規化 |
+| ✅ 採用 | `today-lite` フラグ周辺のナビゲーション動作の整理とコメント化 |
+| ✅ 採用 | E2E テストにおける `act()` 警告の解消（Kiosk 手順詳細画面） |
+
+**成果**: PR #1927, #1926, #1925 / データ移行の完了とテスト安定化
+**効果測定**:
+- テスト成功率: `kiosk-e2e` における警告ゼロを達成
+- データ取得成功率: 新旧リスト混在環境下での I005 実データ取得を確認
+**学び**:
+- リスト移行期間中は dual-list 参照が必要になるが、マッパー層で差異を吸収することで UI 層の複雑化を避けられた。
+- ナビゲーションフラグのようなグローバルな挙動は、将来の誤解を避けるための詳細なインラインコメントが重要。
+**所要時間**: 約 15min
+
+#foundation #migration #tokusei #navigation #skill-matrix-20260515-3
