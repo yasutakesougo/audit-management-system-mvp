@@ -112,9 +112,9 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [selectedTokusei, setSelectedTokusei] = React.useState<TokuseiSurveyResponse | null>(null);
   const [tokuseiImported, setTokuseiImported] = React.useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
-  const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
   const [lastBridgeResult, setLastBridgeResult] = React.useState<{ formPatches: Record<string, string> } | null>(null);
-  const [tokuseiProvenance, setTokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
+  const [tokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
+  const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' }>({
     open: false, message: '', severity: 'success',
   });
@@ -235,6 +235,17 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       return idMatch || nameMatch;
     });
 
+    const hasExactMatch = matches.some(r => {
+      const normalizedSource = normalize(r.targetUserName || '');
+      const targetId = normalize(selectedUser.id);
+      const idMatch = normalizedSource === targetId || normalizedSource.includes(`(${targetId})`) || normalizedSource.includes(targetId);
+
+      const normalizedSourceName = normalizeName(r.targetUserName || '');
+      const namePerfectMatch = normalizedSourceName === normalizedTarget;
+
+      return idMatch || namePerfectMatch;
+    });
+
     // 優先度順にソート（ID一致 -> 名前完全一致 -> 名前部分一致）
     matches.sort((a, b) => {
       const aSource = normalize(a.targetUserName || '');
@@ -252,12 +263,18 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       return bNameMatch - aNameMatch;
     });
 
-    const hasExactMatch = matches.some(r => normalize(r.targetUserName || '').includes(normalize(selectedUser.id)));
     return {
-      matchedResponses: matches.length > 0 ? matches : tokuseiResponses,
+      matchedResponses: matches,
       hasExactMatch
     };
   }, [selectedUser, tokuseiResponses]);
+
+  // ── 特性アンケート: 自動選択 ──
+  React.useEffect(() => {
+    if (hasExactMatch && matchedResponses.length === 1 && !selectedTokusei) {
+      setSelectedTokusei(matchedResponses[0]);
+    }
+  }, [hasExactMatch, matchedResponses, selectedTokusei]);
 
   // ── 特性アンケート: プレビュー表示 ──
   const handleTokuseiImport = React.useCallback(() => {
@@ -303,7 +320,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>, result.summary);
       setImportPreview(preview);
       // 特性アンケートのブリッジ結果と構造が同じなので再利用
-      setLastBridgeResult({ formPatches: result.formPatches } as unknown as ReturnType<typeof tokuseiToPlanningBridge>);
+      setLastBridgeResult({ formPatches: result.formPatches } as unknown as { formPatches: Record<string, string> });
       setIcebergImportResult(result);
       setImportSource('iceberg');
       setPreviewDialogOpen(true);
@@ -337,23 +354,6 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       }
       return next;
     });
-
-    // provenance を記録
-    if (importSource === 'tokusei' && selectedTokusei) {
-      setTokuseiProvenance(prev => {
-        const next = new Map(prev);
-        for (const key of Object.keys(lastBridgeResult.formPatches)) {
-          if (lastBridgeResult.formPatches[key]?.trim()) {
-            next.set(key, {
-              name: selectedTokusei.responderName || '不明',
-              relation: selectedTokusei.relation,
-              fillDate: selectedTokusei.fillDate,
-            });
-          }
-        }
-        return next;
-      });
-    }
 
     if (importSource === 'tokusei') {
       setTokuseiImported(true);
@@ -471,6 +471,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           summaryText: `氷山分析から取込完了: 行動${icebergImportResult.summary.behaviorCount}件, きっかけ${icebergImportResult.summary.triggerCount}件, 環境${icebergImportResult.summary.environmentFactorCount}件, 対応${icebergImportResult.summary.strategyCount}件`,
         });
       }
+
 
       navigate(`/support-planning-sheet/${created.id}`, { replace: true });
     } catch (err) {
