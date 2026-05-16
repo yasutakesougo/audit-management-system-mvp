@@ -96,7 +96,7 @@ describe('AppShell navigation exposure', () => {
     mockRole = 'viewer';
     renderShell();
 
-    const moreButton = screen.getByRole('button', { name: 'Moreを開く' });
+    const moreButton = screen.getByRole('button', { name: 'その他のメニューを開く' });
     expect(moreButton).toBeInTheDocument();
     fireEvent.click(moreButton);
 
