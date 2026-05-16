@@ -6,9 +6,12 @@ import { groupLabel, type NavGroupKey, type NavItem } from '@/app/config/navigat
 import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import SearchIcon from '@mui/icons-material/Search';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -289,14 +292,23 @@ export const AppShellSidebar: React.FC<Props> = ({
       )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
         {todayLiteNavV2 && !navCollapsed && hasMoreNavItems && (
-          <Box sx={{ mr: 1 }}>
-            <IconButton
+          <Box sx={{ mr: 'auto', ml: 1 }}>
+            <Button
               onClick={onToggleMoreNavItems}
-              aria-label={showMoreNavItems ? 'Moreを閉じる' : 'Moreを開く'}
+              aria-label={showMoreNavItems ? 'その他のメニューを閉じる' : 'その他のメニューを開く'}
               size="small"
+              variant="text"
+              startIcon={showMoreNavItems ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+              sx={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: 'text.secondary',
+                textTransform: 'none',
+                '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
+              }}
             >
-              {showMoreNavItems ? '−' : '+'}
-            </IconButton>
+              {showMoreNavItems ? 'その他を閉じる' : 'その他のメニュー'}
+            </Button>
           </Box>
         )}
         <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
@@ -375,13 +387,22 @@ export const MobileNavContent: React.FC<{
       </Box>
       {todayLiteNavV2 && hasMoreNavItems && (
         <Box sx={{ px: 1.5, pb: 1 }}>
-          <IconButton
+          <Button
             onClick={onToggleMoreNavItems}
-            aria-label={showMoreNavItems ? 'Moreを閉じる' : 'Moreを開く'}
+            aria-label={showMoreNavItems ? 'その他のメニューを閉じる' : 'その他のメニューを開く'}
             size="small"
+            variant="text"
+            startIcon={showMoreNavItems ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+            sx={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'text.secondary',
+              textTransform: 'none',
+              '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
+            }}
           >
-            {showMoreNavItems ? '−' : '+'}
-          </IconButton>
+            {showMoreNavItems ? 'その他を閉じる' : 'その他のメニュー'}
+          </Button>
         </Box>
       )}
       <GroupedNavList
