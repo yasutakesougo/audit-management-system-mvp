@@ -331,5 +331,23 @@ export const createTokuseiDemoResponses = (): TokuseiSurveyResponse[] => {
       notes: '面談時は女性スタッフ希望。',
       createdAt: new Date(now - dayMs * 5.8).toISOString(),
     },
+    {
+      id: 4,
+      responseId: 'TOKUSEI-004',
+      responderName: '石渡由喜子',
+      responderEmail: 'yukiko.ishiwatari@example.com',
+      fillDate: '2026-05-01T09:00:00Z',
+      targetUserName: 'I005',
+      guardianName: '石渡',
+      relation: '本人',
+      heightCm: coerceNumber(158),
+      weightKg: coerceNumber(52),
+      personality: '【対人関係の難しさ】初対面のスタッフとは緊張して話せないが、慣れると冗談を言う。\n【状況理解の難しさ】一度に複数の指示を受けると混乱し、その場から動けなくなる。',
+      sensoryFeatures: '【聴覚】掃除機の音が非常に苦手で、耳を塞いでうずくまってしまう。\n【触覚】衣類のタグや縫い目が気になり、裏返して着ることがある。',
+      behaviorFeatures: '【変化への対応困難】急な予定変更があると、パニックになり大声を出すことがある。\n【理解の困難】視覚的なスケジュール表があると安心して活動できる。',
+      strengths: '絵を描くことが得意で、細部まで丁寧に描写する。',
+      notes: '2026-05-01 のフォーム再送信テスト用データ。掃除機の音への配慮を最優先してほしい。',
+      createdAt: '2026-05-01T10:00:00Z',
+    },
   ];
 };
