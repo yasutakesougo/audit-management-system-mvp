@@ -1,5 +1,5 @@
 import { isE2E } from '@/env';
-import { createContext, createElement, useContext, useMemo, type FC, type ReactNode } from 'react';
+import { createContext, createElement, useContext, useEffect, useMemo, useState, type FC, type ReactNode } from 'react';
 import {
     isComplianceFormEnabled,
     isIcebergPdcaEnabled,
@@ -201,29 +201,73 @@ export const getFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot =>
 
 export const FeatureFlagsContext = createContext<FeatureFlagSnapshot>(initialSnapshot);
 
+/**
+ * Custom event name dispatched when feature flags are changed via setFeatureFlag().
+ * Used to notify the same-tab FeatureFlagsProvider of localStorage updates,
+ * since the native 'storage' event only fires across tabs.
+ */
+const FEATURE_FLAGS_CHANGED_EVENT = 'feature-flags-changed';
+
 export type FeatureFlagsProviderProps = {
   value?: FeatureFlagSnapshot;
   children: ReactNode;
 };
 
 export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, children }) => {
-  // value が未指定の場合は現在の環境から自動再計算（テストやE2E環境での柔軟性向上）
-  const snapshot = value ?? resolveFeatureFlags();
+  // 内部 state で管理し、localStorage 変更に reactive に反応する
+  const [flags, setFlags] = useState<FeatureFlagSnapshot>(() => value ?? resolveFeatureFlags());
+
+  // props の value が変わったら反映（テスト・E2E 環境での柔軟性維持）
+  useEffect(() => {
+    if (value) setFlags(value);
+  }, [
+    // value オブジェクト全体ではなく個別フラグで比較（不要な再レンダリング回避）
+    value?.schedules,
+    value?.complianceForm,
+    value?.schedulesWeekV2,
+    value?.icebergPdca,
+    value?.staffAttendance,
+    value?.todayOps,
+    value?.todayLiteUi,
+    value?.todayLiteNavV2,
+  ]);
+
+  // localStorage 変更を購読: 同一タブ（CustomEvent）+ 別タブ（StorageEvent）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleFlagChange = () => {
+      setFlags(resolveFeatureFlags());
+    };
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key?.startsWith('feature:')) {
+        handleFlagChange();
+      }
+    };
+
+    window.addEventListener(FEATURE_FLAGS_CHANGED_EVENT, handleFlagChange);
+    window.addEventListener('storage', handleStorageEvent);
+    return () => {
+      window.removeEventListener(FEATURE_FLAGS_CHANGED_EVENT, handleFlagChange);
+      window.removeEventListener('storage', handleStorageEvent);
+    };
+  }, []);
 
   // 各フラグの変更を個別に検出してメモ化を最適化
   const memoized = useMemo(() => {
-    currentSnapshot = snapshot;
-    return snapshot;
+    currentSnapshot = flags;
+    return flags;
   }, [
-    snapshot.schedules,
-    snapshot.complianceForm,
-    snapshot.schedulesWeekV2,
-    snapshot.icebergPdca,
-    snapshot.staffAttendance,
+    flags.schedules,
+    flags.complianceForm,
+    flags.schedulesWeekV2,
+    flags.icebergPdca,
+    flags.staffAttendance,
 
-    snapshot.todayOps,
-    snapshot.todayLiteUi,
-    snapshot.todayLiteNavV2,
+    flags.todayOps,
+    flags.todayLiteUi,
+    flags.todayLiteNavV2,
   ]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);
@@ -234,6 +278,22 @@ export const useFeatureFlags = (): FeatureFlagSnapshot => useContext(FeatureFlag
 export const useFeatureFlag = (flag: keyof FeatureFlagSnapshot): boolean => {
   const flags = useFeatureFlags();
   return flags[flag] ?? false;
+};
+
+/**
+ * localStorage にフラグを書き込み、同一タブの FeatureFlagsProvider に即時通知する。
+ * 別タブへは native StorageEvent が自動的に通知する。
+ *
+ * @param key - フラグ名（'feature:' プレフィックスなし。例: 'todayLiteNavV2'）
+ * @param flagValue - 設定する値
+ */
+export const setFeatureFlag = (key: string, flagValue: boolean): void => {
+  try {
+    window.localStorage.setItem(`feature:${key}`, flagValue ? 'true' : 'false');
+  } catch {
+    // ignore storage access errors (private mode, etc.)
+  }
+  window.dispatchEvent(new CustomEvent(FEATURE_FLAGS_CHANGED_EVENT));
 };
 
 /**
