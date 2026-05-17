@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { MemoryRouter } from 'react-router-dom';
-import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/schema';
 
 // Mock dependencies
 vi.mock('react-router-dom', async () => {
@@ -57,6 +57,11 @@ vi.mock('@/features/planning-sheet/hooks/usePlanningSheetData', () => ({
   usePlanningSheetData: () => mockUsePlanningSheetData(),
 }));
 
+const mockUseCurrentPlanningSheet = vi.fn(() => ({ currentSheet: null, allCurrentSheets: [], isLoading: false, error: null }));
+vi.mock('@/features/planning-sheet/hooks/useCurrentPlanningSheet', () => ({
+  useCurrentPlanningSheet: () => mockUseCurrentPlanningSheet(),
+}));
+
 vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
   usePlanningSheetRepositories: () => ({}),
 }));
@@ -71,6 +76,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     mockGetStoreRecords.mockReturnValue([]);
     mockGetByUser.mockReturnValue(mockProcedures);
     mockUsePlanningSheetData.mockReturnValue({ data: null, isLoading: false });
+    mockUseCurrentPlanningSheet.mockReturnValue({ currentSheet: null, allCurrentSheets: [], isLoading: false, error: null });
     mockGetRecords.mockResolvedValue([]);
   });
 
@@ -484,6 +490,33 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(screen.getByText(/支援開始日: 確認中（90日参考）/)).toBeInTheDocument();
+    });
+  });
+
+  it('Fallback lookup case: renders supportStartDate from useCurrentPlanningSheet when planningSheet is absent but currentSheet is loaded', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: null,
+      isLoading: false,
+    });
+    mockUseCurrentPlanningSheet.mockReturnValue({
+      currentSheet: { supportStartDate: '2026-05-15', appliedFrom: null } satisfies Partial<PlanningSheetListItem> as PlanningSheetListItem,
+      allCurrentSheets: [],
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/支援開始日: 2026年5月15日（90日参考・支援計画）/)).toBeInTheDocument();
     });
   });
 });
