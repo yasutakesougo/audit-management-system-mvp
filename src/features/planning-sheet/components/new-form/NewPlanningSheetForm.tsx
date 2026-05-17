@@ -52,7 +52,7 @@ import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { tokuseiToPlanningBridge } from '../../tokuseiToPlanningBridge';
+import { tokuseiToPlanningBridge, type TokuseiBridgeResult } from '../../tokuseiToPlanningBridge';
 import { buildImportPreview } from '../../buildImportPreview';
 import type { ImportPreviewResult } from '../../buildImportPreview';
 import { ImportPreviewDialog } from '../ImportPreviewDialog';
@@ -63,6 +63,7 @@ import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePoint
 import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
 import { buildIcebergImportResult, type IcebergImportResult } from '../../icebergToPlanningBridge';
 import { useImportAuditStore } from '../../stores/importAuditStore';
+import { buildTokuseiImportAuditPayload } from '../../tokuseiImportAuditBuilder';
 import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { useMonitoringAbcEvidence } from '@/features/monitoring/hooks/useMonitoringAbcEvidence';
 
@@ -112,6 +113,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [selectedTokusei, setSelectedTokusei] = React.useState<TokuseiSurveyResponse | null>(null);
   const [tokuseiImported, setTokuseiImported] = React.useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+  const [tokuseiBridgeResult, setTokuseiBridgeResult] = React.useState<TokuseiBridgeResult | null>(null);
   const [lastBridgeResult, setLastBridgeResult] = React.useState<{ formPatches: Record<string, string> } | null>(null);
   const [tokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
   const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
@@ -290,6 +292,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     // プレビュー生成
     const preview = buildImportPreview(result.formPatches, form as unknown as Record<string, unknown>);
     setImportPreview(preview);
+    setTokuseiBridgeResult(result);
     setLastBridgeResult(result);
     setImportSource('tokusei');
     setPreviewDialogOpen(true);
@@ -470,6 +473,18 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           provenance: icebergImportResult.provenance,
           summaryText: `氷山分析から取込完了: 行動${icebergImportResult.summary.behaviorCount}件, きっかけ${icebergImportResult.summary.triggerCount}件, 環境${icebergImportResult.summary.environmentFactorCount}件, 対応${icebergImportResult.summary.strategyCount}件`,
         });
+      }
+
+      // 特性アンケートからインポートした場合の監査記録
+      if (tokuseiImported && selectedTokusei && tokuseiBridgeResult) {
+        const payload = buildTokuseiImportAuditPayload({
+          planningSheetId: created.id,
+          importedBy: createdBy,
+          tokuseiResponseId: selectedTokusei.responseId,
+          bridgeResult: tokuseiBridgeResult,
+          now: new Date().toISOString()
+        });
+        saveAuditRecord(payload);
       }
 
 
