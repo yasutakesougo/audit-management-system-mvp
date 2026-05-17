@@ -296,7 +296,13 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
                     key={sheet.id}
                     hover
                     sx={{ cursor: 'pointer' }}
-                    onClick={() => handlers.onNavigateToSheet(sheet.id)}
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (target.closest('button') || target.closest('a')) {
+                        return;
+                      }
+                      handlers.onNavigateToSheet(sheet.id);
+                    }}
                   >
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">

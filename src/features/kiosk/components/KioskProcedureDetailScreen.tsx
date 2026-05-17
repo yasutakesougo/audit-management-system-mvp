@@ -38,11 +38,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   }, [deepLinkUserId, userId]);
   
   const procedure = React.useMemo(() => {
-    if (!userId || slotKey === undefined) return null;
-    const procedures = procedureRepo.getByUser(userId);
+    const queryId = user?.UserID || userId;
+    if (!queryId || slotKey === undefined) return null;
+    const procedures = procedureRepo.getByUser(queryId);
     const index = parseInt(slotKey, 10);
     return procedures[index] || null;
-  }, [userId, slotKey, procedureRepo]);
+  }, [userId, user?.UserID, slotKey, procedureRepo]);
 
   // rowNo is the canonical slot identity for kiosk procedure completion tracking.
   // Some procedure IDs can vary by source/runtime, so prefer rowNo for persistence keys.
@@ -94,7 +95,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   }, [abcSlotId, deepLinkUserId, returnRouteUserId, selectedDateIso, slotKey]);
   const { record, saveRecord, isLoading } = useExecutionRecord(
     selectedDateIso,
-    userId || '',
+    deepLinkUserId,
     scheduleItemId,
     fallbackScheduleItemIds,
   );

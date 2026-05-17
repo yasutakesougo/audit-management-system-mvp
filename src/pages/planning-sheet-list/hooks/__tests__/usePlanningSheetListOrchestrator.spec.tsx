@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { usePlanningSheetListOrchestrator } from '../usePlanningSheetListOrchestrator';
 import { MemoryRouter } from 'react-router-dom';
@@ -109,5 +109,36 @@ describe('usePlanningSheetListOrchestrator', () => {
     await waitFor(() => {
       expect(mockRepo.getById).not.toHaveBeenCalled();
     });
+  });
+
+  it('onDeleteSheet が呼び出され、確認ダイアログでキャンセルした場合は削除が行われないこと', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockSearchParams.set('userId', 'U001');
+    
+    const { result } = renderHook(() => usePlanningSheetListOrchestrator(), { wrapper });
+    
+    await act(async () => {
+      await result.current.handlers.onDeleteSheet('sp-123');
+    });
+    
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(mockRepo.deleteItem).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('onDeleteSheet が呼び出され、確認ダイアログで承認した場合は削除が行われリフレッシュされること', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockSearchParams.set('userId', 'U001');
+    mockRepo.listByUser.mockResolvedValue([]);
+    
+    const { result } = renderHook(() => usePlanningSheetListOrchestrator(), { wrapper });
+    
+    await act(async () => {
+      await result.current.handlers.onDeleteSheet('sp-123');
+    });
+    
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('この支援計画シートを削除してもよろしいですか？'));
+    expect(mockRepo.deleteItem).toHaveBeenCalledWith('sp-123');
+    confirmSpy.mockRestore();
   });
 });

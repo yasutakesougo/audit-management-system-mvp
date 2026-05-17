@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
+import { useUser } from '@/features/users/useUsers';
 import { 
   buildDailyProcedureFlowPreview, 
   type DailyProcedureFlowStep 
@@ -25,6 +26,9 @@ export function useDailyProcedureFlowPreview(
     getRecordsRef.current = getRecords;
   }, [getRecords]);
 
+  const { data: user } = useUser(userId);
+  const canonicalUserId = user?.UserID || userId;
+
   const procedureStore = useProcedureStore();
   
   const [rawRecords, setRawRecords] = useState<ExecutionRecord[]>([]);
@@ -32,7 +36,7 @@ export function useDailyProcedureFlowPreview(
   const [error, setError] = useState<Error | null>(null);
 
   const fetchDailyRecords = useCallback(async () => {
-    if (!userId || !recordDate) {
+    if (!canonicalUserId || !recordDate) {
       setRawRecords([]);
       return;
     }
@@ -40,7 +44,7 @@ export function useDailyProcedureFlowPreview(
     setIsLoading(true);
     setError(null);
     try {
-      const records = await getRecordsRef.current(recordDate, userId);
+      const records = await getRecordsRef.current(recordDate, canonicalUserId);
       setRawRecords(records);
     } catch (err) {
       console.error('[useDailyProcedureFlowPreview] Failed to fetch daily records:', err);
@@ -48,7 +52,7 @@ export function useDailyProcedureFlowPreview(
     } finally {
       setIsLoading(false);
     }
-  }, [userId, recordDate]);
+  }, [canonicalUserId, recordDate]);
 
   useEffect(() => {
     void fetchDailyRecords();
@@ -56,8 +60,8 @@ export function useDailyProcedureFlowPreview(
 
   // Load slot configuration from the store (reactive + fallback support)
   const slots = useMemo(() => {
-    return procedureStore.getByUser(userId);
-  }, [procedureStore, userId]);
+    return procedureStore.getByUser(canonicalUserId);
+  }, [procedureStore, canonicalUserId]);
 
   // Merge slots and actual execution records to build daily flow sequence
   const steps = useMemo(() => {
