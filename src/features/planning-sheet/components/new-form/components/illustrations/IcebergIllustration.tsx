@@ -25,10 +25,9 @@ export const IcebergIllustration: React.FC<IcebergIllustrationProps> = ({ surfac
       <svg
         viewBox="0 0 520 400"
         width="100%"
-        height="auto"
         role="img"
         aria-label="氷山分析の構造図"
-        style={{ display: 'block', maxWidth: '520px' }}
+        style={{ display: 'block', maxWidth: '520px', height: 'auto' }}
       >
         {/* タイトル */}
         <text x="260" y="30" textAnchor="middle" fontSize="22" fontWeight="800" fill="#0c4a6e">氷山分析</text>
