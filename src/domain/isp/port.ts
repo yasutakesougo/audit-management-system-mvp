@@ -125,6 +125,8 @@ export interface PlanningSheetRepository {
   create(input: PlanningSheetCreateInput): Promise<SupportPlanningSheet>;
   /** 支援計画シート更新 */
   update(id: string, input: PlanningSheetUpdateInput): Promise<SupportPlanningSheet>;
+  /** 支援計画シート削除 */
+  deleteItem(id: string): Promise<void>;
 }
 
 // ─────────────────────────────────────────────

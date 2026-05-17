@@ -333,12 +333,19 @@ export const PLANNING_SHEET_CANDIDATES = {
   supportPolicy: ['SupportPolicy', 'cr013_supportPolicy'],
   concreteApproaches: ['ConcreteApproaches', 'cr013_concreteApproaches'],
   versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
+  appliedFrom: ['AppliedFrom', 'cr013_appliedFrom'],
+  nextReviewAt: ['NextReviewAt', 'cr013_nextReviewAt'],
+  targetDomain: ['TargetDomain', 'Domain', 'cr013_targetDomain'],
   supportStartDate: ['SupportStartDate', 'cr013_supportStartDate'],
   monitoringCycleDays: ['MonitoringCycleDays', 'cr013_monitoringCycleDays'],
+  collectedInformation: ['CollectedInformation', 'cr013_collectedInformation'],
+  environmentalAdjustments: ['EnvironmentalAdjustments', 'cr013_environmentalAdjustments'],
+  authoredByStaffId: ['AuthoredByStaffId', 'cr013_authoredByStaffId'],
+  applicableServiceType: ['ApplicableServiceType', 'cr013_applicableServiceType'],
 } as const;
 
 export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [
-  'userCode', 'status'
+  'userCode', 'status', 'appliedFrom'
 ];
 
 // ═════════════════════════════════════════════

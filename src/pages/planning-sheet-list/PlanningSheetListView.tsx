@@ -3,6 +3,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import Alert from '@mui/material/Alert';
@@ -10,6 +11,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
+import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -348,9 +350,30 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Button size="small" variant="outlined">
-                        開く
-                      </Button>
+                      <Stack direction="row" spacing={1} justifyContent="flex-end">
+                        <Button 
+                          size="small" 
+                          variant="outlined"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlers.onNavigateToSheet(sheet.id);
+                          }}
+                        >
+                          開く
+                        </Button>
+                        <Tooltip title="このシートを削除" arrow>
+                          <IconButton 
+                            size="small" 
+                            color="error"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlers.onDeleteSheet(sheet.id);
+                            }}
+                          >
+                            <DeleteRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}

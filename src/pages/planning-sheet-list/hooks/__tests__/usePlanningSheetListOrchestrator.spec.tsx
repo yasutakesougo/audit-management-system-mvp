@@ -18,8 +18,9 @@ vi.mock('react-router-dom', async () => {
 });
 
 const mockRepo = {
-  listCurrentByUser: vi.fn(),
+  listByUser: vi.fn(),
   getById: vi.fn(),
+  deleteItem: vi.fn(),
 };
 
 vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
@@ -57,7 +58,7 @@ describe('usePlanningSheetListOrchestrator', () => {
 
   it('userId 選択時、データフェッチが成功し viewModel が構築されること', async () => {
     mockSearchParams.set('userId', 'U001');
-    mockRepo.listCurrentByUser.mockResolvedValue([{ id: 's1', isCurrent: true }]);
+    mockRepo.listByUser.mockResolvedValue([{ id: 's1', isCurrent: true }]);
     mockRepo.getById.mockResolvedValue({ id: 's1', assessment: { targetBehaviors: [] } });
     mockIcebergRepo.getLatestByUser.mockResolvedValue(null);
 
@@ -71,7 +72,7 @@ describe('usePlanningSheetListOrchestrator', () => {
 
   it('フェッチエラー時に error 状態が更新されること', async () => {
     mockSearchParams.set('userId', 'U001');
-    mockRepo.listCurrentByUser.mockRejectedValue(new Error('Fetch failed'));
+    mockRepo.listByUser.mockRejectedValue(new Error('Fetch failed'));
 
     const { result } = renderHook(() => usePlanningSheetListOrchestrator(), { wrapper });
 
@@ -84,13 +85,13 @@ describe('usePlanningSheetListOrchestrator', () => {
   it('userId 切替時に古い fetch 結果が混入しないこと', async () => {
     // 最初のユーザー
     mockSearchParams.set('userId', 'U001');
-    mockRepo.listCurrentByUser.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([{ id: 's1' }]), 50)));
+    mockRepo.listByUser.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve([{ id: 's1' }]), 50)));
     
     const { result, rerender } = renderHook(() => usePlanningSheetListOrchestrator(), { wrapper });
 
     // 完了前にユーザー切り替え
     mockSearchParams.set('userId', 'U002');
-    mockRepo.listCurrentByUser.mockResolvedValue([{ id: 's2' }]);
+    mockRepo.listByUser.mockResolvedValue([{ id: 's2' }]);
     rerender();
 
     await waitFor(() => {
@@ -101,7 +102,7 @@ describe('usePlanningSheetListOrchestrator', () => {
 
   it('current sheet がない場合、details フェッチが行われないこと', async () => {
     mockSearchParams.set('userId', 'U001');
-    mockRepo.listCurrentByUser.mockResolvedValue([{ id: 's1', isCurrent: false }]);
+    mockRepo.listByUser.mockResolvedValue([{ id: 's1', isCurrent: false }]);
     
     renderHook(() => usePlanningSheetListOrchestrator(), { wrapper });
 

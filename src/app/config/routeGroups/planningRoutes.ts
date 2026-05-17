@@ -27,4 +27,15 @@ export const PLANNING_ROUTES = {
     audience: NAV_AUDIENCE.admin as NavAudience,
     group: 'planning' as NavGroupKey,
   }),
-} as const;
+
+  PLANNING_SHEET_LIST: (_isFieldStaffShell: boolean) => ({
+    label: '支援計画シート一覧',
+    to: '/planning-sheet-list',
+    isActive: (pathname: string) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
+    icon: undefined,
+    testId: TESTIDS.nav.planningSheet,
+    audience: NAV_AUDIENCE.staff as NavAudience,
+    group: 'planning' as NavGroupKey,
+    tier: 'more' as const,
+  }),
+};
