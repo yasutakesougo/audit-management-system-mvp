@@ -16,6 +16,7 @@ import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
+import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
 import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
 
 export const KioskProcedureListScreen: React.FC = () => {
@@ -41,9 +42,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   }, [deepLinkUserId, userId]);
 
   const procedures = React.useMemo(() => {
-    if (!userId) return [];
-    return procedureRepo.getByUser(userId);
-  }, [userId, procedureRepo]);
+    const queryId = user?.UserID || userId;
+    if (!queryId) return [];
+    return procedureRepo.getByUser(queryId);
+  }, [userId, user?.UserID, procedureRepo]);
   const allPrimaryScheduleKeys = React.useMemo(() => {
     const keys = new Set<string>();
     for (const step of procedures) {
@@ -66,16 +68,36 @@ export const KioskProcedureListScreen: React.FC = () => {
     isLoading: isLoadingPlanningSheet,
   } = usePlanningSheetData(targetPlanningSheetId, planningRepo);
 
+  const queryUserId = user?.UserID || userId || null;
+  const {
+    currentSheet,
+    isLoading: isLoadingCurrentSheet,
+  } = useCurrentPlanningSheet(queryUserId, planningRepo);
+
   const resolvedStartDate = React.useMemo(() => {
+    if (planningSheet) {
+      return resolveSupportStartDateDetailed(
+        planningSheet.supportStartDate,
+        user?.ServiceStartDate,
+        planningSheet.appliedFrom
+      );
+    }
+    if (currentSheet) {
+      return resolveSupportStartDateDetailed(
+        currentSheet.supportStartDate,
+        user?.ServiceStartDate,
+        currentSheet.appliedFrom
+      );
+    }
     return resolveSupportStartDateDetailed(
-      planningSheet?.supportStartDate,
+      undefined,
       user?.ServiceStartDate,
-      planningSheet?.appliedFrom
+      undefined
     );
-  }, [planningSheet?.supportStartDate, planningSheet?.appliedFrom, user?.ServiceStartDate]);
+  }, [planningSheet, currentSheet, user?.ServiceStartDate]);
 
   const { getRecords: getStoreRecords } = useExecutionStore();
-  const storeRecords = getStoreRecords(selectedDateIso || '', userId || '');
+  const storeRecords = getStoreRecords(selectedDateIso || '', user?.UserID || userId || '');
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
@@ -98,9 +120,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   // 実施記録の取得
   useEffect(() => {
     const fetchRecords = async () => {
-      if (!userId) return;
+      const queryId = user?.UserID || userId;
+      if (!queryId) return;
       try {
-        const data = await executionRepo.getRecords(selectedDateIso, userId);
+        const data = await executionRepo.getRecords(selectedDateIso, queryId);
         setRecords(data);
       } catch (error) {
         console.error('Failed to fetch execution records:', error);
@@ -108,7 +131,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     };
     void fetchRecords();
-  }, [userId, executionRepo, selectedDateIso, location.key, location.search]);
+  }, [userId, user?.UserID, executionRepo, selectedDateIso, location.key, location.search]);
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
     if (!record) return false;
@@ -212,7 +235,7 @@ export const KioskProcedureListScreen: React.FC = () => {
                   const { date, source } = resolvedStartDate;
 
                   if (!date || source === 'none') {
-                    return targetPlanningSheetId && isLoadingPlanningSheet
+                    return (targetPlanningSheetId && isLoadingPlanningSheet) || isLoadingCurrentSheet
                       ? '支援開始日: 確認中（90日参考）'
                       : '支援開始日: 未設定（90日参考）';
                   }
