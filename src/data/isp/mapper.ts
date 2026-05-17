@@ -307,8 +307,11 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
 
 /** SP row → PlanningSheetListItem (lightweight) */
 export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): PlanningSheetListItem {
+  const rawId = (row as unknown as { id?: unknown; Id?: unknown; ID?: unknown }).id
+    ?? (row as unknown as { Id?: unknown }).Id
+    ?? (row as unknown as { ID?: unknown }).ID;
   return planningSheetListItemSchema.parse({
-    id: `sp-${row.id}`,
+    id: `sp-${String(rawId ?? '')}`,
     userId: str(row.userCode),
     ispId: row.ispId ?? '',
     title: str(row.title),
@@ -540,7 +543,8 @@ export function mapProcedureRecordUpdateInputToPayload(input: ProcedureRecordUpd
  * 数値だけの場合もサポート。
  */
 export function extractSpId(id: string): number | null {
-  const num = id.startsWith('sp-') ? Number(id.slice(3)) : Number(id);
+  const trimmed = id.trim();
+  const num = trimmed.startsWith('sp-') ? Number(trimmed.slice(3)) : Number(trimmed);
   return Number.isFinite(num) && num > 0 ? num : null;
 }
 
