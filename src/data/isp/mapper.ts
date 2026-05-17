@@ -104,6 +104,31 @@ const EMPTY_PLANNING = {
   monitoringEvidenceLinks: [],
 };
 
+/**
+ * SharePoint の DateTime (DateOnly) 戻り値 (例: "2026-05-16T15:00:00Z") を
+ * YYYY-MM-DD 形式に正規化する。
+ */
+function parseDateOnly(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+
+    // Always format in JST timezone to maintain consistent behavior across UTC CI and Local dev
+    const formatter = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(d).replace(/\//g, '-');
+  } catch {
+    return value;
+  }
+}
+
 // ═════════════════════════════════════════════
 // 第1層: ISP
 // ═════════════════════════════════════════════
@@ -120,8 +145,8 @@ export function mapIspRowToDomain(row: SpIspMasterRow): IndividualSupportPlan {
 
     userId: str(row.userCode),
     title: str(row.title),
-    planStartDate: str(row.planStartDate, '1970-01-01'),
-    planEndDate: str(row.planEndDate, '1970-01-01'),
+    planStartDate: parseDateOnly(row.planStartDate) ?? '1970-01-01',
+    planEndDate: parseDateOnly(row.planEndDate) ?? '1970-01-01',
 
     userIntent: str(row.userIntent),
     familyIntent: str(row.familyIntent),
@@ -134,11 +159,11 @@ export function mapIspRowToDomain(row: SpIspMasterRow): IndividualSupportPlan {
     supportSummary: str(row.supportSummary),
     precautions: str(row.precautions),
 
-    consentAt: row.consentAt ?? null,
-    deliveredAt: row.deliveredAt ?? null,
+    consentAt: parseDateOnly(row.consentAt),
+    deliveredAt: parseDateOnly(row.deliveredAt),
     monitoringSummary: str(row.monitoringSummary),
-    lastMonitoringAt: row.lastMonitoringAt ?? null,
-    nextReviewAt: row.nextReviewAt ?? null,
+    lastMonitoringAt: parseDateOnly(row.lastMonitoringAt),
+    nextReviewAt: parseDateOnly(row.nextReviewAt),
 
     status: row.status ?? 'assessment',
     isCurrent: row.isCurrent ?? true,
@@ -154,10 +179,10 @@ export function mapIspRowToListItem(row: SpIspMasterRow): IspListItem {
     id: `sp-${row.id}`,
     userId: str(row.userCode),
     title: str(row.title),
-    planStartDate: str(row.planStartDate, '1970-01-01'),
-    planEndDate: str(row.planEndDate, '1970-01-01'),
+    planStartDate: parseDateOnly(row.planStartDate) ?? '1970-01-01',
+    planEndDate: parseDateOnly(row.planEndDate) ?? '1970-01-01',
     status: row.status ?? 'assessment',
-    nextReviewAt: row.nextReviewAt ?? null,
+    nextReviewAt: parseDateOnly(row.nextReviewAt),
     isCurrent: row.isCurrent ?? true,
   });
 }
@@ -241,8 +266,8 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     environmentalAdjustments: str(row.environmentalAdjustments),
     concreteApproaches: str(row.concreteApproaches),
 
-    appliedFrom: row.appliedFrom ?? null,
-    nextReviewAt: row.nextReviewAt ?? null,
+    appliedFrom: parseDateOnly(row.appliedFrom),
+    nextReviewAt: parseDateOnly(row.nextReviewAt),
 
     // 制度項目
     authoredByStaffId: str(row.authoredByStaffId),
@@ -252,8 +277,8 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     applicableAddOnTypes: parseJsonArray(row.applicableAddOnTypesJson).length > 0
       ? parseJsonArray(row.applicableAddOnTypesJson) as string[]
       : ['none'],
-    deliveredToUserAt: row.deliveredToUserAt ?? null,
-    reviewedAt: row.reviewedAt ?? null,
+    deliveredToUserAt: parseDateOnly(row.deliveredToUserAt),
+    reviewedAt: parseDateOnly(row.reviewedAt),
     hasMedicalCoordination: row.hasMedicalCoordination ?? false,
     hasEducationCoordination: row.hasEducationCoordination ?? false,
     regulatoryBasisSnapshot: parseJsonObject(row.regulatoryBasisSnapshotJson, EMPTY_SNAPSHOT),
@@ -275,7 +300,7 @@ export function mapPlanningSheetRowToDomain(row: SpPlanningSheetRow): SupportPla
     // ★ 新規追加 (PR3)
     monitoringEvidenceLinks: planning.monitoringEvidenceLinks ?? [],
 
-    supportStartDate: row.supportStartDate ?? null,
+    supportStartDate: parseDateOnly(row.supportStartDate),
     monitoringCycleDays: row.monitoringCycleDays ?? 90,
   });
 }
@@ -289,7 +314,7 @@ export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): Planning
     title: str(row.title),
     targetScene: row.targetScene ?? null,
     status: row.status ?? 'draft',
-    nextReviewAt: row.nextReviewAt ?? null,
+    nextReviewAt: parseDateOnly(row.nextReviewAt),
     isCurrent: row.isCurrent ?? true,
     // 制度項目
     applicableServiceType: row.applicableServiceType ?? 'other',
@@ -297,9 +322,9 @@ export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): Planning
       ? parseJsonArray(row.applicableAddOnTypesJson) as string[]
       : ['none'],
     authoredByQualification: row.authoredByQualification ?? 'unknown',
-    reviewedAt: row.reviewedAt ?? null,
-    supportStartDate: row.supportStartDate ?? null,
-    appliedFrom: row.appliedFrom ?? null,
+    reviewedAt: parseDateOnly(row.reviewedAt),
+    supportStartDate: parseDateOnly(row.supportStartDate),
+    appliedFrom: parseDateOnly(row.appliedFrom),
   });
 }
 
@@ -438,7 +463,7 @@ export function mapProcedureRecordRowToDomain(row: SpProcedureRecordRow): Suppor
     ispId: row.ispId ?? null,
     planningSheetId: row.planningSheetId ?? '',
 
-    recordDate: str(row.recordDate, '1970-01-01'),
+    recordDate: parseDateOnly(row.recordDate) ?? '1970-01-01',
     timeSlot: str(row.timeSlot),
     activity: str(row.activity),
 
@@ -460,7 +485,7 @@ export function mapProcedureRecordRowToListItem(row: SpProcedureRecordRow): Proc
     id: `sp-${row.id}`,
     userId: str(row.userCode),
     planningSheetId: row.planningSheetId ?? '',
-    recordDate: str(row.recordDate, '1970-01-01'),
+    recordDate: parseDateOnly(row.recordDate) ?? '1970-01-01',
     timeSlot: row.timeSlot ?? null,
     activity: row.activity ?? null,
     executionStatus: row.executionStatus ?? 'planned',
