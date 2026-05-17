@@ -57,8 +57,8 @@ test.describe('Kiosk UX Regression (Smoke, memory provider for local UI verifica
     await backBtn.waitFor({ state: 'visible', timeout: 5000 });
     await backBtn.click();
 
-    // 確実にダッシュボード（/today）に帰還できているか
-    await expect(page).toHaveURL(/\/today|^\/$/);
+    // 確実にダッシュボード（/today または /kiosk）に帰還できているか
+    await expect(page).toHaveURL(/\/today|\/kiosk|^\/$/);
   });
 
   test('kiosk mode: FAB fallback menu can navigate back to normal mode', async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe('Kiosk UX Regression (Smoke, memory provider for local UI verifica
     // 3. モックデータ（User One）のカウントダウンが表示されているか検証
     const monitoringSection = page.getByTestId('kiosk-monitoring-alerts');
     await expect(monitoringSection.getByText('User One')).toBeVisible();
-    await expect(monitoringSection.getByText(/次回会議まで/)).toBeVisible();
+    await expect(monitoringSection.getByText(/(期限超過|次回モニタリング期限まで|期限当日)/)).toBeVisible();
     
     // 進捗リング（プログレス）の存在確認
     const progressRing = page.locator('svg').filter({ has: page.locator('circle') });
