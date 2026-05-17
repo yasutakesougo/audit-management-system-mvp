@@ -1,0 +1,70 @@
+import { ListKeys } from '@/sharepoint/fields';
+import { envOr, fromConfig } from '../spListRegistry.shared';
+import type { SpListEntry } from '../spListRegistry.shared';
+
+export const scheduleListEntries: readonly SpListEntry[] = [
+// ── 4. スケジュール系 ──────────────────────────────────
+  {
+    key: 'schedule_events',
+    displayName: 'スケジュール',
+    resolve: () => envOr('VITE_SP_LIST_SCHEDULES', fromConfig(ListKeys.Schedules)),
+    operations: ['R', 'W', 'D'],
+    category: 'schedule',
+    essentialFields: ['Title', 'EventDate', 'EndDate'],
+    provisioningFields: [
+      { internalName: 'EventDate', type: 'DateTime', displayName: 'Start Time', required: true, dateTimeFormat: 'DateTime' },
+      { internalName: 'EndDate', type: 'DateTime', displayName: 'End Time', required: true, dateTimeFormat: 'DateTime' },
+      { internalName: 'Status', type: 'Choice', displayName: 'Status', choices: ['Planned', 'Postponed', 'Cancelled'], candidates: ['Status', 'cr014_status'] },
+      { internalName: 'ServiceType', type: 'Text', displayName: 'Service Type', candidates: ['ServiceType', 'Category', 'cr014_serviceType'] },
+      { internalName: 'TargetUserId', type: 'Text', displayName: 'User ID', candidates: ['TargetUserId', 'TargetUser', 'UserCode', 'cr013_usercode', 'cr013_personId', 'cr014_personId', 'UserId', 'UserID'] },
+      { internalName: 'cr014_personId', type: 'Text', displayName: 'Person ID (Legacy)', governance: 'allow', isSilent: true, candidates: ['cr014_personId'] },
+      { internalName: 'AssignedStaffId', type: 'Text', displayName: 'Staff ID' },
+      { internalName: 'UserName', type: 'Text', displayName: 'User Name', isSilent: true, candidates: ['cr014_personName', 'UserName', 'PersonName'] },
+      { internalName: 'RowKey', type: 'Text', displayName: 'Row Key', candidates: ['RowKey', 'cr014_rowKey'] },
+      { internalName: 'DayKey', type: 'Text', displayName: 'Day Key', isSilent: true, candidates: ['DayKey', 'cr014_dayKey'] },
+      { internalName: 'MonthKey', type: 'Text', displayName: 'Month Key', isSilent: true, candidates: ['MonthKey', 'cr014_monthKey'] },
+      { internalName: 'FiscalYear', type: 'Text', displayName: 'Fiscal Year', isSilent: true, candidates: ['FiscalYear', 'cr014_fiscalYear'] },
+      { internalName: 'LocationName', type: 'Text', displayName: 'Location Name', isSilent: true, candidates: ['LocationName', 'Location', 'cr014_locationName'] },
+      { internalName: 'Note', type: 'Note', displayName: 'Note', candidates: ['Note', 'Notes', 'cr014_note'] },
+      { internalName: 'OrgAudience', type: 'Text', displayName: 'Org Audience', isSilent: true, candidates: ['OrgAudience', 'cr014_orgAudience'] },
+      { internalName: 'CreatedAt', type: 'DateTime', displayName: 'Created At (Legacy)', governance: 'allow', isSilent: true, candidates: ['CreatedAt', 'Created'] },
+      { internalName: 'UpdatedAt', type: 'DateTime', displayName: 'Updated At (Legacy)', governance: 'allow', isSilent: true, candidates: ['UpdatedAt', 'Modified'] },
+      { internalName: 'Visibility', type: 'Choice', displayName: 'Visibility', choices: ['org', 'team', 'private'] },
+      { internalName: 'Category', type: 'Choice', displayName: 'Category (Legacy)', governance: 'allow', isSilent: true, candidates: ['Category', 'cr014_category', 'PersonType', 'cr014_personType'] },
+      { internalName: 'cr014_personType', type: 'Text', displayName: 'Person Type (Legacy)', governance: 'allow', isSilent: true, candidates: ['cr014_personType'] },
+    ],
+    lifecycle: 'required',
+  },
+  {
+    key: 'support_procedure_results',
+    displayName: '支援手順結果 (ISP)',
+    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RESULTS', fromConfig(ListKeys.SupportProcedure_Results)),
+    operations: ['R', 'W'],
+    category: 'schedule',
+    lifecycle: 'optional',
+    essentialFields: ['ParentScheduleId', 'ResultDate'],
+    provisioningFields: [
+      { internalName: 'ParentScheduleId', type: 'Number', displayName: 'Parent Schedule ID', required: true, indexed: true, candidates: ['ParentScheduleId', 'Parent_x0020_Schedule_x0020_ID'] },
+      { internalName: 'ResultDate', type: 'DateTime', displayName: 'Result Date', required: true, dateTimeFormat: 'DateOnly', candidates: ['ResultDate', 'Result_x0020_Date'] },
+      { internalName: 'ResultStatus', type: 'Text', displayName: 'Result Status', isSilent: true, candidates: ['ResultStatus', 'Result_x0020_Status'] },
+      { internalName: 'ResultNote', type: 'Note', displayName: 'Result Note', richText: false, isSilent: true, candidates: ['ResultNote', 'Result_x0020_Note'] },
+      { internalName: 'StaffCode', type: 'Text', displayName: 'Staff Code', isSilent: true, candidates: ['StaffCode', 'Staff_x0020_Code'] },
+    ],
+  },
+  {
+    key: 'approval_logs',
+    displayName: '承認ログ',
+    resolve: () => envOr('VITE_SP_LIST_APPROVAL_LOGS', fromConfig(ListKeys.Approval_Logs)),
+    operations: ['R', 'W'],
+    category: 'schedule',
+    lifecycle: 'optional',
+    essentialFields: ['ParentScheduleId', 'ApprovedBy', 'ApprovedAt', 'ApprovalAction'],
+    provisioningFields: [
+      { internalName: 'ParentScheduleId', type: 'Number', displayName: 'Parent Schedule ID', required: true, indexed: true, candidates: ['ParentScheduleId', 'Parent_x0020_Schedule_x0020_ID'] },
+      { internalName: 'ApprovedBy', type: 'Text', displayName: 'Approved By', required: true, candidates: ['ApprovedBy', 'Approved_x0020_By'] },
+      { internalName: 'ApprovedAt', type: 'DateTime', displayName: 'Approved At', required: true, dateTimeFormat: 'DateTime', indexed: true, candidates: ['ApprovedAt', 'Approved_x0020_At'] },
+      { internalName: 'ApprovalNote', type: 'Note', displayName: 'Approval Note', richText: false, candidates: ['ApprovalNote', 'Approval_x0020_Note'] },
+      { internalName: 'ApprovalAction', type: 'Text', displayName: 'Approval Action', required: true, candidates: ['ApprovalAction', 'Approval_x0020_Action'] },
+    ],
+  },
+];
