@@ -89,13 +89,16 @@ export function recordPlanningNavTelemetry(event: PlanningNavTelemetryEvent): vo
     return;
   }
 
-  const payload = {
+  const payloadBase = {
     ...event,
     event: event.eventName,
     type: 'planning_nav_telemetry' as const,
     ts: serverTimestamp(),
     clientTs: new Date().toISOString(),
   };
+  const payload = Object.fromEntries(
+    Object.entries(payloadBase).filter(([, value]) => value !== undefined),
+  );
 
   try {
     addDoc(collection(getDb(), 'telemetry'), payload).catch((err) => {
@@ -165,4 +168,3 @@ export function maybeRecordPlanningNavRetention(
     retentionWindowDays,
   });
 }
-
