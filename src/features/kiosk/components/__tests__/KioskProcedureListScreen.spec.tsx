@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { MemoryRouter } from 'react-router-dom';
-import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/schema';
 
 // Mock dependencies
 vi.mock('react-router-dom', async () => {
@@ -503,7 +503,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       isLoading: false,
     });
     mockUseCurrentPlanningSheet.mockReturnValue({
-      currentSheet: { supportStartDate: '2026-05-15', appliedFrom: null } as any,
+      currentSheet: { supportStartDate: '2026-05-15', appliedFrom: null } satisfies Partial<PlanningSheetListItem> as PlanningSheetListItem,
       allCurrentSheets: [],
       isLoading: false,
       error: null,
