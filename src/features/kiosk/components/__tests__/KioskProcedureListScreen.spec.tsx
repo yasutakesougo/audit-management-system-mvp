@@ -6,12 +6,13 @@ import { MemoryRouter } from 'react-router-dom';
 import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/schema';
 
 // Mock dependencies
+let mockRouteUserId = 'U001';
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => vi.fn(),
-    useParams: () => ({ userId: 'U001' }),
+    useParams: () => ({ userId: mockRouteUserId }),
   };
 });
 
@@ -28,7 +29,7 @@ const mockProcedures = [
 const mockGetByUser = vi.fn(() => mockProcedures);
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
   useProcedureData: () => ({
-    getByUser: () => mockGetByUser()
+    getByUser: (...args: unknown[]) => mockGetByUser(...args)
   }),
 }));
 
@@ -71,6 +72,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
+    mockRouteUserId = 'U001';
     mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
@@ -540,6 +542,25 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       const cta = screen.getByTestId('kiosk-support-start-setup-cta');
       expect(cta).toBeInTheDocument();
       expect(cta).toHaveAttribute('href', '/support-planning-sheet/new?userId=U001');
+    });
+  });
+
+  it('prefers query userId over route userId when loading user-scoped data', async () => {
+    mockRouteUserId = '6';
+    mockUseUser.mockReturnValue({
+      data: { FullName: '石渡 亮', UserID: 'I005', ServiceStartDate: undefined },
+      status: 'success',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/6/procedures?wizard=plan&user=I005&userId=I005']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetByUser).toHaveBeenCalledWith('I005');
+      expect(mockGetStoreRecords).toHaveBeenCalledWith(expect.any(String), 'I005');
     });
   });
 
