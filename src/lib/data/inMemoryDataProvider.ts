@@ -21,19 +21,65 @@ export class InMemoryDataProvider implements IDataProvider {
       { Id: 2, StaffID: 'STF002', FullName: 'Staff Two', Role: 'admin', IsActive: true },
     ]);
     this.storage.set('Users_Master', [
-      { 
-        Id: 1, 
-        UserID: 'USR001', 
-        FullName: 'User One', 
-        Status: 'active', 
-        IsActive: true, 
-        RecipientCertNumber: '1234567890',
-        LastAssessmentDate: '2026-02-15' // 約3ヶ月前
+      {
+        Id: 1,
+        UserID: 'U-001',
+        FullName: '桂川 進太朗',
+        Furigana: 'かつらがわ しんたろう',
+        ServiceStartDate: '2034-04-01',
+        ContractDate: '2034-03-15',
+        IsActive: true,
+        IsHighIntensitySupportTarget: true,
+        IsSupportProcedureTarget: true,
+        ServiceEndDate: null,
+        AttendanceDays: ['月', '火', '水', '木', '金'],
+        LastAssessmentDate: '2026-01-15',
+      },
+      {
+        Id: 2,
+        UserID: 'U-005',
+        FullName: '田中 太郎',
+        Furigana: 'たなか たろう',
+        ServiceStartDate: '2034-06-01',
+        ContractDate: '2034-05-20',
+        IsActive: true,
+        IsHighIntensitySupportTarget: true,
+        IsSupportProcedureTarget: false,
+        ServiceEndDate: null,
+        AttendanceDays: ['月', '水', '金'],
+        LastAssessmentDate: '2026-02-10',
+      },
+      {
+        Id: 3,
+        UserID: 'U-012',
+        FullName: '塩田 裕貴',
+        Furigana: 'しおだ ひろき',
+        ServiceStartDate: '2034-08-01',
+        ContractDate: '2034-07-15',
+        IsActive: true,
+        IsHighIntensitySupportTarget: true,
+        IsSupportProcedureTarget: true,
+        ServiceEndDate: null,
+        AttendanceDays: ['火', '木', '金'],
+        LastAssessmentDate: '2025-12-20',
+      },
+      {
+        Id: 4,
+        UserID: 'I005',
+        FullName: '石渡 由喜子',
+        Furigana: 'いしわた ゆきこ',
+        ServiceStartDate: '2034-04-15',
+        ContractDate: '2034-03-30',
+        IsActive: true,
+        IsHighIntensitySupportTarget: true,
+        IsSupportProcedureTarget: true,
+        ServiceEndDate: null,
+        AttendanceDays: ['月', '水', '金'],
       },
     ]);
     // 支援手順の実施状況
     this.storage.set('SupportRecord_Daily', [
-      { Id: 1, UserID: 'USR001', SupportProcedureExecution_Target: '{}', RecordDate: new Date().toISOString().split('T')[0] }
+      { Id: 1, UserID: 'U-001', SupportProcedureExecution_Target: '{}', RecordDate: new Date().toISOString().split('T')[0] }
     ]);
     // スケジュール解決用のダミー (resolveFields が失敗しないため)
     this.storage.set('Schedules', [

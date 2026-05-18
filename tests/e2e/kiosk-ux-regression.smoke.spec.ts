@@ -108,18 +108,20 @@ test.describe('Kiosk UX Regression (Smoke, memory provider for local UI verifica
   });
 
   test('kiosk mode: display monitoring countdown for impending deadlines', async ({ page }) => {
+    // Freeze time to make countdown deterministic relative to "2026-01-15" last assessment date
+    await page.clock.install({ time: new Date('2026-04-01T00:00:00Z') });
     // 1. KioskモードをURLパラメータで強制し、メモリプロバイダーを使用
     await page.goto('/today?kiosk=1&provider=memory');
     await page.waitForLoadState('networkidle');
 
     // 2. モニタリングアラートセクションが表示されているか検証
-    const monitoringHeader = page.getByText('モニタリング期限', { exact: false });
+    const monitoringHeader = page.getByText('📅 モニタリング期限');
     await expect(monitoringHeader).toBeVisible();
 
-    // 3. モックデータ（User One）のカウントダウンが表示されているか検証
+    // 3. モックデータ（桂川 進太朗）のカウントダウンが表示されているか検証
     const monitoringSection = page.getByTestId('kiosk-monitoring-alerts');
-    await expect(monitoringSection.getByText('User One')).toBeVisible();
-    await expect(monitoringSection.getByText(/(期限超過|次回モニタリング期限まで|期限当日)/)).toBeVisible();
+    await expect(monitoringSection.getByText('桂川 進太朗')).toBeVisible();
+    await expect(monitoringSection).toContainText(/(期限超過|次回モニタリング期限まで|期限当日)/);
     
     // 進捗リング（プログレス）の存在確認
     const progressRing = page.locator('svg').filter({ has: page.locator('circle') });
