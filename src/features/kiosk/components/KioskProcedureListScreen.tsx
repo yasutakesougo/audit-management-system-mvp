@@ -144,6 +144,8 @@ export const KioskProcedureListScreen: React.FC = () => {
   const showSetupCta = !!queryUserId
     && (supportStartDateLabel.includes('未設定（90日参考）') || supportStartDateLabel.includes('不正な日付（90日参考）'));
   const showProvisionalReviewCta = resolvedStartDate.source === 'fallback' && !!currentPlanningSheetId;
+  const currentPlanningSheetStatus = planningSheet?.status ?? currentSheet?.status;
+  const showDraftStatusReviewCta = currentPlanningSheetStatus === 'draft' && !!currentPlanningSheetId;
 
   const { getRecords: getStoreRecords } = useExecutionStore();
   const storeRecords = getStoreRecords(selectedDateIso || '', user?.UserID || userId || '');
@@ -304,7 +306,24 @@ export const KioskProcedureListScreen: React.FC = () => {
                   元シートを確認
                 </Button>
               )}
+              {showDraftStatusReviewCta && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  component={RouterLink}
+                  to={`/support-planning-sheet/${encodeURIComponent(currentPlanningSheetId)}`}
+                  data-testid="kiosk-planning-draft-review-cta"
+                >
+                  支援計画シートを確認
+                </Button>
+              )}
             </Box>
+            {showDraftStatusReviewCta && (
+              <Typography variant="caption" color="warning.main">
+                この支援計画シートは下書きです。正式運用は支援計画シート画面で開始してください。
+              </Typography>
+            )}
           </Box>
         </Box>
 

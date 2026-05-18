@@ -352,6 +352,12 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     return null;
   };
 
+  const showDraftPlanningSheetGuide = Boolean(
+    initialParams.planningSheetId
+      && sheetData
+      && sheetData.status === 'draft',
+  );
+
   return (
     <FullScreenDailyDialogPage
       title="支援手順の実施（行動観察）"
@@ -428,6 +434,24 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                 </Step>
               ))}
             </Stepper>
+          </Box>
+        )}
+        {showDraftPlanningSheetGuide && (
+          <Box sx={{ px: 2, pt: 1 }}>
+            <Alert
+              severity="warning"
+              action={(
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => navigate(`/support-planning-sheet/${initialParams.planningSheetId}`)}
+                >
+                  支援計画シートを確認して運用開始する
+                </Button>
+              )}
+            >
+              この支援計画シートはまだ下書きです。日々の記録は可能ですが、正式運用を開始するには支援計画シート画面で「運用開始」を実行してください。
+            </Alert>
           </Box>
         )}
 

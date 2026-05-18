@@ -548,6 +548,52 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('shows planning draft review CTA when planning sheet status is draft', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { id: 'sp-123', status: 'draft', supportStartDate: '2026-05-01' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const cta = screen.getByTestId('kiosk-planning-draft-review-cta');
+      expect(cta).toBeInTheDocument();
+      expect(cta).toHaveAttribute('href', '/support-planning-sheet/sp-123');
+      expect(screen.getByText(/この支援計画シートは下書きです/)).toBeInTheDocument();
+    });
+  });
+
+  it('does not show planning draft review CTA when planning sheet status is active', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { id: 'sp-123', status: 'active', supportStartDate: '2026-05-01' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kiosk-planning-draft-review-cta')).toBeNull();
+      expect(screen.queryByText(/この支援計画シートは下書きです/)).toBeNull();
+    });
+  });
+
   it('prefers query userId over route userId when loading user-scoped data', async () => {
     mockRouteUserId = '6';
     mockUseUser.mockReturnValue({
