@@ -77,6 +77,38 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-18 — kiosk / ISP / E2E Hardening Verification 🏁
+
+**ワークフロー**: `/scan` → `/test` → 環境確認
+**対象**: 支援開始日フォールバック、UI/Telemetry警告解消、ISP ID正規化、Kiosk E2Eシードデータ整備
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `#1942` Kiosk 支援開始日の `useCurrentPlanningSheet` によるフォールバック解決 |
+| ✅ 採用 | `#1942` `deepLinkUserId` を一貫して用いるIDの正規化により、記録済み不整合バグを解消 |
+| ✅ 採用 | `#1943` Firestore 送信前の `undefined` フィルタリングによるテレメトリ警告の完全クリーンアップ |
+| ✅ 採用 | `#1943` `IcebergIllustration` の `height="auto"` を `style={{ height: 'auto' }}` に移管しSVG属性警告を解消 |
+| ✅ 採用 | `#1944` `row.id` / `Id` / `ID` のフォールバックチェーンとトリミングによるIDパースの頑健化 |
+| ✅ 採用 | `#1945` インメモリプロバイダーへのリアルなシードデータ整備と `page.clock.install` による決定論的E2Eテスト |
+
+**成果**:
+- Git 同期：コミット `6424050f` (origin/main) への完全アライメント
+- ユニットテスト (`mapper.spec.ts` 他 33件) / Playwright E2E (`kiosk-ux-regression.smoke.spec.ts` 4件) → **ALL PASS** 🟢
+- ブラウザ実機検証にて「📅 モニタリング期限」の描画および開始日フォールバックが正常に動作することを確認
+
+**効果測定**:
+- コンソール警告検出数: Before=複数件 (Firestore undefined / SVG invalid attribute) → After=**0件** 🟢
+- テスト実行時のタイミング起因による Flakiness: Before=動的な現在時刻差分により不安定化リスク → After=**時間凍結により極めて強固で決定論的にパス** 🟢
+
+**学び**:
+- **E2Eテストでの時間凍結の強力さ**: モニタリング期限などの経過日数カウントダウンは日付が動的に変わるためテストが壊れやすい。`page.clock.install` を E2E でしっかりと噛ませることで、再現性を完璧に維持できる。
+- **SharePoint ID 揺れの許容**: SharePoint上のプロパティ名は大文字小文字が物理環境によってブレる（`id`, `Id`, `ID`）ため、Candidates フォールバックをモデルマッパーに設けておくアプローチはシステムを壊さない安全弁として極めて有効。
+- **14日警告と実機での超過表示のズレの整理**: PR #1945 の想定設計上の「次回モニタリング期限まで 14日」と、モック環境での判定式による「期限超過 33日」のズレについて、算出スロットや基準日の違いを把握し、レポート上で正しく説明責任（Accountability）を果たすことが重要である。
+
+**所要時間**: 約 20min
+
+#foundation #kiosk #compliance #e2e #stabilization #skill-matrix-20260518
+
 ### 2026-04-21 — Auth Readiness Contract / Types Stabilization Green Recovery 🏁
 
 **内容**: 認証準備状態（Auth Readiness）を前提とした契約の安定化を進め、認証モック・プロバイダー・ドメインテストフィクスチャに起因していた型不整合を解消。
