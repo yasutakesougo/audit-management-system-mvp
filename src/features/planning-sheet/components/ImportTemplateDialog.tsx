@@ -14,9 +14,12 @@ import {
 import { hasUserProcedureMaster } from '@/features/planning-sheet/constants/userProcedureDetails';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -38,6 +41,43 @@ import Tab from '@mui/material/Tab';
 import Tooltip from '@mui/material/Tooltip';
 import Papa from 'papaparse';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
+
+const AGENT_PROMPT_TEMPLATE = `支援手順追加ガイドに従って、〇〇さんの USER_PROCEDURE_DETAILS / USER_PROCEDURE_SHEET_NOTES を追加してください。
+
+前提:
+- 公式ガイド: docs/guides/support-procedure-addition-guide.md
+- 1利用者 = 1PR
+- 原紙文言は要約しない
+- セル内改行は \\n で保持する
+- 本人の動きと支援者の動きを混ぜない
+- 一日全体の注意事項を row データに混ぜない
+- dailyProcedureMapper.ts などの L2→L3 変換ロジック本体は原則変更しない
+
+作業手順:
+1. 対象者のExcel原紙を確認する
+2. 本番UserID・fixture userId・DEMO IDを確認する
+3. 17行の「本人の動き」「支援者の動き」を抽出する
+4. 下部欄「一日を通して気を付ける事」「その他」を抽出する
+5. src/features/planning-sheet/constants/userProcedureDetails.ts の USER_PROCEDURE_DETAILS に17行を追加する
+6. USER_PROCEDURE_SHEET_NOTES に下部欄を追加する
+7. isUserMatch / 個別ID判定に必要な alias を追加する
+8. src/features/planning-sheet/logic/__tests__/dailyProcedureMapper.spec.ts に代表行・下部欄・ID解決テストを追加する
+9. 以下を実行して検証する
+   - npx vitest run src/features/planning-sheet/logic/__tests__/dailyProcedureMapper.spec.ts
+   - npx vitest run src/features/planning-sheet
+   - npm run typecheck
+10. データ追加だけの小PRを作成する
+
+PR本文には以下を必ず記載してください:
+- データソース
+- 対象者ID / ID alias
+- 追加した17行手順の概要
+- 下部欄メモの有無
+- 検証コマンドと結果`;
 
 // ─────────────────────────────────────────────
 // Props
@@ -72,6 +112,21 @@ export const ImportTemplateDialog: React.FC<Props> = ({
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
+
+  // 🤖 エージェントプロンプトコピーステート
+  const [showPromptPreview, setShowPromptPreview] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const handleCopyPrompt = useCallback(() => {
+    navigator.clipboard.writeText(AGENT_PROMPT_TEMPLATE)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000); // 3秒後に「コピー完了」を戻す
+      })
+      .catch((err) => {
+        console.error('Failed to copy prompt template:', err);
+      });
+  }, []);
 
   // ── 1. 静的マスタ手順のロード ──
   const masterSteps = useMemo(() => {
@@ -221,8 +276,52 @@ export const ImportTemplateDialog: React.FC<Props> = ({
             <Typography variant="body2" color="text.primary" component="div">
               • <b>恒久的な標準手順の登録（管理者向け）:</b><br />
               Excel原紙からの恒久マスタへの追加は「原紙 ➔ 定数追加 ➔ テスト ➔ PRマージ」のPR連携ワークフローで行います。
+              <Box sx={{ mt: 1, pl: 1.5, borderLeft: '2px solid', borderColor: 'info.light' }}>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                  初めて作業する場合は、以下のプロンプトをコピーして開発エージェントに渡してください。
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="info"
+                    onClick={handleCopyPrompt}
+                    startIcon={copied ? <CheckCircleOutlineIcon /> : <ContentCopyIcon />}
+                    sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.75rem', py: 0.25 }}
+                  >
+                    {copied ? 'プロンプトをコピーしました！' : '🤖 エージェント指示プロンプトをコピー'}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="text"
+                    color="info"
+                    onClick={() => setShowPromptPreview(!showPromptPreview)}
+                    sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.25 }}
+                  >
+                    {showPromptPreview ? 'プレビューを非表示' : 'プロンプトを表示'}
+                  </Button>
+                </Stack>
+                
+                <Collapse in={showPromptPreview} sx={{ mt: 1 }}>
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 1.5,
+                      bgcolor: 'background.paper',
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                      fontSize: '0.75rem',
+                      fontFamily: 'monospace',
+                      whiteSpace: 'pre-wrap',
+                      color: 'text.secondary',
+                    }}
+                  >
+                    {AGENT_PROMPT_TEMPLATE}
+                  </Paper>
+                </Collapse>
+              </Box>
             </Typography>
-            <Typography variant="body2" color="text.primary" component="div" sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.primary" component="div" sx={{ mt: 1.5 }}>
               • <b>画面上のCSV取り込み・適用（一時検証）:</b><br />
               編集中の支援計画シートへ一時的に手順を差し込んで確認するための機能（一時検証・下書き用）です。
             </Typography>
