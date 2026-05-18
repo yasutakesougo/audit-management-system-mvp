@@ -57,6 +57,18 @@ export const EditableOverviewSection: React.FC<Props> = ({ values, setFieldValue
       />
     </Stack>
 
+    <TextField
+      label="支援開始日（モニタリング起点）"
+      type="date"
+      value={values.supportStartDate ?? ''}
+      onChange={(e) => setFieldValue('supportStartDate', e.target.value || undefined)}
+      error={!!errors.supportStartDate}
+      helperText={errors.supportStartDate ?? '90日モニタリング周期と運用開始判定の起点日です。'}
+      fullWidth
+      size="small"
+      InputLabelProps={{ shrink: true }}
+    />
+
     <Divider />
 
     <Box>
