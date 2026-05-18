@@ -189,7 +189,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     return !Number.isNaN(date.getTime());
   };
 
-  const activationDisabledReason = React.useMemo(() => {
+  const activationDisabledReason = (() => {
     if (sheet.status !== 'draft') return null;
     if (!sheet.supportStartDate) return '支援開始日（モニタリング起点）を設定してください。';
     if (!isValidDate(sheet.supportStartDate)) return '支援開始日の形式が不正です。';
@@ -199,7 +199,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
       return '支援設計（手順または支援方針）を入力してください。';
     }
     return null;
-  }, [sheet]);
+  })();
 
   const handleActivateOperationStart = async () => {
     if (sheet.status !== 'draft') return;
