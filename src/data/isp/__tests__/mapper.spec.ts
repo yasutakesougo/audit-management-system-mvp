@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapPlanningSheetRowToDomain } from '../mapper';
+import { mapPlanningSheetRowToDomain, mapPlanningSheetRowToListItem, extractSpId } from '../mapper';
 import type { SpPlanningSheetRow } from '@/lib/sp/types';
 
 describe('isp mapper parseDateOnly', () => {
@@ -35,3 +35,29 @@ describe('isp mapper parseDateOnly', () => {
     expect(domain3.appliedFrom).toBeNull();
   });
 });
+
+describe('isp mapper ID normalization', () => {
+  it('mapPlanningSheetRowToListItem handles id, Id, ID keys correctly', () => {
+    const baseRow: Partial<SpPlanningSheetRow> = {
+      title: 'Test',
+      userCode: 'U-001',
+      ispId: 'isp-123',
+    };
+
+    const rowId = { ...baseRow, id: 101 } as unknown as SpPlanningSheetRow;
+    const rowIdUpper = { ...baseRow, Id: 102 } as unknown as SpPlanningSheetRow;
+    const rowIdAllCaps = { ...baseRow, ID: 103 } as unknown as SpPlanningSheetRow;
+
+    expect(mapPlanningSheetRowToListItem(rowId).id).toBe('sp-101');
+    expect(mapPlanningSheetRowToListItem(rowIdUpper).id).toBe('sp-102');
+    expect(mapPlanningSheetRowToListItem(rowIdAllCaps).id).toBe('sp-103');
+  });
+
+  it('extractSpId correctly trims and parses various formats', () => {
+    expect(extractSpId(' sp-123 ')).toBe(123);
+    expect(extractSpId('sp-456')).toBe(456);
+    expect(extractSpId(' 789 ')).toBe(789);
+    expect(extractSpId('invalid')).toBeNull();
+  });
+});
+
