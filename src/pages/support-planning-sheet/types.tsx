@@ -173,6 +173,8 @@ export interface SupportPlanningSheetActionHandlers {
   onCloseReflectPreview: () => void;
   /** 反映を実行する（UI上でのマージ） */
   onConfirmReflect: () => void;
+  /** 画面データを再取得する */
+  onRefresh: () => void;
 }
 
 export interface SupportPlanningSheetViewProps {

@@ -11,7 +11,6 @@ import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaC
 import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
 import { toLocalDateISO } from '@/utils/getNow';
 import {
-  activatePlanningSheetVersionInRepository,
   createPlanningSheetRevision,
   getCurrentOrLatestPlanningSheet,
   listPlanningSheetSeries,
@@ -221,17 +220,14 @@ export function useIndividualSupportOrchestrator(): {
           },
         );
 
-        const series = await activatePlanningSheetVersionInRepository(
+        const series = await listPlanningSheetSeries(
           planningSheetRepository,
-          draft.id,
-          {
-            activatedBy: operatorId,
-            appliedFrom: toLocalDateISO(),
-          },
+          draft.userId,
+          draft.ispId,
         );
 
         const latest =
-          series.find((sheet) => sheet.id === draft.id) ??
+          series.find((sheet) => sheet.isCurrent && sheet.status === 'active') ??
           series[0] ??
           draft;
 
@@ -239,6 +235,7 @@ export function useIndividualSupportOrchestrator(): {
         uiActions.setActiveSPSHistory(
           buildShadowSpsHistory(series, latest.id, selectedUser.Id),
         );
+        uiActions.showSnackbar('改訂ドラフトを保存しました。運用開始は支援計画シート画面（L2）で実行してください。', 'success');
         return true;
       } catch (error) {
         console.error('[useIndividualSupportOrchestrator] revise failed', error);
