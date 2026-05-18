@@ -50,10 +50,19 @@ jobs:
 
       - run: npm ci
 
-      - name: Preflight (typecheck, lint, unit)
+      - name: Test IDs guard
+        run: npm run guard:testids --silent
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit required suite
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-        run: npm run preflight
+        run: npm run test:ci:required
 
   schedule-unit:
     name: Schedule unit (TZ matrix)
