@@ -319,7 +319,10 @@ export function useSupportPlanningSheetOrchestrator(): {
         message: '氷山分析の結果を反映しました。保存ボタンを押すまで確定されません。',
         severity: 'info'
       });
-    }
+    },
+    onRefresh: () => {
+      void refetch();
+    },
   };
 
   return { viewModel, handlers };

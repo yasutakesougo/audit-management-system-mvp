@@ -127,7 +127,7 @@ export const MonitoringRevisionDialog: React.FC<MonitoringRevisionDialogProps> =
           {/* 改訂フォーム */}
           {success ? (
             <Alert severity="success" variant="filled">
-              ✅ {currentSPS.version} → 新バージョンへの改訂が完了しました。次回見直し期限は 90 日後にリセットされました。
+              ✅ 改訂ドラフトを保存しました。運用開始は支援計画シート画面（L2）で実行してください。
             </Alert>
           ) : (
             <>

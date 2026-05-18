@@ -18,6 +18,7 @@ import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import LoopRoundedIcon from '@mui/icons-material/LoopRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
 
@@ -47,6 +48,9 @@ interface SheetHeaderProps {
   onSave: () => void;
   onImportAssessment: () => void;
   onImportMonitoring: () => void;
+  onActivateOperationStart?: () => void;
+  activateOperationDisabledReason?: string | null;
+  isActivatingOperationStart?: boolean;
   /** 支援手順の実施ボタンのクリック（IBD対象者のみ表示） */
   onNavigateToExecution?: () => void;
   /** 見直し・PDCAボタンのクリック（IBD対象者のみ表示） */
@@ -72,6 +76,9 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
   onSave,
   onImportAssessment,
   onImportMonitoring,
+  onActivateOperationStart,
+  activateOperationDisabledReason,
+  isActivatingOperationStart = false,
   onNavigateToExecution,
   onNavigateToPdca,
 }) => (
@@ -176,18 +183,38 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
               </Button>
             </>
           ) : (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<EditRoundedIcon />}
-              onClick={onEdit}
-              {...tid(TESTIDS['planning-sheet-btn-edit'])}
-            >
-              編集
-            </Button>
+            <>
+              {sheet.status === 'draft' && onActivateOperationStart && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="success"
+                  startIcon={isActivatingOperationStart ? <CircularProgress size={16} /> : <RocketLaunchRoundedIcon />}
+                  onClick={onActivateOperationStart}
+                  disabled={Boolean(activateOperationDisabledReason) || isActivatingOperationStart}
+                >
+                  {isActivatingOperationStart ? '運用開始中…' : 'この支援計画シートを運用開始する'}
+                </Button>
+              )}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<EditRoundedIcon />}
+                onClick={onEdit}
+                {...tid(TESTIDS['planning-sheet-btn-edit'])}
+              >
+                編集
+              </Button>
+            </>
           )}
         </Stack>
       </Stack>
+
+      {sheet.status === 'draft' && activateOperationDisabledReason && (
+        <Typography variant="caption" color="warning.main">
+          運用開始できません: {activateOperationDisabledReason}
+        </Typography>
+      )}
 
       <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
         <DescriptionRoundedIcon color="primary" />

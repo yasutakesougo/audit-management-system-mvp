@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import { useIspRepository } from '@/features/planning-sheet/hooks/useIspRepository';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanPatchRepository } from '@/features/planning-sheet/hooks/usePlanPatchRepository';
+import { activatePlanningSheetVersionInRepository } from '@/features/planning-sheet/domain/planningSheetVersionWorkflow';
 import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPlanningSheetForm';
 import { TESTIDS, tid } from '@/testids';
 import {
@@ -26,6 +27,7 @@ import { ImportDialogsSection } from './sections/ImportDialogsSection';
 import { PlanningMainStackSection } from './sections/PlanningMainStackSection';
 import { DifferenceInsightBar } from './components/DifferenceInsightBar';
 import { ReflectPreviewDialog } from './components/ReflectPreviewDialog';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> = ({
   viewModel,
@@ -37,6 +39,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
   const [pendingPatchCount, setPendingPatchCount] = React.useState(0);
   const [pendingPatches, setPendingPatches] = React.useState<PlanPatch[]>([]);
   const [patchActionMessage, setPatchActionMessage] = React.useState<string | null>(null);
+  const [isActivatingOperationStart, setIsActivatingOperationStart] = React.useState(false);
   const hasPendingPlanUpdate = React.useMemo(
     () => detectPlanNeedsUpdate(pendingPatches),
     [pendingPatches],
@@ -180,6 +183,47 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     await orchestratorApplyPatch(patch, sheet);
   };
 
+  const isValidDate = (value: string | null | undefined): boolean => {
+    if (!value) return false;
+    const date = new Date(value);
+    return !Number.isNaN(date.getTime());
+  };
+
+  const activationDisabledReason = React.useMemo(() => {
+    if (sheet.status !== 'draft') return null;
+    if (!sheet.supportStartDate) return '支援開始日（モニタリング起点）を設定してください。';
+    if (!isValidDate(sheet.supportStartDate)) return '支援開始日の形式が不正です。';
+    const hasProcedureSteps = (sheet.planning?.procedureSteps?.length ?? 0) > 0;
+    const hasSupportPolicy = sheet.supportPolicy.trim().length > 0;
+    if (!hasProcedureSteps && !hasSupportPolicy) {
+      return '支援設計（手順または支援方針）を入力してください。';
+    }
+    return null;
+  }, [sheet]);
+
+  const handleActivateOperationStart = async () => {
+    if (sheet.status !== 'draft') return;
+    if (activationDisabledReason) return;
+    setIsActivatingOperationStart(true);
+    try {
+      await activatePlanningSheetVersionInRepository(
+        planningSheetRepo,
+        sheet.id,
+        {
+          activatedBy: sheet.updatedBy || sheet.authoredByStaffId || 'current-user',
+          appliedFrom: sheet.supportStartDate || toLocalDateISO(),
+        },
+      );
+      setPatchActionMessage('支援計画シートを運用開始しました。');
+      handlers.onRefresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setPatchActionMessage(`運用開始に失敗しました: ${message}`);
+    } finally {
+      setIsActivatingOperationStart(false);
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex', position: 'relative' }}>
       <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, pb: 4 }} {...tid(TESTIDS['planning-sheet-page'])}>
@@ -273,6 +317,11 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
             onSave: handlers.onSave,
             onImportAssessment: handlers.onImportAssessment,
             onImportMonitoring: handlers.onImportMonitoring,
+            onActivateOperationStart: () => {
+              void handleActivateOperationStart();
+            },
+            activateOperationDisabledReason: activationDisabledReason,
+            isActivatingOperationStart,
             onNavigateToExecution: handlers.onNavigateToExecution,
             onNavigateToPdca: handlers.onNavigateToPdca,
           }}

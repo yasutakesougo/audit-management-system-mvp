@@ -54,6 +54,7 @@ const mockHandlers: SupportPlanningSheetActionHandlers = {
   onOpenReflectPreview: vi.fn(),
   onCloseReflectPreview: vi.fn(),
   onConfirmReflect: vi.fn(),
+  onRefresh: vi.fn(),
 };
 
 const mockViewModel: SupportPlanningSheetViewModel = {
