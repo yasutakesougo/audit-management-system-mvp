@@ -35,4 +35,19 @@ test.describe('Kiosk Procedure List', () => {
     }, selector);
     await expect(page).toHaveURL(/.*\/kiosk\/users.*/, { timeout: 30000 });
   });
+
+  test('should prioritize query userId over route param and avoid setup CTA when support start date is resolved', async ({ page }) => {
+    await bootKiosk(page, {
+      route: '/kiosk/users/6/procedures?wizard=plan&user=I005&userId=I005',
+      userId: 'I005',
+    });
+
+    await expect(page).toHaveURL(/\/kiosk\/users\/6\/procedures\?wizard=plan&user=I005&userId=I005&provider=memory/);
+    await expect(page.getByText('石渡')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/支援開始日: .*（90日参考・(支援計画|利用者マスタ)）/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/支援開始日: 未設定（90日参考）/)).toHaveCount(0);
+    await expect(page.getByText(/\[暫定\] 支援開始日:/)).toHaveCount(0);
+    await expect(page.getByTestId('kiosk-support-start-setup-cta')).toHaveCount(0);
+    await expect(page.getByText('支援計画シートを作成して支援開始日を設定')).toHaveCount(0);
+  });
 });

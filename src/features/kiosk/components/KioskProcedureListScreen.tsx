@@ -5,7 +5,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
-import { useUser } from '@/features/users/useUsers';
+import { useUser, useUsers } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { formatDateJapanese } from '@/lib/dateFormat';
@@ -28,8 +28,22 @@ export const KioskProcedureListScreen: React.FC = () => {
     return (params.get('userId') || params.get('user') || '').trim() || null;
   }, [location.search]);
   const userLookupId = queryUserIdFromSearch || userId || '';
-  const { data: user, status } = useUser(userLookupId);
-  const isUserLoading = status === 'loading' || status === 'idle';
+  const numericUserLookupId = Number.isFinite(Number(userLookupId)) ? Number(userLookupId) : undefined;
+  const { data: userByNumericId, status: numericUserStatus } = useUser(numericUserLookupId);
+  const { data: users, status: usersStatus } = useUsers({ selectMode: 'core' });
+  const userByCode = React.useMemo(() => {
+    const lookup = String(userLookupId).trim();
+    if (!lookup) return null;
+    return users.find((candidate) => {
+      const candidateUserId = String(candidate.UserID ?? '').trim();
+      if (candidateUserId && candidateUserId === lookup) return true;
+      return String(candidate.Id ?? '').trim() === lookup;
+    }) ?? null;
+  }, [userLookupId, users]);
+  const user = userByNumericId ?? userByCode;
+  const isUserLoading = numericUserLookupId != null
+    ? (numericUserStatus === 'loading' || numericUserStatus === 'idle')
+    : (usersStatus === 'loading' || usersStatus === 'idle');
   const procedureRepo = useProcedureData();
   const executionRepo = useExecutionData();
   

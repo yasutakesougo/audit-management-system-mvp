@@ -17,8 +17,10 @@ vi.mock('react-router-dom', async () => {
 });
 
 const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎', ServiceStartDate: undefined as string | undefined } as unknown as Record<string, unknown>, status: 'success' }));
+const mockUseUsers = vi.fn(() => ({ data: [], status: 'success' as const }));
 vi.mock('@/features/users/useUsers', () => ({
   useUser: () => mockUseUser(),
+  useUsers: () => mockUseUsers(),
 }));
 
 const mockProcedures = [
@@ -74,6 +76,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     vi.clearAllMocks();
     mockRouteUserId = 'U001';
     mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
+    mockUseUsers.mockReturnValue({ data: [], status: 'success' });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
     mockGetByUser.mockReturnValue(mockProcedures);
