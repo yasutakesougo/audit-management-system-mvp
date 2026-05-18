@@ -419,3 +419,17 @@ export function findUserProcedureSheetNotes(userId: string | number): UserProced
             : String(notes.userId) === String(userId);
   });
 }
+
+export function hasUserProcedureMaster(userId: string | number): boolean {
+  return USER_PROCEDURE_DETAILS.some((detail) => {
+    return isIshiwataUserId(detail.userId)
+      ? isIshiwataUserId(userId)
+      : isKatsuragawaUserId(detail.userId)
+        ? isKatsuragawaUserId(userId)
+        : isNakamuraUserId(detail.userId)
+          ? isNakamuraUserId(userId)
+          : isShiotaUserId(detail.userId)
+            ? isShiotaUserId(userId)
+            : String(detail.userId) === String(userId);
+  });
+}

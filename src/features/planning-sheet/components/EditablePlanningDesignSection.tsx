@@ -52,6 +52,8 @@ interface Props {
   strategyUsageLoading?: boolean;
   /** Phase C-3b: トレンド結果 */
   trendResult?: StrategyUsageTrendResult | null;
+  /** 対象利用者ID（マスタ取り込み判定用） */
+  userId?: string;
 }
 
 // ── ChipInput（再利用） ──
@@ -135,6 +137,7 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
   strategyUsage,
   strategyUsageLoading,
   trendResult,
+  userId,
 }) => {
   const hasEvidence = abcRecords.length > 0 || pdcaItems.length > 0;
 
@@ -336,6 +339,7 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
         onClose={() => setImportOpen(false)}
         onImport={handleImport}
         existingStepCount={planning.procedureSteps.length}
+        userId={userId}
       />
     </Stack>
   );

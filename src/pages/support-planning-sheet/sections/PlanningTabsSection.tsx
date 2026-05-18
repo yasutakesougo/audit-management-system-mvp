@@ -178,6 +178,7 @@ export function PlanningTabsSection({
               strategyUsage={strategyUsage}
               strategyUsageLoading={strategyUsageLoading}
               trendResult={trendResult}
+              userId={sheet.userId}
             />
           ) : (
             <PlanningDesignSection
