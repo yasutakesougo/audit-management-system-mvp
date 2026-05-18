@@ -33,6 +33,12 @@ export const SectionBasicAndTarget: React.FC<SectionBasicAndTargetProps> = ({
     </Alert>
   ) : null;
 
+  const supportStartDateWarning = !form.supportStartDate ? (
+    <Alert severity="warning" variant="outlined">
+      支援開始日（モニタリング起点）が未入力です。未入力のまま保存すると保存日で補完されます。L2（支援計画シート）で正式な支援開始日を設定してください。
+    </Alert>
+  ) : null;
+
   if (step === 0) {
     // §1 基本情報
     return (
@@ -57,6 +63,7 @@ export const SectionBasicAndTarget: React.FC<SectionBasicAndTargetProps> = ({
           InputLabelProps={{ shrink: true }}
           helperText="90日モニタリングの起点となる日付です。通常は利用開始日を設定します。"
         />
+        {supportStartDateWarning}
         {schedulePreview}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField select label="関与研修" value={form.trainingLevel} onChange={e => updateField('trainingLevel', e.target.value)} fullWidth>
