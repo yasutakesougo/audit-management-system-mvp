@@ -164,6 +164,7 @@ export const KioskHeroBlock: React.FC<KioskHeroBlockProps> = ({
   // ── モニタリング警告（残り30日以内） ──
   const monitoringAlerts = React.useMemo(() => {
     if (!users) return [];
+
     const now = new Date();
     return users
       .filter((u) => u.LastAssessmentDate)
