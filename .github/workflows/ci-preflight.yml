@@ -50,12 +50,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Preflight (typecheck, lint, unit, build)
+      - name: Preflight (typecheck, lint, unit)
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-        run: |
-          npm run preflight
-          npx vitest run tests/unit/schedule --reporter=verbose
+        run: npm run preflight
 
   schedule-unit:
     name: Schedule unit (TZ matrix)
