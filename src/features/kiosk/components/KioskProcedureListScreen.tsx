@@ -23,7 +23,12 @@ export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userId } = useParams<{ userId: string }>();
-  const { data: user, status } = useUser(userId || '');
+  const queryUserIdFromSearch = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return (params.get('userId') || params.get('user') || '').trim() || null;
+  }, [location.search]);
+  const userLookupId = queryUserIdFromSearch || userId || '';
+  const { data: user, status } = useUser(userLookupId);
   const isUserLoading = status === 'loading' || status === 'idle';
   const procedureRepo = useProcedureData();
   const executionRepo = useExecutionData();
@@ -42,10 +47,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   }, [deepLinkUserId, userId]);
 
   const procedures = React.useMemo(() => {
-    const queryId = user?.UserID || userId;
+    const queryId = queryUserIdFromSearch || user?.UserID || userId;
     if (!queryId) return [];
     return procedureRepo.getByUser(queryId);
-  }, [userId, user?.UserID, procedureRepo]);
+  }, [queryUserIdFromSearch, userId, user?.UserID, procedureRepo]);
   const allPrimaryScheduleKeys = React.useMemo(() => {
     const keys = new Set<string>();
     for (const step of procedures) {
@@ -68,7 +73,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     isLoading: isLoadingPlanningSheet,
   } = usePlanningSheetData(targetPlanningSheetId, planningRepo);
 
-  const queryUserId = user?.UserID || userId || null;
+  const queryUserId = queryUserIdFromSearch || user?.UserID || userId || null;
   const {
     currentSheet,
     isLoading: isLoadingCurrentSheet,
@@ -150,7 +155,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   // 実施記録の取得
   useEffect(() => {
     const fetchRecords = async () => {
-      const queryId = user?.UserID || userId;
+      const queryId = queryUserIdFromSearch || user?.UserID || userId;
       if (!queryId) return;
       try {
         const data = await executionRepo.getRecords(selectedDateIso, queryId);
@@ -161,7 +166,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     };
     void fetchRecords();
-  }, [userId, user?.UserID, executionRepo, selectedDateIso, location.key, location.search]);
+  }, [queryUserIdFromSearch, userId, user?.UserID, executionRepo, selectedDateIso, location.key, location.search]);
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
     if (!record) return false;
