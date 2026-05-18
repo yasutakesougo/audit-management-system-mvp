@@ -14,7 +14,7 @@ npm run lint
 
 if [ "$MODE" = "unit" ]; then
   echo "▶ Unit (fast mode)"
-  npm run test:ci
+  npm run test:ci:required
   echo "✅ Preflight (unit) OK"
 elif [ "$MODE" = "e2e" ]; then
   echo "▶ Unit"
