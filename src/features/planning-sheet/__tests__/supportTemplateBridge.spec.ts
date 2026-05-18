@@ -9,6 +9,7 @@ import {
   scheduleItemsToProcedureSteps,
   procedureStepToScheduleItem,
   procedureStepsToScheduleItems,
+  masterRowsToProcedureSteps,
 } from '../bridge/supportTemplateBridge';
 import type { SupportTemplateCsvRow } from '@/features/import/domain/csvImportTypes';
 import type { ProcedureStep } from '@/domain/isp/schema';
@@ -168,6 +169,32 @@ describe('supportTemplateBridge', () => {
       expect(restored[0].instruction).toBe('声掛け');
       expect(restored[1].time).toBe('10:00');
       expect(restored[1].activity).toBe('作業');
+    });
+  });
+
+  // ── Master Rows → ProcedureStep ──
+
+  describe('masterRowsToProcedureSteps', () => {
+    it('converts static master data for user U-002 / I005 (Ishiwata-san)', () => {
+      const steps = masterRowsToProcedureSteps('I005');
+      expect(steps).toHaveLength(17);
+      expect(steps[0]).toMatchObject({
+        order: 1,
+        instruction: '通所・朝の準備（送迎車で来所\n手洗い\n荷物の片づけ）',
+        staff: '送迎担当と引継ぎ\nご本人と朝の準備（手洗い・荷物をロッカーへ）\nトイレ誘導・介助',
+        timing: '9:30頃',
+      });
+    });
+
+    it('returns default/empty steps when no specific master registered', () => {
+      const steps = masterRowsToProcedureSteps('NON_EXISTENT_USER');
+      expect(steps).toHaveLength(17);
+      expect(steps[0]).toMatchObject({
+        order: 1,
+        instruction: '通所・朝の準備（手洗い、消毒、荷物をロッカーへ入れる）',
+        staff: '通所時の様子を確認し、必要に応じて声かけ・見守りを行う',
+        timing: '9:30頃',
+      });
     });
   });
 });

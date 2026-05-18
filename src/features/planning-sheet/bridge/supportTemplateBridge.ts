@@ -121,3 +121,32 @@ export function procedureStepsToScheduleItems(steps: ProcedureStep[]): ScheduleI
     .sort((a, b) => a.order - b.order)
     .map(procedureStepToScheduleItem);
 }
+
+/**
+ * 静的マスタデータ（buildUserProcedureRows）を ProcedureStep[] に変換する。
+ */
+import { buildUserProcedureRows } from '@/features/planning-sheet/constants/userProcedureDetails';
+
+export function masterRowsToProcedureSteps(userId: string | number): ProcedureStep[] {
+  const rows = buildUserProcedureRows(userId);
+  return rows.map((row) => {
+    const activity = row.activity?.trim() || '';
+    const personAction = row.activityDetail?.trim() || '';
+    const supporterAction = row.instructionDetail?.trim() || '';
+    const timeLabel = row.timeLabel?.trim() || '';
+
+    const instruction = personAction
+      ? `${activity}（${personAction}）`
+      : activity;
+
+    return {
+      order: row.rowNo,
+      instruction,
+      staff: supporterAction,
+      timing: timeLabel,
+      activityDetail: personAction,
+      instructionDetail: supporterAction,
+      condition: '',
+    };
+  });
+}
