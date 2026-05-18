@@ -95,6 +95,36 @@ export const KioskProcedureListScreen: React.FC = () => {
       undefined
     );
   }, [planningSheet, currentSheet, user?.ServiceStartDate]);
+  const supportStartDateLabel = React.useMemo(() => {
+    const { date, source } = resolvedStartDate;
+    const isLoading = (targetPlanningSheetId && isLoadingPlanningSheet) || isLoadingCurrentSheet;
+
+    if (!date || source === 'none') {
+      return isLoading
+        ? '支援開始日: 確認中（90日参考）'
+        : '支援開始日: 未設定（90日参考）';
+    }
+
+    const dateStr = formatDateJapanese(date);
+    if (!dateStr) {
+      return '支援開始日: 不正な日付（90日参考）';
+    }
+
+    switch (source) {
+      case 'planning':
+        return `支援開始日: ${dateStr}（90日参考・支援計画）`;
+      case 'master':
+        return `支援開始日: ${dateStr}（90日参考・利用者マスタ）`;
+      case 'fallback':
+        return `[暫定] 支援開始日: ${dateStr}（90日参考・計画適用日）`;
+      default:
+        return `支援開始日: ${dateStr}（90日参考）`;
+    }
+  }, [resolvedStartDate, targetPlanningSheetId, isLoadingPlanningSheet, isLoadingCurrentSheet]);
+  const currentPlanningSheetId = (planningSheet?.id ?? currentSheet?.id ?? targetPlanningSheetId ?? '').trim();
+  const showSetupCta = !!queryUserId
+    && (supportStartDateLabel.includes('未設定（90日参考）') || supportStartDateLabel.includes('不正な日付（90日参考）'));
+  const showProvisionalReviewCta = resolvedStartDate.source === 'fallback' && !!currentPlanningSheetId;
 
   const { getRecords: getStoreRecords } = useExecutionStore();
   const storeRecords = getStoreRecords(selectedDateIso || '', user?.UserID || userId || '');
@@ -231,29 +261,30 @@ export const KioskProcedureListScreen: React.FC = () => {
                 {selectedDateStr} の支援手順
               </Typography>
               <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
-                • {(() => {
-                  const { date, source } = resolvedStartDate;
-
-                  if (!date || source === 'none') {
-                    return (targetPlanningSheetId && isLoadingPlanningSheet) || isLoadingCurrentSheet
-                      ? '支援開始日: 確認中（90日参考）'
-                      : '支援開始日: 未設定（90日参考）';
-                  }
-
-                  const dateStr = formatDateJapanese(date);
-
-                  switch (source) {
-                    case 'planning':
-                      return `支援開始日: ${dateStr}（90日参考・支援計画）`;
-                    case 'master':
-                      return `支援開始日: ${dateStr}（90日参考・利用者マスタ）`;
-                    case 'fallback':
-                      return `[暫定] 支援開始日: ${dateStr}（90日参考・計画適用日）`;
-                    default:
-                      return `支援開始日: ${dateStr}（90日参考）`;
-                  }
-                })()}
+                • {supportStartDateLabel}
               </Typography>
+              {showSetupCta && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  component={RouterLink}
+                  to={`/support-planning-sheet/new?userId=${encodeURIComponent(queryUserId ?? '')}`}
+                  data-testid="kiosk-support-start-setup-cta"
+                >
+                  支援計画シートを作成して支援開始日を設定
+                </Button>
+              )}
+              {showProvisionalReviewCta && (
+                <Button
+                  size="small"
+                  variant="text"
+                  component={RouterLink}
+                  to={`/support-planning-sheet/${encodeURIComponent(currentPlanningSheetId)}`}
+                  data-testid="kiosk-support-start-provisional-cta"
+                >
+                  元シートを確認
+                </Button>
+              )}
             </Box>
           </Box>
         </Box>

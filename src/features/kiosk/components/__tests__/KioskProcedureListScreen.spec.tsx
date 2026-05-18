@@ -519,4 +519,94 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(screen.getByText(/支援開始日: 2026年5月15日（90日参考・支援計画）/)).toBeInTheDocument();
     });
   });
+
+  it('shows setup CTA when support start date is unset', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: null,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const cta = screen.getByTestId('kiosk-support-start-setup-cta');
+      expect(cta).toBeInTheDocument();
+      expect(cta).toHaveAttribute('href', '/support-planning-sheet/new?userId=U001');
+    });
+  });
+
+  it('does not show setup CTA when support start date is from planning sheet', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { supportStartDate: '2026-05-01' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
+    });
+  });
+
+  it('shows provisional review CTA for fallback source', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { id: 'sp-123', supportStartDate: undefined, appliedFrom: '2026-03-01' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const cta = screen.getByTestId('kiosk-support-start-provisional-cta');
+      expect(cta).toBeInTheDocument();
+      expect(cta).toHaveAttribute('href', '/support-planning-sheet/sp-123');
+      expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
+    });
+  });
+
+  it('shows setup CTA when support start date is invalid', async () => {
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      status: 'success',
+    });
+    mockUsePlanningSheetData.mockReturnValue({
+      data: { id: 'sp-123', supportStartDate: '2026-13-99' } as unknown as SupportPlanningSheet,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/支援開始日: 不正な日付（90日参考）/)).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-support-start-setup-cta')).toBeInTheDocument();
+    });
+  });
 });
