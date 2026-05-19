@@ -232,11 +232,22 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         if (remainder === '' || remainder === '/' || remainder.startsWith('?')) {
           await fulfill(route, { status: 200, body: { Title: state.config.name, Id: state.config.name, BaseType: 0, EntityTypeName: state.config.name } });
         } else {
-          const keys = new Set<string>(['Id', 'Title', 'Created', 'AuthorId', 'EditorId', 'Modified']);
+          const keys = new Set<string>();
+          const lowerKeys = new Set<string>();
+          const addKey = (k: string) => {
+            if (!k) return;
+            const lower = k.toLowerCase();
+            if (!lowerKeys.has(lower)) {
+              lowerKeys.add(lower);
+              keys.add(k);
+            }
+          };
+
+          ['Id', 'Title', 'Created', 'AuthorId', 'EditorId', 'Modified'].forEach(addKey);
           const items = getItems();
           if (items.length > 0) {
             for (const item of items) {
-              Object.keys(item).forEach((k) => keys.add(k));
+              Object.keys(item).forEach(addKey);
             }
           }
 
@@ -246,46 +257,46 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           const isStaff = listKey.includes('staff');
 
           if (isSchedule) {
-            ['Title', 'EventDate', 'EndDate', 'Status', 'ServiceType', 'TargetUserId', 'cr014_personName', 'AssignedStaffId', 'LocationName', 'Note', 'RowKey', 'cr014_dayKey', 'MonthKey', 'cr014_fiscalYear', 'VehicleId', 'Visibility', 'StatusReason', 'AcceptedOn', 'AcceptedBy', 'AcceptedNote'].forEach(k => keys.add(k));
+            ['Title', 'EventDate', 'EndDate', 'Status', 'ServiceType', 'TargetUserId', 'cr014_personName', 'AssignedStaffId', 'LocationName', 'Note', 'RowKey', 'cr014_dayKey', 'MonthKey', 'cr014_fiscalYear', 'VehicleId', 'Visibility', 'StatusReason', 'AcceptedOn', 'AcceptedBy', 'AcceptedNote'].forEach(addKey);
           }
           if (isUser) {
-            ['UserID', 'FullName', 'Furigana', 'FullNameKana', 'ContractDate', 'ServiceStartDate', 'ServiceEndDate', 'IsHighIntensitySupportTarget', 'IsSupportProcedureTarget', 'IsActive', 'UsageStatus', 'AttendanceDays', 'TransportToDays', 'TransportFromDays', 'TransportCourse', 'TransportSchedule', 'TransportAdditionType', 'RecipientCertNumber', 'RecipientCertExpiry', 'GrantMunicipality', 'GrantPeriodStart', 'GrantPeriodEnd', 'DisabilitySupportLevel', 'GrantedDaysPerMonth', 'UserCopayLimit', 'MealAddition', 'CopayPaymentMethod'].forEach(k => keys.add(k));
+            ['UserID', 'FullName', 'Furigana', 'FullNameKana', 'ContractDate', 'ServiceStartDate', 'ServiceEndDate', 'IsHighIntensitySupportTarget', 'IsSupportProcedureTarget', 'IsActive', 'UsageStatus', 'AttendanceDays', 'TransportToDays', 'TransportFromDays', 'TransportCourse', 'TransportSchedule', 'TransportAdditionType', 'RecipientCertNumber', 'RecipientCertExpiry', 'GrantMunicipality', 'GrantPeriodStart', 'GrantPeriodEnd', 'DisabilitySupportLevel', 'GrantedDaysPerMonth', 'UserCopayLimit', 'MealAddition', 'CopayPaymentMethod'].forEach(addKey);
           }
           if (isStaff) {
-            ['StaffID', 'FullName', 'Furigana', 'FullNameKana', 'JobTitle', 'Role', 'RBACRole', 'IsActive', 'Department', 'HireDate', 'ResignDate', 'Email', 'Phone', 'WorkDays', 'BaseWorkingDays', 'BaseShiftStartTime', 'BaseShiftEndTime', 'Certifications'].forEach(k => keys.add(k));
+            ['StaffID', 'FullName', 'Furigana', 'FullNameKana', 'JobTitle', 'Role', 'RBACRole', 'IsActive', 'Department', 'HireDate', 'ResignDate', 'Email', 'Phone', 'WorkDays', 'BaseWorkingDays', 'BaseShiftStartTime', 'BaseShiftEndTime', 'Certifications'].forEach(addKey);
           }
           if (listKey.includes('isp')) {
-            ['Title', 'UserCode', 'PlanStartDate', 'PlanEndDate', 'Status', 'VersionNo', 'IsCurrent', 'FormDataJson', 'UserSnapshotJson'].forEach(k => keys.add(k));
+            ['Title', 'UserCode', 'PlanStartDate', 'PlanEndDate', 'Status', 'VersionNo', 'IsCurrent', 'FormDataJson', 'UserSnapshotJson'].forEach(addKey);
           }
           if (listKey.includes('planning')) {
-            ['Title', 'UserCode', 'ISPId', 'TargetScene', 'Status', 'VersionNo', 'IsCurrent', 'FormDataJson', 'IntakeJson', 'AssessmentJson', 'PlanningJson'].forEach(k => keys.add(k));
+            ['Title', 'UserCode', 'ISPId', 'TargetScene', 'Status', 'VersionNo', 'IsCurrent', 'FormDataJson', 'IntakeJson', 'AssessmentJson', 'PlanningJson', 'TargetDomain', 'CollectedInformation', 'EnvironmentalAdjustments', 'AppliedFrom', 'NextReviewAt', 'AuthoredByStaffId', 'ApplicableServiceType', 'SupportStartDate', 'MonitoringCycleDays', 'ObservationFacts', 'InterpretationHypothesis', 'SupportIssues', 'SupportPolicy', 'ConcreteApproaches', 'UserId'].forEach(addKey);
           }
           if (listKey.includes('monitoring')) {
-            ['Title', 'cr014_recordId', 'cr014_userId', 'cr014_meetingDate', 'cr014_status'].forEach(k => keys.add(k));
+            ['Title', 'cr014_recordId', 'cr014_userId', 'cr014_meetingDate', 'cr014_status'].forEach(addKey);
           }
           if (listKey.includes('patch')) {
-            ['Title', 'PatchId', 'PlanningSheetId', 'PatchTarget', 'BaseVersion', 'BeforeJson', 'AfterJson', 'PatchReason', 'EvidenceIdsJson', 'PatchStatus', 'PatchDueAt', 'PatchCreatedAt', 'PatchUpdatedAt'].forEach(k => keys.add(k));
+            ['Title', 'PatchId', 'PlanningSheetId', 'PatchTarget', 'BaseVersion', 'BeforeJson', 'AfterJson', 'PatchReason', 'EvidenceIdsJson', 'PatchStatus', 'PatchDueAt', 'PatchCreatedAt', 'PatchUpdatedAt'].forEach(addKey);
           }
           if (listKey.includes('result') || listKey.includes('record')) {
-            ['Title', 'RecordId', 'UserCode', 'TargetDate', 'Status', 'ResultJson', 'ExecutorId'].forEach(k => keys.add(k));
+            ['Title', 'RecordId', 'UserCode', 'TargetDate', 'Status', 'ResultJson', 'ExecutorId'].forEach(addKey);
           }
           if (listKey.includes('log') || listKey.includes('approval')) {
-            ['Title', 'RecordId', 'TargetId', 'Action', 'Comment', 'ActorId', 'ActorName', 'Status', 'ApprovedAt', 'ApprovalAction', 'ApprovedBy', 'ApproverId', 'ApproverName'].forEach(k => keys.add(k));
+            ['Title', 'RecordId', 'TargetId', 'Action', 'Comment', 'ActorId', 'ActorName', 'Status', 'ApprovedAt', 'ApprovalAction', 'ApprovedBy', 'ApproverId', 'ApproverName'].forEach(addKey);
           }
           if (listKey.includes('flag') || listKey.includes('feature')) {
-            ['Title', 'UserCode', 'FeatureKey', 'IsEnabled', 'ConfigJson'].forEach(k => keys.add(k));
+            ['Title', 'UserCode', 'FeatureKey', 'IsEnabled', 'ConfigJson'].forEach(addKey);
           }
           // Use explicitly defined fields if available
           if (state.config.fields) {
-            state.config.fields.forEach(f => keys.add(f.InternalName));
+            state.config.fields.forEach(f => addKey(f.InternalName));
           } else {
             // Default fields to avoid provisioning storm
-            ['Status', 'UserCode', 'RecordId', 'TargetDate', 'FormDataJson', 'PlanningJson', 'CreatedAt', 'UpdatedAt', 'IsCurrent', 'PlanId', 'SheetId', 'UserId', 'TargetYearMonth', 'ExecutorId', 'VerifierId', 'ApprovalStatus', 'Comment', 'ActionType', 'ItemJson', 'RecordDate', 'ActivityJson', 'ExecutionJson', 'StepsJson', 'YearMonth', 'ID', 'EditorId', 'AuthorId', 'Modified', 'Created', 'GUID', 'PlanningSheetId', 'PeriodEnd'].forEach(k => keys.add(k));
+            ['Status', 'UserCode', 'RecordId', 'TargetDate', 'FormDataJson', 'PlanningJson', 'CreatedAt', 'UpdatedAt', 'IsCurrent', 'PlanId', 'SheetId', 'UserId', 'TargetYearMonth', 'ExecutorId', 'VerifierId', 'ApprovalStatus', 'Comment', 'ActionType', 'ItemJson', 'RecordDate', 'ActivityJson', 'ExecutionJson', 'StepsJson', 'YearMonth', 'ID', 'EditorId', 'AuthorId', 'Modified', 'Created', 'GUID', 'PlanningSheetId', 'PeriodEnd'].forEach(addKey);
           }
 
           // Dynamic fields
           if (dynamicFields.has(match.key)) {
-            dynamicFields.get(match.key)!.forEach(k => keys.add(k));
+            dynamicFields.get(match.key)!.forEach(addKey);
           }
 
           const results = Array.from(keys).map((k) => ({
