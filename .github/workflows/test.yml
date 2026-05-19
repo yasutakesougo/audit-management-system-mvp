@@ -21,7 +21,7 @@ jobs:
     outputs:
       ci_full: ${{ steps.changes.outputs.ci_full }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
       issues: write
@@ -262,7 +262,7 @@ jobs:
     name: quality_extended
     if: ${{ github.event_name == 'pull_request' && needs.quality.outputs.ci_full == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
       issues: write

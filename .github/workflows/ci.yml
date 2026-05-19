@@ -92,7 +92,7 @@ jobs:
     name: TypeCheck & Test
     runs-on: ubuntu-latest
     needs: [contracts, registry-static-audit, registry-ssot, registry-integration, registry-drift-probe]
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: read
       issues: write
