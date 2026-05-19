@@ -6,7 +6,7 @@ describe('Governance Policy Review Simulation (Human-in-the-loop)', () => {
 
   beforeEach(() => {
     store = GovernanceAuditStore.getInstance();
-    (store as any).entries = []; 
+    store.clear();
   });
 
   const generateMockAuditData = () => {
@@ -41,11 +41,6 @@ describe('Governance Policy Review Simulation (Human-in-the-loop)', () => {
     }
 
     const report = store.getAnalysisReport();
-
-    console.log('--- Policy Review Analysis Report ---');
-    console.log(`Accepted Rate: ${report.acceptedRate}%`);
-    console.log(`High Confidence Accepted Rate: ${report.highConfidenceAcceptedRate}%`);
-    console.log(`Auto Executable Accepted Rate: ${report.autoExecutableAcceptedRate}%`);
 
     // 受入基準の検証
     expect(report.acceptedRate).toBe(80); // 8/10
