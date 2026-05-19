@@ -329,12 +329,12 @@ export const isStaffAttendanceEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride) || readLocalStorageFlag('feature:staffAttendance') || false;
 
 export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
-  readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride);
+  readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) || readLocalStorageFlag('feature:icebergPdca') || false;
 
 
 
 export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
-  readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);
+  readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) || readLocalStorageFlag('feature:todayOps') || false;
 
 export const isTodayLiteUiFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) || readLocalStorageFlag('feature:todayLiteUi') || false;

@@ -84,6 +84,22 @@ const NavItemRow: React.FC<{
         fontWeight: 700,
         '& .MuiListItemText-primary': { fontWeight: 700 },
       } : {}),
+      ...(tier === 'more' ? {
+        position: 'relative',
+        pl: navCollapsed ? undefined : 3.5, // Indent More items when expanded
+        opacity: active ? 1 : 0.85,
+        '&::before': !navCollapsed ? {
+          content: '""',
+          position: 'absolute',
+          left: 16,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 4,
+          height: 4,
+          borderRadius: '50%',
+          backgroundColor: active ? 'primary.main' : 'text.disabled',
+        } : {},
+      } : {}),
       ...(navCollapsed ? {
         '&:hover': { backgroundColor: 'action.hover' },
       } : {}),
@@ -112,6 +128,7 @@ const NavItemRow: React.FC<{
               noWrap: true,
               fontSize: '0.85rem',
               fontWeight: active ? 700 : 500,
+              color: tier === 'more' && !active ? 'text.secondary' : 'text.primary',
             }}
           />
           {!isFieldStaffShell && item.badge !== undefined && (typeof item.badge !== 'number' || item.badge > 0) && (
@@ -290,7 +307,17 @@ export const AppShellSidebar: React.FC<Props> = ({
           />
         </Box>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: navCollapsed ? 'column' : 'row',
+          alignItems: 'center',
+          justifyContent: navCollapsed ? 'center' : 'flex-end',
+          px: 1,
+          py: 0.5,
+          gap: navCollapsed ? 1 : 0,
+        }}
+      >
         {todayLiteNavV2 && !navCollapsed && hasMoreNavItems && (
           <Box sx={{ mr: 'auto', ml: 1 }}>
             <Button
@@ -310,6 +337,21 @@ export const AppShellSidebar: React.FC<Props> = ({
               {showMoreNavItems ? 'その他を閉じる' : 'その他のメニュー'}
             </Button>
           </Box>
+        )}
+        {todayLiteNavV2 && navCollapsed && hasMoreNavItems && (
+          <Tooltip title={showMoreNavItems ? 'その他のメニューを閉じる' : 'その他のメニューを開く'} placement="right" enterDelay={100}>
+            <IconButton
+              onClick={onToggleMoreNavItems}
+              aria-label={showMoreNavItems ? 'その他のメニューを閉じる' : 'その他のメニューを開く'}
+              size="small"
+              color={showMoreNavItems ? 'primary' : 'default'}
+              sx={{
+                '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
+              }}
+            >
+              {showMoreNavItems ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+            </IconButton>
+          </Tooltip>
         )}
         <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
           <IconButton

@@ -130,6 +130,23 @@ const hasExplicitBoolEnv = (key: string, envOverride?: EnvRecord): boolean => {
   return v === '1' || v === '0' || v === 'true' || v === 'false';
 };
 
+const _readLocalStorageFlag = (key: string): boolean | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const flag = window.localStorage.getItem(`feature:${key}`);
+    if (flag != null) {
+      const normalized = flag.trim().toLowerCase();
+      const TRUTHY = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
+      const FALSY = new Set(['0', 'false', 'no', 'n', 'off', 'disabled']);
+      if (TRUTHY.has(normalized)) return true;
+      if (FALSY.has(normalized)) return false;
+    }
+  } catch {
+    // ignore storage access issues
+  }
+  return undefined;
+};
+
 export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot => {
   // Treat explicit envOverride as an automation-like context to apply safe defaults
   const isAutomationEnv = envOverride ? true : (isE2E || isTestMode() || isAutomationRuntime());
@@ -151,17 +168,34 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
 
   if (isAutomationEnv) {
     // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
-    // If no explicit override, default to true for schedules/staffAttendance, and default PDCA off.
-    const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
-    const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
+    // If no explicit override, check localStorage first before defaulting.
+    const schedules = explicitSchedules 
+      ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) 
+      : (_readLocalStorageFlag('schedules') ?? true);
+      
+    const icebergPdca = explicitIcebergPdca 
+      ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) 
+      : (_readLocalStorageFlag('icebergPdca') ?? false);
+      
     const explicitStaffAttendance = hasExplicitBoolEnv('VITE_FEATURE_STAFF_ATTENDANCE', envOverride);
-    const staffAttendance = explicitStaffAttendance ? readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride) : true;
+    const staffAttendance = explicitStaffAttendance 
+      ? readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride) 
+      : (_readLocalStorageFlag('staffAttendance') ?? true);
+      
     const explicitTodayOps = hasExplicitBoolEnv('VITE_FEATURE_TODAY_OPS', envOverride);
-    const todayOps = explicitTodayOps ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) : true;
+    const todayOps = explicitTodayOps 
+      ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) 
+      : (_readLocalStorageFlag('todayOps') ?? true);
+      
     const explicitTodayLiteUi = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_UI', envOverride);
-    const todayLiteUi = explicitTodayLiteUi ? readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) : false;
+    const todayLiteUi = explicitTodayLiteUi 
+      ? readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) 
+      : (_readLocalStorageFlag('todayLiteUi') ?? false);
+      
     const explicitTodayLiteNavV2 = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_NAV_V2', envOverride);
-    const todayLiteNavV2 = explicitTodayLiteNavV2 ? readBool('VITE_FEATURE_TODAY_LITE_NAV_V2', false, envOverride) : false;
+    const todayLiteNavV2 = explicitTodayLiteNavV2 
+      ? readBool('VITE_FEATURE_TODAY_LITE_NAV_V2', false, envOverride) 
+      : (_readLocalStorageFlag('todayLiteNavV2') ?? false);
 
     return {
       ...baseSnapshot,

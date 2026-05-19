@@ -108,8 +108,18 @@ export class InMemoryDataProvider implements IDataProvider {
       'Created', 'Modified',
     ]));
     this.schemaStorage.set('SupportPlanningSheet_Master', new Set([
-      'Id', 'Title', 'UserCode', 'ISP_x0020_ID',
+      'Id', 'Title', 'UserCode', 'ISPId', 'ISP_x0020_ID',
       'Status', 'VersionNo', 'IsCurrent', 'FormDataJson',
+      'TargetScene', 'TargetDomain', 'ObservationFacts',
+      'CollectedInformation', 'InterpretationHypothesis',
+      'SupportIssues', 'SupportPolicy', 'EnvironmentalAdjustments',
+      'ConcreteApproaches', 'AppliedFrom', 'NextReviewAt',
+      'AuthoredByStaffId', 'AuthoredByQualification', 'AuthoredAt',
+      'ApplicableServiceType', 'ApplicableAddOnTypesJson',
+      'DeliveredToUserAt', 'ReviewedAt', 'HasMedicalCoordination',
+      'HasEducationCoordination', 'RegulatoryBasisSnapshotJson',
+      'IntakeJson', 'AssessmentJson', 'PlanningJson',
+      'SupportStartDate', 'MonitoringCycleDays',
       'Created', 'Modified',
     ]));
     this.schemaStorage.set('SupportProcedureRecord_Daily', new Set([
