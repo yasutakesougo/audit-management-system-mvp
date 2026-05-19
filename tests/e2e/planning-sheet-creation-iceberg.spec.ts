@@ -133,7 +133,7 @@ test.describe('Support Planning Sheet — Iceberg Creation Flow', () => {
     // Wait for the automatic import preview dialog to appear (since it is a modal that blocks the background)
     const previewDialog = page.getByRole('dialog', { name: /取込プレビュー/ });
     await expect(previewDialog).toBeVisible({ timeout: 10000 });
-    await previewDialog.getByRole('button', { name: 'この内容で取り込む' }).click();
+    await previewDialog.getByRole('button', { name: '確認してフォームに反映する' }).click();
     await expect(previewDialog).toBeHidden();
 
     // Now that the modal is closed, the background content should be visible and interactive
