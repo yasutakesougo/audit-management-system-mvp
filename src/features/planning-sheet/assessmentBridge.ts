@@ -61,6 +61,8 @@ export interface AssessmentBridgeResult {
   };
   /** 出典追跡（provenance）: 各フィールドの変換根拠 */
   provenance: ProvenanceEntry[];
+  /** 取込元特性アンケート回答ID (オプション) */
+  tokuseiResponseId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -392,5 +394,6 @@ export function bridgeAssessmentToPlanningSheet(
       medicalFlagsAdded: mergedMedicalFlags.length - currentIntake.medicalFlags.length,
     },
     provenance,
+    tokuseiResponseId: tokuseiResponse?.id ? String(tokuseiResponse.id) : null,
   };
 }

@@ -48,6 +48,7 @@ type Props = {
   isAdmin: boolean;
   isFieldStaffShell?: boolean;
   onNavigate?: () => void;
+  navItems: NavItem[];
 };
 
 // ── NavItem renderer ─────────────────────────────────────────────────────────
@@ -273,11 +274,20 @@ export const AppShellSidebar: React.FC<Props> = ({
   onToggleMoreNavItems,
   isFieldStaffShell,
   onNavigate,
+  navItems,
 }) => {
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => onNavSearchKeyDown(e, onNavigate),
     [onNavSearchKeyDown, onNavigate],
   );
+
+  const hiddenCount = navItems
+    ? navItems.filter((item) => {
+        const isMoreTier = item.tier === 'more';
+        const isForced = ['/records/monthly', '/support-plan-guide', '/planning-sheet-list', '/assessment'].includes(item.to);
+        return isMoreTier && !isForced;
+      }).length
+    : 0;
 
   return (
     <Box
@@ -326,12 +336,50 @@ export const AppShellSidebar: React.FC<Props> = ({
               size="small"
               variant="text"
               startIcon={showMoreNavItems ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+              endIcon={
+                !showMoreNavItems && hiddenCount > 0 ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'error.main',
+                      color: 'error.contrastText',
+                      borderRadius: '50%',
+                      width: 16,
+                      height: 16,
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      animation: 'pulse 2s infinite ease-in-out',
+                      '@keyframes pulse': {
+                        '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                        '70%': { transform: 'scale(1.1)', boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                        '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                      },
+                    }}
+                  >
+                    {hiddenCount}
+                  </Box>
+                ) : undefined
+              }
               sx={{
                 fontSize: '0.75rem',
                 fontWeight: 600,
-                color: 'text.secondary',
                 textTransform: 'none',
-                '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 2,
+                transition: 'all 0.2s ease-in-out',
+                color: showMoreNavItems ? 'primary.main' : 'text.secondary',
+                ...(showMoreNavItems ? {
+                  bgcolor: 'action.selected',
+                } : {
+                  '&:hover': {
+                    color: 'primary.main',
+                    bgcolor: 'action.hover',
+                    transform: 'translateY(-1px)',
+                  },
+                }),
               }}
             >
               {showMoreNavItems ? 'その他を閉じる' : 'その他のメニュー'}
@@ -346,10 +394,31 @@ export const AppShellSidebar: React.FC<Props> = ({
               size="small"
               color={showMoreNavItems ? 'primary' : 'default'}
               sx={{
+                position: 'relative',
+                transition: 'all 0.2s ease-in-out',
                 '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
               }}
             >
               {showMoreNavItems ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+              {!showMoreNavItems && hiddenCount > 0 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    width: 8,
+                    height: 8,
+                    bgcolor: 'error.main',
+                    borderRadius: '50%',
+                    animation: 'pulse-dot 2s infinite ease-in-out',
+                    '@keyframes pulse-dot': {
+                      '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                      '70%': { transform: 'scale(1.3)', boxShadow: '0 0 0 4px rgba(211, 47, 47, 0)' },
+                      '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                    },
+                  }}
+                />
+              )}
             </IconButton>
           </Tooltip>
         )}
@@ -388,6 +457,7 @@ export const MobileNavContent: React.FC<{
   onToggleMoreNavItems: () => void;
   isFieldStaffShell?: boolean;
   onNavigate: () => void;
+  navItems: NavItem[];
 }> = ({
   navQuery,
   onNavQueryChange,
@@ -401,7 +471,16 @@ export const MobileNavContent: React.FC<{
   onToggleMoreNavItems,
   isFieldStaffShell,
   onNavigate,
+  navItems,
 }) => {
+  const hiddenCount = navItems
+    ? navItems.filter((item) => {
+        const isMoreTier = item.tier === 'more';
+        const isForced = ['/records/monthly', '/support-plan-guide', '/planning-sheet-list', '/assessment'].includes(item.to);
+        return isMoreTier && !isForced;
+      }).length
+    : 0;
+
   return (
     <Box
       role="navigation"
@@ -435,12 +514,50 @@ export const MobileNavContent: React.FC<{
             size="small"
             variant="text"
             startIcon={showMoreNavItems ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+            endIcon={
+              !showMoreNavItems && hiddenCount > 0 ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'error.main',
+                    color: 'error.contrastText',
+                    borderRadius: '50%',
+                    width: 16,
+                    height: 16,
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    animation: 'pulse 2s infinite ease-in-out',
+                    '@keyframes pulse': {
+                      '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                      '70%': { transform: 'scale(1.1)', boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                      '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                    },
+                  }}
+                >
+                  {hiddenCount}
+                </Box>
+              ) : undefined
+            }
             sx={{
               fontSize: '0.75rem',
               fontWeight: 600,
-              color: 'text.secondary',
               textTransform: 'none',
-              '&:hover': { color: 'primary.main', bgcolor: 'action.hover' },
+              px: 1.5,
+              py: 0.5,
+              borderRadius: 2,
+              transition: 'all 0.2s ease-in-out',
+              color: showMoreNavItems ? 'primary.main' : 'text.secondary',
+              ...(showMoreNavItems ? {
+                bgcolor: 'action.selected',
+              } : {
+                '&:hover': {
+                  color: 'primary.main',
+                  bgcolor: 'action.hover',
+                  transform: 'translateY(-1px)',
+                },
+              }),
             }}
           >
             {showMoreNavItems ? 'その他を閉じる' : 'その他のメニュー'}

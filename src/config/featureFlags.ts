@@ -15,6 +15,37 @@ import {
     type EnvRecord,
 } from '../lib/env';
 
+// ── Same-tab Reactivity for Direct localStorage Writes ──
+const FEATURE_FLAGS_CHANGED_EVENT = 'feature-flags-changed';
+
+interface PatchedStorage {
+  __feature_flags_patched__?: boolean;
+}
+
+if (typeof window !== 'undefined' && window.localStorage && !(window.localStorage as PatchedStorage).__feature_flags_patched__) {
+  try {
+    (window.localStorage as PatchedStorage).__feature_flags_patched__ = true;
+    const originalSetItem = window.localStorage.setItem;
+    const originalRemoveItem = window.localStorage.removeItem;
+
+    window.localStorage.setItem = function (key, value) {
+      originalSetItem.call(this, key, value);
+      if (key.startsWith('feature:')) {
+        window.dispatchEvent(new CustomEvent(FEATURE_FLAGS_CHANGED_EVENT));
+      }
+    };
+
+    window.localStorage.removeItem = function (key) {
+      originalRemoveItem.call(this, key);
+      if (key.startsWith('feature:')) {
+        window.dispatchEvent(new CustomEvent(FEATURE_FLAGS_CHANGED_EVENT));
+      }
+    };
+  } catch {
+    // Ignore issues in environments with restricted localStorage (e.g. sandbox/private mode)
+  }
+}
+
 // ── Lot1B PR #E — UserBenefit_Profile optional 6-column cutover stage ──
 // Single source of truth. Mapper modules must delegate here.
 export const USER_BENEFIT_PROFILE_CUTOVER_STAGES = [
@@ -165,50 +196,51 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
   const explicitIcebergPdca = hasExplicitBoolEnv('VITE_FEATURE_ICEBERG_PDCA', envOverride);
+  const explicitStaffAttendance = hasExplicitBoolEnv('VITE_FEATURE_STAFF_ATTENDANCE', envOverride);
+  const explicitTodayOps = hasExplicitBoolEnv('VITE_FEATURE_TODAY_OPS', envOverride);
+  const explicitTodayLiteUi = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_UI', envOverride);
+  const explicitTodayLiteNavV2 = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_NAV_V2', envOverride);
 
-  if (isAutomationEnv) {
-    // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
-    // If no explicit override, check localStorage first before defaulting.
-    const schedules = explicitSchedules 
-      ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) 
-      : (_readLocalStorageFlag('schedules') ?? true);
-      
-    const icebergPdca = explicitIcebergPdca 
-      ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) 
-      : (_readLocalStorageFlag('icebergPdca') ?? false);
-      
-    const explicitStaffAttendance = hasExplicitBoolEnv('VITE_FEATURE_STAFF_ATTENDANCE', envOverride);
-    const staffAttendance = explicitStaffAttendance 
-      ? readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride) 
-      : (_readLocalStorageFlag('staffAttendance') ?? true);
-      
-    const explicitTodayOps = hasExplicitBoolEnv('VITE_FEATURE_TODAY_OPS', envOverride);
-    const todayOps = explicitTodayOps 
-      ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) 
-      : (_readLocalStorageFlag('todayOps') ?? true);
-      
-    const explicitTodayLiteUi = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_UI', envOverride);
-    const todayLiteUi = explicitTodayLiteUi 
-      ? readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) 
-      : (_readLocalStorageFlag('todayLiteUi') ?? false);
-      
-    const explicitTodayLiteNavV2 = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_NAV_V2', envOverride);
-    const todayLiteNavV2 = explicitTodayLiteNavV2 
-      ? readBool('VITE_FEATURE_TODAY_LITE_NAV_V2', false, envOverride) 
-      : (_readLocalStorageFlag('todayLiteNavV2') ?? false);
+  // Apply environment or localStorage override (with localStorage priority if no env override)
+  // If in automation, use specific default values when no explicit overrides are provided.
+  const schedules = explicitSchedules
+    ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride)
+    : (_readLocalStorageFlag('schedules') ?? (isAutomationEnv ? true : baseSnapshot.schedules));
 
-    return {
-      ...baseSnapshot,
-      schedules,
-      icebergPdca,
-      staffAttendance,
-      todayOps,
-      todayLiteUi,
-      todayLiteNavV2,
-    };
-  }
+  const icebergPdca = explicitIcebergPdca
+    ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride)
+    : (_readLocalStorageFlag('icebergPdca') ?? (isAutomationEnv ? false : baseSnapshot.icebergPdca));
 
-  return baseSnapshot;
+  const staffAttendance = explicitStaffAttendance
+    ? readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride)
+    : (_readLocalStorageFlag('staffAttendance') ?? (isAutomationEnv ? true : baseSnapshot.staffAttendance));
+
+  const todayOps = explicitTodayOps
+    ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride)
+    : (_readLocalStorageFlag('todayOps') ?? (isAutomationEnv ? true : baseSnapshot.todayOps));
+
+  const todayLiteUi = explicitTodayLiteUi
+    ? readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride)
+    : (_readLocalStorageFlag('todayLiteUi') ?? (isAutomationEnv ? false : baseSnapshot.todayLiteUi));
+
+  const todayLiteNavV2 = explicitTodayLiteNavV2
+    ? readBool('VITE_FEATURE_TODAY_LITE_NAV_V2', false, envOverride)
+    : (_readLocalStorageFlag('todayLiteNavV2') ?? (isAutomationEnv ? false : baseSnapshot.todayLiteNavV2));
+
+  // Optional: support overrides for complianceForm and schedulesWeekV2 as well
+  const complianceForm = _readLocalStorageFlag('complianceForm') ?? baseSnapshot.complianceForm;
+  const schedulesWeekV2 = _readLocalStorageFlag('schedulesWeekV2') ?? baseSnapshot.schedulesWeekV2;
+
+  return {
+    schedules,
+    complianceForm,
+    schedulesWeekV2,
+    icebergPdca,
+    staffAttendance,
+    todayOps,
+    todayLiteUi,
+    todayLiteNavV2,
+  };
 };
 
 const initialSnapshot = resolveFeatureFlags();
@@ -234,13 +266,6 @@ export const getFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapshot =>
 };
 
 export const FeatureFlagsContext = createContext<FeatureFlagSnapshot>(initialSnapshot);
-
-/**
- * Custom event name dispatched when feature flags are changed via setFeatureFlag().
- * Used to notify the same-tab FeatureFlagsProvider of localStorage updates,
- * since the native 'storage' event only fires across tabs.
- */
-const FEATURE_FLAGS_CHANGED_EVENT = 'feature-flags-changed';
 
 export type FeatureFlagsProviderProps = {
   value?: FeatureFlagSnapshot;

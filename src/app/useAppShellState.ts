@@ -186,6 +186,17 @@ export function useAppShellState() {
 
   const navItemsByTier = useMemo(() => splitNavItemsByTier(navItems), [navItems]);
 
+  // Auto-expand "More" menu when currently on a page that is in the "more" tier
+  useEffect(() => {
+    if (!todayLiteNavV2) return;
+    const hasActiveMoreItem = navItemsByTier.more.some((item) =>
+      item.isActive(location.pathname, location.search)
+    );
+    if (hasActiveMoreItem) {
+      setShowMoreNavItems(true);
+    }
+  }, [location.pathname, location.search, navItemsByTier.more, todayLiteNavV2]);
+
   const filteredNavItems = useMemo(() => {
     return filterNavItems(visibleNavItems, navQuery);
   }, [visibleNavItems, navQuery]);

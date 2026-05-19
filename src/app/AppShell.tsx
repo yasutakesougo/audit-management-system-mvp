@@ -52,6 +52,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     drawerWidth,
     currentDrawerWidth,
     showDesktopSidebar,
+    navItems,
     filteredNavItems,
     groupedNavItems,
     showMoreNavItems,
@@ -99,6 +100,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       onToggleMoreNavItems={handleToggleMoreNavItems}
       isAdmin={isAdmin}
       isFieldStaffShell={isFieldStaffShell}
+      navItems={navItems}
     />
   ) : null;
 
@@ -146,6 +148,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 onToggleMoreNavItems={handleToggleMoreNavItems}
                 onNavigate={handleMobileNavigate}
                 isFieldStaffShell={isFieldStaffShell}
+                navItems={navItems}
               />
             </Drawer>
           )}

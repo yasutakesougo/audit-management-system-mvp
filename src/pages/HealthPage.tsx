@@ -214,6 +214,15 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
     }
     return map;
   })(),
+
+  survey_tokusei_v2: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(SURVEY_TOKUSEI_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
   
   plan_goals: (() => {
     const map: Record<string, string[]> = {};
