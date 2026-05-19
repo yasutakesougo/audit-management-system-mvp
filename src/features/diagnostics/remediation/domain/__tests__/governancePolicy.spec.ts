@@ -10,8 +10,8 @@ describe('Governance Policy Audit (4 Core Scenarios)', () => {
       displayName: '利用者マスタ',
       resolve: () => 'Users',
       provisioningFields: [{ internalName: 'UID', type: 'Text' }],
-      operations: ['R'] as any,
-      category: 'user' as any,
+      operations: ['R'],
+      category: 'master',
       essentialFields: ['UID'],
       lifecycle: 'required',
     },
@@ -20,8 +20,8 @@ describe('Governance Policy Audit (4 Core Scenarios)', () => {
       displayName: '監査ログ',
       resolve: () => 'AuditLogs',
       provisioningFields: [{ internalName: 'Log', type: 'Text' }],
-      operations: ['R'] as any,
-      category: 'ops' as any,
+      operations: ['R'],
+      category: 'other',
       essentialFields: ['Log'],
       lifecycle: 'required',
     }
@@ -68,16 +68,19 @@ describe('Governance Policy Audit (4 Core Scenarios)', () => {
   });
 
   it('Scenario 4: 未定義リスト/低優先ノイズ — 優先度を P4 に抑え込むべき', () => {
-    const registryWithUnknown = [...mockRegistry, {
-      key: 'temp_debug_list',
-      displayName: '一時デバッグ',
-      resolve: () => 'Temp',
-      provisioningFields: [{ internalName: 'Dump', type: 'Text' }],
-      operations: ['R'] as any,
-      category: 'ops' as any,
-      essentialFields: ['Dump'],
-      lifecycle: 'required',
-    } as any];
+    const registryWithUnknown: SpListEntry[] = [
+      ...mockRegistry,
+      {
+        key: 'temp_debug_list',
+        displayName: '一時デバッグ',
+        resolve: () => 'Temp',
+        provisioningFields: [{ internalName: 'Dump', type: 'Text' }],
+        operations: ['R'],
+        category: 'other',
+        essentialFields: ['Dump'],
+        lifecycle: 'required',
+      }
+    ];
 
     const signals = [createSignal('temp_debug_list:Dump', 1)];
     const [rec] = deriveGovernanceRecommendations(registryWithUnknown, signals);
