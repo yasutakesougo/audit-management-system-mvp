@@ -525,7 +525,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
-  it('shows setup CTA when support start date is unset', async () => {
+  it('does not show setup CTA even when support start date is unset', async () => {
     mockUseUser.mockReturnValue({
       data: { FullName: '田中 太郎', ServiceStartDate: undefined },
       status: 'success',
@@ -542,13 +542,11 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      const cta = screen.getByTestId('kiosk-support-start-setup-cta');
-      expect(cta).toBeInTheDocument();
-      expect(cta).toHaveAttribute('href', '/support-planning-sheet/new?userId=U001');
+      expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
     });
   });
 
-  it('shows planning draft review CTA when planning sheet status is draft', async () => {
+  it('does not show planning draft review CTA even when planning sheet status is draft', async () => {
     mockUseUser.mockReturnValue({
       data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
       status: 'success',
@@ -565,10 +563,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      const cta = screen.getByTestId('kiosk-planning-draft-review-cta');
-      expect(cta).toBeInTheDocument();
-      expect(cta).toHaveAttribute('href', '/support-planning-sheet/sp-123');
-      expect(screen.getByText(/この支援計画シートは下書きです/)).toBeInTheDocument();
+      expect(screen.queryByTestId('kiosk-planning-draft-review-cta')).toBeNull();
+      expect(screen.queryByText(/この支援計画シートは下書きです/)).toBeNull();
     });
   });
 
@@ -634,7 +630,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
-  it('shows provisional review CTA for fallback source', async () => {
+  it('does not show provisional review CTA even for fallback source', async () => {
     mockUseUser.mockReturnValue({
       data: { FullName: '田中 太郎', ServiceStartDate: undefined },
       status: 'success',
@@ -651,14 +647,12 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      const cta = screen.getByTestId('kiosk-support-start-provisional-cta');
-      expect(cta).toBeInTheDocument();
-      expect(cta).toHaveAttribute('href', '/support-planning-sheet/sp-123');
+      expect(screen.queryByTestId('kiosk-support-start-provisional-cta')).toBeNull();
       expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
     });
   });
 
-  it('shows setup CTA when support start date is invalid', async () => {
+  it('does not show setup CTA even when support start date is invalid', async () => {
     mockUseUser.mockReturnValue({
       data: { FullName: '田中 太郎', ServiceStartDate: undefined },
       status: 'success',
@@ -676,7 +670,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(screen.getByText(/支援開始日: 不正な日付（90日参考）/)).toBeInTheDocument();
-      expect(screen.getByTestId('kiosk-support-start-setup-cta')).toBeInTheDocument();
+      expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
     });
   });
 });
