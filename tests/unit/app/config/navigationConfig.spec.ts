@@ -154,7 +154,7 @@ describe('navigationConfig', () => {
       expect(groupLabel.today).toBe('📌 今日の業務');
       expect(groupLabel.records).toBe('📚 記録を参照');
       expect(groupLabel.planning).toBe('🗓️ 計画・調整');
-      expect(groupLabel.severe).toBe('🔍 分析して改善');
+      expect(groupLabel.severe).toBe('🔍 支援を見直す');
       expect(groupLabel.master).toBe('👥 利用者・職員');
     });
 
