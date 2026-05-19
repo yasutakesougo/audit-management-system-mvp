@@ -60,7 +60,7 @@ export function useImportHandlers({
         importedAt: new Date().toISOString(),
         importedBy: account?.name ?? '不明',
         assessmentId: currentAssessment.id,
-        tokuseiResponseId: null,
+        tokuseiResponseId: result.tokuseiResponseId ?? null,
         mode: result.provenance.some((item) => item.source === 'tokusei_survey') ? 'with-tokusei' : 'assessment-only',
         affectedFields,
         provenance: result.provenance,

@@ -326,6 +326,41 @@ describe('AppShell navigation', () => {
       const hasStaffAttendanceLink = links.some(link => link.textContent?.includes('職員勤怠'));
       expect(hasStaffAttendanceLink).toBe(true);
     });
+
+    it('automatically expands "More" menu when currently on a page that is in the "more" tier', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/meeting-minutes'];
+      const flagsWithTodayLiteNavV2 = { ...defaultFlags, todayLiteNavV2: true };
+
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={flagsWithTodayLiteNavV2}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      ensureDesktopNavOpen();
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+      const links = nav.queryAllByRole('link');
+
+      // The "議事録" link (which has tier: 'more') should be visible since the menu expanded automatically
+      const hasMeetingMinutesLink = links.some(link => link.textContent?.includes('議事録'));
+      expect(hasMeetingMinutesLink).toBe(true);
+    });
   });
 
   describe('Search functionality', () => {
@@ -452,6 +487,40 @@ describe('AppShell navigation', () => {
         const collapseButton = await screen.findByRole('button', { name: /ナビを折りたたみ/i });
         expect(collapseButton).toBeInTheDocument();
       }
+    });
+  });
+
+  describe('More tier hidden item indicators', () => {
+    it('renders a badge with count when showMoreNavItems is false and todayLiteNavV2 is enabled', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      const flagsWithTodayLiteNavV2 = { ...defaultFlags, todayLiteNavV2: true };
+
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={flagsWithTodayLiteNavV2}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      ensureDesktopNavOpen();
+
+      // "その他のメニュー" button is present and should display the badge with the count (2 for non-forced more items)
+      const moreBtn = screen.getByRole('button', { name: /その他のメニューを開く/i });
+      expect(moreBtn).toBeInTheDocument();
+      expect(within(moreBtn).getByText('2')).toBeInTheDocument();
     });
   });
 });

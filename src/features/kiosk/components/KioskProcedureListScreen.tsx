@@ -140,12 +140,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         return `支援開始日: ${dateStr}（90日参考）`;
     }
   }, [resolvedStartDate, targetPlanningSheetId, isLoadingPlanningSheet, isLoadingCurrentSheet]);
-  const currentPlanningSheetId = (planningSheet?.id ?? currentSheet?.id ?? targetPlanningSheetId ?? '').trim();
-  const showSetupCta = !!queryUserId
-    && (supportStartDateLabel.includes('未設定（90日参考）') || supportStartDateLabel.includes('不正な日付（90日参考）'));
-  const showProvisionalReviewCta = resolvedStartDate.source === 'fallback' && !!currentPlanningSheetId;
-  const currentPlanningSheetStatus = planningSheet?.status ?? currentSheet?.status;
-  const showDraftStatusReviewCta = currentPlanningSheetStatus === 'draft' && !!currentPlanningSheetId;
+
 
   const { getRecords: getStoreRecords } = useExecutionStore();
   const storeRecords = getStoreRecords(selectedDateIso || '', user?.UserID || userId || '');
@@ -284,46 +279,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 'medium' }}>
                 • {supportStartDateLabel}
               </Typography>
-              {showSetupCta && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  component={RouterLink}
-                  to={`/support-planning-sheet/new?userId=${encodeURIComponent(queryUserId ?? '')}`}
-                  data-testid="kiosk-support-start-setup-cta"
-                >
-                  支援計画シートを作成して支援開始日を設定
-                </Button>
-              )}
-              {showProvisionalReviewCta && (
-                <Button
-                  size="small"
-                  variant="text"
-                  component={RouterLink}
-                  to={`/support-planning-sheet/${encodeURIComponent(currentPlanningSheetId)}`}
-                  data-testid="kiosk-support-start-provisional-cta"
-                >
-                  元シートを確認
-                </Button>
-              )}
-              {showDraftStatusReviewCta && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="warning"
-                  component={RouterLink}
-                  to={`/support-planning-sheet/${encodeURIComponent(currentPlanningSheetId)}`}
-                  data-testid="kiosk-planning-draft-review-cta"
-                >
-                  支援計画シートを確認
-                </Button>
-              )}
             </Box>
-            {showDraftStatusReviewCta && (
-              <Typography variant="caption" color="warning.main">
-                この支援計画シートは下書きです。正式運用は支援計画シート画面で開始してください。
-              </Typography>
-            )}
           </Box>
         </Box>
 
