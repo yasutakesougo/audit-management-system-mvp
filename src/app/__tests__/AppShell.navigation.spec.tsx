@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -73,6 +73,11 @@ function renderShell() {
 }
 
 describe('AppShell navigation exposure', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockRole = 'viewer';
+  });
+
   // Verify that certain items are correctly hidden when todayLiteNavV2 is enabled for non-admin users.
   it('hides analysis/ops/exceptions/handoff-analysis for viewer when todayLiteNavV2 is on', () => {
     mockRole = 'viewer';
@@ -108,5 +113,30 @@ describe('AppShell navigation exposure', () => {
     renderShell();
 
     expect(screen.getByText('運用メトリクス')).toBeInTheDocument();
+  });
+
+  it('allows toggling more navigation items even when sidebar is collapsed', async () => {
+    mockRole = 'viewer';
+    renderShell();
+
+    // 1. Collapse the sidebar
+    const collapseButton = screen.getByRole('button', { name: 'ナビを折りたたみ' });
+    expect(collapseButton).toBeInTheDocument();
+    fireEvent.click(collapseButton);
+
+    // Verify sidebar collapsed button tooltip or aria-label changes to 'ナビを展開'
+    expect(screen.getByRole('button', { name: 'ナビを展開' })).toBeInTheDocument();
+
+    // 2. Find and click the 'More' button (rendered as an IconButton when collapsed)
+    const moreIconButton = screen.getByRole('button', { name: 'その他のメニューを開く' });
+    expect(moreIconButton).toBeInTheDocument();
+    fireEvent.click(moreIconButton);
+
+    // More item should now be visible (by testid, since label text is hidden in collapsed sidebar)
+    expect(await screen.findByTestId('more-nav-item-議事録')).toBeInTheDocument();
+
+    // 3. Click again to collapse the 'More' items
+    fireEvent.click(moreIconButton);
+    expect(screen.queryByTestId('more-nav-item-議事録')).not.toBeInTheDocument();
   });
 });
