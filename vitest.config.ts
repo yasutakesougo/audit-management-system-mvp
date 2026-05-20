@@ -17,7 +17,10 @@ export default defineConfig({
     pool: isCI ? 'forks' : undefined,
     // forks pool: single worker for CI stability
     maxWorkers: isCI ? 1 : undefined,
-    fileParallelism: isCI ? false : true,
+    // Enable fileParallelism so that each test file runs in its own isolated worker process.
+    // Combined with maxWorkers: 1, this runs files sequentially (avoiding port/resource clashes)
+    // while fully reclaiming memory after each file completes, preventing memory leaks/OOM.
+    fileParallelism: true,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
