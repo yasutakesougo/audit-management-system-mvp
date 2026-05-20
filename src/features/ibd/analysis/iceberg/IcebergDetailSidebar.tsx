@@ -399,6 +399,7 @@ export const IcebergDetailSidebar: React.FC<Props> = ({
                         value={node.type}
                         onChange={handleNodeTypeChange}
                         disabled={isReadOnly}
+                        inputProps={{ 'aria-label': '項目の属性' }}
                         sx={{
                           height: 32,
                           fontSize: '0.85rem',

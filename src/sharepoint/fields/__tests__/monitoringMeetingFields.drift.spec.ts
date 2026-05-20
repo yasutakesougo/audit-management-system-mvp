@@ -53,6 +53,7 @@ describe('MONITORING_MEETING_CANDIDATES — cr014_ 標準名', () => {
     'cr014_reqPlanSheetUpd', 'cr014_reqIspUpd',
     'cr014_hasBasicTrained', 'cr014_hasPractTrained',
     'cr014_qualCheckStatus', 'cr014_nextActions',
+    'cr014_discSummaryBlocksJson',
     'cr014_status', 'cr014_finalizedAt', 'cr014_finalizedBy', 'cr014_prevMeetingId',
   ]);
 

@@ -17,7 +17,10 @@ export default defineConfig({
     pool: isCI ? 'forks' : undefined,
     // forks pool: single worker for CI stability
     maxWorkers: isCI ? 1 : undefined,
-    fileParallelism: isCI ? false : true,
+    // Enable fileParallelism so that each test file runs in its own isolated worker process.
+    // Combined with maxWorkers: 1, this runs files sequentially (avoiding port/resource clashes)
+    // while fully reclaiming memory after each file completes, preventing memory leaks/OOM.
+    fileParallelism: true,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -33,8 +36,8 @@ export default defineConfig({
       'playwright.*.config.ts'
     ],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov', 'json', 'html'],
+      provider: 'istanbul',
+      reporter: ['text', 'lcov', 'json', 'json-summary', 'html'],
       exclude: [
         'node_modules/',
         'src/tests/',

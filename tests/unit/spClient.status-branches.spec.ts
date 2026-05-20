@@ -119,7 +119,7 @@ describe('createSpClient retry branches', () => {
       Promise.resolve(
         new Response(
           JSON.stringify({ error: { message: { value: 'Server exploded' } } }),
-          { status: 500, statusText: 'Server Error', headers: { 'Content-Type': 'application/json' } },
+          { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'application/json' } },
         ),
       ),
     );
