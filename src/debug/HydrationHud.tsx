@@ -1,9 +1,6 @@
 import { getServiceThresholds } from '@/config/serviceRecords';
 import { isDev } from '@/env';
 import {
-  formatBreakerReason,
-} from '@/lib/circuitBreaker/evaluator';
-import {
   getBreakerSnapshots,
   initBreakerStore,
   subscribeBreakerSnapshots,
@@ -26,123 +23,25 @@ import {
   type HydrationTelemetrySpan,
 } from '@/telemetry/hydrationBeacon';
 import { TodayQueueHudPanel } from '@/features/today/telemetry/TodayQueueHudPanel';
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FetchHealthSection } from './FetchHealthSection';
+import {
+  STATUS_COLORS,
+  buttonStyle,
+  containerStyle,
+  emptyStateStyle,
+  headerStyle,
+  listStyle,
+  panelContentStyle,
+  panelStyle,
+  rowStyle,
+  sectionLabelStyle,
+  telemetryRowStyle,
+  thresholdsRowStyle,
+  totalStyle,
+} from './hudStyles';
 
 const STORAGE_KEY = 'prefetch:hud:visible';
-const STATUS_COLORS: Record<'good' | 'warn' | 'bad', string> = {
-  good: '#34d399',
-  warn: '#fbbf24',
-  bad: '#f87171',
-};
-
-const containerStyle: CSSProperties = {
-  position: 'fixed',
-  right: 16,
-  bottom: 16,
-  zIndex: 2147483647,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-end',
-  gap: 8,
-  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  color: '#fff',
-  pointerEvents: 'none',
-};
-
-const buttonStyle: CSSProperties = {
-  pointerEvents: 'auto',
-  borderRadius: 999,
-  backgroundColor: 'rgba(15, 23, 42, 0.85)',
-  border: '1px solid rgba(148, 163, 184, 0.5)',
-  color: '#e2e8f0',
-  padding: '6px 14px',
-  fontSize: 13,
-  cursor: 'pointer',
-  transition: 'background-color 0.2s ease',
-};
-
-const panelStyle: CSSProperties = {
-  pointerEvents: 'none',
-  minWidth: 240,
-  maxWidth: 320,
-  backgroundColor: 'rgba(15, 23, 42, 0.95)',
-  borderRadius: 12,
-  padding: '12px 16px',
-  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.45)',
-  border: '1px solid rgba(100, 116, 139, 0.35)',
-  backdropFilter: 'blur(6px)',
-};
-
-const panelContentStyle: CSSProperties = {
-  pointerEvents: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const headerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  fontSize: 13,
-  marginBottom: 8,
-};
-
-const totalStyle: CSSProperties = {
-  fontWeight: 600,
-  letterSpacing: 0.2,
-};
-
-const sectionLabelStyle: CSSProperties = {
-  ...headerStyle,
-  marginTop: 12,
-};
-
-const listStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-};
-
-const rowStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr auto',
-  alignItems: 'center',
-  gap: 12,
-  fontSize: 12,
-  lineHeight: 1.4,
-  padding: '6px 8px 6px 10px',
-  borderRadius: 8,
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  backgroundColor: 'rgba(30, 41, 59, 0.7)',
-  position: 'relative',
-};
-
-const telemetryRowStyle: CSSProperties = {
-  ...rowStyle,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
-  gap: 6,
-};
-
-const thresholdsRowStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  fontSize: 12,
-  lineHeight: 1.4,
-  padding: '6px 8px 6px 10px',
-  borderRadius: 8,
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  backgroundColor: 'rgba(30, 41, 59, 0.7)',
-};
-
-const emptyStateStyle: CSSProperties = {
-  fontSize: 12,
-  opacity: 0.7,
-  textAlign: 'center',
-  padding: '12px 0',
-};
 
 const isTruthy = (value?: string | null): boolean => {
   if (!value) return false;
@@ -534,92 +433,3 @@ export const HydrationHud: React.FC = () => {
 };
 
 export default HydrationHud;
-
-// ─── Fetch Health Section ────────────────────────────────────────────────────
-
-const BREAKER_COLORS: Record<string, string> = {
-  CLOSED: '#4ade80',
-  HALF_OPEN: '#facc15',
-  OPEN: '#f87171',
-};
-
-type FetchHealthSectionProps = {
-  snapshots: Record<string, ReturnType<typeof getBreakerSnapshots>[keyof ReturnType<typeof getBreakerSnapshots>]>;
-};
-
-function FetchHealthSection({ snapshots }: FetchHealthSectionProps) {
-  const layers = Object.values(snapshots);
-
-  return (
-    <>
-      <div style={sectionLabelStyle}>
-        <span style={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Fetch Health</span>
-      </div>
-      <div data-testid="hud-fetch-health" style={{ ...listStyle, gap: 6 }}>
-        {layers.map((snap) => (
-          <div
-            key={snap.layer}
-            style={{
-              ...rowStyle,
-              borderLeft: `3px solid ${BREAKER_COLORS[snap.state] ?? '#999'}`,
-              flexDirection: 'column',
-              alignItems: 'stretch',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {snap.layer}
-              </span>
-              <span
-                data-testid={`breaker-state-${snap.layer}`}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  background: BREAKER_COLORS[snap.state] ?? '#999',
-                  color: snap.state === 'HALF_OPEN' ? '#000' : '#fff',
-                }}
-              >
-                {snap.state}
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px 16px', fontSize: 11, marginTop: 4 }}>
-              <StatCell label="Success" value={`${(snap.stats.successRate * 100).toFixed(0)}%`}
-                warn={snap.stats.successRate < 0.8} />
-              <StatCell label="Avg" value={`${snap.stats.avgDurationMs}ms`}
-                warn={snap.stats.avgDurationMs > 2000} />
-              <StatCell label="p95" value={`${snap.stats.p95DurationMs}ms`}
-                warn={snap.stats.p95DurationMs > 3000} />
-              <StatCell label="Errors" value={String(snap.stats.errorCount)}
-                warn={snap.stats.errorCount > 0} />
-              <StatCell label="Slow" value={String(snap.stats.slowCount)}
-                warn={snap.stats.slowCount > 3} />
-              <StatCell label="Retries" value={String(snap.stats.totalRetries)}
-                warn={snap.stats.totalRetries > 2} />
-            </div>
-            {snap.stats.consecutiveFailures > 0 && (
-              <div style={{ fontSize: 11, color: '#f87171', marginTop: 2 }}>
-                🔴 {snap.stats.consecutiveFailures} consecutive failures
-              </div>
-            )}
-            {snap.reason && (
-              <div style={{ fontSize: 11, color: '#facc15', marginTop: 2 }}>
-                ⚡ {formatBreakerReason(snap.reason)}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function StatCell({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <span style={{ opacity: 0.5, fontSize: 10, textTransform: 'uppercase' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: warn ? '#f87171' : '#e2e8f0' }}>{value}</span>
-    </div>
-  );
-}
