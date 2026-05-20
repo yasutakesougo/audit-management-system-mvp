@@ -41,16 +41,16 @@
     ]
   },
   "inputs": {
-    "patrolJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/2100-01-13.json",
-    "classificationJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/classification-2100-01-13.json",
-    "dashboardMd": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/dashboard-2100-01-13.md",
-    "laneAssertionJson": "/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/lane-assertion-result.json",
+    "patrolJson": "/home/runner/work/audit-management-system-mvp/audit-management-system-mvp/docs/nightly-patrol/2100-01-13.json",
+    "classificationJson": "/home/runner/work/audit-management-system-mvp/audit-management-system-mvp/docs/nightly-patrol/classification-2100-01-13.json",
+    "dashboardMd": "/home/runner/work/audit-management-system-mvp/audit-management-system-mvp/docs/nightly-patrol/dashboard-2100-01-13.md",
+    "laneAssertionJson": "/home/runner/work/audit-management-system-mvp/audit-management-system-mvp/docs/nightly-patrol/lane-assertion-result.json",
     "actWarningJson": "",
-    "exceptionCenterJson": "/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/nightly-decision-MHOuH7/exception-broken.json",
+    "exceptionCenterJson": "/tmp/nightly-decision-gCEypX/exception-broken.json",
     "kpiJson": "",
     "driftJson": "",
-    "adminStatusJson": "/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/nightly-decision-MHOuH7/admin-broken.json",
-    "logFile": "/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/nightly-decision-MHOuH7/nightly.log"
+    "adminStatusJson": "/tmp/nightly-decision-gCEypX/admin-broken.json",
+    "logFile": "/tmp/nightly-decision-gCEypX/nightly.log"
   },
   "metrics": {
     "driftCount": 0,
