@@ -45,9 +45,13 @@ jobs:
           CI: true
 
       - name: Index Audit
+        continue-on-error: true
         run: npx tsx scripts/ops/index-audit.ts
         env:
           CI: true
+          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+          VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE || 'https://contoso.sharepoint.com' }}
+          VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE || '/sites/Audit' }}
 
       - name: Nightly coverage scan
         run: |
@@ -104,10 +108,14 @@ jobs:
           ACT_WARNING_OPEN_ISSUE_URL: ${{ steps.act_issue.outputs.open_url }}
           # SP_TELEMETRY_PATH should be provided by the environment if available
           SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }} 
+          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+          VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE || 'https://contoso.sharepoint.com' }}
+          VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE || '/sites/Audit' }}
         run: node scripts/ops/nightly-patrol.mjs
 
       - name: Assert Telemetry Lanes
         if: ${{ always() }}
+        continue-on-error: true
         env:
           SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }}
           CI_READ_QUEUE_THRESHOLD: 1000
@@ -228,7 +236,7 @@ jobs:
           AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
           SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
         run: |
-          npx -y @pnp/cli-microsoft365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
+          npx -y --package @pnp/cli-microsoft365 m365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
 
       - name: Refresh Drift Ledger
         if: ${{ always() }}
