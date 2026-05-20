@@ -58,13 +58,24 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=6144"
         run: |
           ulimit -n 65536
-          set -o pipefail
-          npm run test:coverage -- --reporter=default
+          # We don't fail immediately on Vitest's unhandled teardown exit code
+          set +e
+          npm run test:coverage -- --reporter=default --reporter=json --outputFile=vitest-report.json
+          VITEST_EXIT_CODE=$?
+          set -e
+
+          # Always copy coverage files if they are generated
           if [ -d coverage ]; then
             mkdir -p docs/nightly-patrol
             cp coverage/coverage-summary.json docs/nightly-patrol/coverage-summary.json
             cp coverage/lcov.info docs/nightly-patrol/lcov.info
           fi
+
+          # Verify execution status using our robust checker
+          node scripts/ops/verify-coverage-status.mjs
+          VERIFY_EXIT_CODE=$?
+
+          exit $VERIFY_EXIT_CODE
 
       - name: Nightly act warning scan
         id: act_scan
