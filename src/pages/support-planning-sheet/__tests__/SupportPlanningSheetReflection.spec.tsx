@@ -1,6 +1,20 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+
+const { mockAbcRecordRepo, mockPlanPatchRepo } = vi.hoisted(() => ({
+  mockAbcRecordRepo: {
+    getByUserId: vi.fn().mockResolvedValue([]),
+  },
+  mockPlanPatchRepo: {
+    findPending: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+vi.mock('@/infra/abc/useAbcRecordRepository', () => ({
+  useAbcRecordRepository: vi.fn().mockReturnValue(mockAbcRecordRepo),
+}));
+
 import { SupportPlanningSheetView } from '../SupportPlanningSheetView';
 import { MemoryRouter } from 'react-router-dom';
 import { SupportPlanningSheetViewModel, SupportPlanningSheetActionHandlers } from '../types';
@@ -17,9 +31,7 @@ vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
 }));
 
 vi.mock('@/features/planning-sheet/hooks/usePlanPatchRepository', () => ({
-  usePlanPatchRepository: () => ({
-    findPending: vi.fn().mockResolvedValue([]),
-  }),
+  usePlanPatchRepository: () => mockPlanPatchRepo,
 }));
 
 vi.mock('../hooks/supportPlanningSheetViewModelMapper', () => ({
@@ -128,7 +140,7 @@ const mockViewModel: SupportPlanningSheetViewModel = {
 };
 
 describe('SupportPlanningSheetReflection UI Interaction', () => {
-  it('反映内容を確認ボタンをクリックすると onOpenReflectPreview が呼ばれること', () => {
+  it('反映内容を確認ボタンをクリックすると onOpenReflectPreview が呼ばれること', async () => {
     const vmWithDiff = {
       ...mockViewModel,
       differenceInsight: {
@@ -146,9 +158,11 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     fireEvent.click(reflectBtn);
     
     expect(mockHandlers.onOpenReflectPreview).toHaveBeenCalled();
+
+    await screen.findByText('まだ十分な分析データがありません');
   });
 
-  it('reflectPreviewOpen が true の場合、プレビューダイアログが表示されること', () => {
+  it('reflectPreviewOpen が true の場合、プレビューダイアログが表示されること', async () => {
     const vmWithPreview = {
       ...mockViewModel,
       reflectPreviewOpen: true,
@@ -168,9 +182,11 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     expect(screen.getByText('支援計画への反映プレビュー')).toBeInTheDocument();
     expect(screen.getByText('既存の行動')).toBeInTheDocument();
     expect(screen.getByText('新しい行動')).toBeInTheDocument();
+
+    await screen.findByText('まだ十分な分析データがありません');
   });
 
-  it('ダイアログの「反映する」をクリックすると onConfirmReflect が呼ばれること', () => {
+  it('ダイアログの「反映する」をクリックすると onConfirmReflect が呼ばれること', async () => {
     const vmWithPreview = {
       ...mockViewModel,
       reflectPreviewOpen: true,
@@ -189,5 +205,7 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     fireEvent.click(confirmBtn);
     
     expect(mockHandlers.onConfirmReflect).toHaveBeenCalled();
+
+    await screen.findByText('まだ十分な分析データがありません');
   });
 });

@@ -149,8 +149,12 @@ describe('useSupportPlanningSheetOrchestrator', () => {
     });
   });
 
-  it('ハンドラが正しく公開されていること', () => {
+  it('ハンドラが正しく公開されていること', async () => {
     const { result } = renderHook(() => useSupportPlanningSheetOrchestrator(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.viewModel).not.toBeNull();
+    });
 
     expect(result.current.handlers.onEdit).toBeDefined();
     expect(result.current.handlers.onSave).toBeDefined();

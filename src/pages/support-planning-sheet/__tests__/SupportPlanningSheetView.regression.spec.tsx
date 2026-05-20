@@ -1,6 +1,25 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect } from 'vitest';
+
+const { mockAbcRecordRepo, mockPlanningSheetRepo, mockPlanPatchRepo, mockOrchestrator } = vi.hoisted(() => ({
+  mockAbcRecordRepo: {
+    getByUserId: vi.fn().mockResolvedValue([]),
+  },
+  mockPlanningSheetRepo: {},
+  mockPlanPatchRepo: {
+    findPending: vi.fn().mockResolvedValue([]),
+  },
+  mockOrchestrator: {
+    handleApplyPatch: vi.fn(),
+    handleUpdatePatchStatus: vi.fn(),
+  },
+}));
+
+vi.mock('@/infra/abc/useAbcRecordRepository', () => ({
+  useAbcRecordRepository: vi.fn().mockReturnValue(mockAbcRecordRepo),
+}));
+
 import { SupportPlanningSheetView } from '../SupportPlanningSheetView';
 import { SupportPlanningSheetViewModel, SupportPlanningSheetActionHandlers } from '../types';
 import { TESTIDS } from '@/testids';
@@ -8,18 +27,15 @@ import '@testing-library/jest-dom';
 
 // Mock dependencies
 vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
-  usePlanningSheetRepositories: vi.fn().mockReturnValue({}),
+  usePlanningSheetRepositories: vi.fn().mockReturnValue(mockPlanningSheetRepo),
 }));
+
 vi.mock('@/features/planning-sheet/hooks/usePlanPatchRepository', () => ({
-  usePlanPatchRepository: vi.fn().mockReturnValue({
-    findPending: vi.fn().mockResolvedValue([]),
-  }),
+  usePlanPatchRepository: vi.fn().mockReturnValue(mockPlanPatchRepo),
 }));
+
 vi.mock('@/features/planning-sheet/hooks/orchestrators/usePlanningSheetOrchestrator', () => ({
-  usePlanningSheetOrchestrator: vi.fn().mockReturnValue({
-    handleApplyPatch: vi.fn(),
-    handleUpdatePatchStatus: vi.fn(),
-  }),
+  usePlanningSheetOrchestrator: vi.fn().mockReturnValue(mockOrchestrator),
 }));
 
 const mockHandlers: SupportPlanningSheetActionHandlers = {
@@ -104,7 +120,7 @@ const baseViewModel = {
 } as unknown as SupportPlanningSheetViewModel;
 
 describe('SupportPlanningSheetView Regression Tests', () => {
-  it('差分（Difference Insight）がある場合、警告バーが表示されること', () => {
+  it('差分（Difference Insight）がある場合、警告バーが表示されること', async () => {
     const vm = { 
       ...baseViewModel, 
       differenceInsight: {
@@ -125,9 +141,12 @@ describe('SupportPlanningSheetView Regression Tests', () => {
     expect(screen.getByText('計画未反映の変更検知 (DIFFERENCE INSIGHT)')).toBeInTheDocument();
     expect(screen.getByText('追加: 自傷行為')).toBeInTheDocument();
     expect(screen.getByText('要検討: 騒音')).toBeInTheDocument();
+
+    // Wait for AbcEvidencePanel's async load to complete and flush state updates
+    await screen.findByText('まだ十分な分析データがありません');
   });
 
-  it('差分がない場合、警告バーが表示されないこと', () => {
+  it('差分がない場合、警告バーが表示されないこと', async () => {
     const vm = { ...baseViewModel, differenceInsight: undefined };
     render(
       <MemoryRouter>
@@ -136,5 +155,8 @@ describe('SupportPlanningSheetView Regression Tests', () => {
     );
 
     expect(screen.queryByTestId(TESTIDS.DIFFERENCE_INSIGHT_BAR)).not.toBeInTheDocument();
+
+    // Wait for AbcEvidencePanel's async load to complete and flush state updates
+    await screen.findByText('まだ十分な分析データがありません');
   });
 });
