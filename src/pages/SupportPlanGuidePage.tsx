@@ -21,16 +21,16 @@ import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries/useIceb
 
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
-    SectionKey,
-    SupportPlanDraft
+    SectionKey
 } from '@/features/support-plan-guide/types';
 import {
     FIELD_KEYS,
 } from '@/features/support-plan-guide/types';
-import { computeRequiredCompletion } from '@/features/support-plan-guide/domain/progress';
 import { getAllSubsFlat } from '@/features/support-plan-guide/domain/tabRoute';
 import { findSectionKeyByFieldKey } from '@/features/support-plan-guide/domain/sectionMeta';
 import SupportPlanTabHeader from '@/features/support-plan-guide/components/SupportPlanTabHeader';
+import { TabPanel } from '@/features/support-plan-guide/components/TabPanel';
+import { DraftProgressChips } from '@/features/support-plan-guide/components/DraftProgressChips';
 import { useUsersStore } from '@/features/users/store';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { TESTIDS, tid } from '@/testids';
@@ -38,14 +38,12 @@ import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 import CloudDoneRoundedIcon from '@mui/icons-material/CloudDoneRounded';
 import CloudOffRoundedIcon from '@mui/icons-material/CloudOffRounded';
 import CloudSyncRoundedIcon from '@mui/icons-material/CloudSyncRounded';
-import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
 
 import React, { Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -67,26 +65,6 @@ const RegulatorySection = React.lazy(() => import('@/features/support-plan-guide
 const NextActionPanelContainer = React.lazy(() => import('@/features/support-plan-guide/components/planner-assist/NextActionPanelContainer'));
 
 const TabFallback = <CircularProgress size={20} sx={{ m: 2 }} />;
-
-// ────────────────────────────────────────────
-// TabPanel (internal)
-// ────────────────────────────────────────────
-
-const TabPanel: React.FC<{ current: SectionKey; value: SectionKey; children: React.ReactNode }> = ({
-  current,
-  value,
-  children,
-}) => (
-  <Box
-    role="tabpanel"
-    hidden={current !== value}
-    id={`support-plan-tabpanel-${value}`}
-    aria-labelledby={`support-plan-tab-${value}`}
-    sx={{ mt: 2 }}
-  >
-    {current === value ? <Suspense fallback={TabFallback}>{children}</Suspense> : null}
-  </Box>
-);
 
 // ────────────────────────────────────────────
 // Page Component
@@ -327,38 +305,6 @@ export default function SupportPlanGuidePage() {
     can,
   };
 
-  // ── Draft progress chip (render helper) ──
-  const getDraftProgressChip = (draft: SupportPlanDraft) => {
-    const progress = computeRequiredCompletion(draft.data);
-    const lastUpdated = draft.updatedAt ? new Date(draft.updatedAt).toLocaleString('ja-JP') : '未記録';
-    const displayName = draft.name.trim() || '未設定の利用者';
-    const code = draft.userCode?.trim();
-    const chipLabel = `${displayName}${code ? ` / ${code}` : ''} (${progress}%)`;
-    const tooltipParts = [`必須達成: ${progress}%`, `最終更新: ${lastUpdated}`];
-    if (code) {
-      tooltipParts.push(`利用者コード: ${code}`);
-    }
-    if (draft.userId != null) {
-      tooltipParts.push(`レコードID: ${draft.userId}`);
-    }
-    const linkedToMaster = draft.userId != null;
-
-    return (
-      <Tooltip key={draft.id} title={tooltipParts.join(' ・ ')} arrow>
-        <Chip
-          icon={linkedToMaster ? <VerifiedUserRoundedIcon fontSize="small" /> : undefined}
-          clickable
-          color={draft.id === activeDraftId ? 'primary' : 'default'}
-          label={chipLabel}
-          onClick={() => {
-            setActiveDraftId(draft.id);
-            setActiveTab('overview');
-          }}
-        />
-      </Tooltip>
-    );
-  };
-
   // ── Tab content renderer ──
   const renderTabContent = (tabKey: SectionKey): React.ReactNode => {
     switch (tabKey) {
@@ -530,7 +476,14 @@ export default function SupportPlanGuidePage() {
               useFlexGap
             >
               {draftList.length > 0 ? (
-                draftList.map(getDraftProgressChip)
+                <DraftProgressChips
+                  drafts={draftList}
+                  activeDraftId={activeDraftId}
+                  onSelectDraft={(id) => {
+                    setActiveDraftId(id);
+                    setActiveTab('overview');
+                  }}
+                />
               ) : (
                 <Chip size="small" variant="outlined" label="ドラフト未作成" />
               )}
