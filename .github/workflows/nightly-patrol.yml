@@ -236,6 +236,11 @@ jobs:
           AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
           SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
         run: |
+          if [ -z "$AAD_TENANT_ID" ] || [ -z "$AAD_APP_ID" ] || [ -z "$SPO_CLIENT_SECRET" ]; then
+            echo "::warning::Skipping M365 CLI login because remediation credentials are incomplete."
+            exit 0
+          fi
+
           npx -y --package @pnp/cli-microsoft365 m365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
 
       - name: Refresh Drift Ledger
