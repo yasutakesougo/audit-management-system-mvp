@@ -67,8 +67,8 @@ jobs:
           # Always copy coverage files if they are generated
           if [ -d coverage ]; then
             mkdir -p docs/nightly-patrol
-            cp coverage/coverage-summary.json docs/nightly-patrol/coverage-summary.json
-            cp coverage/lcov.info docs/nightly-patrol/lcov.info
+            [ -f coverage/coverage-summary.json ] && cp coverage/coverage-summary.json docs/nightly-patrol/coverage-summary.json || echo "Warning: coverage-summary.json missing"
+            [ -f coverage/lcov.info ] && cp coverage/lcov.info docs/nightly-patrol/lcov.info || echo "Warning: lcov.info missing"
           fi
 
           # Verify execution status using our robust checker

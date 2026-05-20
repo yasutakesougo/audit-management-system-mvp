@@ -37,7 +37,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'istanbul',
-      reporter: ['text', 'lcov', 'json', 'html'],
+      reporter: ['text', 'lcov', 'json', 'json-summary', 'html'],
       exclude: [
         'node_modules/',
         'src/tests/',
