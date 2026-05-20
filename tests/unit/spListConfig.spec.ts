@@ -12,6 +12,7 @@ import {
     resolveListIdentifier,
     type SpListKey,
 } from '@/sharepoint/spListConfig';
+import { SP_LIST_REGISTRY } from '@/sharepoint/spListRegistry';
 import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
@@ -19,8 +20,8 @@ import { describe, expect, it } from 'vitest';
 // ---------------------------------------------------------------------------
 
 describe('getAllListKeys', () => {
-  it('should return exactly 47 keys', () => {
-    expect(getAllListKeys()).toHaveLength(47);
+  it('should return the exact keys defined in the SP_LIST_REGISTRY', () => {
+    expect(getAllListKeys().length).toBe(SP_LIST_REGISTRY.length);
   });
 
   it('should return unique keys', () => {

@@ -193,7 +193,7 @@ function computeBackoffMs(
 }
 
 function isRetryableStatus(status: number): boolean {
-  return status === 429 || status === 503;
+  return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
 function isThrottleRedirect(url: unknown): boolean {

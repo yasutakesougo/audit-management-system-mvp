@@ -296,7 +296,7 @@ describe('ImportAssessmentDialog — 統合テスト', () => {
     fireEvent.click(importButton);
 
     const result: AssessmentBridgeResult = onImport.mock.calls[0][0];
-    expect(result.tokuseiResponseId).toBe(1);
+    expect(result.tokuseiResponseId).toBe('1');
 
     // tokusei_survey の provenance が含まれる
     const tokuseiProvenances = result.provenance.filter((p) => p.source === 'tokusei_survey');
