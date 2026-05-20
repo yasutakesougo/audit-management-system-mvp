@@ -182,6 +182,7 @@
     "@typescript-eslint/parser": "^8.44.1",
     "@vitejs/plugin-legacy": "^7.2.1",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-istanbul": "^4.1.7",
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.16",
     "axe-core": "^4.10.3",

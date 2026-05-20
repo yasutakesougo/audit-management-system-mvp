@@ -36,7 +36,7 @@ export default defineConfig({
       'playwright.*.config.ts'
     ],
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'lcov', 'json', 'html'],
       exclude: [
         'node_modules/',
