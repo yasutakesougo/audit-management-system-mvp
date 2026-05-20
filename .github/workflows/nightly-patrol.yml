@@ -49,6 +49,16 @@ jobs:
         env:
           CI: true
 
+      - name: Nightly coverage scan
+        run: |
+          set -o pipefail
+          npm run test:coverage -- --reporter=default
+          if [ -d coverage ]; then
+            mkdir -p docs/nightly-patrol
+            cp coverage/coverage-summary.json docs/nightly-patrol/coverage-summary.json
+            cp coverage/lcov.info docs/nightly-patrol/lcov.info
+          fi
+
       - name: Nightly act warning scan
         id: act_scan
         continue-on-error: true
@@ -192,37 +202,7 @@ jobs:
             echo "- decision: unavailable" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          node - "$FILE" <<'NODE' >> "$GITHUB_STEP_SUMMARY"
-          const fs = require('node:fs');
-          const file = process.argv[2];
-          const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-          console.log(`- verdict: **${data.final?.line ?? 'n/a'}**`);
-          if (Array.isArray(data.reasons?.fail) && data.reasons.fail.length > 0) {
-            console.log(`- failTriggers: ${data.reasons.fail.length}`);
-          } else {
-            console.log('- failTriggers: 0');
-          }
-          if (Array.isArray(data.reasons?.warn) && data.reasons.warn.length > 0) {
-            console.log(`- watchTriggers: ${data.reasons.warn.length}`);
-          } else {
-            console.log('- watchTriggers: 0');
-          }
-          if (Array.isArray(data.reasonCodes?.fail) && data.reasonCodes.fail.length > 0) {
-            console.log(`- failCodes: \`${data.reasonCodes.fail.join(', ')}\``);
-          }
-          if (Array.isArray(data.reasonCodes?.warn) && data.reasonCodes.warn.length > 0) {
-            console.log(`- watchCodes: \`${data.reasonCodes.warn.join(', ')}\``);
-          }
-          if (Array.isArray(data.escalations) && data.escalations.length > 0) {
-            const rows = data.escalations.map((x) => {
-              const type = x?.type || 'unknown';
-              const days = Number.isFinite(x?.days) ? x.days : 'n/a';
-              const code = x?.code || 'n/a';
-              return `${type}:${code} (${days}d)`;
-            });
-            console.log(`- escalations: \`${rows.join(', ')}\``);
-          }
-          NODE
+          node scripts/ops/nightly-decision-summary.mjs "$FILE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Index Pressure summary
         if: ${{ always() }}
@@ -232,27 +212,7 @@ jobs:
           if [ ! -f "$FILE" ]; then
             echo "- summary: unavailable" >> "$GITHUB_STEP_SUMMARY"
           else
-            node - "$FILE" <<'NODE' >> "$GITHUB_STEP_SUMMARY"
-            const fs = require('node:fs');
-            const file = process.argv[2];
-            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-            const results = data.results || [];
-            const critical = results.filter(r => ['action_required', 'critical'].includes(r.severity));
-            console.log(`- totalFindings: **${results.length}**`);
-            console.log(`- actionRequired: **${critical.length}**`);
-            if (critical.length > 0) {
-              console.log('\n| List | Field | Severity |');
-              console.log('|------|-------|:---:|');
-              critical.forEach(r => {
-                const sev = r.severity === 'critical' ? '🔴' : '🟠';
-                console.log(`| ${r.listKey} | ${r.fieldName} | ${sev} ${r.severity} |`);
-              });
-            } else if (results.length > 0) {
-              console.log('\n✅ No action required (all findings are low severity)');
-            } else {
-              console.log('\n✅ No index pressure detected');
-            }
-            NODE
+            node scripts/ops/index-pressure-summary.mjs "$FILE" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Auto-create nightly issues
@@ -326,6 +286,16 @@ jobs:
             /tmp/vitest-nightly-act.log
           if-no-files-found: warn
 
+      - name: Upload nightly coverage artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-coverage-${{ github.run_number }}
+          path: |
+            docs/nightly-patrol/coverage-summary.json
+            docs/nightly-patrol/lcov.info
+          if-no-files-found: ignore
+
       - name: Upload lane assertion result
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -348,37 +318,45 @@ jobs:
       - name: Nightly act warning summary
         if: ${{ always() }}
         run: |
-          echo "## Nightly act(...) warning monitor" >> "$GITHUB_STEP_SUMMARY"
-          if [ -f /tmp/act-warnings-nightly.json ]; then
-            node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
-          const fs = require('node:fs');
-          const p = '/tmp/act-warnings-nightly.json';
-          const s = JSON.parse(fs.readFileSync(p, 'utf8'));
-          const total = Number(s.totalWarnings || 0);
-          const affected = Number(s.affectedFiles || 0);
-          const maxFile = s.maxWarningsFile || 'none';
-          const maxCount = Number(s.maxWarningsPerFile || 0);
-          console.log(`- totalWarnings: **${total}**`);
-          console.log(`- affectedFiles: **${affected}**`);
-          console.log(`- maxWarningsFile: **${maxFile}**`);
-          console.log(`- maxWarningsPerFile: **${maxCount}**`);
-          NODE
-          else
-            echo "- summary: unavailable" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          echo "- openIssueCount: **${{ steps.act_issue.outputs.open_count || '0' }}**" >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "${{ steps.act_issue.outputs.open_url }}" ]; then
-            echo "- openIssue: ${{ steps.act_issue.outputs.open_url }}" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "- openIssue: none" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f /tmp/act-warnings-nightly.json ]; then
-            total=$(node -e "const s=require('/tmp/act-warnings-nightly.json');console.log(Number(s.totalWarnings||0));")
-            if [ "$total" -eq 0 ]; then
-              echo "" >> "$GITHUB_STEP_SUMMARY"
-              echo "✅ 0件維持を確認しました。" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Nightly act(...) warning monitor"
+            node scripts/ops/nightly-act-warning-summary.mjs /tmp/act-warnings-nightly.json
+            echo "- openIssueCount: **${{ steps.act_issue.outputs.open_count || '0' }}**"
+            if [ -n "${{ steps.act_issue.outputs.open_url }}" ]; then
+              echo "- openIssue: ${{ steps.act_issue.outputs.open_url }}"
+            else
+              echo "- openIssue: none"
             fi
-          fi
+            if [ -f /tmp/act-warnings-nightly.json ]; then
+              total=$(node -e "const s=require('/tmp/act-warnings-nightly.json');console.log(Number(s.totalWarnings||0));")
+              if [ "$total" -eq 0 ]; then
+                echo ""
+                echo "✅ 0件維持を確認しました。"
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nightly coverage summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## Nightly coverage monitor"
+            if [ -f docs/nightly-patrol/coverage-summary.json ]; then
+              pct=$(node -e "const s=require('./docs/nightly-patrol/coverage-summary.json');console.log(s.total.lines.pct)")
+              echo "- totalLinesCoverage: **${pct}%**"
+              # 閾値 44% と比較
+              if [ -n "$pct" ]; then
+                is_low=$(node -e "console.log(Number('$pct') < 44)")
+                if [ "$is_low" = "true" ]; then
+                  echo "⚠️ **WARNING**: Coverage ($pct%) is below threshold (44%)!"
+                else
+                  echo "✅ Coverage ($pct%) meets threshold (44%)."
+                fi
+              fi
+            else
+              echo "- summary: unavailable"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit report if changed
         if: ${{ always() }}
@@ -399,4 +377,5 @@ jobs:
         if: ${{ always() && steps.decision.outputs.exit_code != '0' }}
         run: |
           echo "🔴 Nightly Patrol failed with exit code ${{ steps.decision.outputs.exit_code }}"
-          exit ${{ steps.decision.outputs.exit_code }}
+          EXIT_CODE="${{ steps.decision.outputs.exit_code }}"
+          exit "${EXIT_CODE:-0}"
