@@ -54,6 +54,8 @@ jobs:
           VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE || '/sites/Audit' }}
 
       - name: Nightly coverage scan
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
         run: |
           set -o pipefail
           npm run test:coverage -- --reporter=default
