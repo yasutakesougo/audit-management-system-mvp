@@ -88,23 +88,20 @@ jobs:
       - name: Run drift probe registry test
         run: npx vitest run src/sharepoint/__tests__/driftProbeRegistry.spec.ts
 
-  typecheck-and-test:
-    name: TypeCheck & Test
+  typecheck:
+    name: TypeCheck
     runs-on: ubuntu-latest
     needs: [contracts, registry-static-audit, registry-ssot, registry-integration, registry-drift-probe]
-    timeout-minutes: 25
+    timeout-minutes: 15
     permissions:
       contents: read
-      issues: write
     env:
       VITE_MSAL_CLIENT_ID: dummy-client-id
       VITE_MSAL_TENANT_ID: dummy-tenant-id
       VITE_FEATURE_SCHEDULES: "1"
-      # Phase 2: E2E feature flag guards
       E2E_FEATURE_SCHEDULE_NAV: "1"
       E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
       E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -164,20 +161,57 @@ jobs:
           echo "Running TypeScript type check..."
           npm run typecheck
           echo "✅ TypeScript type check completed successfully"
+
+  unit-test-shard:
+    name: Unit Test (Shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    needs: [contracts, registry-static-audit, registry-ssot, registry-integration, registry-drift-probe]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      VITE_MSAL_CLIENT_ID: dummy-client-id
+      VITE_MSAL_TENANT_ID: dummy-tenant-id
+      VITE_FEATURE_SCHEDULES: "1"
+      E2E_FEATURE_SCHEDULE_NAV: "1"
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: "1"
+      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Validate env (fail-fast)
+        run: node scripts/validate-env.mjs
+        env:
+          ENV_VALIDATE_REQUIRED: VITE_MSAL_CLIENT_ID,VITE_MSAL_TENANT_ID
       
-      - name: Run tests
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (Shard ${{ matrix.shard }}/3)
         id: tests
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
         run: |
           set -o pipefail
-          echo "Running unit tests..."
+          echo "Running unit tests (Shard ${{ matrix.shard }}/3)..."
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PR lane: running required unit subset (test:ci:required)"
-            npm run test:ci:required 2>&1 | tee /tmp/vitest-ci.log
+            echo "PR lane: running required unit subset (test:ci:required) with shard"
+            npm run test:ci:required -- --shard=${{ matrix.shard }}/3 2>&1 | tee /tmp/vitest-ci.log
           else
-            echo "Push lane: running full unit suite (test:ci)"
-            npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
+            echo "Push lane: running full unit suite (test:ci) with shard"
+            npm run test:ci -- --shard=${{ matrix.shard }}/3 2>&1 | tee /tmp/vitest-ci.log
           fi
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-ci.log --json --json-output /tmp/act-warnings-ci.json
           echo "✅ Tests completed successfully"
@@ -194,35 +228,26 @@ jobs:
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --branch "${{ github.ref_name }}" \
             --sha "${{ github.sha }}"
-      
-      - name: Summary
-        if: always()
+
+  typecheck-and-test:
+    name: TypeCheck & Test
+    runs-on: ubuntu-latest
+    needs: [typecheck, unit-test-shard]
+    if: ${{ always() }}
+    steps:
+      - name: Verify required CI dependencies
         run: |
-          {
-            echo "## CI Results"
-            echo ""
-            if [ -f /tmp/node24-workflow-guard.json ]; then
-              echo "### Node 24 Workflow Guard"
-              echo "- outcome: ${{ steps.node24.outcome }}"
-              echo "- targetWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.targetWorkflows||0));")**"
-              echo "- node24CompliantWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.node24CompliantWorkflows||0));")**"
-              echo "- nonCompliantWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantWorkflows||0));")**"
-              echo "- setupNodeUsages: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.setupNodeUsages||0));")**"
-              echo "- nonCompliantUsages: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantUsages||0));")**"
-              if [ "$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantUsages||0));")" -gt 0 ]; then
-                echo ""
-                echo "#### Non-compliant entries"
-                node -e "const s=require('/tmp/node24-workflow-guard.json');for(const entry of (s.nonCompliantEntries||[])){const line=entry.line??entry.stepLine??'?';console.log('- '+entry.file+':'+line+' node-version='+(entry.nodeVersion??'<missing>')+' reason='+entry.reason);}"
-              fi
-              echo ""
-            fi
-            echo "- Registry Static Audit: ${{ needs.registry-static-audit.result }}"
-            echo "- Registry SSOT Contract: ${{ needs.registry-ssot.result }}"
-            echo "- Registry Integration: ${{ needs.registry-integration.result }}"
-            echo "- Registry Drift Probe: ${{ needs.registry-drift-probe.result }}"
-            echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
-            echo "- Index Audit (Schema Drift): ${{ steps.index_audit.outcome }}"
-            echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
-            echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
-            echo "- Tests: ${{ steps.tests.outcome }}"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "typecheck result: ${{ needs.typecheck.result }}"
+          echo "unit-test-shard result: ${{ needs.unit-test-shard.result }}"
+
+          if [ "${{ needs.typecheck.result }}" != "success" ]; then
+            echo "Error: typecheck failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          if [ "${{ needs.unit-test-shard.result }}" != "success" ]; then
+            echo "Error: unit-test-shard failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          echo "All required CI dependencies passed successfully!"
