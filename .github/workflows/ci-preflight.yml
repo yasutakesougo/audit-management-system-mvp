@@ -17,9 +17,70 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  preflight:
+  test-ids-guard:
+    name: Test IDs Guard
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Test IDs guard
+        run: npm run guard:testids --silent
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+  preflight-unit:
+    name: Preflight Unit (Graph ${{ matrix.graph }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -50,19 +111,45 @@ jobs:
 
       - run: npm ci
 
-      - name: Test IDs guard
-        run: npm run guard:testids --silent
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
       - name: Unit required suite
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
         run: npm run test:ci:required
+
+  preflight:
+    name: CI Preflight (Aggregator)
+    runs-on: ubuntu-latest
+    needs: [test-ids-guard, typecheck, lint, preflight-unit]
+    if: ${{ always() }}
+    steps:
+      - name: Verify Preflight components
+        run: |
+          echo "test-ids-guard result: ${{ needs.test-ids-guard.result }}"
+          echo "typecheck result: ${{ needs.typecheck.result }}"
+          echo "lint result: ${{ needs.lint.result }}"
+          echo "preflight-unit result: ${{ needs.preflight-unit.result }}"
+
+          if [ "${{ needs.test-ids-guard.result }}" != "success" ]; then
+            echo "Error: test-ids-guard failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          if [ "${{ needs.typecheck.result }}" != "success" ]; then
+            echo "Error: typecheck failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Error: lint failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          if [ "${{ needs.preflight-unit.result }}" != "success" ]; then
+            echo "Error: preflight-unit failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          echo "All preflight dependencies passed successfully!"
 
   schedule-unit:
     name: Schedule unit (TZ matrix)
