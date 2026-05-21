@@ -22,7 +22,7 @@ const SimulateZodErrorPage: React.FC = () => {
       }
     };
 
-    console.log("Simulating Zod Error...");
+    console.info("Simulating Zod Error...");
     BuggySchema.parse(invalidData);
   }, []);
 
