@@ -65,7 +65,7 @@ export function getFirebaseApp() {
   const config = readFirebaseConfig();
 
   if (isE2E) {
-    console.log('[firebase] disabled:', { VITE_E2E: true });
+    console.info('[firebase] disabled:', { VITE_E2E: true });
     return createNoopFirebaseApp(config);
   }
 

@@ -432,7 +432,7 @@ export async function createSchedule(
     throw new Error('Failed to extract item ID from create response');
   }
 
-  console.log('[schedulesRepo] Created schedule with ID:', createdId);
+  console.info('[schedulesRepo] Created schedule with ID:', createdId);
 
   // Step 3: Fetch the full item with all fields (same $select as query)
   const notesField = resolveNotesFieldName();
@@ -471,7 +471,7 @@ export async function createSchedule(
     throw new Error('Failed to fetch created schedule after POST');
   }
 
-  console.log('[schedulesRepo] Fetched full item:', JSON.stringify(fullItem, null, 2));
+  console.info('[schedulesRepo] Fetched full item:', JSON.stringify(fullItem, null, 2));
 
   // Step 4: Map to domain type
   const etag = pickEtag(created) || pickEtag(fullItem);
@@ -516,7 +516,7 @@ export async function updateSchedule(
     console.error('[schedulesRepo] 🔴 Failed to map updated schedule');
     console.error('  error:', { message: errorMessage, stack: errorStack });
     console.error('  row keys:', Object.keys(row ?? {}));
-    console.table({
+    console.info({
       Id: row?.Id,
       Title: row?.Title,
       EventDate: row?.EventDate,

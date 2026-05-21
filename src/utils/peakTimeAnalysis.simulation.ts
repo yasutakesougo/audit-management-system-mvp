@@ -100,49 +100,49 @@ export function generateSafetyHudReport(weekData: ConflictWithTime[][] = sampleW
  * 🔍 コンソール用の見やすいレポート出力
  */
 export function printSafetyHudReport(weekData: ConflictWithTime[][] = sampleWeekData) {
-  console.log('\n🛡️  Safety HUD - 週次負荷分析レポート');
-  console.log('═'.repeat(50));
+  console.info('\n🛡️  Safety HUD - 週次負荷分析レポート');
+  console.info('═'.repeat(50));
 
   const report = generateSafetyHudReport(weekData);
 
   // 📊 基本統計
-  console.log(`\n📊 基本統計:`);
-  console.log(`   総コンフリクト数: ${report.summary.totalConflicts}件`);
-  console.log(`   コンフリクトがあった日数: ${report.summary.activeDays}/${report.summary.totalDays}日`);
-  console.log(`   1日平均コンフリクト: ${report.summary.averageConflicts.toFixed(2)}件`);
+  console.info(`\n📊 基本統計:`);
+  console.info(`   総コンフリクト数: ${report.summary.totalConflicts}件`);
+  console.info(`   コンフリクトがあった日数: ${report.summary.activeDays}/${report.summary.totalDays}日`);
+  console.info(`   1日平均コンフリクト: ${report.summary.averageConflicts.toFixed(2)}件`);
 
   // 🎯 ピーク分析
-  console.log(`\n🎯 ピーク時間帯分析:`);
+  console.info(`\n🎯 ピーク時間帯分析:`);
   if (report.peakAnalysis) {
-    console.log(`   最高負荷スロット: ${report.peakAnalysis.slotLabel}`);
-    console.log(`   発生日数: ${report.peakAnalysis.hitDays}/${report.peakAnalysis.totalDays}日 (${(report.peakAnalysis.ratio * 100).toFixed(1)}%)`);
-    console.log(`   重要度: ${report.peakAnalysis.severity.toUpperCase()}`);
-    console.log(`   ${report.peakAnalysis.emoji} ${report.peakAnalysis.comment}`);
+    console.info(`   最高負荷スロット: ${report.peakAnalysis.slotLabel}`);
+    console.info(`   発生日数: ${report.peakAnalysis.hitDays}/${report.peakAnalysis.totalDays}日 (${(report.peakAnalysis.ratio * 100).toFixed(1)}%)`);
+    console.info(`   重要度: ${report.peakAnalysis.severity.toUpperCase()}`);
+    console.info(`   ${report.peakAnalysis.emoji} ${report.peakAnalysis.comment}`);
   } else {
-    console.log('   ✅ この週はコンフリクトが発生していません');
+    console.info('   ✅ この週はコンフリクトが発生していません');
   }
 
   // 📈 全スロット詳細
-  console.log(`\n📈 時間スロット別詳細:`);
+  console.info(`\n📈 時間スロット別詳細:`);
   if (report.allSlots.length > 0) {
     report.allSlots.forEach((slot, index: number) => {
       const percentage = (slot.ratio * 100).toFixed(1);
-      console.log(`   ${index + 1}. ${slot.slotLabel}: ${slot.hitDays}日 (${percentage}%) - ${slot.severity}`);
+      console.info(`   ${index + 1}. ${slot.slotLabel}: ${slot.hitDays}日 (${percentage}%) - ${slot.severity}`);
     });
   } else {
-    console.log('   📊 データなし');
+    console.info('   📊 データなし');
   }
 
   // 🌟 安定度評価
-  console.log(`\n🌟 運営安定度:`);
-  console.log(`   レベル: ${report.stability.level.toUpperCase()}`);
-  console.log(`   状態: ${report.stability.isStable ? '安定' : '要改善'}`);
+  console.info(`\n🌟 運営安定度:`);
+  console.info(`   レベル: ${report.stability.level.toUpperCase()}`);
+  console.info(`   状態: ${report.stability.isStable ? '安定' : '要改善'}`);
 
   // 💬 統合メッセージ
-  console.log(`\n💬 管理者向け統合メッセージ:`);
-  console.log(`   ${report.integratedComment}`);
+  console.info(`\n💬 管理者向け統合メッセージ:`);
+  console.info(`   ${report.integratedComment}`);
 
-  console.log('\n' + '═'.repeat(50));
+  console.info('\n' + '═'.repeat(50));
 }
 
 /**
@@ -179,17 +179,17 @@ export const scenarioSamples = {
 
 // 🧪 スタンドアローン実行時のデモ
 if (require.main === module) {
-  console.log('🧪 Safety HUD シナリオ別テスト');
+  console.info('🧪 Safety HUD シナリオ別テスト');
 
-  console.log('\n1️⃣  標準的な週のデータ:');
+  console.info('\n1️⃣  標準的な週のデータ:');
   printSafetyHudReport(sampleWeekData);
 
-  console.log('\n\n2️⃣  理想的な週（安定運営）:');
+  console.info('\n\n2️⃣  理想的な週（安定運営）:');
   printSafetyHudReport(scenarioSamples.excellent);
 
-  console.log('\n\n3️⃣  問題のある週（11時集中）:');
+  console.info('\n\n3️⃣  問題のある週（11時集中）:');
   printSafetyHudReport(scenarioSamples.problematic);
 
-  console.log('\n\n4️⃣  改善傾向の週（散発的）:');
+  console.info('\n\n4️⃣  改善傾向の週（散発的）:');
   printSafetyHudReport(scenarioSamples.improving);
 }

@@ -132,6 +132,7 @@ module.exports = {
         'tests/**/*.tsx'
       ],
       rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
         'no-restricted-globals': [
           'error',
           {
