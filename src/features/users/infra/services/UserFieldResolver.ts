@@ -120,7 +120,23 @@ export class UserFieldResolver {
   ): Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }> {
     try {
       const available = await this.provider.getFieldInternalNames(listTitle);
-      const { resolved } = resolveInternalNamesDetailed(available, candidates);
+
+      const essentialsSet = new Set(essentials);
+      const { resolved } = resolveInternalNamesDetailed(
+        available,
+        candidates,
+        {
+          onDrift: (fieldName, resolutionType, driftType) => {
+            const isEssential = essentialsSet.has(fieldName as string);
+            if (isEssential) {
+              emitDriftRecord(listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
+            } else {
+              // Silent drift: log to internal auditLog only, no persistent event
+              auditLog.info('users:drift', `Silent drift detected in non-essential field "${fieldName}" of list "${listTitle}".`, { resolutionType, driftType });
+            }
+          }
+        }
+      );
       
       const bestEffort: Record<string, string | undefined> = {};
       const resolvedKeys = new Set<string>();
