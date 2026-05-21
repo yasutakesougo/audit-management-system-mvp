@@ -59,7 +59,7 @@
 |---------|------|
 | [src/features/diagnostics/health/checks.ts](src/features/diagnostics/health/checks.ts) | 判定ロジック。`missingEssential` → FAIL、`drifted` → WARN、`missingOptional` → WARN |
 | [src/features/diagnostics/health/types.ts](src/features/diagnostics/health/types.ts) | `SpFieldSpec.candidates?: string[]` — drift 候補名の型 |
-| [src/pages/HealthPage.tsx](src/pages/HealthPage.tsx) | `DRIFT_CANDIDATES_BY_KEY` — リストキー → candidates のオーバーライドマップ |
+| [src/pages/health/driftCandidates.ts](src/pages/health/driftCandidates.ts) | `DRIFT_CANDIDATES_BY_KEY` — リストキー → candidates のオーバーライドマップ |
 | [src/sharepoint/fields/](src/sharepoint/fields/) | `*_CANDIDATES` / `*_ESSENTIALS` 定数群 |
 
 **診断ページ**: `/admin/status`（管理者専用）
@@ -108,7 +108,7 @@
    - *_CANDIDATES: { [conceptualKey]: string[] } — 代替内部名の配列
    - *_ESSENTIALS: string[] — 欠落=FAIL の最小セット
 
-2. src/pages/HealthPage.tsx の DRIFT_CANDIDATES_BY_KEY[key] に追加
+2. src/pages/health/driftCandidates.ts の DRIFT_CANDIDATES_BY_KEY[key] に追加
 
 3. drift テスト: src/sharepoint/fields/__tests__/<domain>Fields.drift.spec.ts
    - 正規名ヒット / サフィックスドリフトヒット / essential 欠落 → FAIL / optional 欠落 → WARN
@@ -125,6 +125,7 @@
 | Drift 検出ロジック | [src/lib/sp/helpers.ts](src/lib/sp/helpers.ts) |
 | 診断チェック実装 | [src/features/diagnostics/health/checks.ts](src/features/diagnostics/health/checks.ts) |
 | 診断ページ組み立て | [src/pages/HealthPage.tsx](src/pages/HealthPage.tsx) |
+| 診断定数 / スペック | [src/pages/health/driftCandidates.ts](src/pages/health/driftCandidates.ts) |
 | フィールド定義 SSOT | [src/sharepoint/spListRegistry.ts](src/sharepoint/spListRegistry.ts) |
 | 管理者向け Runbook | [docs/operations/sp-health-admin-runbook.md](docs/operations/sp-health-admin-runbook.md) |
 | ADR | [docs/adr/ADR_005_SharePoint_Self_Healing_Stabilization.md](docs/adr/ADR_005_SharePoint_Self_Healing_Stabilization.md) |
