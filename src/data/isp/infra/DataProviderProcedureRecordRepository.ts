@@ -6,6 +6,8 @@ import {
   washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
+import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
+import { auditLog } from '@/lib/debugLogger';
 import type { 
   ProcedureRecordRepository, 
   ProcedureRecordCreateInput, 
@@ -59,7 +61,23 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
       const candidates = PROCEDURE_RECORD_CANDIDATES as unknown as Record<string, string[]>;
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
+
+      const essentialsSet = new Set(PROCEDURE_RECORD_ESSENTIALS as string[]);
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+        available,
+        candidates,
+        {
+          onDrift: (fieldName, resolutionType, driftType) => {
+            const isEssential = essentialsSet.has(fieldName as string);
+            if (isEssential) {
+              emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
+            } else {
+              // Silent drift: log to internal auditLog only, no persistent event
+              auditLog.info('isp:drift', `Silent drift detected in non-essential field "${fieldName}" of list "${this.listTitle}".`, { resolutionType, driftType });
+            }
+          }
+        }
+      );
 
       const isHealthy = areEssentialFieldsResolved(resolved, PROCEDURE_RECORD_ESSENTIALS as unknown as string[]);
       
@@ -97,8 +115,8 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
     const numericId = extractSpId(id);
     if (numericId === null) return null;
 
-    const { title, fields, candidates } = await this.resolveSource();
     try {
+      const { title, fields, candidates } = await this.resolveSource();
       const row = await this.provider.getItemById<SpProcedureRecordRow>(title, numericId);
       if (!row) return null;
 
