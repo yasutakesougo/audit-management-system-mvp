@@ -149,6 +149,18 @@ export const KioskProcedureListScreen: React.FC = () => {
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [showFetchError, setShowFetchError] = useState(false);
 
+  // Synchronously reset records state when the active user or date changes
+  // to prevent rendering stale records from the previous context.
+  const currentQueryId = queryUserIdFromSearch || user?.UserID || userId || '';
+  const [prevQueryId, setPrevQueryId] = useState<string>('');
+  const [prevDate, setPrevDate] = useState<string>('');
+
+  if (currentQueryId !== prevQueryId || selectedDateIso !== prevDate) {
+    setPrevQueryId(currentQueryId);
+    setPrevDate(selectedDateIso);
+    setRecords([]);
+  }
+
   const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
     if (!deepLinkUserId) return '/abc-record';
     const returnParams = new URLSearchParams({ date: selectedDateIso });

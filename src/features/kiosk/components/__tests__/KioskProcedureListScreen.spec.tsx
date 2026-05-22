@@ -7,12 +7,22 @@ import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/s
 
 // Mock dependencies
 let mockRouteUserId = 'U001';
+let mockLocationSearch: string | null = null;
+let mockLocationKey: string | null = null;
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => vi.fn(),
     useParams: () => ({ userId: mockRouteUserId }),
+    useLocation: () => {
+      const loc = actual.useLocation();
+      return {
+        ...loc,
+        search: mockLocationSearch !== null ? mockLocationSearch : loc.search,
+        key: mockLocationKey !== null ? mockLocationKey : loc.key,
+      };
+    },
   };
 });
 
@@ -75,6 +85,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
     mockRouteUserId = 'U001';
+    mockLocationSearch = null;
+    mockLocationKey = null;
     mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
     mockUseUsers.mockReturnValue({ data: [], status: 'success' });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
@@ -672,5 +684,88 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(screen.getByText(/支援開始日: 不正な日付（90日参考）/)).toBeInTheDocument();
       expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
     });
+  });
+
+  it('synchronously clears records when user changes to prevent temporal display of stale records', async () => {
+    mockGetRecords.mockImplementation(async (date, userId) => {
+      if (userId === 'U001') {
+        return [{ scheduleItemId: '1', status: 'completed' }];
+      }
+      return new Promise((resolve) => setTimeout(() => resolve([]), 50));
+    });
+
+    mockUseUser.mockImplementation(() => ({
+      data: { FullName: '田中 太郎', UserID: 'U001' },
+      status: 'success',
+    }));
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+    });
+
+    mockRouteUserId = 'U002';
+    mockLocationKey = 'new-user-key';
+    mockUseUser.mockImplementation(() => ({
+      data: { FullName: '鈴木 次郎', UserID: 'U002' },
+      status: 'success',
+    }));
+
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/U002/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/鈴木 次郎/)).toBeInTheDocument();
+    });
+
+    const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+    expect(within(firstCard).queryByText('記録済み')).toBeNull();
+    expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
+  });
+
+  it('synchronously clears records when date query changes to prevent temporal display of stale records', async () => {
+    mockGetRecords.mockImplementation(async (date) => {
+      if (date === '2026-05-08') {
+        return [{ scheduleItemId: '1', status: 'completed' }];
+      }
+      return new Promise((resolve) => setTimeout(() => resolve([]), 50));
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-05-08']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+    });
+
+    mockLocationSearch = '?date=2026-05-09';
+    mockLocationKey = 'new-date-key';
+
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-05-09']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/2026年5月9日/)).toBeInTheDocument();
+    });
+
+    const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+    expect(within(firstCard).queryByText('記録済み')).toBeNull();
+    expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
   });
 });
