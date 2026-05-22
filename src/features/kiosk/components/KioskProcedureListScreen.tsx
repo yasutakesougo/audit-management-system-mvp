@@ -13,7 +13,7 @@ import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
-import { isDemoModeEnabled, shouldSkipSharePoint, shouldSkipLogin, isDevMode, isTestMode } from '@/lib/env';
+
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
@@ -228,13 +228,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   const recordsByScheduleItemId = React.useMemo(() => {
     const map = new Map<string, ExecutionRecord>();
 
-    // In sharepoint mode, treat repository result as source of truth to avoid
-    // local-only "記録済み" labels that don't survive across devices.
-    // However, if we are in demo mode or SharePoint is bypassed/mocked,
-    // we must allow local store records as fallback.
-    const isMock = isDemoModeEnabled() || shouldSkipSharePoint() || shouldSkipLogin() || (isDevMode() && !isTestMode());
-    const allCandidateRecords =
-      (executionRepositoryKind === 'local' || isMock) ? [...storeRecords, ...records] : [...records];
+    // To ensure immediate visual feedback (reactivity) after saving a record and
+    // returning to the list screen, we always merge storeRecords (local state) with records
+    // (remote repository fetch result), regardless of the repository kind or mock status.
+    const allCandidateRecords = [...storeRecords, ...records];
     
     for (const record of allCandidateRecords) {
       const key = normalizeScheduleItemId(record.scheduleItemId);
