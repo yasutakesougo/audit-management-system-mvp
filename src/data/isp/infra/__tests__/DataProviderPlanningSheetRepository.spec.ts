@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DataProviderPlanningSheetRepository } from '../DataProviderPlanningSheetRepository';
+import { emitDriftRecord } from '@/features/diagnostics/drift/domain/driftLogic';
+
+vi.mock('@/features/diagnostics/drift/domain/driftLogic', () => ({
+  emitDriftRecord: vi.fn(),
+}));
 import type {
   DataProviderOptions,
   IDataProvider,
@@ -337,6 +342,51 @@ describe('DataProviderPlanningSheetRepository', () => {
       expect(capturedPayload.cr013_monitoringCycleDays).toBe(90);
       expect(capturedPayload.SupportStartDate).toBeUndefined();
       expect(capturedPayload.MonitoringCycleDays).toBeUndefined();
+    });
+  });
+
+  describe('drift resilience and warning events', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should call emitDriftRecord when an essential field drifts', async () => {
+      // Simulate that essential field 'appliedFrom' drifts to 'appliedFrom0'
+      provider.getFieldInternalNames = async () => new Set([
+        'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent', 'Status',
+        'appliedFrom0' // Drifted
+      ]);
+
+      provider.getItemById = async () => {
+        return row({ Id: 123, UserCode: 'U-001' }) as any;
+      };
+
+      await repo.getById('sp-123');
+
+      expect(emitDriftRecord).toHaveBeenCalledWith(
+        PLANNING_SHEET_LIST_TITLE,
+        'appliedFrom',
+        'fuzzy_match',
+        'suffix_mismatch',
+        undefined,
+        'warn'
+      );
+    });
+
+    it('should NOT call emitDriftRecord when a non-essential field drifts', async () => {
+      // Simulate that non-essential field 'targetDomain' drifts to 'targetDomain0'
+      provider.getFieldInternalNames = async () => new Set([
+        'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent', 'Status',
+        'AppliedFrom', 'targetDomain0' // Non-essential drifted
+      ]);
+
+      provider.getItemById = async () => {
+        return row({ Id: 123, UserCode: 'U-001' }) as any;
+      };
+
+      await repo.getById('sp-123');
+
+      expect(emitDriftRecord).not.toHaveBeenCalled();
     });
   });
 });

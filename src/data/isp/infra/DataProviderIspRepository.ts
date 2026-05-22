@@ -8,6 +8,7 @@ import {
 import { reportResourceResolution, useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
 import { summarizeSpError } from '@/lib/errors';
 import { auditLog } from '@/lib/debugLogger';
+import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import type { 
   IspRepository, 
   IspCreateInput, 
@@ -64,7 +65,23 @@ export class DataProviderIspRepository implements IspRepository {
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
       const candidates = ISP_MASTER_CANDIDATES as unknown as Record<string, string[]>;
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
+      
+      const essentialsSet = new Set(ISP_MASTER_ESSENTIALS as string[]);
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+        available,
+        candidates,
+        {
+          onDrift: (fieldName, resolutionType, driftType) => {
+            const isEssential = essentialsSet.has(fieldName as string);
+            if (isEssential) {
+              emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
+            } else {
+              // Silent drift: log to internal auditLog only, no persistent event
+              auditLog.info('isp:drift', `Silent drift detected in non-essential field "${fieldName}" of list "${this.listTitle}".`, { resolutionType, driftType });
+            }
+          }
+        }
+      );
 
       const isHealthy = areEssentialFieldsResolved(resolved, ISP_MASTER_ESSENTIALS as unknown as string[]);
       
@@ -115,8 +132,8 @@ export class DataProviderIspRepository implements IspRepository {
     const numericId = extractSpId(id);
     if (numericId === null) return null;
 
-    const { title, fields, candidates } = await this.resolveSource();
     try {
+      const { title, fields, candidates } = await this.resolveSource();
       const row = await this.provider.getItemById<SpIspMasterRow>(title, numericId);
       if (!row) return null;
       
