@@ -301,7 +301,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
-  it('does not show "記録済み" from store-only data when repository kind is sharepoint', async () => {
+  it('shows "記録済み" from store-only data even when repository kind is sharepoint for immediate reactivity', async () => {
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
     mockGetRecords.mockResolvedValue([]);
     mockGetStoreRecords.mockReturnValue([
@@ -316,9 +316,9 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       const firstCard = screen.getByTestId('kiosk-procedure-card-0');
-      expect(within(firstCard).queryByText('記録済み')).toBeNull();
-      expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
-      expect(screen.getByText('実施状況: 0 / 2')).toBeInTheDocument();
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+      expect(within(firstCard).queryByText('未実施')).toBeNull();
+      expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
     });
   });
 
