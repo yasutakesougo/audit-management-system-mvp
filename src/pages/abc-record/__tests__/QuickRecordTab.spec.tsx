@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import QuickRecordTab, { getInitialOccurredAt } from '../QuickRecordTab';
 import { MemoryRouter } from 'react-router-dom';
+import { useAbcDailySupportIntegration } from '@/features/daily/hooks/useAbcDailySupportIntegration';
 
 // モック定義
 const mockSaveAbcRecord = vi.fn().mockResolvedValue({ id: 'abc-123' });
@@ -79,8 +80,9 @@ describe('QuickRecordTab Component - ExecutionRecord linkage', () => {
   });
 
   it('daily-support コンテキストから遷移した際、保存時に ExecutionRecord が連動して upsert されること', async () => {
-    render(
-      <MemoryRouter>
+    const TestWrapper = () => {
+      const { linkExecutionRecord } = useAbcDailySupportIntegration();
+      return (
         <QuickRecordTab
           users={mockUsers}
           recorderName="テスト記録者"
@@ -94,7 +96,16 @@ describe('QuickRecordTab Component - ExecutionRecord linkage', () => {
             slotId: '10:00|朝のバイタルチェック',
             slotLabel: '朝のバイタルチェック',
           }}
+          onLinkExecutionRecord={(userId, behavior, consequence, sourceContext) =>
+            linkExecutionRecord(userId, behavior, consequence, sourceContext, 'テスト記録者')
+          }
         />
+      );
+    };
+
+    render(
+      <MemoryRouter>
+        <TestWrapper />
       </MemoryRouter>
     );
 

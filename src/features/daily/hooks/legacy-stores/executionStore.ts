@@ -134,6 +134,17 @@ export function useExecutionStore() {
     [getRecords],
   );
 
+  /** 記録を削除 */
+  const deleteRecord = useCallback(
+    (date: string, userId: string, scheduleItemId: string) => {
+      const existing = getRecords(date, userId);
+      const updated = existing.filter((r) => r.scheduleItemId !== scheduleItemId);
+
+      saveDailyRecords(date, userId, updated);
+    },
+    [getRecords],
+  );
+
   /** 完了率を計算（completed / total） */
   const getCompletionRate = useCallback(
     (date: string, userId: string, totalSlots: number): { completed: number; triggered: number; rate: number } => {
@@ -175,9 +186,10 @@ export function useExecutionStore() {
       getRecords,
       getRecord,
       upsertRecord,
+      deleteRecord,
       getCompletionRate,
       getRecordsInRange,
     } as const),
-    [getRecords, getRecord, upsertRecord, getCompletionRate, getRecordsInRange]
+    [getRecords, getRecord, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]
   );
 }

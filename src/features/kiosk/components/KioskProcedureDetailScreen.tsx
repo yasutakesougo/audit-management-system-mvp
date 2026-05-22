@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar, TextField, CircularProgress } from '@mui/material';
+import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar, TextField, CircularProgress, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -96,7 +96,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   // isUserLoading 中は空文字を渡し、確定前の userId が saveRecord のクロージャに
   // 束縛されて Zustand に誤ったキーで保存されるのを防ぐ
   const resolvedUserId = isUserLoading ? '' : deepLinkUserId;
-  const { record, saveRecord, isLoading } = useExecutionRecord(
+  const { record, saveRecord, deleteRecord, isLoading } = useExecutionRecord(
     selectedDateIso,
     resolvedUserId,
     scheduleItemId,
@@ -104,9 +104,13 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   );
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showSaveError, setShowSaveError] = useState(false);
   const [showValidationError, setShowValidationError] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [showDeleteError, setShowDeleteError] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   // 観察チップ用ステート
@@ -173,6 +177,22 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       console.error('Failed to save execution record:', error);
       setShowSaveError(true);
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteRecord();
+      setDeleteDialogOpen(false);
+      setShowDeleteSuccess(true);
+      setTimeout(() => {
+        navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to delete execution record:', error);
+      setShowDeleteError(true);
+      setIsDeleting(false);
     }
   };
 
@@ -439,12 +459,24 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
             {/* 操作ボタン */}
             <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ pt: 2 }}>
+              {isCompleted && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem', mr: 'auto' }}
+                  disabled={isSaving || isDeleting}
+                  data-testid="kiosk-observation-revert"
+                >
+                  記録を取り消す
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 color="inherit"
                 onClick={() => navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search))}
                 sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem' }}
-                disabled={isSaving}
+                disabled={isSaving || isDeleting}
               >
                 一覧に戻る
               </Button>
@@ -453,7 +485,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 color="primary"
                 onClick={handleSave}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
-                disabled={isSaving}
+                disabled={isSaving || isDeleting}
                 data-testid="kiosk-observation-submit"
               >
                 記録を保存する
@@ -494,6 +526,71 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       >
         <Alert severity="warning" sx={{ width: '100%' }}>
           手順記録の内容を1つ以上入力してください。
+        </Alert>
+      </Snackbar>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => !isDeleting && setDeleteDialogOpen(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        PaperProps={{
+          sx: { borderRadius: 4, p: 2 }
+        }}
+      >
+        <DialogTitle id="delete-dialog-title" sx={{ fontWeight: 'bold', fontSize: '1.3rem' }}>
+          記録を取り消しますか？
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description" sx={{ fontSize: '1.1rem', color: 'text.primary' }}>
+            この手順の実施記録とメモを完全に削除し、未実施の状態に戻します。この操作は取り消せません。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setDeleteDialogOpen(false)}
+            disabled={isDeleting}
+            sx={{ borderRadius: 3, px: 3 }}
+          >
+            キャンセル
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            sx={{ borderRadius: 3, px: 3, fontWeight: 'bold' }}
+            autoFocus
+            data-testid="kiosk-observation-revert-confirm"
+          >
+            {isDeleting ? '取り消し中...' : '取り消す'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 削除成功メッセージ */}
+      <Snackbar 
+        open={showDeleteSuccess} 
+        autoHideDuration={3000} 
+        onClose={() => setShowDeleteSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" sx={{ width: '100%', fontSize: '1.2rem', fontWeight: 'bold' }}>
+          記録を取り消しました
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={showDeleteError}
+        autoHideDuration={4000}
+        onClose={() => setShowDeleteError(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" sx={{ width: '100%' }}>
+          記録の取り消しに失敗しました。再度お試しください。
         </Alert>
       </Snackbar>
 

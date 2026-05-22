@@ -23,6 +23,7 @@ type SharePointExecutionRecordRepositoryOptions = {
   store?: {
     getRecords: (date: string, userId: string) => ExecutionRecord[];
     upsertRecord: (record: ExecutionRecord) => void;
+    deleteRecord?: (date: string, userId: string, scheduleItemId: string) => void;
   };
 };
 
@@ -298,24 +299,43 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const parentId = await this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
     const existing = await this.getRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
 
+    // Concurrency Protection: Merge memos if existing record has a different memo.
+    let finalMemo = normalizedRecord.memo;
+    if (existing && existing.memo && normalizedRecord.memo && existing.memo !== normalizedRecord.memo) {
+      if (!existing.memo.includes(normalizedRecord.memo)) {
+        const timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        const staffName = normalizedRecord.recordedBy || '職員';
+        finalMemo = `${existing.memo}\n[${timeStr} ${staffName}] ${normalizedRecord.memo}`;
+      } else {
+        finalMemo = existing.memo;
+      }
+    } else if (existing && existing.memo && !normalizedRecord.memo) {
+      finalMemo = existing.memo;
+    }
+
+    const mergedRecord = {
+      ...normalizedRecord,
+      memo: finalMemo,
+    };
+
     await this.initFields(this.childListTitle);
     const rawBody: Record<string, unknown> = {
       [rf.rowKey]: rowKey,
       [rf.parentId]: parentId,
-      [rf.userId]: normalizedRecord.userId,
-      [rf.status]: normalizedRecord.status,
-      [rf.payload]: normalizedRecord.memo, // Standard payload fallback
-      [rf.recordedAt]: normalizedRecord.recordedAt,
+      [rf.userId]: mergedRecord.userId,
+      [rf.status]: mergedRecord.status,
+      [rf.payload]: mergedRecord.memo, // Standard payload fallback
+      [rf.recordedAt]: mergedRecord.recordedAt,
     };
     
-    if (rf.rowNo) rawBody[rf.rowNo] = normalizedRecord.scheduleItemId;
-    if (rf.memo) rawBody[rf.memo] = normalizedRecord.memo;
-    if (rf.staffName) rawBody[rf.staffName] = normalizedRecord.recordedBy;
-    if (rf.bipsJSON) rawBody[rf.bipsJSON] = JSON.stringify(normalizedRecord.triggeredBipIds);
+    if (rf.rowNo) rawBody[rf.rowNo] = mergedRecord.scheduleItemId;
+    if (rf.memo) rawBody[rf.memo] = mergedRecord.memo;
+    if (rf.staffName) rawBody[rf.staffName] = mergedRecord.recordedBy;
+    if (rf.bipsJSON) rawBody[rf.bipsJSON] = JSON.stringify(mergedRecord.triggeredBipIds);
     
     // Title is needed for POST (creation) but often ignored in MERGE if it doesn't change
     if (!existing) {
-        rawBody[this.resolvedParentFields?.title ?? DAILY_RECORD_FIELDS.title] = normalizedRecord.id;
+        rawBody[this.resolvedParentFields?.title ?? DAILY_RECORD_FIELDS.title] = mergedRecord.id;
     }
 
     const body = this.filterPayload(this.childListTitle, rawBody);
@@ -364,6 +384,42 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     // Sync to local store
     if (this.store) {
       this.store.upsertRecord(normalizedRecord);
+    }
+  }
+
+  async deleteRecord(date: string, userId: string, scheduleItemId: string): Promise<void> {
+    const normalizedDate = normalizeExecutionDate(date);
+    const normalizedUserId = normalizeExecutionUserId(userId);
+    const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
+    const rf = await this.getResolvedFields();
+    const rowKey = `${normalizedDate}-${normalizedUserId}-${normalizedScheduleItemId}`;
+
+    const filter = `${rf.rowKey} eq '${rowKey}'`;
+    const searchUrl = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
+    const searchResp = await this.spFetch(searchUrl);
+    if (!searchResp.ok) {
+      throw new Error(`[ExecutionRepo] delete lookup failed: ${searchResp.status} ${searchResp.statusText}`);
+    }
+    const searchData: SharePointResponse<JsonRecord> = await searchResp.json();
+
+    if (searchData.value && searchData.value.length > 0) {
+      const internalId = searchData.value[0].Id;
+      const deleteUrl = `${this.resolvedChildPath}/items(${internalId})`;
+      const deleteResp = await this.spFetch(deleteUrl, {
+        method: 'POST',
+        headers: {
+          'X-HTTP-Method': 'DELETE',
+          'If-Match': '*',
+        },
+      });
+      if (!deleteResp.ok) {
+        throw new Error(`[ExecutionRepo] row delete failed: ${deleteResp.status} ${deleteResp.statusText}`);
+      }
+    }
+
+    // Sync to local store
+    if (this.store && this.store.deleteRecord) {
+      this.store.deleteRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
     }
   }
 
