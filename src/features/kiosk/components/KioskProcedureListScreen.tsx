@@ -144,7 +144,8 @@ export const KioskProcedureListScreen: React.FC = () => {
 
 
   const { getRecords: getStoreRecords } = useExecutionStore();
-  const storeRecords = getStoreRecords(selectedDateIso || '', user?.UserID || userId || '');
+  const storeUserIdForLookup = user?.UserID || userId || '';
+  const storeRecords = getStoreRecords(selectedDateIso || '', storeUserIdForLookup);
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
