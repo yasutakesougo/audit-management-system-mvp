@@ -77,6 +77,26 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-22 — ABC Sync, Kiosk List Consistency & Detail Stale Saving Fixes 🏁
+
+**内容**: PR #1984, PR #1985 がマージされ、追って PR #1986 がオープンされました。
+
+PR #1984 fixed Dedicated ABC record date-context synchronization:
+- URL-derived `date` / `slotId` are now reflected in `QuickRecordTab` occurredAt initialization and reset behavior.
+- `AbcRecordPage` mini-list filtering now follows `targetDate` instead of the current date.
+
+PR #1985 fixed Kiosk procedure list state consistency:
+- Prevents stale execution records from briefly appearing when user/date context changes.
+- Includes Zustand store records in demo/local mocked SharePoint mode so saved local records do not revert to "未実施".
+- Treats `status === "skipped"` as recorded.
+
+Follow-up PR #1986 is open:
+- Prevents `KioskProcedureDetailScreen` from saving records with stale numeric route IDs before the user master resolves the canonical `UserID`.
+- Local checks reported in PR body: `npm run typecheck` and `KioskProcedureDetailScreen.spec.tsx`.
+- GitHub CI is not fully green yet: `TypeCheck` and several E2E/workflows are success, but the `CI` aggregator is currently failing due to `Unit Test (Shard 1/3)` dependency installation cancellation.
+
+#bugfix #kiosk #abc #sharepoint #stability #skill-matrix-20260522
+
 ### 2026-05-22 — Health & Debug Pages Decompositions & Schema Drift Hardening 🏁
 
 **ワークフロー**: `/refactor` → `/harden` → `/test`
