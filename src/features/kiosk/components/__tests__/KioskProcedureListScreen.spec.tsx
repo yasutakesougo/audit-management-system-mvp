@@ -79,6 +79,20 @@ vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
   usePlanningSheetRepositories: () => ({}),
 }));
 
+const mockIsDemoModeEnabled = vi.fn(() => false);
+const mockShouldSkipSharePoint = vi.fn(() => false);
+const mockShouldSkipLogin = vi.fn(() => false);
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual('@/lib/env');
+  return {
+    ...actual,
+    isDemoModeEnabled: () => mockIsDemoModeEnabled(),
+    shouldSkipSharePoint: () => mockShouldSkipSharePoint(),
+    shouldSkipLogin: () => mockShouldSkipLogin(),
+  };
+});
+
 describe('KioskProcedureListScreen (includes local/memory-style recorded-state checks)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -791,4 +805,56 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(within(firstCard).queryByText('未実施')).toBeNull();
     });
   });
+
+  it('waits for user to load and does not perform stale fetches with fallback route ID', async () => {
+    mockRouteUserId = '17';
+    // Start as loading
+    let userState = { data: undefined as any, status: 'loading' };
+    mockUseUser.mockImplementation(() => userState);
+
+    // Track calls to mockGetRecords
+    mockGetRecords.mockClear();
+    mockGetRecords.mockImplementation(async (date, userId) => {
+      if (userId === 'U001') {
+        return [{ scheduleItemId: '1', status: 'completed' }];
+      }
+      return [];
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    // Initial render should be loading state
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    // At this point, mockGetRecords should NOT have been called because user loading is true
+    expect(mockGetRecords).not.toHaveBeenCalled();
+
+    // Now, transition user to success
+    userState = {
+      data: { FullName: '田中 太郎', UserID: 'U001' } as any,
+      status: 'success',
+    };
+    
+    // Trigger rerender to simulate useUser state update
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    // Verify it loads and shows "記録済み"
+    await waitFor(() => {
+      expect(screen.queryByText('読み込み中...')).toBeNull();
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+    });
+
+    // Verify that mockGetRecords was called only with U001 and never with '17'
+    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U001');
+    expect(mockGetRecords).not.toHaveBeenCalledWith(expect.any(String), '17');
+  });
 });
+
