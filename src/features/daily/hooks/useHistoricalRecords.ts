@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useExecutionData } from './useExecutionData';
 import type { ExecutionRecord } from '../domain/legacy/executionRecordTypes';
 import { normalizeScheduleItemId } from '../utils/normalizeScheduleItemId';
@@ -11,13 +11,6 @@ export function useHistoricalRecords(
   fallbackUserIds: string[] = [],
 ) {
   const { getHistoricalRecords, getRecordsInRange } = useExecutionData();
-  const getHistoricalRecordsRef = useRef(getHistoricalRecords);
-  const getRecordsInRangeRef = useRef(getRecordsInRange);
-
-  useEffect(() => {
-    getHistoricalRecordsRef.current = getHistoricalRecords;
-    getRecordsInRangeRef.current = getRecordsInRange;
-  }, [getHistoricalRecords, getRecordsInRange]);
 
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +60,7 @@ export function useHistoricalRecords(
       let history: ExecutionRecord[] = [];
       for (const candidateUserId of userCandidates) {
         for (const candidateScheduleId of scheduleCandidates) {
-          const result = await getHistoricalRecordsRef.current(candidateUserId, candidateScheduleId, 150);
+          const result = await getHistoricalRecords(candidateUserId, candidateScheduleId, 150);
           merge(result);
         }
       }
@@ -80,8 +73,8 @@ export function useHistoricalRecords(
       const to = new Date();
       const from = new Date();
       from.setDate(from.getDate() - 95);
-      const toStr = to.toISOString().slice(0, 10);
-      const fromStr = from.toISOString().slice(0, 10);
+      const toStr = `${to.getFullYear()}-${String(to.getMonth() + 1).padStart(2, '0')}-${String(to.getDate()).padStart(2, '0')}`;
+      const fromStr = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-${String(from.getDate()).padStart(2, '0')}`;
       const scheduleSet = new Set(scheduleCandidates.map((id) => normalizeScheduleItemId(id)));
 
       const isScheduleMatch = (value: unknown): boolean => {
@@ -93,7 +86,7 @@ export function useHistoricalRecords(
       };
 
       for (const candidateUserId of userCandidates) {
-        const rangeRecords = await getRecordsInRangeRef.current(candidateUserId, fromStr, toStr);
+        const rangeRecords = await getRecordsInRange(candidateUserId, fromStr, toStr);
         const matched = rangeRecords
           .filter((record) => isScheduleMatch(record.scheduleItemId))
           .sort((a, b) => (b.recordedAt || b.id).localeCompare(a.recordedAt || a.id));
@@ -111,7 +104,7 @@ export function useHistoricalRecords(
     } finally {
       setIsLoading(false);
     }
-  }, [userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds]);
+  }, [userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds, getHistoricalRecords, getRecordsInRange]);
 
   useEffect(() => {
     void fetchHistory();
