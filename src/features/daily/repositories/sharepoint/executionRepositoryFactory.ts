@@ -59,8 +59,9 @@ const shouldUseLocalRepository = (): boolean => {
   // Kiosk must rely on SharePoint so history and cross-device consistency work.
   // Keep tests isolated by allowing local mode only while running test runtime.
   if (isKioskRuntime && !isTest) {
+    const isMock = isDemoModeEnabled() || isForceDemoEnabled() || shouldSkipLogin() || isDev;
     // E2E local/memory runs intentionally validate kiosk UI behavior without SharePoint dependency.
-    if ((providerHint === 'local' || providerHint === 'memory') && isE2E) {
+    if ((providerHint === 'local' || providerHint === 'memory') && (isE2E || isMock)) {
       return true;
     }
     if (providerHint === 'local' || providerHint === 'memory' || shouldSkipLogin()) {
