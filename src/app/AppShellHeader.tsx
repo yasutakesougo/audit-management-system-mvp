@@ -131,12 +131,13 @@ export const AppShellHeader: React.FC<Props> = ({
           {currentBreadcrumb ? (
             <Typography
               variant="caption"
+              color="primary.contrastText"
               sx={{
                 lineHeight: '44px',
                 height: 44,
                 display: 'flex',
                 alignItems: 'center',
-                opacity: 0.8,
+                fontWeight: 500,
               }}
             >
               / {currentBreadcrumb}

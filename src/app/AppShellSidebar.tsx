@@ -16,6 +16,7 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -171,8 +172,10 @@ const NavItemRow: React.FC<{
     </ListItemButton>
   );
 
+  let renderedElement = button;
+
   if (navCollapsed && !showLabel) {
-    return (
+    renderedElement = (
       <Tooltip key={`${label}-${currentPathname}`} title={label} placement="right" enterDelay={100} disableInteractive>
         <Box sx={{ width: '100%' }}>
           {button}
@@ -181,7 +184,11 @@ const NavItemRow: React.FC<{
     );
   }
 
-  return button;
+  return (
+    <ListItem disablePadding component="li">
+      {renderedElement}
+    </ListItem>
+  );
 });
 NavItemRow.displayName = 'NavItemRow';
 
@@ -217,11 +224,11 @@ const GroupedNavList: React.FC<{
         const isLastGroup = index === groupedNavItems.ORDER.length - 1;
 
         return (
-          <List
-            key={group}
-            subheader={
-              !navCollapsed ? (
+          <List key={group}>
+            {!navCollapsed ? (
+              <ListItem component="li" disablePadding>
                 <ListSubheader
+                  component="div"
                   sx={{
                     lineHeight: '32px',
                     fontSize: '0.7rem',
@@ -230,15 +237,17 @@ const GroupedNavList: React.FC<{
                     letterSpacing: '0.05em',
                     color: 'text.secondary',
                     bgcolor: 'transparent',
+                    px: 2,
                   }}
                 >
                   {groupLabel[group]}
                 </ListSubheader>
-              ) : (
-                <Divider sx={{ my: 1, opacity: 0.6 }} />
-              )
-            }
-          >
+              </ListItem>
+            ) : (
+              <ListItem component="li" disablePadding>
+                <Divider sx={{ my: 1, opacity: 0.6, width: '100%' }} />
+              </ListItem>
+            )}
             {items.map((item) => (
               <NavItemRow
                 key={item.label}
@@ -250,7 +259,11 @@ const GroupedNavList: React.FC<{
                 onNavigate={onNavigate}
               />
             ))}
-            {!navCollapsed && !isLastGroup && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+            {!navCollapsed && !isLastGroup && (
+              <ListItem component="li" disablePadding>
+                <Divider sx={{ mt: 1, mb: 0.5, width: '100%' }} />
+              </ListItem>
+            )}
           </List>
         );
       })}

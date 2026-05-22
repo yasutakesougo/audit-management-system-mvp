@@ -41,7 +41,6 @@ export const DataLayerGuard: React.FC<{ children: React.ReactNode }> = ({ childr
   // [DIAGNOSTIC] Provide a stable container for the children to avoid reconciliation errors
   return (
     <Box 
-      component="main" 
       id="app-main-container" 
       data-provider={currentProvider}
       sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}
