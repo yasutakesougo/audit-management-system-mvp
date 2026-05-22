@@ -186,6 +186,17 @@ describe('supportTemplateBridge', () => {
       });
     });
 
+    it('converts static master data for user U-012 (Shiota-san)', () => {
+      const steps = masterRowsToProcedureSteps('U-012');
+      expect(steps).toHaveLength(17);
+      expect(steps[0]).toMatchObject({
+        order: 1,
+        instruction: '通所・朝の準備（手洗い、消毒。荷物を入れる。）',
+        staff: '通所時の様子を確認し、必要に応じて声かけを行う。',
+        timing: '9:30頃',
+      });
+    });
+
     it('returns default/empty steps when no specific master registered', () => {
       const steps = masterRowsToProcedureSteps('NON_EXISTENT_USER');
       expect(steps).toHaveLength(17);

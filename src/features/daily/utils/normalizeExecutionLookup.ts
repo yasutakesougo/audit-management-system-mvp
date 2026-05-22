@@ -27,16 +27,18 @@ export const buildExecutionUserIdCandidates = (...values: unknown[]): string[] =
     push(raw.replace(/-/g, ''));
 
     const compact = raw.replace(/-/g, '').toUpperCase();
-    const digitMatch = compact.match(/^U?(\d+)$/);
-    if (!digitMatch) continue;
+    const match = compact.match(/^([A-Z]*)(\d+)$/);
+    if (!match) continue;
 
-    const digits = digitMatch[1];
+    const prefix = match[1] || 'U';
+    const digits = match[2];
     const noPad = String(Number.parseInt(digits, 10));
     const pad3 = digits.padStart(3, '0');
     push(noPad);
-    push(`U${digits}`);
-    push(`U${pad3}`);
-    push(`U-${pad3}`);
+    push(`${prefix}${digits}`);
+    push(`${prefix}${noPad}`);
+    push(`${prefix}${pad3}`);
+    push(`${prefix}-${pad3}`);
   }
 
   return out;
