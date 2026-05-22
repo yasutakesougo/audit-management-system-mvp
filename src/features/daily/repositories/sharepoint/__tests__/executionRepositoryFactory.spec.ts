@@ -68,4 +68,26 @@ describe('executionRepositoryFactory', () => {
 
     expect(getCurrentExecutionRepositoryKind()).toBe('local');
   });
+
+  it('uses local provider in kiosk runtime during local development', () => {
+    envState.isDev = true;
+    window.history.pushState({}, '', '/kiosk/users/6/procedures');
+
+    expect(getCurrentExecutionRepositoryKind()).toBe('local');
+  });
+
+  it('uses local provider in kiosk runtime during demo mode', () => {
+    envState.isDemoModeEnabled = true;
+    window.history.pushState({}, '', '/kiosk/users/6/procedures');
+
+    expect(getCurrentExecutionRepositoryKind()).toBe('local');
+  });
+
+  it('respects sharepoint provider hint in kiosk runtime during local development', () => {
+    envState.isDev = true;
+    envState.dataProvider = 'sharepoint';
+    window.history.pushState({}, '', '/kiosk/users/6/procedures');
+
+    expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
+  });
 });

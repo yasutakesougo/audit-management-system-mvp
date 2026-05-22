@@ -60,6 +60,14 @@ const shouldUseLocalRepository = (): boolean => {
   // Keep tests isolated by allowing local mode only while running test runtime.
   if (isKioskRuntime && !isTest) {
     const isMock = isDemoModeEnabled() || isForceDemoEnabled() || shouldSkipLogin() || isDev;
+
+    // In local development or demo/mock modes, we default to the local repository
+    // unless the provider hint explicitly requests SharePoint.
+    const isLocalDevOrDemo = isDemoModeEnabled() || isForceDemoEnabled() || isDev;
+    if (isLocalDevOrDemo && providerHint !== 'sharepoint') {
+      return true;
+    }
+
     // E2E local/memory runs intentionally validate kiosk UI behavior without SharePoint dependency.
     if ((providerHint === 'local' || providerHint === 'memory') && (isE2E || isMock)) {
       return true;
