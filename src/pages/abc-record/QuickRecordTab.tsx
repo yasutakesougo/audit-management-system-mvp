@@ -5,6 +5,7 @@
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatInTimeZone } from '@/lib/tz';
 import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
 
 // ── MUI ──
@@ -49,13 +50,46 @@ interface QuickRecordTabProps {
   sourceContext?: AbcRecordSourceContext;
   /** MVP-5: Step 3 からの下書き behavior テキスト */
   initialBehavior?: string;
+  targetDate: string;
 }
 
-const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, onSaved, initialUserId, todayRecords, sourceContext, initialBehavior }) => {
+export function getInitialOccurredAt(date?: string, slotId?: string): string {
+  const tz = 'Asia/Tokyo';
+  const now = new Date();
+  const todayStr = formatInTimeZone(now, tz, 'yyyy-MM-dd');
+  const targetDate = date ? date.trim() : todayStr;
+
+  let targetTime = '';
+  if (slotId) {
+    const parts = slotId.split('|');
+    const timePart = parts[0] ?? '';
+    const match = timePart.match(/(\d{1,2}):(\d{2})/);
+    if (match) {
+      const hour = match[1].padStart(2, '0');
+      const minute = match[2];
+      targetTime = `${hour}:${minute}`;
+    }
+  }
+
+  if (!targetTime) {
+    if (targetDate === todayStr) {
+      targetTime = formatInTimeZone(now, tz, 'HH:mm');
+    } else {
+      targetTime = '12:00';
+    }
+  }
+
+  return `${targetDate}T${targetTime}`;
+}
+
+const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, onSaved, initialUserId, todayRecords, sourceContext, initialBehavior, targetDate }) => {
   const navigate = useNavigate();
   const abcRecordRepo = useAbcRecordRepository();
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => ({
+    ...EMPTY_FORM,
+    occurredAt: getInitialOccurredAt(sourceContext?.date, sourceContext?.slotId),
+  }));
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [lastSavedUserId, setLastSavedUserId] = useState<string | null>(null);
@@ -67,6 +101,14 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
       if (found) setSelectedUser(found);
     }
   }, [initialUserId, users, selectedUser]);
+
+  // URL context（date/slotId）が変更されたら発生日時を同期
+  useEffect(() => {
+    setForm(prev => ({
+      ...prev,
+      occurredAt: getInitialOccurredAt(sourceContext?.date, sourceContext?.slotId),
+    }));
+  }, [sourceContext?.date, sourceContext?.slotId]);
 
   // MVP-5: 下書き behavior を初期値としてセット
   const [draftApplied, setDraftApplied] = useState(false);
@@ -110,10 +152,10 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
       await abcRecordRepo.save(input);
       setSaveSuccess(true);
       setLastSavedUserId(selectedUser.id);
-      // リセット（利用者は維持）
+      // リセット（利用者は維持、発生日時もコンテキストに合わせてリセット）
       setForm({
         ...EMPTY_FORM,
-        occurredAt: new Date().toISOString().slice(0, 16),
+        occurredAt: getInitialOccurredAt(sourceContext?.date, sourceContext?.slotId),
       });
       onSaved();
       // 3秒後に成功メッセージを消す
@@ -323,7 +365,7 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
           <Divider sx={{ mt: 2 }} />
           <Box sx={{ mt: 1 }}>
             <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1 }}>
-              📋 今日の記録 ({todayRecords.length}件)
+              📋 {targetDate === formatInTimeZone(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd') ? '今日の記録' : `${targetDate} の記録`} ({todayRecords.length}件)
             </Typography>
             <Stack spacing={0.75}>
               {todayRecords.map(r => (
@@ -338,7 +380,7 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
                   }}
                 >
                   <Typography variant="caption" color="primary" fontWeight={700} sx={{ minWidth: 40 }}>
-                    {new Date(r.occurredAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                    {formatInTimeZone(r.occurredAt, 'Asia/Tokyo', 'HH:mm')}
                   </Typography>
                   {r.setting && (
                     <Chip label={r.setting} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
