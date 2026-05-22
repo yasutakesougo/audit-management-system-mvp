@@ -93,9 +93,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     });
     return `/abc-record?${params.toString()}`;
   }, [abcSlotId, deepLinkUserId, returnRouteUserId, selectedDateIso, slotKey]);
+  // isUserLoading 中は空文字を渡し、確定前の userId が saveRecord のクロージャに
+  // 束縛されて Zustand に誤ったキーで保存されるのを防ぐ
+  const resolvedUserId = isUserLoading ? '' : deepLinkUserId;
   const { record, saveRecord, isLoading } = useExecutionRecord(
     selectedDateIso,
-    deepLinkUserId,
+    resolvedUserId,
     scheduleItemId,
     fallbackScheduleItemIds,
   );
@@ -152,7 +155,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!userId) return;
+    if (!userId || isUserLoading || !resolvedUserId) return;
     const finalMemo = serializeMemo();
     if (!finalMemo.trim()) {
       setShowValidationError(true);
