@@ -77,6 +77,41 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-22 — Health & Debug Pages Decompositions & Schema Drift Hardening 🏁
+
+**ワークフロー**: `/refactor` → `/harden` → `/test`
+**対象**: 巨大コンポーネント（Health / Debug関連）の600行未満分割、および `Users_Master` / `SupportProcedureRecord_Daily` のスキーマ不一致（ドリフト）防御強化
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `#1971` 巨大ファイル検出に伴う、`SupportPlanGuidePage` からプレゼンテーション支援関数の分離による軽量化 |
+| ✅ 採用 | `#1975` `HydrationHud.tsx` の表示領域分割による 600 行の閾値未満への解体 |
+| ✅ 採用 | `#1976` `SpDevPanel.tsx` の内部コンポーネント抽出による 600 行未満へのリファクタリング |
+| ✅ 採用 | `#1977` `HealthPage.tsx` から表示用セクション（HealthHistoryCard、VitalRangeSection等）および定数類の別ファイル抽出 |
+| ✅ 採用 | `#1978` `HealthDiagnosisPage.tsx` から `CheckResultsPanel`、`DiagnosticsSummaryPanel`、`SpTelemetryPanel` を切り出し単一の責務に整理 |
+| ✅ 採用 | `#1979` CI の事前チェックにおける ESLint 警告（プレロード戦略関連、未使用変数、コンソール出力等）の完全クリーンアップ |
+| ✅ 採用 | `#1980` `userCode` が物理環境で `UserID` / `UserCode0` 等にドリフトしている事象に対し、`UserFieldResolver` での安全なフォールバック解決と単体テスト保護を追加 |
+| ✅ 採用 | `#1981` `SupportProcedureRecord_Daily` の `id` や任意列の物理名揺れ（ドリフト）に対応する `DataProviderProcedureRecordRepository` でのフォールバック・テストの強化 |
+
+**成果**:
+- 各ブランチおよびPR（#1975 〜 #1981）が正常にマージ完了。
+- 全体の型チェック (`npm run typecheck`) および `vitest` テスト（`health` 関連29件、`UserFieldResolver` 関連、`DataProviderProcedureRecordRepository` 関連など）の **ALL PASS** 🟢
+- 主要コンポーネントのコード行数が 600 行未満に抑えられ、保守性と Health Score が劇的に改善。
+
+**効果測定**:
+- 対象ファイルの行数:
+  - `HealthDiagnosisPage.tsx`: 分割前 353行超削減され 50行未満にスリム化 🟢
+  - `HealthPage.tsx` / `HydrationHud.tsx` / `SpDevPanel.tsx`: すべて 600行未満の健全なしきい値内に収まる 🟢
+- テスト成功率: スキーマドリフト耐性テストを含む全テストが 100% 正常稼働 🟢
+
+**学び**:
+- **段階的なファイルの分割**: 巨大ファイルを一気に直すのではなく、ドメイン定数、UI表示、サブセクションごとに分割を分けることで型不整合を防ぎやすい。
+- **物理ドリフトの吸収レイヤー**: APIリクエストの物理名称にブレがある場合、Repository/Mapper層で解決（`candidates` やフォールバック配列を定義）し、かつ警告は出す（`emitDriftRecord`）という設計は、動作停止を防ぎつつログ監視を両立する鉄板パターン。
+
+**所要時間**: 約 15min
+
+#refactor #health #users #isp #sharepoint #stability #lint-cleanup #skill-matrix-20260522
+
 ### 2026-05-18 — kiosk / ISP / E2E Hardening Verification 🏁
 
 **ワークフロー**: `/scan` → `/test` → 環境確認
