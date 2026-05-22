@@ -10,6 +10,14 @@ describe('buildExecutionUserIdCandidates', () => {
     expect(candidates).toContain('U-010');
   });
 
+  it('builds stable variants for non-default prefix', () => {
+    const candidates = buildExecutionUserIdCandidates('I005');
+    expect(candidates).toContain('5');
+    expect(candidates).toContain('I5');
+    expect(candidates).toContain('I005');
+    expect(candidates).toContain('I-005');
+  });
+
   it('keeps unique candidates when mixed formats are provided', () => {
     const candidates = buildExecutionUserIdCandidates('10', 'U-010', 'U010');
     expect(new Set(candidates).size).toBe(candidates.length);

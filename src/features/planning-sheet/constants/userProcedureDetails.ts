@@ -330,38 +330,61 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
   { userId: 'I016', rowNo: 17, personAction: '外活動に参加する', supporterAction: '外活動中の安全確認、同行支援、見守りを行う' },
 ];
 
-function isIshiwataUserId(userId: string | number): boolean {
+function isDetailIshiwata(detailUserId: string | number): boolean {
+  return String(detailUserId) === '4';
+}
+
+function isDetailKatsuragawa(detailUserId: string | number): boolean {
+  return String(detailUserId) === '3';
+}
+
+function isDetailNakamura(detailUserId: string | number): boolean {
+  return String(detailUserId) === '7';
+}
+
+function isDetailShiota(detailUserId: string | number): boolean {
+  return String(detailUserId) === 'I016';
+}
+
+function isQueryIshiwata(userId: string | number): boolean {
   const s = String(userId);
   return s === '4' || s === '6' || s === 'U-002' || s === 'U-003' || s === 'I005';
 }
 
-function isKatsuragawaUserId(userId: string | number): boolean {
+function isQueryKatsuragawa(userId: string | number): boolean {
   const s = String(userId);
-  return s === '3' || s === '10' || s === 'U-001' || s === 'I009';
+  return s === '1' || s === '10' || s === 'U-001' || s === 'I009';
 }
 
-function isNakamuraUserId(userId: string | number): boolean {
+function isQueryNakamura(userId: string | number): boolean {
   const s = String(userId);
   return s === '7' || s === '23' || s === 'U-006' || s === 'I017' || s === 'I022';
 }
 
-function isShiotaUserId(userId: string | number): boolean {
+function isQueryShiota(userId: string | number): boolean {
   const s = String(userId);
-  return s === 'I016';
+  return s === '3' || s === 'U-012' || s === 'I016';
+}
+
+function isUserMatch(detailUserId: string | number, queryUserId: string | number): boolean {
+  if (isDetailIshiwata(detailUserId)) {
+    return isQueryIshiwata(queryUserId);
+  }
+  if (isDetailKatsuragawa(detailUserId)) {
+    return isQueryKatsuragawa(queryUserId);
+  }
+  if (isDetailNakamura(detailUserId)) {
+    return isQueryNakamura(queryUserId);
+  }
+  if (isDetailShiota(detailUserId)) {
+    return isQueryShiota(queryUserId);
+  }
+  return String(detailUserId) === String(queryUserId);
 }
 
 export function findUserProcedureDetail(userId: string | number, rowNo: number): UserProcedureDetail | undefined {
   return USER_PROCEDURE_DETAILS.find((detail) => {
-    const isUserMatch = isIshiwataUserId(detail.userId)
-      ? isIshiwataUserId(userId)
-      : isKatsuragawaUserId(detail.userId)
-        ? isKatsuragawaUserId(userId)
-        : isNakamuraUserId(detail.userId)
-          ? isNakamuraUserId(userId)
-          : isShiotaUserId(detail.userId)
-            ? isShiotaUserId(userId)
-            : String(detail.userId) === String(userId);
-    return isUserMatch && detail.rowNo === rowNo;
+    return isUserMatch(detail.userId, userId) && detail.rowNo === rowNo;
   });
 }
 
@@ -408,28 +431,12 @@ export const USER_PROCEDURE_SHEET_NOTES: UserProcedureSheetNotes[] = [
 
 export function findUserProcedureSheetNotes(userId: string | number): UserProcedureSheetNotes | undefined {
   return USER_PROCEDURE_SHEET_NOTES.find((notes) => {
-    return isIshiwataUserId(notes.userId)
-      ? isIshiwataUserId(userId)
-      : isKatsuragawaUserId(notes.userId)
-        ? isKatsuragawaUserId(userId)
-        : isNakamuraUserId(notes.userId)
-          ? isNakamuraUserId(userId)
-          : isShiotaUserId(notes.userId)
-            ? isShiotaUserId(userId)
-            : String(notes.userId) === String(userId);
+    return isUserMatch(notes.userId, userId);
   });
 }
 
 export function hasUserProcedureMaster(userId: string | number): boolean {
   return USER_PROCEDURE_DETAILS.some((detail) => {
-    return isIshiwataUserId(detail.userId)
-      ? isIshiwataUserId(userId)
-      : isKatsuragawaUserId(detail.userId)
-        ? isKatsuragawaUserId(userId)
-        : isNakamuraUserId(detail.userId)
-          ? isNakamuraUserId(userId)
-          : isShiotaUserId(detail.userId)
-            ? isShiotaUserId(userId)
-            : String(detail.userId) === String(userId);
+    return isUserMatch(detail.userId, userId);
   });
 }
