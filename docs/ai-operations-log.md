@@ -911,3 +911,27 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 **所要時間**: 約 15min
 
 #foundation #migration #tokusei #navigation #skill-matrix-20260515-3
+
+### 2026-05-22 — /users ページ strict a11y 修正 & Kiosk・ABC・実施記録の保存先・連動仕様整理 🏁
+
+**ワークフロー**: /users a11y 修正 PR の作成・マージ、およびドメイン永続化設計の確認
+**対象**: `src/app/AppShellHeader.tsx`, `src/app/AppShellSidebar.tsx`, `src/components/DataLayerGuard.tsx`, `src/features/kiosk/components/KioskProcedureListScreen.tsx`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | AppShellHeader におけるブレッドクラム Typography のコントラスト改善（color="primary.contrastText" の明示と opacity の削除） |
+| ✅ 採用 | AppShellSidebar における MUI List 構造の a11y 準拠（ListSubheader や Divider などの `component="li"` 指定、NavItemRow の ListItem (li) ラップ） |
+| ✅ 採用 | 支援手順・実施記録・ABC記録の保存先マッピングの明確化（LocalStorage と SharePoint 各リストの 1:1 対応関係） |
+| ✅ 採用 | PR #1991 による `この手順でABC記録` 実行時の `ExecutionRecord` 側への `completed` 自動連動保存仕様の確認 |
+
+**成果**: PR #1992 (open / mergeable, auto-merge 有効化済み)、E2E a11y tests passed (`4 passed`) & `npm run typecheck` passed 🟢
+**効果測定**:
+- `/users` ページの strict a11y gate における color-contrast / list / listitem 違反数が 0 件に改善 🟢
+- キオスク手順一覧とABC記録間のデータ状態の不一致が、PR #1991 の連動仕様（`completed` 自動マーク）により理論的・実装的に解消されていることを確認。
+**学び**:
+- MUI などの UI コンポーネントを用いる場合、HTML セマンティクス上不正なネスト（例: `li` の直下ではない `div` や入れ子になった `li`）が strict a11y gate で検知されやすいため、`component="div"` や `component="li"` での明示的な調整が極めて有効。
+- ローカル環境で環境変数を切り替えた後は、必ず Vite を再起動（`Ctrl + C` -> `npm run dev`）しないと状態の追従や SharePoint モック切り替えが正しく反映されない点に注意。
+**所要時間**: 約 15min
+
+#bugfix #a11y #kiosk #abc #sharepoint #stability #skill-matrix-20260522-a11y
+
