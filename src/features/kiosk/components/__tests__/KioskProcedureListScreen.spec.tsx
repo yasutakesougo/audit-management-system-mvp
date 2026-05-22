@@ -7,12 +7,22 @@ import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/s
 
 // Mock dependencies
 let mockRouteUserId = 'U001';
+let mockLocationSearch: string | null = null;
+let mockLocationKey: string | null = null;
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => vi.fn(),
     useParams: () => ({ userId: mockRouteUserId }),
+    useLocation: () => {
+      const loc = actual.useLocation();
+      return {
+        ...loc,
+        search: mockLocationSearch !== null ? mockLocationSearch : loc.search,
+        key: mockLocationKey !== null ? mockLocationKey : loc.key,
+      };
+    },
   };
 });
 
@@ -69,12 +79,28 @@ vi.mock('@/features/planning-sheet/hooks/usePlanningSheetRepositories', () => ({
   usePlanningSheetRepositories: () => ({}),
 }));
 
+const mockIsDemoModeEnabled = vi.fn(() => false);
+const mockShouldSkipSharePoint = vi.fn(() => false);
+const mockShouldSkipLogin = vi.fn(() => false);
+
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual('@/lib/env');
+  return {
+    ...actual,
+    isDemoModeEnabled: () => mockIsDemoModeEnabled(),
+    shouldSkipSharePoint: () => mockShouldSkipSharePoint(),
+    shouldSkipLogin: () => mockShouldSkipLogin(),
+  };
+});
+
 describe('KioskProcedureListScreen (includes local/memory-style recorded-state checks)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
     mockRouteUserId = 'U001';
+    mockLocationSearch = null;
+    mockLocationKey = null;
     mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
     mockUseUsers.mockReturnValue({ data: [], status: 'success' });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
@@ -673,4 +699,162 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(screen.queryByTestId('kiosk-support-start-setup-cta')).toBeNull();
     });
   });
+
+  it('synchronously clears records when user changes to prevent temporal display of stale records', async () => {
+    mockGetRecords.mockImplementation(async (date, userId) => {
+      if (userId === 'U001') {
+        return [{ scheduleItemId: '1', status: 'completed' }];
+      }
+      return new Promise((resolve) => setTimeout(() => resolve([]), 50));
+    });
+
+    mockUseUser.mockImplementation(() => ({
+      data: { FullName: '田中 太郎', UserID: 'U001' },
+      status: 'success',
+    }));
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+    });
+
+    mockRouteUserId = 'U002';
+    mockLocationKey = 'new-user-key';
+    mockUseUser.mockImplementation(() => ({
+      data: { FullName: '鈴木 次郎', UserID: 'U002' },
+      status: 'success',
+    }));
+
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/U002/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/鈴木 次郎/)).toBeInTheDocument();
+    });
+
+    const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+    expect(within(firstCard).queryByText('記録済み')).toBeNull();
+    expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
+  });
+
+  it('synchronously clears records when date query changes to prevent temporal display of stale records', async () => {
+    mockGetRecords.mockImplementation(async (date) => {
+      if (date === '2026-05-08') {
+        return [{ scheduleItemId: '1', status: 'completed' }];
+      }
+      return new Promise((resolve) => setTimeout(() => resolve([]), 50));
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-05-08']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+    });
+
+    mockLocationSearch = '?date=2026-05-09';
+    mockLocationKey = 'new-date-key';
+
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-05-09']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/2026年5月9日/)).toBeInTheDocument();
+    });
+
+    const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+    expect(within(firstCard).queryByText('記録済み')).toBeNull();
+    expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
+  });
+
+  it('marks a procedure as recorded when the record status is "skipped"', async () => {
+    mockGetRecords.mockResolvedValue([
+      { scheduleItemId: '1', status: 'skipped', memo: '' }
+    ]);
+
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', UserID: 'U001' },
+      status: 'success',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+      expect(within(firstCard).queryByText('未実施')).toBeNull();
+    });
+  });
+
+  it('waits for user to load and does not perform stale fetches with fallback route ID', async () => {
+    mockRouteUserId = '17';
+    // Start as loading
+    let userState = { data: undefined as any, status: 'loading' };
+    mockUseUser.mockImplementation(() => userState);
+
+    // Track calls to mockGetRecords
+    mockGetRecords.mockClear();
+    mockGetRecords.mockImplementation(async (date, userId) => {
+      if (userId === 'U001') {
+        return [{ scheduleItemId: '1', status: 'completed' }];
+      }
+      return [];
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    // Initial render should be loading state
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    // At this point, mockGetRecords should NOT have been called because user loading is true
+    expect(mockGetRecords).not.toHaveBeenCalled();
+
+    // Now, transition user to success
+    userState = {
+      data: { FullName: '田中 太郎', UserID: 'U001' } as any,
+      status: 'success',
+    };
+    
+    // Trigger rerender to simulate useUser state update
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    // Verify it loads and shows "記録済み"
+    await waitFor(() => {
+      expect(screen.queryByText('読み込み中...')).toBeNull();
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+    });
+
+    // Verify that mockGetRecords was called only with U001 and never with '17'
+    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U001');
+    expect(mockGetRecords).not.toHaveBeenCalledWith(expect.any(String), '17');
+  });
 });
+

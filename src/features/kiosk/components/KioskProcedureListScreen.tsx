@@ -13,6 +13,7 @@ import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import { isDemoModeEnabled, shouldSkipSharePoint, shouldSkipLogin } from '@/lib/env';
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
@@ -149,6 +150,18 @@ export const KioskProcedureListScreen: React.FC = () => {
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [showFetchError, setShowFetchError] = useState(false);
 
+  // Synchronously reset records state when the active user or date changes
+  // to prevent rendering stale records from the previous context.
+  const currentQueryId = queryUserIdFromSearch || user?.UserID || userId || '';
+  const [prevQueryId, setPrevQueryId] = useState<string>('');
+  const [prevDate, setPrevDate] = useState<string>('');
+
+  if (currentQueryId !== prevQueryId || selectedDateIso !== prevDate) {
+    setPrevQueryId(currentQueryId);
+    setPrevDate(selectedDateIso);
+    setRecords([]);
+  }
+
   const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
     if (!deepLinkUserId) return '/abc-record';
     const returnParams = new URLSearchParams({ date: selectedDateIso });
@@ -165,23 +178,43 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   // 実施記録の取得
   useEffect(() => {
+    if (isUserLoading) return;
+
+    let active = true;
     const fetchRecords = async () => {
       const queryId = queryUserIdFromSearch || user?.UserID || userId;
       if (!queryId) return;
       try {
         const data = await executionRepo.getRecords(selectedDateIso, queryId);
-        setRecords(data);
+        if (active) {
+          setRecords(data);
+        }
       } catch (error) {
-        console.error('Failed to fetch execution records:', error);
-        setShowFetchError(true);
+        if (active) {
+          console.error('Failed to fetch execution records:', error);
+          setShowFetchError(true);
+        }
       }
     };
     void fetchRecords();
-  }, [queryUserIdFromSearch, userId, user?.UserID, executionRepo, selectedDateIso, location.key, location.search]);
+
+    return () => {
+      active = false;
+    };
+  }, [
+    queryUserIdFromSearch,
+    userId,
+    user?.UserID,
+    isUserLoading,
+    executionRepo,
+    selectedDateIso,
+    location.key,
+    location.search,
+  ]);
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
     if (!record) return false;
-    if (record.status === 'completed' || record.status === 'triggered') return true;
+    if (record.status === 'completed' || record.status === 'triggered' || record.status === 'skipped') return true;
     const unknownRecord = record as unknown as Record<string, unknown>;
     const inputKeys = ['memo', 'note', 'specialNote', 'additionalInfo', 'situation'];
     return inputKeys.some((key) => {
@@ -197,8 +230,11 @@ export const KioskProcedureListScreen: React.FC = () => {
 
     // In sharepoint mode, treat repository result as source of truth to avoid
     // local-only "記録済み" labels that don't survive across devices.
+    // However, if we are in demo mode or SharePoint is bypassed/mocked,
+    // we must allow local store records as fallback.
+    const isMock = isDemoModeEnabled() || shouldSkipSharePoint() || shouldSkipLogin();
     const allCandidateRecords =
-      executionRepositoryKind === 'local' ? [...storeRecords, ...records] : [...records];
+      (executionRepositoryKind === 'local' || isMock) ? [...storeRecords, ...records] : [...records];
     
     for (const record of allCandidateRecords) {
       const key = normalizeScheduleItemId(record.scheduleItemId);
