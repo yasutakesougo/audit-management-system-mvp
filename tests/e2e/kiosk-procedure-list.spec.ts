@@ -50,4 +50,20 @@ test.describe('Kiosk Procedure List', () => {
     await expect(page.getByTestId('kiosk-support-start-setup-cta')).toHaveCount(0);
     await expect(page.getByText('支援計画シートを作成して支援開始日を設定')).toHaveCount(0);
   });
+
+  test('should display procedure as recorded when its status is skipped', async ({ page }) => {
+    await bootKiosk(page, {
+      route: '/kiosk/users/1/procedures',
+      userId: 'U-001',
+      records: [
+        { scheduleItemId: 'seed-U-001-1', status: 'skipped' }
+      ]
+    });
+
+    await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 10000 });
+
+    const firstCard = page.getByTestId('kiosk-procedure-card-0');
+    await expect(firstCard.getByText('記録済み')).toBeVisible();
+    await expect(firstCard.getByText('未実施')).toHaveCount(0);
+  });
 });
