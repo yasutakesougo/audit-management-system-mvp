@@ -108,6 +108,7 @@ export type ExecutionStoreHooks = {
   getRecords: (date: string, userId: string) => ExecutionRecord[];
   getRecord: (date: string, userId: string, scheduleItemId: string) => ExecutionRecord | undefined;
   upsertRecord: (record: ExecutionRecord) => void;
+  deleteRecord: (date: string, userId: string, scheduleItemId: string) => void;
   getCompletionRate: (
     date: string,
     userId: string,
@@ -143,6 +144,12 @@ function createLocalStorageExecutionAdapter(
         userId: normalizeExecutionUserId(record.userId),
         scheduleItemId: normalizeScheduleItemId(record.scheduleItemId),
       }),
+    deleteRecord: async (date: string, userId: string, scheduleItemId: string) =>
+      store.deleteRecord(
+        normalizeExecutionDate(date),
+        normalizeExecutionUserId(userId),
+        normalizeScheduleItemId(scheduleItemId),
+      ),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       store.getCompletionRate(date, userId, totalSlots),
     getHistoricalRecords: async () => [], // Historical records not supported in local store
@@ -161,6 +168,8 @@ function createSharePointExecutionAdapter(
       repository.getRecord(date, userId, scheduleItemId),
     upsertRecord: async (record: ExecutionRecord) =>
       repository.upsertRecord(record),
+    deleteRecord: async (date: string, userId: string, scheduleItemId: string) =>
+      repository.deleteRecord(date, userId, scheduleItemId),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       repository.getCompletionRate(date, userId, totalSlots),
     getHistoricalRecords: async (userId: string, scheduleItemId: string, limit?: number) =>

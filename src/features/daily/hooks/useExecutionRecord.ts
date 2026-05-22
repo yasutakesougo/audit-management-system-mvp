@@ -14,7 +14,7 @@ export function useExecutionRecord(
   scheduleItemId: string,
   fallbackScheduleItemIds?: string[],
 ) {
-  const { getRecord, upsertRecord } = useExecutionData();
+  const { getRecord, upsertRecord, deleteRecord } = useExecutionData();
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -102,6 +102,11 @@ export function useExecutionRecord(
     [date, userId, scheduleItemId, record],
   );
 
-  return { record, setStatus, setMemo, saveRecord, isLoading, refresh: fetchRecord } as const;
+  const deleteRecordFn = useCallback(async () => {
+    await deleteRecord(date, userId, scheduleItemId);
+    setRecord(undefined);
+  }, [date, userId, scheduleItemId, deleteRecord]);
+
+  return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, refresh: fetchRecord } as const;
 }
 

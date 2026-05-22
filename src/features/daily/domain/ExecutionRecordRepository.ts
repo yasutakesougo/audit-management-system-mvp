@@ -63,4 +63,10 @@ export interface ExecutionRecordRepository {
    * Useful for 90-day monitoring aggregation.
    */
   getRecordsInRange(userId: string, from: string, to: string): Promise<ExecutionRecord[]>;
+
+  /**
+   * Delete an execution record by date × user × scheduleItemId.
+   */
+  deleteRecord(date: string, userId: string, scheduleItemId: string): Promise<void>;
 }
+

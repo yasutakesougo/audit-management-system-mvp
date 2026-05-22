@@ -150,18 +150,53 @@ export function useExecutionStore() {
         userId: normalizedUserId,
         scheduleItemId: normalizedScheduleItemId,
       };
-      const existing = getRecords(normalizedDate, normalizedUserId);
-      const index = existing.findIndex((r) => normalizeScheduleItemId(r.scheduleItemId) === normalizedScheduleItemId);
+      const existingRecords = getRecords(normalizedDate, normalizedUserId);
+      const index = existingRecords.findIndex((r) => normalizeScheduleItemId(r.scheduleItemId) === normalizedScheduleItemId);
+      const existing = index >= 0 ? existingRecords[index] : undefined;
+
+      // Concurrency Protection: Merge memos if existing record has a different memo.
+      let finalMemo = normalizedRecord.memo;
+      if (existing && existing.memo && normalizedRecord.memo && existing.memo !== normalizedRecord.memo) {
+        if (!existing.memo.includes(normalizedRecord.memo)) {
+          const timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+          const staffName = normalizedRecord.recordedBy || '職員';
+          finalMemo = `${existing.memo}\n[${timeStr} ${staffName}] ${normalizedRecord.memo}`;
+        } else {
+          finalMemo = existing.memo;
+        }
+      } else if (existing && existing.memo && !normalizedRecord.memo) {
+        finalMemo = existing.memo;
+      }
+
+      const mergedRecord: ExecutionRecord = {
+        ...normalizedRecord,
+        memo: finalMemo,
+      };
 
       const updated =
         index >= 0
-          ? existing.map((r, i) => (i === index ? normalizedRecord : r))
-          : [...existing, normalizedRecord];
+          ? existingRecords.map((r, i) => (i === index ? mergedRecord : r))
+          : [...existingRecords, mergedRecord];
 
       saveDailyRecords(normalizedDate, normalizedUserId, updated);
     },
     [getRecords],
   );
+
+  /** 記録を削除 */
+  const deleteRecord = useCallback(
+    (date: string, userId: string, scheduleItemId: string) => {
+      const normalizedDate = normalizeExecutionDate(date);
+      const normalizedUserId = normalizeExecutionUserId(userId);
+      const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
+      const existing = getRecords(normalizedDate, normalizedUserId);
+      const updated = existing.filter((r) => normalizeScheduleItemId(r.scheduleItemId) !== normalizedScheduleItemId);
+
+      saveDailyRecords(normalizedDate, normalizedUserId, updated);
+    },
+    [getRecords],
+  );
+
 
   /** 完了率を計算（completed / total） */
   const getCompletionRate = useCallback(
@@ -204,7 +239,9 @@ export function useExecutionStore() {
     getRecords,
     getRecord,
     upsertRecord,
+    deleteRecord,
     getCompletionRate,
     getRecordsInRange,
-  }), [getRecords, getRecord, upsertRecord, getCompletionRate, getRecordsInRange]);
+  }), [getRecords, getRecord, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]);
 }
+

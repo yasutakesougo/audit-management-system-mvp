@@ -33,6 +33,7 @@ import type { AbcRecord, AbcRecordSourceContext } from '@/domain/abc/abcRecord';
 import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
+import { useAbcDailySupportIntegration } from '@/features/daily/hooks/useAbcDailySupportIntegration';
 
 // ── Local ──
 import type { UserOption } from './types';
@@ -137,6 +138,17 @@ const AbcRecordPage: React.FC = () => {
   }, [source, urlSlotId, urlDate]);
 
   const recorderName = (account as { name?: string })?.name ?? '不明';
+
+  const { linkExecutionRecord } = useAbcDailySupportIntegration();
+
+  const handleLinkExecutionRecord = useCallback(async (
+    userId: string,
+    behavior: string,
+    consequence: string,
+    sourceContext: AbcRecordSourceContext
+  ) => {
+    await linkExecutionRecord(userId, behavior, consequence, sourceContext, recorderName);
+  }, [linkExecutionRecord, recorderName]);
 
   const userOptions = useMemo<UserOption[]>(
     () => users.map(u => ({ id: u.UserID, label: `${u.FullName} (${u.UserID})` })),
@@ -311,6 +323,7 @@ const AbcRecordPage: React.FC = () => {
               sourceContext={sourceContextForSave}
               initialBehavior={initialBehavior}
               targetDate={targetDate}
+              onLinkExecutionRecord={handleLinkExecutionRecord}
             />
           ) : (
             <LogTab
