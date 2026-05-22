@@ -36,6 +36,12 @@ import { ABC_INTENSITY_VALUES, ABC_INTENSITY_DISPLAY } from '@/domain/abc/abcRec
 import type { AbcIntensity } from '@/domain/abc/abcRecord';
 import { useAbcRecordRepository } from '@/infra/abc/useAbcRecordRepository';
 
+// ── Daily Support Features ──
+import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
+import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
+import { makeRecordId } from '@/features/daily/domain/executionRecordTypes';
+
+
 // ── Local ──
 import type { UserOption } from './types';
 import { EMPTY_FORM, SETTING_PRESETS, TAG_PRESETS } from './constants';
@@ -85,6 +91,8 @@ export function getInitialOccurredAt(date?: string, slotId?: string): string {
 const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, onSaved, initialUserId, todayRecords, sourceContext, initialBehavior, targetDate }) => {
   const navigate = useNavigate();
   const abcRecordRepo = useAbcRecordRepository();
+  const procedureRepo = useProcedureData();
+  const executionRepo = useExecutionData();
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [form, setForm] = useState(() => ({
     ...EMPTY_FORM,
@@ -150,6 +158,61 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
         ...(sourceContext ? { sourceContext } : {}),
       };
       await abcRecordRepo.save(input);
+
+      // ── 支援手順実施記録（ExecutionRecord）の連動保存 ──
+      if (sourceContext && sourceContext.source === 'daily-support') {
+        try {
+          const date = sourceContext.date || formatInTimeZone(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+          const userId = selectedUser.id;
+          const slotId = sourceContext.slotId; // 例: "09:30|通所・朝の準備"
+
+          if (slotId) {
+            const parts = slotId.split('|');
+            const targetTime = parts[0];
+            const targetActivity = parts[1];
+
+            // ユーザーの支援手順を取得
+            const steps = procedureRepo.getByUser(userId);
+            const matchingStep = steps.find(
+              (step) => step.time === targetTime && step.activity === targetActivity
+            );
+
+            if (matchingStep) {
+              const scheduleItemId = matchingStep.rowNo !== undefined
+                ? String(matchingStep.rowNo)
+                : matchingStep.id;
+
+              if (scheduleItemId) {
+                // 既存の実施記録を取得
+                const existing = await executionRepo.getRecord(date, userId, scheduleItemId);
+
+                const abcMemo = `【メモ】[ABC記録] 行動: ${form.behavior.trim()}\n結果: ${form.consequence.trim()}`;
+                const newMemo = existing?.memo
+                  ? `${existing.memo}\n${abcMemo}`
+                  : abcMemo;
+
+                const nextRecord = {
+                  id: makeRecordId(date, userId, scheduleItemId),
+                  date,
+                  userId,
+                  scheduleItemId,
+                  status: 'completed' as const,
+                  triggeredBipIds: existing?.triggeredBipIds || [],
+                  memo: newMemo,
+                  recordedBy: recorderName || existing?.recordedBy || '',
+                  recordedAt: new Date().toISOString(),
+                };
+
+                await executionRepo.upsertRecord(nextRecord);
+              }
+            }
+          }
+        } catch (linkErr) {
+          // 安全設計：連動保存の失敗はABC記録本体の保存を邪魔しないようログ出力のみ
+          console.error('Failed to link ExecutionRecord with ABCRecord:', linkErr);
+        }
+      }
+
       setSaveSuccess(true);
       setLastSavedUserId(selectedUser.id);
       // リセット（利用者は維持、発生日時もコンテキストに合わせてリセット）
