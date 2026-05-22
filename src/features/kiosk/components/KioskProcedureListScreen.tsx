@@ -13,7 +13,7 @@ import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
-import { isDemoModeEnabled, shouldSkipSharePoint, shouldSkipLogin } from '@/lib/env';
+import { isDemoModeEnabled, shouldSkipSharePoint, shouldSkipLogin, isDevMode, isTestMode } from '@/lib/env';
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
@@ -232,7 +232,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     // local-only "記録済み" labels that don't survive across devices.
     // However, if we are in demo mode or SharePoint is bypassed/mocked,
     // we must allow local store records as fallback.
-    const isMock = isDemoModeEnabled() || shouldSkipSharePoint() || shouldSkipLogin();
+    const isMock = isDemoModeEnabled() || shouldSkipSharePoint() || shouldSkipLogin() || (isDevMode() && !isTestMode());
     const allCandidateRecords =
       (executionRepositoryKind === 'local' || isMock) ? [...storeRecords, ...records] : [...records];
     
