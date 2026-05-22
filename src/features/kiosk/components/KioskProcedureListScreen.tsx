@@ -193,7 +193,7 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
     if (!record) return false;
-    if (record.status === 'completed' || record.status === 'triggered') return true;
+    if (record.status === 'completed' || record.status === 'triggered' || record.status === 'skipped') return true;
     const unknownRecord = record as unknown as Record<string, unknown>;
     const inputKeys = ['memo', 'note', 'specialNote', 'additionalInfo', 'situation'];
     return inputKeys.some((key) => {

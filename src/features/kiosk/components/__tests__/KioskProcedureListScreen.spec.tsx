@@ -768,4 +768,27 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     expect(within(firstCard).queryByText('記録済み')).toBeNull();
     expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
   });
+
+  it('marks a procedure as recorded when the record status is "skipped"', async () => {
+    mockGetRecords.mockResolvedValue([
+      { scheduleItemId: '1', status: 'skipped', memo: '' }
+    ]);
+
+    mockUseUser.mockReturnValue({
+      data: { FullName: '田中 太郎', UserID: 'U001' },
+      status: 'success',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+      expect(within(firstCard).queryByText('未実施')).toBeNull();
+    });
+  });
 });
