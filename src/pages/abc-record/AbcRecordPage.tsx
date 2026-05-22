@@ -9,6 +9,8 @@
  */
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { formatInTimeZone } from '@/lib/tz';
+import { formatDateJapanese } from '@/lib/dateFormat';
 
 // ── MUI ──
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
@@ -178,13 +180,22 @@ const AbcRecordPage: React.FC = () => {
   // 追加state: LogTab に渡す focused record ID
   const [focusedRecordId, setFocusedRecordId] = useState<string | undefined>(undefined);
 
-  // 今日の記録（対象ユーザーに絞る）
+  const targetDate = useMemo(() => {
+    if (urlDate) return urlDate;
+    return formatInTimeZone(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  }, [urlDate]);
+
+  const isToday = useMemo(() => {
+    const todayStr = formatInTimeZone(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+    return targetDate === todayStr;
+  }, [targetDate]);
+
+  // 対象日の記録（対象ユーザーに絞る）
   const todayRecords = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
     return records
-      .filter(r => r.occurredAt.slice(0, 10) === today && (!urlUserId || r.userId === urlUserId))
+      .filter(r => r.occurredAt.slice(0, 10) === targetDate && (!urlUserId || r.userId === urlUserId))
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-  }, [records, urlUserId]);
+  }, [records, urlUserId, targetDate]);
 
   const handleBack = useCallback(() => {
     if (source === 'support-planning') {
@@ -226,7 +237,7 @@ const AbcRecordPage: React.FC = () => {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {contextUserName
-                      ? `${new Date().toLocaleDateString('ja-JP')} — 行動の前後関係を素早く記録`
+                      ? `${formatDateJapanese(targetDate)} — 行動の前後関係を素早く記録`
                       : '行動の前後関係を記録して支援計画に活かす'}
                   </Typography>
                 </Box>
@@ -240,7 +251,7 @@ const AbcRecordPage: React.FC = () => {
               />
               {todayRecords.length > 0 && (
                 <Chip
-                  label={`今日 ${todayRecords.length} 件`}
+                  label={isToday ? `今日 ${todayRecords.length} 件` : `${targetDate} ${todayRecords.length} 件`}
                   size="small"
                   color="info"
                   variant="filled"
@@ -299,6 +310,7 @@ const AbcRecordPage: React.FC = () => {
               todayRecords={todayRecords}
               sourceContext={sourceContextForSave}
               initialBehavior={initialBehavior}
+              targetDate={targetDate}
             />
           ) : (
             <LogTab
