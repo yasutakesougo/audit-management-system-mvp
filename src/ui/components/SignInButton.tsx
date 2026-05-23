@@ -27,7 +27,7 @@ const [signingIn, setSigningIn] = useState(false);
 		if (signingIn) return;
 		try {
 			setSigningIn(true);
-			const result = await signIn();
+			const result = await signIn({ force: true });
 			if (result?.success && !useRedirectLogin) {
 				navigate('/dashboard', { replace: true });
 			}

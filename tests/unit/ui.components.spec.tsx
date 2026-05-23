@@ -100,7 +100,7 @@ describe('UI components', () => {
     const button = screen.getByRole('button', { name: 'サインイン' });
     fireEvent.click(button);
     await waitFor(() => {
-      expect(signIn).toHaveBeenCalled();
+      expect(signIn).toHaveBeenCalledWith({ force: true });
     });
   });
 
