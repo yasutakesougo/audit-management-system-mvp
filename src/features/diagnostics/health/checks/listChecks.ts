@@ -170,7 +170,14 @@ async function runListChecks(
     );
 
     const drifted = spec.requiredFields.filter(
-      (f) => !f.isSilent && fieldStatus[f.internalName]?.isDrifted
+      (f) => {
+        if (f.isSilent) return false;
+        const status = fieldStatus[f.internalName];
+        if (!status || !status.isDrifted) return false;
+        // expected (f.internalName) と actual (resolvedName) が完全に一致している（自己一致）場合は drift とみなさない
+        if (status.resolvedName === f.internalName) return false;
+        return true;
+      }
     );
 
     // 4. Report Results

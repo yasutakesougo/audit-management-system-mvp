@@ -159,7 +159,7 @@ export async function runConfigChecks(
           label: "診断モード（Mock/Bypass シミュレーション）",
           category: "config",
           summary:
-            "SharePoint モックシミュレーション診断を実行中（VITE_SKIP_SHAREPOINT=1）。",
+            "SharePoint モックシミュレーション診断を実行中（demo / skip-login / mock mode）。",
           detail:
             "この診断は、定義されたリストスペックに基づき、テスト環境向けに自動整合性シミュレーションを実行しています。",
           evidence: flags,
