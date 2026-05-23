@@ -18,6 +18,7 @@ const tokenMetrics = {
   lastRefreshEpoch: 0,
 };
 
+type SignInOptions = { force?: boolean };
 type SignInResult = { success: boolean };
 
 // ③ Cooldown + Singleflight guards to prevent rapid-fire popup loops
@@ -360,15 +361,21 @@ export const useAuth = () => {
 
   // --- signIn (real) ---
 
-  const signIn = useCallback(async (): Promise<SignInResult> => {
+  const signIn = useCallback(async (options?: SignInOptions): Promise<SignInResult> => {
     // 🛡️ LATEST context access via stable ref bridge to ensure function identity stability
     const current = msalStateRef.current;
     
+    const isForce = options?.force === true;
+
     if (signInSessionKey) {
-      const alreadyAttempted = window.sessionStorage.getItem(signInSessionKey) === 'true';
-      if (alreadyAttempted) {
-        debugLog('login skipped (session guard)');
-        return { success: false };
+      if (isForce) {
+        window.sessionStorage.removeItem(signInSessionKey);
+      } else {
+        const alreadyAttempted = window.sessionStorage.getItem(signInSessionKey) === 'true';
+        if (alreadyAttempted) {
+          debugLog('login skipped (session guard)');
+          return { success: false };
+        }
       }
       window.sessionStorage.setItem(signInSessionKey, 'true');
     }
@@ -385,7 +392,7 @@ export const useAuth = () => {
     }
 
     // StrictMode guard (React 18 dev): prevent double-execution on initial render
-    if (signInAttemptedRef.current) {
+    if (!isForce && signInAttemptedRef.current) {
       debugLog('[StrictMode Guard] signIn already attempted; skipping to prevent duplicate MSAL popup');
       return { success: false };
     }
@@ -393,11 +400,11 @@ export const useAuth = () => {
     // ③ Cooldown guard: prevent rapid-fire attempts
     const now = Date.now();
     const timeSinceLastAttempt = now - lastSignInAttemptTime;
-    if (timeSinceLastAttempt < SIGN_IN_COOLDOWN_MS) {
+    if (!isForce && timeSinceLastAttempt < SIGN_IN_COOLDOWN_MS) {
       debugLog(`login skipped (cooldown active, ${timeSinceLastAttempt}ms / ${SIGN_IN_COOLDOWN_MS}ms)`);
       return { success: false };
     }
-    lastSignInAttemptTime = now;
+    lastSignInAttemptTime = isForce ? 0 : now;
     signInAttemptedRef.current = true;
 
     signInInFlight = (async () => {
@@ -410,6 +417,9 @@ export const useAuth = () => {
           name: msalError?.name,
           code: msalError?.errorCode,
         });
+        if (signInSessionKey) {
+          window.sessionStorage.removeItem(signInSessionKey);
+        }
         return { success: false };
       } finally {
         signInInFlight = null;

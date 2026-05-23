@@ -54,6 +54,7 @@ import { useMsalContext } from '@/auth/MsalProvider';
 import { isE2eMsalMockEnabled, shouldSkipLogin } from '@/lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '@/lib/msal';
 import { useAuth, __resetTokenCache } from '../useAuth';
+import { clearMsalCache } from '@/app/AuthNotices';
 
 // ── typesafe mock refs ─────────────────────────────────────────────
 const mockIsE2e = vi.mocked(isE2eMsalMockEnabled);
@@ -563,6 +564,46 @@ describe('useAuth', () => {
 
       expect(signInResult).toEqual({ success: false });
     });
+
+    it('bypasses session guard and calls loginRedirect when force=true', async () => {
+      const instance = createMockMsalInstance({
+        loginRedirect: vi.fn().mockResolvedValue(undefined),
+      });
+      setupMsalContext({ instance });
+
+      const { result } = renderHook(() => useAuth());
+
+      // Set session guard to true to simulate an in-progress or stuck attempt
+      const key = `__msal_signin_attempted__http://localhost`;
+      sessionStorage.setItem(key, 'true');
+
+      // Regular sign-in should be skipped
+      const firstResult = await act(async () => result.current.signIn());
+      expect(firstResult).toEqual({ success: false });
+      expect(instance.loginRedirect).not.toHaveBeenCalled();
+
+      // Forced sign-in should bypass the guard
+      const secondResult = await act(async () => result.current.signIn({ force: true }));
+      expect(secondResult).toEqual({ success: true });
+      expect(instance.loginRedirect).toHaveBeenCalledTimes(1);
+    });
+
+    it('removes signInSessionKey from sessionStorage if loginRedirect throws', async () => {
+      const instance = createMockMsalInstance({
+        loginRedirect: vi.fn().mockRejectedValue(new Error('MSAL error')),
+      });
+      setupMsalContext({ instance });
+
+      const { result } = renderHook(() => useAuth());
+      const key = `__msal_signin_attempted__http://localhost`;
+
+      await act(async () => {
+        await result.current.signIn();
+      });
+
+      // After failing, the key should be removed to avoid stuck state
+      expect(sessionStorage.getItem(key)).toBeNull();
+    });
   });
 
   // ════════════════════════════════════════════════════════════════
@@ -630,6 +671,48 @@ describe('useAuth', () => {
       const { result } = renderHook(() => useAuth());
 
       expect(result.current.getListReadyState()).toBe(true);
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════════
+  //  8. clearMsalCache Helper
+  // ════════════════════════════════════════════════════════════════
+  describe('clearMsalCache helper', () => {
+    it('removes keys starting with msal or __msal', () => {
+      const store = new Map<string, string>();
+      store.set('msal.token', 'val1');
+      store.set('__msal_signin_attempted__http://localhost', 'val2');
+      store.set('other_key', 'val3');
+
+      const mockStorage = {
+        getItem: vi.fn((key: string) => store.get(key) ?? null),
+        setItem: vi.fn((key: string, val: string) => {
+          store.set(key, val);
+          (mockStorage as any)[key] = val;
+        }),
+        removeItem: vi.fn((key: string) => {
+          store.delete(key);
+          delete (mockStorage as any)[key];
+        }),
+        clear: vi.fn(() => {
+          store.clear();
+        }),
+        get length() { return store.size; },
+        key: vi.fn(),
+      };
+
+      store.forEach((val, key) => {
+        (mockStorage as any)[key] = val;
+      });
+
+      vi.stubGlobal('sessionStorage', mockStorage);
+      vi.stubGlobal('localStorage', mockStorage);
+
+      const removedCount = clearMsalCache();
+      expect(removedCount).toBe(2);
+      expect(store.has('msal.token')).toBe(false);
+      expect(store.has('__msal_signin_attempted__http://localhost')).toBe(false);
+      expect(store.has('other_key')).toBe(true);
     });
   });
 });
