@@ -25,7 +25,7 @@ export type AuthNoticeProps = {
   flag?: keyof FeatureFlagSnapshot;
   pendingPath: string;
   fallbackPath: NavigateProps['to'];
-  onSignIn?: () => Promise<{ success: boolean }>;
+  onSignIn?: (options?: { force?: boolean }) => Promise<{ success: boolean }>;
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   success?: boolean;
   diagSummary?: AuthDiagSummary;
@@ -89,7 +89,7 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
 export const clearMsalCache = (): number => {
   if (typeof window === 'undefined') return 0;
   const storages = [window.sessionStorage, window.localStorage];
-  const matcher = (key: string) => /^msal/i.test(key);
+  const matcher = (key: string) => /^(?:__)?msal/i.test(key);
   let removed = 0;
   storages.forEach((storage) => {
     const keys = Object.keys(storage);
@@ -131,7 +131,7 @@ function useAuthActions(props: AuthNoticeProps) {
           correlationId: corrId,
         });
       }
-      await onSignIn();
+      await onSignIn({ force: true });
     } catch (error) {
       console.error('[ProtectedRoute] sign-in failed', error);
     } finally {
