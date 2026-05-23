@@ -75,6 +75,7 @@ describe('UI components', () => {
 
   it('renders sign-in button when no MSAL accounts exist', async () => {
     const signIn = vi.fn().mockResolvedValue({ success: true });
+    const signOut = vi.fn().mockResolvedValue(undefined);
     mockUseMsalContext.mockReturnValue({
       accounts: [],
       instance: {
@@ -88,7 +89,7 @@ describe('UI components', () => {
         setActiveAccount: vi.fn(),
       },
     });
-    mockUseAuth.mockReturnValue({ signIn });
+    mockUseAuth.mockReturnValue({ signIn, signOut, isAuthenticated: false });
 
     // Fix CI: SignInButton uses useNavigate, requires Router context
     render(
@@ -104,7 +105,35 @@ describe('UI components', () => {
     });
   });
 
-  // Sign-out tooltip tests for legacy UI are intentionally omitted until the component reintroduces
-  // authenticated states or alternative affordances. This keeps the suite focused on currently
-  // rendered behaviors.
+  it('renders sign-out button when authenticated', async () => {
+    const signIn = vi.fn().mockResolvedValue({ success: true });
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    mockUseMsalContext.mockReturnValue({
+      accounts: [{ username: 'testuser', homeAccountId: 'id' }],
+      instance: {
+        loginRedirect: vi.fn(),
+        logoutRedirect: vi.fn(),
+        logoutPopup: vi.fn(),
+        acquireTokenSilent: vi.fn(),
+        acquireTokenRedirect: vi.fn(),
+        getActiveAccount: vi.fn(() => ({ name: 'Test User' })),
+        getAllAccounts: vi.fn(() => []),
+        setActiveAccount: vi.fn(),
+      },
+    });
+    mockUseAuth.mockReturnValue({ signIn, signOut, isAuthenticated: true });
+
+    render(
+      <MemoryRouter>
+        <SignInButton />
+      </MemoryRouter>
+    );
+
+    const button = screen.getByRole('button', { name: 'サインアウト' });
+    expect(button).toBeInTheDocument();
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalled();
+    });
+  });
 });

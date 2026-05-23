@@ -13,10 +13,10 @@ const { isDev: isDevEnv } = getAppConfig();
 
 const SignInButton: React.FC = () => {
 const { instance, accounts } = useMsalContext();
-const { signIn } = useAuth();
+const { signIn, signOut, isAuthenticated } = useAuth();
 const [signingIn, setSigningIn] = useState(false);
 	const navigate = useNavigate();
-	const signedIn = accounts.length > 0;
+	const signedIn = isAuthenticated;
 	const tooltip = useMemo(() => {
 		if (!signedIn) return '未サインイン';
 		const account = (instance.getActiveAccount() as { name?: string; username?: string } | null) ?? (accounts[0] as { name?: string; username?: string } | undefined) ?? null;
@@ -56,17 +56,10 @@ const [signingIn, setSigningIn] = useState(false);
 	}, [accounts, instance]);
 
 	const handleSignOut = async () => {
-		const instanceWithPopup = instance as unknown as { logoutPopup?: () => Promise<void>; logoutRedirect: () => Promise<void> };
 		try {
-			if (typeof instanceWithPopup.logoutPopup === 'function') {
-				await instanceWithPopup.logoutPopup();
-			} else {
-				await instanceWithPopup.logoutRedirect();
-			}
+			await signOut();
 		} catch (error) {
 			console.error('[auth] logout failed', error);
-		} finally {
-			instance.setActiveAccount(null);
 		}
 	};
 
