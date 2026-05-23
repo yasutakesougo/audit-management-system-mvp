@@ -223,26 +223,27 @@ describe('PLANNING_SHEET_CANDIDATES — 標準名・drift', () => {
 });
 
 describe('PLANNING_SHEET_ESSENTIALS FAIL/WARN 境界', () => {
-  it('userCode + status + appliedFrom のみで isHealthy=true（最小構成）', () => {
-    const { resolved } = resolveSheet(new Set(['UserCode', 'Status', 'AppliedFrom']));
+  it('userCode + status のみで isHealthy=true（最小構成）', () => {
+    const { resolved } = resolveSheet(new Set(['UserCode', 'Status']));
     expect(isSheetHealthy(resolved as Record<string, string | undefined>)).toBe(true);
   });
 
   it('userCode が完全欠落すれば isHealthy=false（FAIL）', () => {
-    const { resolved } = resolveSheet(new Set(['Status', 'AppliedFrom']));
+    const { resolved } = resolveSheet(new Set(['Status']));
     expect(isSheetHealthy(resolved as Record<string, string | undefined>)).toBe(false);
   });
 
   it('status が完全欠落すれば isHealthy=false（FAIL）', () => {
-    const { resolved } = resolveSheet(new Set(['UserCode', 'AppliedFrom']));
+    const { resolved } = resolveSheet(new Set(['UserCode']));
     expect(isSheetHealthy(resolved as Record<string, string | undefined>)).toBe(false);
   });
 
-  it('ispId / formDataJson 欠落でも isHealthy=true（WARN 水準）', () => {
-    const { resolved, missing } = resolveSheet(new Set(['UserCode', 'Status', 'AppliedFrom']));
+  it('ispId / formDataJson / appliedFrom 欠落でも isHealthy=true（WARN 水準）', () => {
+    const { resolved, missing } = resolveSheet(new Set(['UserCode', 'Status']));
     expect(isSheetHealthy(resolved as Record<string, string | undefined>)).toBe(true);
     expect(missing).toContain('ispId');
     expect(missing).toContain('formDataJson');
+    expect(missing).toContain('appliedFrom');
   });
 });
 

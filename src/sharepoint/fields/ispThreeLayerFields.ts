@@ -345,7 +345,7 @@ export const PLANNING_SHEET_CANDIDATES = {
 } as const;
 
 export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [
-  'userCode', 'status', 'appliedFrom'
+  'userCode', 'status'
 ];
 
 // ═════════════════════════════════════════════
