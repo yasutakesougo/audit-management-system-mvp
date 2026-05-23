@@ -29,7 +29,22 @@ async function runListChecks(
   ctx: HealthContext
 ) {
   let fieldStatus: ResolutionResult<string>['fieldStatus'] = {};
-  const isSkipSharePoint = ctx.env["VITE_SKIP_SHAREPOINT"] === "1";
+
+  const isTrue = (val: unknown): boolean => {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'number') return val !== 0;
+    if (typeof val === 'string') {
+      const s = val.trim().toLowerCase();
+      return s === '1' || s === 'true' || s === 'yes' || s === 'y' || s === 'on' || s === 'enabled';
+    }
+    return false;
+  };
+
+  const isSkipSharePoint =
+    isTrue(ctx.env["VITE_SKIP_SHAREPOINT"]) ||
+    isTrue(ctx.env["VITE_SKIP_LOGIN"]) ||
+    isTrue(ctx.env["VITE_DEMO_MODE"]) ||
+    isTrue(ctx.env["VITE_FORCE_DEMO"]);
 
   // List existence
   const listInfo = isSkipSharePoint
