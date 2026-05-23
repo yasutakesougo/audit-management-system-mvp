@@ -7,7 +7,7 @@ import {
   DataProviderNotInitializedError 
 } from '@/lib/errors';
 
-import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, shouldSkipSharePoint, isTestMode } from '@/lib/env';
+import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, shouldSkipSharePoint, isTestMode, shouldSkipLogin } from '@/lib/env';
 
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
@@ -102,7 +102,13 @@ export function getActiveProviderType(): ProviderType {
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const providerParam = urlParams?.get('provider');
   const envProvider = readOptionalEnv('VITE_DATA_PROVIDER');
-  const selected = providerParam || envProvider;
+  let selected = providerParam || envProvider;
+
+  const skipLogin = shouldSkipLogin();
+  if (skipLogin && selected === 'sharepoint') {
+    console.warn('[DataProvider] SharePoint provider requested in skip-login/demo mode. Falling back to memory provider to avoid crash.');
+    selected = 'memory';
+  }
 
   if (selected === 'memory') return 'memory';
   if (selected === 'local') return 'local';
