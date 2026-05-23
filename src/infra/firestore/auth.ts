@@ -1,4 +1,5 @@
 import { get, getFlag } from '@/env';
+import { shouldSkipLogin } from '@/lib/env';
 import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 import { getFirebaseApp } from './client';
 
@@ -187,7 +188,14 @@ export async function initFirebaseAuth(): Promise<void> {
   try {
     const app = getFirebaseApp();
     const auth = getAuth(app);
-    const mode = resolveAuthMode();
+    let mode = resolveAuthMode();
+
+    // Self-healing guard: skip-login/demo mode では MSAL が初期化されないため
+    // customToken 認証は必ず失敗する。anonymous に強制フォールバックする。
+    if (shouldSkipLogin() && mode === 'customToken') {
+      console.warn('[firebase-auth] ⚠️ customToken mode requested but skip-login/demo mode is active. Falling back to anonymous.');
+      mode = 'anonymous';
+    }
 
     // ✅ Connect to Emulator if enabled
     if (getFlag('VITE_FIREBASE_AUTH_USE_EMULATOR')) {
