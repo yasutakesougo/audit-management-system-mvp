@@ -50,6 +50,13 @@ const shouldUseLocalRepository = (): boolean => {
     return false;
   }
 
+  // 1. demo / skip-login / force-demo は最優先で local
+  const isDemo = isDemoModeEnabled() || isForceDemoEnabled();
+  const isSkipLogin = shouldSkipLogin();
+  if (isDemo || isSkipLogin) {
+    return true;
+  }
+
   const { isDev } = getAppConfig();
   const isTest = isTestMode();
   const isE2E = readBool('VITE_E2E', false) || readBool('VITE_E2E_MSAL_MOCK', false);
@@ -59,11 +66,11 @@ const shouldUseLocalRepository = (): boolean => {
   // Kiosk must rely on SharePoint so history and cross-device consistency work.
   // Keep tests isolated by allowing local mode only while running test runtime.
   if (isKioskRuntime && !isTest) {
-    const isMock = isDemoModeEnabled() || isForceDemoEnabled() || shouldSkipLogin() || isDev;
+    const isMock = isDemo || isSkipLogin || isDev;
 
     // In local development or demo/mock modes, we default to the local repository
     // unless the provider hint explicitly requests SharePoint.
-    const isLocalDevOrDemo = isDemoModeEnabled() || isForceDemoEnabled() || isDev;
+    const isLocalDevOrDemo = isDemo || isDev;
     if (isLocalDevOrDemo && providerHint !== 'sharepoint') {
       return true;
     }
@@ -72,7 +79,7 @@ const shouldUseLocalRepository = (): boolean => {
     if ((providerHint === 'local' || providerHint === 'memory') && (isE2E || isMock)) {
       return true;
     }
-    if (providerHint === 'local' || providerHint === 'memory' || shouldSkipLogin()) {
+    if (providerHint === 'local' || providerHint === 'memory') {
       console.warn(
         '[ExecutionRepositoryFactory] local/memory hint detected in kiosk runtime; forcing SharePoint adapter.',
       );

@@ -40,11 +40,11 @@ describe('executionRepositoryFactory', () => {
     window.history.pushState({}, '', '/');
   });
 
-  it('forces sharepoint in kiosk runtime even when skipLogin is true', () => {
+  it('uses local in kiosk runtime when skipLogin is true', () => {
     envState.shouldSkipLogin = true;
     window.history.pushState({}, '', '/kiosk/users/6/procedures');
 
-    expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
+    expect(getCurrentExecutionRepositoryKind()).toBe('local');
   });
 
   it('respects local provider hint outside kiosk runtime', () => {
@@ -86,6 +86,13 @@ describe('executionRepositoryFactory', () => {
   it('respects sharepoint provider hint in kiosk runtime during local development', () => {
     envState.isDev = true;
     envState.dataProvider = 'sharepoint';
+    window.history.pushState({}, '', '/kiosk/users/6/procedures');
+
+    expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
+  });
+
+  it('forces sharepoint in kiosk runtime when local/memory provider hint is detected in production', () => {
+    envState.dataProvider = 'memory';
     window.history.pushState({}, '', '/kiosk/users/6/procedures');
 
     expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
