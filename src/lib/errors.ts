@@ -8,6 +8,17 @@ export class AuthRequiredError extends Error {
   }
 }
 
+export function isAuthRequiredError(error: unknown): boolean {
+  if (error instanceof AuthRequiredError) return true;
+  if (!error || typeof error !== 'object') return false;
+  const err = error as Record<string, unknown>;
+  return (
+    err.name === 'AuthRequiredError' ||
+    err.code === 'AUTH_REQUIRED' ||
+    err.message === 'AUTH_REQUIRED'
+  );
+}
+
 export class DataProviderItemNotFoundError extends Error {
   constructor(public resourceName: string, public id: string | number) {
     super(`Item not found in ${resourceName}: ${id}`);
