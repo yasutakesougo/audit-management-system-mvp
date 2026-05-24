@@ -14,6 +14,21 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# Check 1.5: Verify no demo settings in .env.local
+if [[ -f .env.local ]]; then
+  echo -ne "...Checking .env.local for demo leak risk... "
+  if grep -E "^VITE_DEMO_MODE=(1|true)" .env.local >/dev/null 2>&1 || \
+     grep -E "^VITE_SKIP_LOGIN=(1|true)" .env.local >/dev/null 2>&1 || \
+     grep -E "^VITE_FORCE_SHAREPOINT=(0|false)" .env.local >/dev/null 2>&1; then
+    echo -e "${RED}FAILED${NC}"
+    echo -e "${RED}❌ Error: .env.local contains active demo or skip-login configurations.${NC}"
+    echo "Please disable demo flags in .env.local or temporarily remove the file before deploying."
+    exit 1
+  else
+    echo -e "${GREEN}PASSED${NC}"
+  fi
+fi
+
 # Fetch latest from origin
 git fetch origin main >/dev/null 2>&1 || true
 
