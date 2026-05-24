@@ -1,4 +1,5 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
+import { isDemoModeEnabled, isForceDemoEnabled, shouldSkipLogin } from '@/lib/env';
 import { 
     DAILY_RECORD_FIELDS, 
     DAILY_RECORD_ROWS_FIELDS,
@@ -77,12 +78,15 @@ export class DailyRecordSchemaResolver {
             }
 
             this.listPathResolutionFailed = true;
-            console.warn('[DailyRecordSchemaResolver] Daily record list not found in site list catalog', {
-                requested: this.listTitle,
-                tried: candidates,
-                suggestions: suggestListTitles(availableTitles, this.listTitle, candidates),
-                schemaMismatches: schemaMismatches.slice(0, 8),
-            });
+            const isDemo = isDemoModeEnabled() || isForceDemoEnabled() || shouldSkipLogin();
+            if (!isDemo) {
+                console.warn('[DailyRecordSchemaResolver] Daily record list not found in site list catalog', {
+                    requested: this.listTitle,
+                    tried: candidates,
+                    suggestions: suggestListTitles(availableTitles, this.listTitle, candidates),
+                    schemaMismatches: schemaMismatches.slice(0, 8),
+                });
+            }
             return null;
         }
 
