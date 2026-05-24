@@ -351,10 +351,11 @@ describe('DataProviderPlanningSheetRepository', () => {
     });
 
     it('should call emitDriftRecord when an essential field drifts', async () => {
-      // Simulate that essential field 'appliedFrom' drifts to 'appliedFrom0'
+      // Simulate that essential field 'status' drifts to 'status0'
+      // PLANNING_SHEET_ESSENTIALS = ['userCode', 'status']
       provider.getFieldInternalNames = async () => new Set([
-        'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent', 'Status',
-        'appliedFrom0' // Drifted
+        'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent',
+        'status0' // Drifted essential field
       ]);
 
       provider.getItemById = async () => {
@@ -365,7 +366,7 @@ describe('DataProviderPlanningSheetRepository', () => {
 
       expect(emitDriftRecord).toHaveBeenCalledWith(
         PLANNING_SHEET_LIST_TITLE,
-        'appliedFrom',
+        'status',
         'fuzzy_match',
         'suffix_mismatch',
         undefined,
@@ -375,6 +376,7 @@ describe('DataProviderPlanningSheetRepository', () => {
 
     it('should NOT call emitDriftRecord when a non-essential field drifts', async () => {
       // Simulate that non-essential field 'targetDomain' drifts to 'targetDomain0'
+      // 'appliedFrom' is NOT in PLANNING_SHEET_ESSENTIALS, so it is non-essential
       provider.getFieldInternalNames = async () => new Set([
         'Id', 'Title', 'UserCode', 'ISPId', 'VersionNo', 'IsCurrent', 'Status',
         'AppliedFrom', 'targetDomain0' // Non-essential drifted

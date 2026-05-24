@@ -7,6 +7,7 @@ vi.mock('@/lib/env', () => ({
   readBool: vi.fn(),
   readOptionalEnv: vi.fn(),
   isTestMode: vi.fn(),
+  shouldSkipLogin: vi.fn(),
 }));
 
 import * as envModule from '@/lib/env';
@@ -23,7 +24,9 @@ describe('getActiveProviderType Priority Contract', () => {
     vi.mocked(envModule.readBool).mockReturnValue(false);
     vi.mocked(envModule.readOptionalEnv).mockReturnValue(undefined);
     vi.mocked(envModule.isTestMode).mockReturnValue(false);
+    vi.mocked(envModule.shouldSkipLogin).mockReturnValue(false);
   });
+
 
   it('CASE: VITE_DATA_PROVIDER=local should return local', async () => {
     vi.mocked(envModule.readOptionalEnv).mockImplementation((key: string) =>

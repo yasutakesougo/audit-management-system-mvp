@@ -197,6 +197,17 @@ export async function initFirebaseAuth(): Promise<void> {
       mode = 'anonymous';
     }
 
+    if (mode === 'customToken') {
+      const [{ getPcaSingleton }] = await Promise.all([import('@/auth/azureMsal')]);
+      const msal = await getPcaSingleton();
+      const msalAccount = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
+      if (!msalAccount) {
+        console.info('[firebase-auth] skipped: waiting for MSAL account');
+        return;
+      }
+    }
+
+
     // ✅ Connect to Emulator if enabled
     if (getFlag('VITE_FIREBASE_AUTH_USE_EMULATOR')) {
       const emulatorUrl = get('VITE_FIREBASE_AUTH_EMULATOR_URL') || 'http://localhost:9099';
