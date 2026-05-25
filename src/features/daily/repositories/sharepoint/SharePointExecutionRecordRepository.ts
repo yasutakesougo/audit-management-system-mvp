@@ -234,15 +234,17 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
   async getRecords(date: string, userId: string): Promise<ExecutionRecord[]> {
     const normalizedDate = normalizeExecutionDate(date);
-    const normalizedUserId = normalizeExecutionUserId(userId);
     const rf = await this.getResolvedFields();
-    const dailyKey = `${normalizedDate}-${normalizedUserId}`;
-    const rowKeyPrefix = `${dailyKey}-`;
     
-    // Safety check: if rf.rowKey is RowKey but was resolved without actual presence, OData will fail.
-    // However, resolveInternalNames is supposed to be accurate. 
-    // We lowercase startswith for maximum compatibility.
-    const filter = `startswith(${rf.rowKey}, '${rowKeyPrefix}')`;
+    // Build user ID candidates including both current userId and any logical representations
+    const userCandidates = buildExecutionUserIdCandidates(userId);
+    const startswithFilters = userCandidates.map(candidate => {
+      const dailyKey = `${normalizedDate}-${candidate}`;
+      const rowKeyPrefix = `${dailyKey}-`;
+      return `startswith(${rf.rowKey}, '${rowKeyPrefix}')`;
+    });
+
+    const filter = startswithFilters.join(' or ');
     const select = this.getSelectFields(rf);
     const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
 
