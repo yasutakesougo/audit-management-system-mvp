@@ -35,6 +35,32 @@ import type {
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const DEFAULT_LIST_TEMPLATE = 100;
+const runtimeFieldsCache = new Map<string, FieldsCacheEntry>();
+const inFlightFieldsRequests = new Map<string, Promise<Set<string>>>();
+
+const cloneFieldSet = (fields: Set<string>): Set<string> => new Set(fields);
+
+const isValidFieldsCacheEntry = (
+  cached: FieldsCacheEntry,
+  siteUrl: string,
+  listTitle: string,
+): boolean => {
+  const age = nowMs() - cached.savedAt;
+  return (
+    cached.v === 1 &&
+    cached.siteUrl === siteUrl &&
+    cached.listTitle === listTitle &&
+    age >= 0 &&
+    age < FIELDS_CACHE_TTL_MS &&
+    Array.isArray(cached.internalNames) &&
+    cached.internalNames.length > 0
+  );
+};
+
+export const __clearFieldInternalNamesRuntimeCacheForTests = (): void => {
+  runtimeFieldsCache.clear();
+  inFlightFieldsRequests.clear();
+};
 
 // ── List metadata ───────────────────────────────────────────────────────────
 
@@ -146,18 +172,29 @@ export async function getListFieldInternalNames(
   const siteUrl = baseUrl;
   const cacheKey = makeFieldsCacheKey(siteUrl, listTitle);
 
+  const runtimeCached = runtimeFieldsCache.get(cacheKey);
+  if (runtimeCached) {
+    if (isValidFieldsCacheEntry(runtimeCached, siteUrl, listTitle)) {
+      if (debug) {
+        auditLog.debug('sp:fields', 'runtime_cache_hit', {
+          listTitle,
+          count: runtimeCached.internalNames.length,
+          ageMs: nowMs() - runtimeCached.savedAt,
+        });
+      }
+      return new Set(runtimeCached.internalNames);
+    }
+    runtimeFieldsCache.delete(cacheKey);
+  }
+
   // 1) Cache hit check
   if (typeof sessionStorage !== 'undefined') {
     const cached = safeJsonParse<FieldsCacheEntry>(sessionStorage.getItem(cacheKey));
     if (cached && cached.v === 1) {
       const age = nowMs() - cached.savedAt;
-      const valid =
-        cached.siteUrl === siteUrl &&
-        cached.listTitle === listTitle &&
-        age >= 0 &&
-        age < FIELDS_CACHE_TTL_MS;
+      const valid = isValidFieldsCacheEntry(cached, siteUrl, listTitle);
 
-      if (valid && Array.isArray(cached.internalNames) && cached.internalNames.length > 0) {
+      if (valid) {
         if (debug) {
           auditLog.debug('sp:fields', 'cache_hit', {
             listTitle,
@@ -165,6 +202,7 @@ export async function getListFieldInternalNames(
             ageMs: age,
           });
         }
+        runtimeFieldsCache.set(cacheKey, cached);
         return new Set(cached.internalNames);
       }
 
@@ -181,11 +219,19 @@ export async function getListFieldInternalNames(
     }
   }
 
+  const existingRequest = inFlightFieldsRequests.get(cacheKey);
+  if (existingRequest) {
+    if (debug) {
+      auditLog.debug('sp:fields', 'inflight_join', { listTitle });
+    }
+    return cloneFieldSet(await existingRequest);
+  }
+
   // 2) Network fetch
   const base = resolveListPath(listTitle);
   const path = `${base}/fields?$select=InternalName&$top=5000`;
 
-  try {
+  const fetchFields = async (): Promise<Set<string>> => {
     const res = await spFetch(path);
     const json = (await res.json().catch(() => ({ value: [] }))) as {
       value?: { InternalName?: string }[];
@@ -198,7 +244,7 @@ export async function getListFieldInternalNames(
     }
 
     // 3) Save cache (skip if empty)
-    if (typeof sessionStorage !== 'undefined' && names.size > 0) {
+    if (names.size > 0) {
       const entry: FieldsCacheEntry = {
         v: 1,
         savedAt: nowMs(),
@@ -206,20 +252,33 @@ export async function getListFieldInternalNames(
         siteUrl,
         internalNames: Array.from(names),
       };
-      const s = safeJsonStringify(entry);
-      if (s) {
-        sessionStorage.setItem(cacheKey, s);
-        if (debug) {
-          auditLog.debug('sp:fields', 'cache_save', { listTitle, count: names.size });
+      runtimeFieldsCache.set(cacheKey, entry);
+
+      if (typeof sessionStorage !== 'undefined') {
+        const s = safeJsonStringify(entry);
+        if (s) {
+          sessionStorage.setItem(cacheKey, s);
         }
       }
-    } else if (debug && names.size === 0) {
+
+      if (debug) {
+        auditLog.debug('sp:fields', 'cache_save', { listTitle, count: names.size });
+      }
+    } else if (debug) {
       auditLog.debug('sp:fields', 'cache_empty', { listTitle });
     }
 
     return names;
+  };
+
+  const request = fetchFields();
+  inFlightFieldsRequests.set(cacheKey, request);
+
+  try {
+    return cloneFieldSet(await request);
   } catch (e) {
     // 4) On failure, do not leave stale cache
+    runtimeFieldsCache.delete(cacheKey);
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem(cacheKey);
     }
@@ -227,6 +286,10 @@ export async function getListFieldInternalNames(
       auditLog.warn('sp:fields', 'fetch_failed', { listTitle, error: e });
     }
     throw e;
+  } finally {
+    if (inFlightFieldsRequests.get(cacheKey) === request) {
+      inFlightFieldsRequests.delete(cacheKey);
+    }
   }
 }
 
