@@ -223,6 +223,27 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('prefers fetched SharePoint records over stale local cache after remote read completes', async () => {
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockGetStoreRecords.mockReturnValue([
+      { scheduleItemId: '1', status: 'completed', memo: 'stale local cache' },
+    ]);
+    mockGetRecords.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 0 / 2')).toBeInTheDocument();
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).queryByText('記録済み')).toBeNull();
+      expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
+    });
+  });
+
   it('matches legacy index scheduleItemId with guarded fallback consistently', async () => {
     mockGetRecords.mockResolvedValue([
       { scheduleItemId: '0', status: 'completed' },
@@ -857,4 +878,3 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     expect(mockGetRecords).not.toHaveBeenCalledWith(expect.any(String), '17');
   });
 });
-

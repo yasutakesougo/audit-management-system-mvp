@@ -144,11 +144,12 @@ export const KioskProcedureListScreen: React.FC = () => {
 
 
   const { getRecords: getStoreRecords } = useExecutionStore();
-  const storeUserIdForLookup = user?.UserID || userId || '';
+  const storeUserIdForLookup = queryUserIdFromSearch || user?.UserID || userId || '';
   const storeRecords = getStoreRecords(selectedDateIso || '', storeUserIdForLookup);
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
+  const [hasFetchedRecords, setHasFetchedRecords] = useState(false);
   const [showFetchError, setShowFetchError] = useState(false);
 
   // Synchronously reset records state when the active user or date changes
@@ -161,6 +162,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     setPrevQueryId(currentQueryId);
     setPrevDate(selectedDateIso);
     setRecords([]);
+    setHasFetchedRecords(false);
   }
 
   const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
@@ -189,11 +191,13 @@ export const KioskProcedureListScreen: React.FC = () => {
         const data = await executionRepo.getRecords(selectedDateIso, queryId);
         if (active) {
           setRecords(data);
+          setHasFetchedRecords(true);
         }
       } catch (error) {
         if (active) {
           console.error('Failed to fetch execution records:', error);
           setShowFetchError(true);
+          setHasFetchedRecords(true);
         }
       }
     };
@@ -229,10 +233,13 @@ export const KioskProcedureListScreen: React.FC = () => {
   const recordsByScheduleItemId = React.useMemo(() => {
     const map = new Map<string, ExecutionRecord>();
 
-    // To ensure immediate visual feedback (reactivity) after saving a record and
-    // returning to the list screen, we always merge storeRecords (local state) with records
-    // (remote repository fetch result), regardless of the repository kind or mock status.
-    const allCandidateRecords = [...storeRecords, ...records];
+    // In SharePoint mode, once the server read has completed it is authoritative.
+    // Local store is only a pre-fetch/optimistic cache; otherwise stale cache from this
+    // terminal can keep a row marked as recorded after another terminal changes it.
+    const allCandidateRecords =
+      executionRepositoryKind === 'sharepoint' && hasFetchedRecords
+        ? records
+        : [...storeRecords, ...records];
     
     for (const record of allCandidateRecords) {
       const key = normalizeScheduleItemId(record.scheduleItemId);
@@ -245,7 +252,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     }
     return map;
-  }, [executionRepositoryKind, storeRecords, records, hasRecordInput]);
+  }, [executionRepositoryKind, hasFetchedRecords, storeRecords, records, hasRecordInput]);
   const getRecordedRecordForProcedure = React.useCallback((procedure: { id?: unknown; rowNo?: unknown }, index: number) => {
     const primaryCandidates = [
       normalizeScheduleItemId(procedure.id),
