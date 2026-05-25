@@ -133,8 +133,9 @@ export const KioskDailyProcedureFlowPreview: React.FC<KioskDailyProcedureFlowPre
                 }}
               >
                 <ListItemText
+                  disableTypography
                   primary={
-                    <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                    <Stack component="div" direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
                       {/* Row No & Time Label */}
                       <Chip 
                         size="small" 
@@ -170,7 +171,7 @@ export const KioskDailyProcedureFlowPreview: React.FC<KioskDailyProcedureFlowPre
                     </Stack>
                   }
                   secondary={
-                    <Box sx={{ pl: 1, mt: 0.5 }}>
+                    <Box component="div" sx={{ pl: 1, mt: 0.5 }}>
                       {/* Instruction (Welfare procedure context) */}
                       {step.activityDetail && (
                         <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -196,7 +197,7 @@ export const KioskDailyProcedureFlowPreview: React.FC<KioskDailyProcedureFlowPre
                             mt: 1
                           }}
                         >
-                          <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                          <Typography component="div" variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                             {step.record?.memo || '（様子・メモ未記入）'}
                           </Typography>
                           
@@ -210,7 +211,7 @@ export const KioskDailyProcedureFlowPreview: React.FC<KioskDailyProcedureFlowPre
                           )}
                         </Paper>
                       ) : (
-                        <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                        <Typography component="div" variant="body2" color="text.disabled" sx={{ fontStyle: 'italic', mt: 0.5 }}>
                           記録はありません
                         </Typography>
                       )}
