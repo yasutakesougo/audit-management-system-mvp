@@ -21,7 +21,10 @@ export interface DailyProcedureFlowStep {
 /**
  * Robust matching helper for matching slots to execution records
  */
-export function isSameProcedureSlot(slot: ProcedureItem, record: ExecutionRecord): boolean {
+/**
+ * Strict matching helper (exact ID or rowNo equivalence)
+ */
+export function isStrictSameProcedureSlot(slot: ProcedureItem, record: ExecutionRecord): boolean {
   const slotId = slot.id || '';
   const normSlotId = normalizeScheduleItemId(slotId);
   const normRecordId = normalizeScheduleItemId(record.scheduleItemId);
@@ -35,7 +38,6 @@ export function isSameProcedureSlot(slot: ProcedureItem, record: ExecutionRecord
     slotKeys.add(normalizeScheduleItemId(String(slot.rowNo)));
   }
 
-  // Extract trailing digits if any from slot ID, e.g. "procedure-15" -> "15"
   const slotTrailingMatch = slotId.match(/\d+$/);
   if (slotTrailingMatch) {
     slotKeys.add(slotTrailingMatch[0]);
@@ -45,19 +47,45 @@ export function isSameProcedureSlot(slot: ProcedureItem, record: ExecutionRecord
   const recordKeys = new Set<string>();
   recordKeys.add(normRecordId);
   recordKeys.add(record.scheduleItemId);
-  
-  // Extract trailing digits if any from record scheduleItemId, e.g. "user-4-row-15" -> "15"
+
   const recordTrailingMatch = record.scheduleItemId.match(/\d+$/);
   if (recordTrailingMatch) {
     recordKeys.add(recordTrailingMatch[0]);
     recordKeys.add(normalizeScheduleItemId(recordTrailingMatch[0]));
   }
 
-  // Intersection check
   for (const rKey of recordKeys) {
     if (slotKeys.has(rKey)) return true;
   }
   return false;
+}
+
+/**
+ * Robust matching with 0-based to 1-based index shift fallback
+ */
+export function isShiftedProcedureSlot(slot: ProcedureItem, record: ExecutionRecord): boolean {
+  // Support 0-based and 1-based index mismatch robustly only when the record scheduleItemId is a pure numeric string
+  if (/^\d+$/.test(record.scheduleItemId)) {
+    const recordNum = parseInt(record.scheduleItemId, 10);
+    if (slot.rowNo === recordNum + 1) {
+      return true;
+    }
+  }
+  // Also check if slotId trailing digit has index shift (e.g. slotId ends with 'base-1' and record.scheduleItemId is '0')
+  const slotId = slot.id || '';
+  const slotTrailingMatch = slotId.match(/\d+$/);
+  if (slotTrailingMatch && /^\d+$/.test(record.scheduleItemId)) {
+    const slotVal = parseInt(slotTrailingMatch[0], 10);
+    const recordVal = parseInt(record.scheduleItemId, 10);
+    if (slotVal === recordVal + 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isSameProcedureSlot(slot: ProcedureItem, record: ExecutionRecord): boolean {
+  return isStrictSameProcedureSlot(slot, record) || isShiftedProcedureSlot(slot, record);
 }
 
 function extractTime(dateTimeStr?: string): string {
@@ -124,10 +152,33 @@ export function buildDailyProcedureFlowPreview(
   // Sort slots by rowNo to guarantee chronological sequence
   const sortedSlots = [...slots].sort((a, b) => (a.rowNo ?? 0) - (b.rowNo ?? 0));
 
+  // Build strict matching map first to prevent cross-row mismatch pollution
+  const strictlyMatchedRecordIds = new Set<string>();
+  const strictMatchMap = new Map<number, ExecutionRecord>();
+
+  sortedSlots.forEach(slot => {
+    const rowNo = slot.rowNo ?? 0;
+    const strictMatch = records.find(r => isStrictSameProcedureSlot(slot, r));
+    if (strictMatch) {
+      strictMatchMap.set(rowNo, strictMatch);
+      if (strictMatch.id) {
+        strictlyMatchedRecordIds.add(strictMatch.id);
+      }
+    }
+  });
+
   return sortedSlots.map(slot => {
     const rowNo = slot.rowNo ?? 0;
-    // Match record with slot using enhanced matching helper
-    const matchedRecord = records.find(r => isSameProcedureSlot(slot, r));
+
+    // 1. Prioritize strict match (already cached to prevent pollution)
+    let matchedRecord = strictMatchMap.get(rowNo);
+
+    // 2. If no strict match, fallback to index shift matching (filtering out strictly matched records)
+    if (!matchedRecord) {
+      matchedRecord = records.find(r =>
+        (!r.id || !strictlyMatchedRecordIds.has(r.id)) && isShiftedProcedureSlot(slot, r)
+      );
+    }
 
     return {
       rowNo,
