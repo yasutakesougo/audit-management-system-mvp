@@ -1,6 +1,6 @@
 import { HealthCheckResult, HealthContext } from "../types";
 import { SpAdapter } from "../spAdapter";
-import { pass, fail, safe } from "./utils";
+import { pass, fail, safe, isMockOrBypassMode } from "./utils";
 
 export type AuthConnectivityCheckSummary = {
   currentUserStatus: "pass" | "fail";
@@ -14,14 +14,14 @@ export async function runAuthAndConnectivityChecks(
   sp: SpAdapter,
   results: HealthCheckResult[]
 ): Promise<AuthConnectivityCheckSummary> {
-  const isSkipSharePoint = ctx.env["VITE_SKIP_SHAREPOINT"] === "1";
+  const isMockOrBypass = isMockOrBypassMode(ctx.env);
   let currentUserStatus: "pass" | "fail" = "fail";
   let currentUserDetail: string | undefined;
   let webStatus: "pass" | "fail" = "fail";
   let webDetail: string | undefined;
 
   // --- B) Auth / Connectivity ---
-  const currentUser = isSkipSharePoint
+  const currentUser = isMockOrBypass
     ? { ok: true as const, v: { title: "Mock Test User", email: "mock@example.com" } }
     : await safe(() => sp.getCurrentUser());
   if (!currentUser.ok) {
@@ -58,7 +58,7 @@ export async function runAuthAndConnectivityChecks(
     currentUserStatus = "pass";
   }
 
-  const webTitle = isSkipSharePoint
+  const webTitle = isMockOrBypass
     ? { ok: true as const, v: "Mock SharePoint Site" }
     : await safe(() => sp.getWebTitle());
   if (!webTitle.ok) {
