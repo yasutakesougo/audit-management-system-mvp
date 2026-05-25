@@ -306,6 +306,37 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(mapped.date).toBe('2026-05-08');
     });
 
+    it('correctly parses date and scheduleItemId when userId is mismatched (e.g. U006 in userId but 6 in key/title)', () => {
+      const mockItem = {
+        Title: '2026-05-20-6-0', // Old/migrated format has '6'
+        User_x0020_ID: 'U006',    // Current userId is 'U006'
+        Status: 'completed',
+        Memo: 'Test memo',
+        Recorded_x0020_At: '2026-05-20T12:00:00Z',
+      };
+
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+
+      expect(mapped.scheduleItemId).toBe('0');
+      expect(mapped.userId).toBe('U006');
+      expect(mapped.date).toBe('2026-05-20');
+    });
+
     it('uses Memo when Memo has content', () => {
       const mockItem = {
         Title: '2026-05-08-4-1',
