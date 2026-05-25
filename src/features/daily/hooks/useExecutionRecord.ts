@@ -13,6 +13,7 @@ export function useExecutionRecord(
   userId: string,
   scheduleItemId: string,
   fallbackScheduleItemIds?: string[],
+  fallbackUserIds?: string[],
 ) {
   const { getRecord, upsertRecord, deleteRecord } = useExecutionData();
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
@@ -28,23 +29,38 @@ export function useExecutionRecord(
 
   const fetchRecord = useCallback(async () => {
     setIsLoading(true);
-    let resolved = await getRecordRef.current(date, userId, scheduleItemId);
+    const userIds = Array.from(
+      new Set([userId, ...(fallbackUserIds ?? [])].map((value) => String(value ?? '').trim()).filter(Boolean)),
+    );
+    const scheduleItemIds = Array.from(
+      new Set(
+        [scheduleItemId, ...(fallbackScheduleItemIds ?? [])]
+          .map((value) => normalizeScheduleItemId(value))
+          .filter(Boolean),
+      ),
+    );
 
-    if (!resolved && fallbackScheduleItemIds && fallbackScheduleItemIds.length > 0) {
-      for (const fallbackId of fallbackScheduleItemIds) {
-        const normalizedFallbackId = normalizeScheduleItemId(fallbackId);
-        if (!normalizedFallbackId || normalizedFallbackId === scheduleItemId) continue;
-        const fallbackRecord = await getRecordRef.current(date, userId, normalizedFallbackId);
-        if (fallbackRecord) {
-          resolved = fallbackRecord;
+    if (!date || userIds.length === 0 || scheduleItemIds.length === 0) {
+      setRecord(undefined);
+      setIsLoading(false);
+      return;
+    }
+
+    let resolved: ExecutionRecord | undefined;
+    for (const candidateUserId of userIds) {
+      for (const candidateScheduleItemId of scheduleItemIds) {
+        const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
+        if (candidateRecord) {
+          resolved = candidateRecord;
           break;
         }
       }
+      if (resolved) break;
     }
 
     setRecord(resolved);
     setIsLoading(false);
-  }, [date, userId, scheduleItemId, fallbackScheduleItemIds]);
+  }, [date, userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds]);
 
   useEffect(() => {
     void fetchRecord();
@@ -109,4 +125,3 @@ export function useExecutionRecord(
 
   return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, refresh: fetchRecord } as const;
 }
-

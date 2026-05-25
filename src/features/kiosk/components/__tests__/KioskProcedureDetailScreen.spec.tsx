@@ -39,13 +39,25 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 }));
 
 const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
-const mockUseExecutionRecord = vi.fn((_date?: string, _userId?: string, _scheduleItemId?: string, _fallbackScheduleItemIds?: string[]) => ({
+const mockUseExecutionRecord = vi.fn((
+  _date?: string,
+  _userId?: string,
+  _scheduleItemId?: string,
+  _fallbackScheduleItemIds?: string[],
+  _fallbackUserIds?: string[],
+) => ({
   record: null,
   saveRecord: mockSaveRecord,
   isLoading: false,
 }));
 vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
-  useExecutionRecord: (date: string, userId: string, scheduleItemId: string, fallbackScheduleItemIds?: string[]) => mockUseExecutionRecord(date, userId, scheduleItemId, fallbackScheduleItemIds),
+  useExecutionRecord: (
+    date: string,
+    userId: string,
+    scheduleItemId: string,
+    fallbackScheduleItemIds?: string[],
+    fallbackUserIds?: string[],
+  ) => mockUseExecutionRecord(date, userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds),
 }));
 
 describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
@@ -130,7 +142,13 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       </MemoryRouter>
     );
 
-    expect(mockUseExecutionRecord).toHaveBeenCalledWith('2026-05-07', 'U001', 'P001', ['0']);
+    expect(mockUseExecutionRecord).toHaveBeenCalledWith(
+      '2026-05-07',
+      'U001',
+      'P001',
+      expect.arrayContaining(['P001', '0', '1', 'base-1', 'row-1', 'procedure-1', 'slot-1', 'slot_1', 'step-1']),
+      expect.arrayContaining(['U001', '1', 'U1', 'U-001']),
+    );
 
     fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));

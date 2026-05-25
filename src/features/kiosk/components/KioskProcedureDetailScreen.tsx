@@ -11,11 +11,44 @@ import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
 import { resolveKioskRecordDate } from '../utils/kioskDate';
-import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
+import {
+  buildExecutionUserIdCandidates,
+  normalizeScheduleItemId,
+} from '@/features/daily/utils/normalizeExecutionLookup';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
 const RESULT_CHIPS = ['改善した', '変化なし', '悪化した', '途中で落ち着いた'];
+
+const buildScheduleItemIdCandidates = (
+  procedure: { id?: unknown; rowNo?: unknown } | null,
+  slotKey: string | undefined,
+): string[] => {
+  const keys = new Set<string>();
+  const push = (value: unknown) => {
+    const normalized = normalizeScheduleItemId(value);
+    if (normalized) keys.add(normalized);
+  };
+
+  const rowNo = normalizeScheduleItemId(procedure?.rowNo);
+  const slotIndex = Number.parseInt(String(slotKey ?? ''), 10);
+  const indexPlusOne = Number.isNaN(slotIndex) ? '' : String(slotIndex + 1);
+  const rowCandidates = [rowNo, indexPlusOne].filter(Boolean);
+
+  push(procedure?.id);
+  push(slotKey);
+  for (const rowCandidate of rowCandidates) {
+    push(rowCandidate);
+    push(`base-${rowCandidate}`);
+    push(`row-${rowCandidate}`);
+    push(`procedure-${rowCandidate}`);
+    push(`slot-${rowCandidate}`);
+    push(`slot_${rowCandidate}`);
+    push(`step-${rowCandidate}`);
+  }
+
+  return Array.from(keys);
+};
 
 export const KioskProcedureDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -69,8 +102,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     );
   }, [user?.UserID, userId]);
   const fallbackScheduleItemIds = React.useMemo(
-    () => [normalizeScheduleItemId(slotKey)].filter((value): value is string => Boolean(value)),
-    [slotKey],
+    () => buildScheduleItemIdCandidates(procedure, slotKey),
+    [procedure, slotKey],
+  );
+  const fallbackUserIds = React.useMemo(
+    () => (isUserLoading ? [] : buildExecutionUserIdCandidates(deepLinkUserId, userId)),
+    [deepLinkUserId, isUserLoading, userId],
   );
 
   const abcSlotId = React.useMemo(() => {
@@ -101,6 +138,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     resolvedUserId,
     scheduleItemId,
     fallbackScheduleItemIds,
+    fallbackUserIds,
   );
   
   const [isSaving, setIsSaving] = useState(false);
