@@ -236,7 +236,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const normalizedUserId = normalizeExecutionUserId(userId);
     const rf = await this.getResolvedFields();
     const dailyKey = `${normalizedDate}-${normalizedUserId}`;
-    const rowKeyPrefix = dailyKey;
+    const rowKeyPrefix = `${dailyKey}-`;
     
     // Safety check: if rf.rowKey is RowKey but was resolved without actual presence, OData will fail.
     // However, resolveInternalNames is supposed to be accurate. 
