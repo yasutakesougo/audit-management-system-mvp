@@ -15,6 +15,7 @@ import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeSchedul
 import {
   normalizeExecutionDate,
   normalizeExecutionUserId,
+  buildExecutionUserIdCandidates,
 } from '@/features/daily/utils/normalizeExecutionLookup';
 
 type SharePointExecutionRecordRepositoryOptions = {
@@ -539,13 +540,24 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         if (key.length > 11 && /^\d{4}-\d{2}-\d{2}-/.test(key)) {
           const parsedDate = key.slice(0, 10);
           const suffix = key.slice(11); // userId-scheduleItemId
-          const userPrefix = `${userId}-`;
-          if (suffix.startsWith(userPrefix)) {
+
+          // Build user ID candidates including both current userId and any logical representations
+          const userCandidates = buildExecutionUserIdCandidates(userId);
+          let matchedCandidate: string | null = null;
+
+          for (const candidate of userCandidates) {
+            if (suffix.startsWith(`${candidate}-`)) {
+              matchedCandidate = candidate;
+              break;
+            }
+          }
+
+          if (matchedCandidate) {
             if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
               date = parsedDate;
             }
             if (!scheduleItemId) {
-              scheduleItemId = normalizeScheduleItemId(suffix.slice(userPrefix.length));
+              scheduleItemId = normalizeScheduleItemId(suffix.slice(matchedCandidate.length + 1));
             }
             break;
           }
