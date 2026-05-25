@@ -125,3 +125,15 @@ export async function safeWithRetry<T>(
   }
   return { ok: false, err: "retry loop exited unexpectedly", attempts: maxAttempts };
 }
+
+export function isMockOrBypassMode(env: Record<string, unknown>): boolean {
+  const skipSharePoint = isEnabled(env["VITE_SKIP_SHAREPOINT"]);
+  const skipLogin = isEnabled(env["VITE_SKIP_LOGIN"]);
+  const demoMode = isEnabled(env["VITE_DEMO_MODE"]) || isEnabled(env["VITE_DEMO"]);
+  const e2eMode = isEnabled(env["VITE_E2E"]) || isEnabled(env["VITE_E2E_MSAL_MOCK"]);
+  const dummyClientId = String(env["VITE_MSAL_CLIENT_ID"] ?? "").trim() === "00000000-0000-0000-0000-000000000000";
+  const dummyTenantId = String(env["VITE_MSAL_TENANT_ID"] ?? "").trim().toLowerCase() === "dummy";
+
+  return skipSharePoint || skipLogin || demoMode || e2eMode || dummyClientId || dummyTenantId;
+}
+

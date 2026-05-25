@@ -1,6 +1,6 @@
 import { HealthCheckResult, HealthContext } from "../types";
 import { getRuntimeEnv } from "@/env";
-import { pass, fail, warn, pickEnvKeys, hasPlaceholder, isEnabled } from "./utils";
+import { pass, fail, warn, pickEnvKeys, hasPlaceholder, isEnabled, isMockOrBypassMode } from "./utils";
 
 export async function runConfigChecks(
   ctx: HealthContext,
@@ -135,24 +135,18 @@ export async function runConfigChecks(
 
   // Mock / skip mode guard:
   {
-    const skipSharePoint = isEnabled(ctx.env["VITE_SKIP_SHAREPOINT"]);
-    const skipLogin = isEnabled(ctx.env["VITE_SKIP_LOGIN"]);
-    const demoMode = isEnabled(ctx.env["VITE_DEMO_MODE"]) || isEnabled(ctx.env["VITE_DEMO"]);
-    const e2eMode = isEnabled(ctx.env["VITE_E2E"]) || isEnabled(ctx.env["VITE_E2E_MSAL_MOCK"]);
-    const dummyClientId = String(ctx.env["VITE_MSAL_CLIENT_ID"] ?? "").trim() === "00000000-0000-0000-0000-000000000000";
-    const dummyTenantId = String(ctx.env["VITE_MSAL_TENANT_ID"] ?? "").trim().toLowerCase() === "dummy";
+    const mockOrBypass = isMockOrBypassMode(ctx.env);
+    if (mockOrBypass) {
+      const flags = {
+        VITE_SKIP_SHAREPOINT: isEnabled(ctx.env["VITE_SKIP_SHAREPOINT"]),
+        VITE_SKIP_LOGIN: isEnabled(ctx.env["VITE_SKIP_LOGIN"]),
+        VITE_DEMO_MODE: isEnabled(ctx.env["VITE_DEMO_MODE"]) || isEnabled(ctx.env["VITE_DEMO"]),
+        VITE_E2E: isEnabled(ctx.env["VITE_E2E"]) || isEnabled(ctx.env["VITE_E2E_MSAL_MOCK"]),
+        VITE_E2E_MSAL_MOCK: isEnabled(ctx.env["VITE_E2E_MSAL_MOCK"]),
+        dummyClientId: String(ctx.env["VITE_MSAL_CLIENT_ID"] ?? "").trim() === "00000000-0000-0000-0000-000000000000",
+        dummyTenantId: String(ctx.env["VITE_MSAL_TENANT_ID"] ?? "").trim().toLowerCase() === "dummy",
+      };
 
-    const flags = {
-      VITE_SKIP_SHAREPOINT: skipSharePoint,
-      VITE_SKIP_LOGIN: skipLogin,
-      VITE_DEMO_MODE: demoMode,
-      VITE_E2E: e2eMode,
-      VITE_E2E_MSAL_MOCK: isEnabled(ctx.env["VITE_E2E_MSAL_MOCK"]),
-      dummyClientId,
-      dummyTenantId,
-    };
-
-    if (skipSharePoint || skipLogin || demoMode || e2eMode || dummyClientId || dummyTenantId) {
       results.push(
         warn({
           key: "config.mockOrBypassMode",
