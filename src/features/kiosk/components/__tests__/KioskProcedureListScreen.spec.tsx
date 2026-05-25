@@ -223,6 +223,51 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('counts records saved under route and master user IDs with row-prefixed schedule keys', async () => {
+    mockRouteUserId = '17';
+    const procedures17 = Array.from({ length: 17 }, (_, index) => {
+      const rowNo = index + 1;
+      return {
+        id: `base-${rowNo}`,
+        rowNo,
+        time: `${String(9 + Math.floor(index / 2)).padStart(2, '0')}:00`,
+        activity: `手順 ${rowNo}`,
+        instruction: `支援内容 ${rowNo}`,
+      };
+    });
+    mockGetByUser.mockReturnValue(procedures17);
+    mockUseUser.mockReturnValue({
+      data: { FullName: '対象 利用者', UserID: 'U017' },
+      status: 'success',
+    });
+    mockGetRecords.mockImplementation(async (_date, userId) => {
+      if (userId === 'U017') {
+        return [{ scheduleItemId: 'base-1', status: 'completed' }];
+      }
+      if (userId === '17') {
+        return [
+          { scheduleItemId: 'row-2', status: 'completed' },
+          { scheduleItemId: 'procedure-3', status: 'completed' },
+          { scheduleItemId: 'slot_4', status: 'completed' },
+          { scheduleItemId: 'base-5', status: 'completed' },
+        ];
+      }
+      return [];
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 5 / 17')).toBeInTheDocument();
+      expect(screen.getByText('5 完了')).toBeInTheDocument();
+      expect(screen.getAllByText('記録済み')).toHaveLength(5);
+    });
+  });
+
   it('prefers fetched SharePoint records over stale local cache after remote read completes', async () => {
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
     mockGetStoreRecords.mockReturnValue([
@@ -827,7 +872,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
-  it('waits for user to load and does not perform stale fetches with fallback route ID', async () => {
+  it('waits for user to load before fetching route and master user ID candidates', async () => {
     mockRouteUserId = '17';
     // Start as loading
     let userState = { data: undefined as any, status: 'loading' };
@@ -873,8 +918,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
     });
 
-    // Verify that mockGetRecords was called only with U001 and never with '17'
+    // Verify that fetches start only after the master user is resolved.
     expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U001');
-    expect(mockGetRecords).not.toHaveBeenCalledWith(expect.any(String), '17');
+    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), '17');
   });
 });

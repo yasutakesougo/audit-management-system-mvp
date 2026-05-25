@@ -11,7 +11,10 @@ import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { formatDateJapanese } from '@/lib/dateFormat';
 import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
-import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
+import {
+  buildExecutionUserIdCandidates,
+  normalizeScheduleItemId,
+} from '@/features/daily/utils/normalizeExecutionLookup';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
@@ -19,6 +22,48 @@ import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/us
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
 import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
 import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
+
+const extractProcedureRowKey = (value: unknown): string => {
+  const normalized = normalizeScheduleItemId(value);
+  if (!normalized) return '';
+  if (/^\d+$/.test(normalized)) return String(Number.parseInt(normalized, 10));
+
+  const match = normalized.match(/(?:^|[-_])(row|base|procedure|slot|step)[-_]?(\d+)$/i);
+  return match ? String(Number.parseInt(match[2], 10)) : '';
+};
+
+const buildProcedureMatchKeys = (
+  procedure: { id?: unknown; rowNo?: unknown },
+  index: number,
+  allPrimaryScheduleKeys: Set<string>,
+): string[] => {
+  const keys = new Set<string>();
+  const push = (value: string) => {
+    if (value) keys.add(value);
+  };
+
+  const idKey = normalizeScheduleItemId(procedure.id);
+  const rowNoKey = normalizeScheduleItemId(procedure.rowNo);
+  push(idKey);
+  push(rowNoKey);
+  push(extractProcedureRowKey(procedure.id));
+  push(extractProcedureRowKey(procedure.rowNo));
+
+  const indexKey = index.toString();
+  const canUseIndexFallback = !allPrimaryScheduleKeys.has(indexKey) || keys.has(indexKey);
+  if (canUseIndexFallback) push(indexKey);
+
+  return Array.from(keys);
+};
+
+const buildRecordMatchKeys = (record: ExecutionRecord): string[] => {
+  const keys = new Set<string>();
+  const scheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
+  if (scheduleItemId) keys.add(scheduleItemId);
+  const rowKey = extractProcedureRowKey(scheduleItemId);
+  if (rowKey) keys.add(rowKey);
+  return Array.from(keys);
+};
 
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -73,6 +118,10 @@ export const KioskProcedureListScreen: React.FC = () => {
       const rowNoKey = normalizeScheduleItemId(step.rowNo);
       if (idKey) keys.add(idKey);
       if (rowNoKey) keys.add(rowNoKey);
+      const idRowKey = extractProcedureRowKey(step.id);
+      const rowNoRowKey = extractProcedureRowKey(step.rowNo);
+      if (idRowKey) keys.add(idRowKey);
+      if (rowNoRowKey) keys.add(rowNoRowKey);
     }
     return keys;
   }, [procedures]);
@@ -144,8 +193,20 @@ export const KioskProcedureListScreen: React.FC = () => {
 
 
   const { getRecords: getStoreRecords } = useExecutionStore();
-  const storeUserIdForLookup = queryUserIdFromSearch || user?.UserID || userId || '';
-  const storeRecords = getStoreRecords(selectedDateIso || '', storeUserIdForLookup);
+  const executionUserIdCandidates = React.useMemo(
+    () => buildExecutionUserIdCandidates(queryUserIdFromSearch, user?.UserID, userId),
+    [queryUserIdFromSearch, user?.UserID, userId],
+  );
+  const storeRecords = React.useMemo(() => {
+    const deduped = new Map<string, ExecutionRecord>();
+    for (const candidateUserId of executionUserIdCandidates) {
+      for (const record of getStoreRecords(selectedDateIso || '', candidateUserId)) {
+        const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
+        deduped.set(key, record);
+      }
+    }
+    return Array.from(deduped.values());
+  }, [executionUserIdCandidates, getStoreRecords, selectedDateIso]);
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
@@ -154,7 +215,7 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   // Synchronously reset records state when the active user or date changes
   // to prevent rendering stale records from the previous context.
-  const currentQueryId = queryUserIdFromSearch || user?.UserID || userId || '';
+  const currentQueryId = executionUserIdCandidates.join('|');
   const [prevQueryId, setPrevQueryId] = useState<string>('');
   const [prevDate, setPrevDate] = useState<string>('');
 
@@ -185,10 +246,19 @@ export const KioskProcedureListScreen: React.FC = () => {
 
     let active = true;
     const fetchRecords = async () => {
-      const queryId = queryUserIdFromSearch || user?.UserID || userId;
-      if (!queryId) return;
+      if (executionUserIdCandidates.length === 0) return;
       try {
-        const data = await executionRepo.getRecords(selectedDateIso, queryId);
+        const batches = await Promise.all(
+          executionUserIdCandidates.map((candidateUserId) =>
+            executionRepo.getRecords(selectedDateIso, candidateUserId),
+          ),
+        );
+        const deduped = new Map<string, ExecutionRecord>();
+        for (const record of batches.flat()) {
+          const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
+          deduped.set(key, record);
+        }
+        const data = Array.from(deduped.values());
         if (active) {
           setRecords(data);
           setHasFetchedRecords(true);
@@ -207,9 +277,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       active = false;
     };
   }, [
-    queryUserIdFromSearch,
-    userId,
-    user?.UserID,
+    executionUserIdCandidates,
     isUserLoading,
     executionRepo,
     selectedDateIso,
@@ -231,7 +299,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   // 進捗サマリーの計算
   const totalCount = procedures.length;
   const recordsByScheduleItemId = React.useMemo(() => {
-    const map = new Map<string, ExecutionRecord>();
+    const map = new Map<string, ExecutionRecord[]>();
 
     // In SharePoint mode, once the server read has completed it is authoritative.
     // Local store is only a pre-fetch/optimistic cache; otherwise stale cache from this
@@ -242,35 +310,21 @@ export const KioskProcedureListScreen: React.FC = () => {
         : [...storeRecords, ...records];
     
     for (const record of allCandidateRecords) {
-      const key = normalizeScheduleItemId(record.scheduleItemId);
-      if (!key) continue;
-      
-      const existing = map.get(key);
-      // まだ未登録、または新しいレコードが入力済みデータを持っている場合は上書き
-      if (!existing || hasRecordInput(record)) {
-        map.set(key, record);
+      for (const key of buildRecordMatchKeys(record)) {
+        const existing = map.get(key) ?? [];
+        if (existing.length === 0 || hasRecordInput(record)) {
+          map.set(key, [record, ...existing.filter((item) => item !== record)]);
+        }
       }
     }
     return map;
   }, [executionRepositoryKind, hasFetchedRecords, storeRecords, records, hasRecordInput]);
   const getRecordedRecordForProcedure = React.useCallback((procedure: { id?: unknown; rowNo?: unknown }, index: number) => {
-    const primaryCandidates = [
-      normalizeScheduleItemId(procedure.id),
-      normalizeScheduleItemId(procedure.rowNo),
-    ].filter(Boolean);
-    const matchedRecord = primaryCandidates
-      .map((key) => recordsByScheduleItemId.get(key))
+    const procedureKeys = buildProcedureMatchKeys(procedure, index, allPrimaryScheduleKeys);
+    const matchedRecord = procedureKeys
+      .flatMap((key) => recordsByScheduleItemId.get(key) ?? [])
       .find((record) => hasRecordInput(record));
     if (matchedRecord) return matchedRecord;
-
-    const indexKey = index.toString();
-    const canUseIndexFallback = !allPrimaryScheduleKeys.has(indexKey) || primaryCandidates.includes(indexKey);
-    if (!canUseIndexFallback) return undefined;
-
-    const fallbackRecord = recordsByScheduleItemId.get(indexKey);
-    if (hasRecordInput(fallbackRecord)) {
-      return fallbackRecord;
-    }
     return undefined;
   }, [allPrimaryScheduleKeys, hasRecordInput, recordsByScheduleItemId]);
   const recordedRecordsByProcedure = React.useMemo(
