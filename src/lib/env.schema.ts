@@ -96,6 +96,7 @@ export const envSchema = z.object({
   VITE_SP_SITE_URL: z.string().optional(), // Legacy support
   VITE_FORCE_SHAREPOINT: zBoolFromString.optional().default(false),
   VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: zBoolFromString.optional().default(false),
+  VITE_SP_USE_PROXY: zBoolFromString.optional().default(false),
   VITE_SKIP_SHAREPOINT: zBoolFromString.optional().default(false),
   VITE_SKIP_LOGIN: zBoolFromString.optional().default(false),
   VITE_SP_ENABLED: z.string().optional().default('false'),

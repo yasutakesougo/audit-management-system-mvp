@@ -7,6 +7,8 @@ interface Env {
   ASSETS: {
     fetch: (request: Request) => Promise<Response>;
   };
+  VITE_SP_RESOURCE?: string;
+  VITE_SP_SITE_RELATIVE?: string;
   ALLOWED_TENANT_ID?: string;
   ORG_ID_OVERRIDE?: string;
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
@@ -67,6 +69,9 @@ const RUNTIME_ENV_ALLOWLIST = new Set([
   'VITE_ADMIN_GROUP_ID',
   'VITE_FEATURE_TODAY_OPS',
   'VITE_FEATURE_TODAY_LITE_UI',
+  'VITE_SP_RESOURCE',
+  'VITE_SP_SITE_RELATIVE',
+  'VITE_SP_USE_PROXY',
 ]);
 
 const pickRuntimeEnvFromBindings = (env: Env): Record<string, string> => {
@@ -324,6 +329,103 @@ const handleFirebaseExchange = async (request: Request, env: Env): Promise<Respo
   }
 };
 
+const normalizeSiteRelative = (value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return prefixed.replace(/\/+$/, '');
+};
+
+const pickSharePointRequestHeaders = (request: Request): Headers => {
+  const headers = new Headers();
+  const allowed = [
+    'accept',
+    'authorization',
+    'content-type',
+    'if-match',
+    'odata-version',
+    'prefer',
+    'x-http-method',
+  ];
+
+  for (const key of allowed) {
+    const value = request.headers.get(key);
+    if (value) headers.set(key, value);
+  }
+
+  return headers;
+};
+
+const pickSharePointResponseHeaders = (response: Response): Headers => {
+  const headers = new Headers();
+  const allowed = [
+    'content-type',
+    'etag',
+    'last-modified',
+    'odata-version',
+    'preference-applied',
+    'request-id',
+    'sprequestguid',
+  ];
+
+  for (const key of allowed) {
+    const value = response.headers.get(key);
+    if (value) headers.set(key, value);
+  }
+
+  headers.set('Cache-Control', 'no-store');
+  return headers;
+};
+
+const handleSharePointProxy = async (request: Request, env: Env): Promise<Response> => {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204 });
+  }
+
+  const authHeader = request.headers.get('Authorization') ?? '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return jsonResponse(401, { error: 'missing_bearer_token' });
+  }
+
+  const configuredResource = env.VITE_SP_RESOURCE?.trim().replace(/\/+$/, '');
+  const configuredSiteRelative = normalizeSiteRelative(env.VITE_SP_SITE_RELATIVE ?? '');
+  if (!configuredResource || !configuredSiteRelative) {
+    return jsonResponse(500, { error: 'sp_proxy_not_configured' });
+  }
+
+  let target: URL;
+  try {
+    const sourceUrl = new URL(request.url);
+    target = new URL(sourceUrl.searchParams.get('url') ?? '');
+  } catch {
+    return jsonResponse(400, { error: 'invalid_target_url' });
+  }
+
+  const allowedOrigin = new URL(configuredResource).origin;
+  const allowedApiPath = `${configuredSiteRelative}/_api/web`;
+  if (target.origin !== allowedOrigin || !target.pathname.startsWith(allowedApiPath)) {
+    return jsonResponse(403, { error: 'target_not_allowed' });
+  }
+
+  try {
+    const response = await fetch(new Request(target.toString(), {
+      method: request.method,
+      headers: pickSharePointRequestHeaders(request),
+      body: request.method === 'GET' || request.method === 'HEAD' ? null : request.body,
+      redirect: 'manual',
+    }));
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: pickSharePointResponseHeaders(response),
+    });
+  } catch (error) {
+    console.error('[sp-proxy] fetch failed', error);
+    return jsonResponse(502, { error: 'sharepoint_fetch_failed' });
+  }
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -357,6 +459,10 @@ export default {
 
     if (url.pathname === '/api/firebase/exchange') {
       return handleFirebaseExchange(request, env);
+    }
+
+    if (url.pathname === '/api/sp-proxy') {
+      return handleSharePointProxy(request, env);
     }
 
     // API routes - pass through
