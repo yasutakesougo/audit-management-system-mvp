@@ -8,7 +8,7 @@
 import { isDebugFlag } from '@/lib/debugFlag';
 import { auditLog } from '@/lib/debugLogger';
 import type { EnvRecord } from '@/lib/env';
-import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env';
+import { isE2eMsalMockEnabled, readBool, shouldSkipLogin, skipSharePoint } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
 import { startFetchSpan } from '@/telemetry/fetchSpan';
 import { raiseHttpError } from './helpers';
@@ -268,11 +268,19 @@ export function createSpFetch(deps: SpFetchDeps) {
   const writeLane = new Semaphore(2);
   const provisionLane = new Semaphore(1);
 
-  const resolveUrl = (targetPath: string) => {
+  const resolveDirectUrl = (targetPath: string) => {
     if (/^https?:\/\//i.test(targetPath)) return targetPath;
     const base = baseUrl.replace(/\/+$/, '');
     const path = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
     return `${base}${path}`;
+  };
+
+  const resolveUrl = (targetPath: string) => {
+    const directUrl = resolveDirectUrl(targetPath);
+    if (!readBool('VITE_SP_USE_PROXY', false, config)) {
+      return directUrl;
+    }
+    return `/api/sp-proxy?url=${encodeURIComponent(directUrl)}`;
   };
 
   return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {

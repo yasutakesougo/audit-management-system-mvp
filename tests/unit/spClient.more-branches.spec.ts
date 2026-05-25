@@ -10,6 +10,7 @@ const defaultConfig = {
 vi.mock('@/lib/env', () => ({
   getAppConfig: () => ({ ...defaultConfig }),
   readEnv: (key: string, fallback: string) => (defaultConfig as any)[key] ?? fallback,
+  readBool: (key: string, fallback: boolean) => fallback,
   skipSharePoint: () => false,
   shouldSkipLogin: () => false,
   isE2eMsalMockEnabled: () => false,
