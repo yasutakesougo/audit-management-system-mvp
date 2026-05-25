@@ -216,6 +216,31 @@ describe('SharePointExecutionRecordRepository', () => {
     await expect(repo.upsertRecord(record)).rejects.toThrow('row create failed');
   });
 
+  it('uses a delimited RowKey prefix when fetching records for one user/date', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: [] }),
+    });
+
+    const repoWithFreshFields = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+
+    await repoWithFreshFields.getRecords('2026-05-25', '17');
+
+    const recordsCall = mockSpFetch.mock.calls.find((call) => {
+      const url = decodeURIComponent(String(call[0]));
+      return url.includes('DailyRecordRows') && url.includes('$filter=startswith');
+    });
+
+    expect(recordsCall).toBeDefined();
+    const decodedUrl = decodeURIComponent(String(recordsCall![0]));
+    expect(decodedUrl).toMatch(/startswith\((Title|RowKey), '2026-05-25-17-'\)/);
+    expect(decodedUrl).not.toMatch(/startswith\((Title|RowKey), '2026-05-25-17'\)/);
+  });
+
   describe('mapToDomain fallback', () => {
     it('correctly falls back to parsing scheduleItemId from Title if RowNo is missing', () => {
       const mockItem = {

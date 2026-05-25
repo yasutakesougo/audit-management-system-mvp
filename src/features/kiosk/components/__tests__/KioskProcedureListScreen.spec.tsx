@@ -268,6 +268,53 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('keeps successful candidate records when one execution user ID lookup fails', async () => {
+    mockRouteUserId = '17';
+    const procedures17 = Array.from({ length: 17 }, (_, index) => {
+      const rowNo = index + 1;
+      return {
+        id: `base-${rowNo}`,
+        rowNo,
+        time: `${String(9 + Math.floor(index / 2)).padStart(2, '0')}:00`,
+        activity: `手順 ${rowNo}`,
+        instruction: `支援内容 ${rowNo}`,
+      };
+    });
+    mockGetByUser.mockReturnValue(procedures17);
+    mockUseUser.mockReturnValue({
+      data: { FullName: '対象 利用者', UserID: 'U017' },
+      status: 'success',
+    });
+    mockGetRecords.mockImplementation(async (_date, userId) => {
+      if (userId === '17') {
+        throw new Error('numeric lookup failed');
+      }
+      if (userId === 'U017') {
+        return [
+          { scheduleItemId: 'base-1', status: 'completed' },
+          { scheduleItemId: 'row-2', status: 'completed' },
+          { scheduleItemId: 'procedure-3', status: 'completed' },
+          { scheduleItemId: 'slot_4', status: 'completed' },
+          { scheduleItemId: 'base-5', status: 'completed' },
+        ];
+      }
+      return [];
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures?date=2026-05-25']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 5 / 17')).toBeInTheDocument();
+      expect(screen.getByText('5 完了')).toBeInTheDocument();
+      expect(screen.getAllByText('記録済み')).toHaveLength(5);
+      expect(screen.queryByText('記録の取得に失敗しました。再読み込みしてください。')).toBeNull();
+    });
+  });
+
   it('prefers fetched SharePoint records over stale local cache after remote read completes', async () => {
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
     mockGetStoreRecords.mockReturnValue([

@@ -247,28 +247,39 @@ export const KioskProcedureListScreen: React.FC = () => {
     let active = true;
     const fetchRecords = async () => {
       if (executionUserIdCandidates.length === 0) return;
-      try {
-        const batches = await Promise.all(
-          executionUserIdCandidates.map((candidateUserId) =>
-            executionRepo.getRecords(selectedDateIso, candidateUserId),
-          ),
-        );
-        const deduped = new Map<string, ExecutionRecord>();
-        for (const record of batches.flat()) {
-          const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
-          deduped.set(key, record);
-        }
-        const data = Array.from(deduped.values());
-        if (active) {
-          setRecords(data);
-          setHasFetchedRecords(true);
-        }
-      } catch (error) {
+      const results = await Promise.allSettled(
+        executionUserIdCandidates.map((candidateUserId) =>
+          executionRepo.getRecords(selectedDateIso, candidateUserId),
+        ),
+      );
+      const successfulBatches = results
+        .filter((result): result is PromiseFulfilledResult<ExecutionRecord[]> => result.status === 'fulfilled')
+        .map((result) => result.value);
+      const failedResults = results.filter((result) => result.status === 'rejected');
+
+      if (successfulBatches.length === 0) {
+        const error = failedResults[0]?.reason ?? new Error('No execution record fetches completed');
         if (active) {
           console.error('Failed to fetch execution records:', error);
           setShowFetchError(true);
           setHasFetchedRecords(true);
         }
+        return;
+      }
+
+      if (failedResults.length > 0) {
+        console.warn('Some execution record lookups failed:', failedResults.map((result) => result.reason));
+      }
+
+      const deduped = new Map<string, ExecutionRecord>();
+      for (const record of successfulBatches.flat()) {
+        const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
+        deduped.set(key, record);
+      }
+      const data = Array.from(deduped.values());
+      if (active) {
+        setRecords(data);
+        setHasFetchedRecords(true);
       }
     };
     void fetchRecords();
