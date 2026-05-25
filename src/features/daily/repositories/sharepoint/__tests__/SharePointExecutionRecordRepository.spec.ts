@@ -216,6 +216,85 @@ describe('SharePointExecutionRecordRepository', () => {
     await expect(repo.upsertRecord(record)).rejects.toThrow('row create failed');
   });
 
+  it('syncs merged memo to the local store after SharePoint upsert', async () => {
+    const mockGetFieldsWithMemo = vi.fn().mockResolvedValue(new Set([
+      'Title',
+      'RecordDate',
+      EXECUTION_RECORD_FIELDS.rowKey,
+      EXECUTION_RECORD_FIELDS.status,
+      EXECUTION_RECORD_FIELDS.parentId,
+      EXECUTION_RECORD_FIELDS.userId,
+      EXECUTION_RECORD_FIELDS.rowNo,
+      EXECUTION_RECORD_FIELDS.memo,
+      EXECUTION_RECORD_FIELDS.recordedAt,
+      EXECUTION_RECORD_FIELDS.bipsJSON,
+      'Payload',
+    ]));
+    const store = {
+      getRecords: vi.fn(() => []),
+      upsertRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+    };
+    const repoWithStore = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFieldsWithMemo,
+      store,
+    });
+    const record: ExecutionRecord = {
+      id: '2024-01-01-U001-S001',
+      date: '2024-01-01',
+      userId: 'U001',
+      scheduleItemId: 'S001',
+      status: 'completed',
+      memo: 'new memo',
+      recordedAt: '2024-01-01T10:00:00Z',
+      recordedBy: 'Staff A',
+      triggeredBipIds: [],
+    };
+
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              {
+                Id: 456,
+                Title: '2024-01-01-U001-S001',
+                User_x0020_ID: 'U001',
+                RowNo: 'S001',
+                Status: 'completed',
+                Memo: 'existing memo',
+                Recorded_x0020_At: '2024-01-01T09:00:00Z',
+              },
+            ],
+          }),
+        };
+      }
+      if (url.includes('DailyRecordRows') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({ Id: 456 }) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    await repoWithStore.upsertRecord(record);
+
+    expect(store.upsertRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: expect.stringContaining('existing memo'),
+      }),
+    );
+    expect(store.upsertRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memo: expect.stringContaining('new memo'),
+      }),
+    );
+  });
+
   it('uses a delimited RowKey prefix with multiple user candidates when fetching records for one user/date', async () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockResolvedValue({
@@ -239,6 +318,42 @@ describe('SharePointExecutionRecordRepository', () => {
     const decodedUrl = decodeURIComponent(String(recordsCall![0]));
     expect(decodedUrl).toContain("startswith(Title, '2026-05-25-17-')");
     expect(decodedUrl).toContain("startswith(Title, '2026-05-25-U017-')");
+  });
+
+  it('returns the queried concrete key from getRecord for legacy fallback mutation', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('DailyRecordRows') && decoded.includes("Title eq '2026-05-20-6-0'")) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              {
+                Id: 1,
+                Title: '2026-05-20-6-0',
+                User_x0020_ID: 'U006',
+                RowNo: '0',
+                Status: 'completed',
+                Memo: 'legacy memo',
+                Payload: 'legacy memo',
+                Recorded_x0020_At: '2026-05-20T12:00:00Z',
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    const record = await repo.getRecord('2026-05-20', '6', '0');
+
+    expect(record).toEqual(expect.objectContaining({
+      date: '2026-05-20',
+      userId: '6',
+      scheduleItemId: '0',
+      memo: 'legacy memo',
+    }));
   });
 
   describe('mapToDomain fallback', () => {

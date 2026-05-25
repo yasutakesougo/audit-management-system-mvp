@@ -282,7 +282,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const data: SharePointResponse<JsonRecord> = await response.json();
     if (!data.value || data.value.length === 0) return undefined;
 
-    return this.mapToDomain(data.value[0], rf);
+    const mapped = this.mapToDomain(data.value[0], rf);
+    return {
+      ...mapped,
+      date: normalizedDate,
+      userId: normalizedUserId,
+      scheduleItemId: normalizedScheduleItemId,
+    };
   }
 
   async upsertRecord(record: ExecutionRecord): Promise<void> {
@@ -386,7 +392,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     // Sync to local store
     if (this.store) {
-      this.store.upsertRecord(normalizedRecord);
+      this.store.upsertRecord(mergedRecord);
     }
   }
 

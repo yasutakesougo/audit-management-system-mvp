@@ -15,6 +15,10 @@ import {
   buildExecutionUserIdCandidates,
   normalizeScheduleItemId,
 } from '@/features/daily/utils/normalizeExecutionLookup';
+import {
+  parseKioskProcedureMemo,
+  serializeKioskProcedureMemo,
+} from '../domain/kioskProcedureMemo';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
@@ -164,36 +168,23 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     if (isLoading || isInitialized) return;
     
     if (record) {
-      const memoText = record.memo || '';
-      const moodMatch = memoText.match(/【様子】([^\n]+)/);
-      const actionMatch = memoText.match(/【対応】([^\n]+)/);
-      const resultMatch = memoText.match(/【変化】([^\n]+)/);
-      const textMatch = memoText.match(/【メモ】([\s\S]+)/);
-      
-      if (moodMatch) setSelectedMood(moodMatch[1].trim());
-      if (actionMatch) setSelectedAction(actionMatch[1].trim());
-      if (resultMatch) setSelectedResult(resultMatch[1].trim());
-      
-      if (textMatch) {
-        setTextMemo(textMatch[1].trim());
-      } else if (memoText.trim()) {
-        const hasLabels = memoText.includes('【様子】') || memoText.includes('【対応】') || memoText.includes('【変化】');
-        if (!hasLabels) {
-          setTextMemo(memoText.trim());
-        }
-      }
+      const parsedMemo = parseKioskProcedureMemo(record.memo);
+      setSelectedMood(parsedMemo.mood);
+      setSelectedAction(parsedMemo.action);
+      setSelectedResult(parsedMemo.result);
+      setTextMemo(parsedMemo.memo);
     }
     
     setIsInitialized(true);
   }, [record, isLoading, isInitialized]);
 
   const serializeMemo = () => {
-    const parts: string[] = [];
-    if (selectedMood) parts.push(`【様子】${selectedMood}`);
-    if (selectedAction) parts.push(`【対応】${selectedAction}`);
-    if (selectedResult) parts.push(`【変化】${selectedResult}`);
-    if (textMemo.trim()) parts.push(`【メモ】${textMemo.trim()}`);
-    return parts.join('\n');
+    return serializeKioskProcedureMemo({
+      mood: selectedMood,
+      action: selectedAction,
+      result: selectedResult,
+      memo: textMemo,
+    });
   };
 
   const handleSave = async () => {

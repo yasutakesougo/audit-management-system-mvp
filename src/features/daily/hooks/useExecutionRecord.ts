@@ -66,13 +66,26 @@ export function useExecutionRecord(
     void fetchRecord();
   }, [fetchRecord]);
 
+  const resolveMutationTarget = useCallback(() => {
+    const targetDate = record?.date || date;
+    const targetUserId = record?.userId || userId;
+    const targetScheduleItemId = record?.scheduleItemId || scheduleItemId;
+    return {
+      date: targetDate,
+      userId: targetUserId,
+      scheduleItemId: targetScheduleItemId,
+      id: record?.id || makeRecordId(targetDate, targetUserId, targetScheduleItemId),
+    };
+  }, [date, record, scheduleItemId, userId]);
+
   const setStatus = useCallback(
     async (status: RecordStatus) => {
+      const target = resolveMutationTarget();
       const next: ExecutionRecord = {
-        id: makeRecordId(date, userId, scheduleItemId),
-        date,
-        userId,
-        scheduleItemId,
+        id: target.id,
+        date: target.date,
+        userId: target.userId,
+        scheduleItemId: target.scheduleItemId,
         status,
         memo: record?.memo ?? '',
         triggeredBipIds: record?.triggeredBipIds ?? [],
@@ -82,7 +95,7 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next);
     },
-    [date, userId, scheduleItemId, record],
+    [record, resolveMutationTarget],
   );
 
   const setMemo = useCallback(
@@ -101,11 +114,12 @@ export function useExecutionRecord(
 
   const saveRecord = useCallback(
     async (status: RecordStatus, memo?: string, triggeredBipIds?: string[]) => {
+      const target = resolveMutationTarget();
       const next: ExecutionRecord = {
-        id: makeRecordId(date, userId, scheduleItemId),
-        date,
-        userId,
-        scheduleItemId,
+        id: target.id,
+        date: target.date,
+        userId: target.userId,
+        scheduleItemId: target.scheduleItemId,
         status,
         memo: memo !== undefined ? memo : (record?.memo ?? ''),
         triggeredBipIds: triggeredBipIds !== undefined ? triggeredBipIds : (record?.triggeredBipIds ?? []),
@@ -115,13 +129,14 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next);
     },
-    [date, userId, scheduleItemId, record],
+    [record, resolveMutationTarget],
   );
 
   const deleteRecordFn = useCallback(async () => {
-    await deleteRecord(date, userId, scheduleItemId);
+    const target = resolveMutationTarget();
+    await deleteRecord(target.date, target.userId, target.scheduleItemId);
     setRecord(undefined);
-  }, [date, userId, scheduleItemId, deleteRecord]);
+  }, [deleteRecord, resolveMutationTarget]);
 
   return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, refresh: fetchRecord } as const;
 }

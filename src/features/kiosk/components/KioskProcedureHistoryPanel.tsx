@@ -22,6 +22,7 @@ import { useHistoricalRecords } from '@/features/daily/hooks/useHistoricalRecord
 import { formatDateShort } from '@/lib/dateFormat';
 import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
 import { KioskDailyProcedureFlowPreview } from './KioskDailyProcedureFlowPreview';
+import { parseKioskProcedureMemo } from '../domain/kioskProcedureMemo';
 
 interface KioskProcedureHistoryPanelProps {
   userId: string;
@@ -86,9 +87,8 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
       // Mood distribution
       const moods: Record<string, number> = {};
       filteredRecords.forEach(r => {
-        const match = r.memo.match(/【様子】([^\n]+)/);
-        if (match) {
-          const mood = match[1].trim();
+        const { mood } = parseKioskProcedureMemo(r.memo);
+        if (mood) {
           moods[mood] = (moods[mood] || 0) + 1;
         }
       });
