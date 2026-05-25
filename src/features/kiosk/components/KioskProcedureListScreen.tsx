@@ -313,11 +313,22 @@ export const KioskProcedureListScreen: React.FC = () => {
     const map = new Map<string, ExecutionRecord[]>();
 
     // In SharePoint mode, once the server read has completed it is authoritative.
-    // Local store is only a pre-fetch/optimistic cache; otherwise stale cache from this
-    // terminal can keep a row marked as recorded after another terminal changes it.
+    // However, to protect against SharePoint indexing/replication lag, we keep recently
+    // saved optimistic local records (within 2 minutes) even after the fetch completes.
     const allCandidateRecords =
       executionRepositoryKind === 'sharepoint' && hasFetchedRecords
-        ? records
+        ? [
+            ...records,
+            ...storeRecords.filter((r) => {
+              if (!r.recordedAt) return false;
+              try {
+                const ageMs = Date.now() - new Date(r.recordedAt).getTime();
+                return ageMs >= 0 && ageMs < 120 * 1000;
+              } catch {
+                return false;
+              }
+            }),
+          ]
         : [...storeRecords, ...records];
     
     for (const record of allCandidateRecords) {
