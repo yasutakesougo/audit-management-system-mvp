@@ -403,8 +403,22 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
 
   const allowedOrigin = new URL(configuredResource).origin;
   const allowedApiPath = `${configuredSiteRelative}/_api/web`;
-  if (target.origin !== allowedOrigin || !target.pathname.startsWith(allowedApiPath)) {
-    return jsonResponse(403, { error: 'target_not_allowed' });
+  
+  const allowedOriginLower = allowedOrigin.toLowerCase();
+  const allowedApiPathLower = allowedApiPath.toLowerCase();
+  const targetOriginLower = target.origin.toLowerCase();
+  const targetPathLower = target.pathname.toLowerCase();
+
+  if (targetOriginLower !== allowedOriginLower || !targetPathLower.startsWith(allowedApiPathLower)) {
+    return jsonResponse(403, { 
+      error: 'target_not_allowed',
+      details: {
+        targetOrigin: targetOriginLower,
+        allowedOrigin: allowedOriginLower,
+        targetPath: targetPathLower,
+        allowedApiPath: allowedApiPathLower
+      }
+    });
   }
 
   try {

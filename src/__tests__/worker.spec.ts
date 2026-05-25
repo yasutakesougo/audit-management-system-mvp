@@ -62,7 +62,7 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     const response = await worker.fetch(request, defaultEnv);
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body).toEqual({ error: 'target_not_allowed' });
+    expect(body.error).toBe('target_not_allowed');
   });
 
   it('returns 403 if target path does not start with allowed API path', async () => {
@@ -73,7 +73,7 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     const response = await worker.fetch(request, defaultEnv);
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body).toEqual({ error: 'target_not_allowed' });
+    expect(body.error).toBe('target_not_allowed');
   });
 
   it('forwards request to target and returns target response if allowed', async () => {
