@@ -7,6 +7,7 @@ import {
   SuspendedKioskUserSelectPage,
   SuspendedKioskProcedureListPage,
   SuspendedKioskProcedureDetailPage,
+  SuspendedKioskToiletPage,
 } from './lazyPages';
 import ProtectedRoute from '@/app/ProtectedRoute';
 
@@ -23,6 +24,10 @@ export const kioskRoutes: RouteObject[] = [
       {
         index: true,
         element: <SuspendedKioskHomePage />,
+      },
+      {
+        path: 'toilet',
+        element: <SuspendedKioskToiletPage />,
       },
       {
         path: 'users',

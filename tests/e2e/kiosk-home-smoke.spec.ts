@@ -110,6 +110,7 @@ test.describe('Kiosk Home Smoke (memory provider for local kiosk flow checks)', 
       await expect(page.getByTestId('kiosk-nav-attendance')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-activity')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-procedures')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-toilet')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-calllog')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-handoff')).toBeVisible({ timeout: 15000 });
     });
@@ -130,6 +131,24 @@ test.describe('Kiosk Home Smoke (memory provider for local kiosk flow checks)', 
     test('should navigate to records from navigation and maintain params', async ({ page }) => {
       await page.getByTestId('kiosk-nav-activity').click();
       await expect(page).toHaveURL(/\/daily\/table(\?.*provider=memory.*)?/);
+    });
+
+    test('should navigate to toilet board and mark a target user recorded', async ({ page }) => {
+      await page.getByTestId('kiosk-nav-toilet').click();
+
+      await expect(page).toHaveURL(/\/kiosk\/toilet(\?.*provider=memory.*)?/);
+      await expect(page.getByTestId('toilet-daily-board')).toBeVisible();
+      await expect(page.getByTestId('toilet-board-summary')).toContainText('未記録 1名 / 記録済み 0名');
+
+      await page.getByTestId('toilet-record-button-I005').click();
+      await expect(page.getByRole('heading', { name: /石渡 由喜子さんのトイレ記録/ })).toBeVisible();
+      await page.getByTestId('toilet-record-save').click();
+
+      await expect(page.getByTestId('toilet-board-summary')).toContainText('未記録 0名 / 記録済み 1名');
+      await expect(page.getByTestId('toilet-user-latest-I005')).toContainText('排尿 普通');
+      await expect(page.getByTestId('toilet-record-history')).toContainText('本日の全記録（個人別）');
+      await expect(page.getByTestId('toilet-history-user-I005')).toContainText('石渡 由喜子');
+      await expect(page.getByTestId('toilet-history-user-I005')).toContainText('1件');
     });
 
     test('should keep schedule navigation active after schedule route redirects', async ({ page }) => {
