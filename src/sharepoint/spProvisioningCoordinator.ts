@@ -360,18 +360,9 @@ export class SharePointProvisioningCoordinator {
             severity: 'warning',
             reasonCode: 'sp_schema_drift',
             listName,
-            message: `「${listName}」で列名のドリフト（末尾への _0 付与等）を検出しました: ${driftDetails.join(', ')}`,
+            message: `「${listName}」で列名のドリフトを検出しましたが、アプリ側で実列名へ自動解決しています: ${driftDetails.join(', ')}`,
             source: 'realtime',
             occurredAt: new Date().toISOString(),
-            remediation: {
-              summary: '不整合を起こしている重複列（ドリフト列）の削除を推奨します。',
-              commands: driftDetails.map(d => {
-                const driftedName = d.split(' -> ')[1];
-                return `m365 spo field remove --webUrl $SITE_URL --listTitle "${listName}" --internalName "${driftedName}" --confirm`;
-              }),
-              caution: '削除前に対象の列にデータが入っていないか、または重複している本物の列があるかを確認してください。',
-              isDestructive: true
-            }
           });
 
           return { 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { spProvisioningCoordinator } from '@/sharepoint/spProvisioningCoordinator';
 import type { useSP } from '@/lib/spClient';
+import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 
 /**
  * SharePointProvisioningCoordinator - フィールド整合性チェックのテスト
@@ -28,6 +29,10 @@ vi.mock('@/sharepoint/spListRegistry', async (importOriginal) => {
         ]
     };
 });
+
+vi.mock('@/features/sp/health/spHealthSignalStore', () => ({
+  reportSpHealthEvent: vi.fn(),
+}));
 
 describe('SharePointProvisioningCoordinator - Granular Integrity Check', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,5 +100,21 @@ describe('SharePointProvisioningCoordinator - Granular Integrity Check', () => {
     // FullName0 は FullName として正常に解決されるはず。
     expect(result.isValid).toBe(true);
     expect(result.missingFields).toHaveLength(0);
+  });
+
+  it('reports drift without destructive field removal remediation', async () => {
+    mockClient.tryGetListMetadata.mockResolvedValue({ title: 'Users_Master' });
+    mockClient.getListFieldInternalNames.mockResolvedValue(new Set(['Title', 'FullName0', 'UserStatus']));
+
+    const result = await spProvisioningCoordinator.checkFieldIntegrity(mockClient, 'users_master');
+
+    expect(result.isValid).toBe(true);
+    expect(reportSpHealthEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reasonCode: 'sp_schema_drift',
+        listName: 'Users_Master',
+      }),
+    );
+    expect(vi.mocked(reportSpHealthEvent).mock.calls.at(-1)?.[0]).not.toHaveProperty('remediation');
   });
 });
