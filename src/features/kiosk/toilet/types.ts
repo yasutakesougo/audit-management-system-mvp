@@ -1,8 +1,3 @@
-export const TOILET_GUIDANCE_TARGET_USER_IDS = [
-  'I005',
-  'I022',
-] as const;
-
 export type ToiletType = 'urination' | 'bowel' | 'both' | 'other';
 export type ToiletAmount = 'small' | 'normal' | 'large' | 'unknown';
 

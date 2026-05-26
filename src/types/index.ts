@@ -7,6 +7,8 @@ export type SpUserItem = {
   FullNameKana?: string;
   AttendanceDays?: string[] | string | null;
   severeFlag?: boolean;
+  RequiresToiletGuidance?: boolean;
+  ToiletGuidanceNote?: string;
   IsHighIntensitySupportTarget?: boolean;
   IsActive?: boolean;
   TransportToDays?: string[] | string | null;

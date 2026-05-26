@@ -41,6 +41,8 @@ export class UserJoiner {
       IsHighIntensitySupportTarget: record['isHighIntensitySupportTarget'] !== undefined ? Boolean(record['isHighIntensitySupportTarget']) : null,
       IsSupportProcedureTarget: record['isSupportProcedureTarget'] !== undefined ? Boolean(record['isSupportProcedureTarget']) : null,
       severeFlag: record['severeFlag'] !== undefined ? Boolean(record['severeFlag']) : null,
+      RequiresToiletGuidance: record['requiresToiletGuidance'] !== undefined ? Boolean(record['requiresToiletGuidance']) : null,
+      ToiletGuidanceNote: (record['toiletGuidanceNote'] as string) ?? (record['ToiletGuidanceNote'] as string) ?? null,
       IsActive: record['isActive'] !== undefined ? Boolean(record['isActive']) : null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,

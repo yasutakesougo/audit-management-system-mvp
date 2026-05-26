@@ -75,6 +75,7 @@ export class InMemoryDataProvider implements IDataProvider {
         IsSupportProcedureTarget: true,
         ServiceEndDate: null,
         AttendanceDays: ['月', '水', '金'],
+        RequiresToiletGuidance: true,
       },
     ]);
     // 支援手順の実施状況

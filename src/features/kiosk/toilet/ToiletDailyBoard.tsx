@@ -30,7 +30,6 @@ import type { IUserMaster } from '@/features/users/types';
 import { appendKioskSearchParams } from '../utils/navigation';
 import {
   TOILET_AMOUNT_LABELS,
-  TOILET_GUIDANCE_TARGET_USER_IDS,
   TOILET_TYPE_LABELS,
   type ToiletAmount,
   type ToiletRecord,
@@ -65,8 +64,6 @@ const resolveUserKey = (user: IUserMaster): string => user.UserID || String(user
 const findLatestRecord = (records: ToiletRecord[], userId: string): ToiletRecord | undefined =>
   records.find((record) => record.userId === userId);
 
-const toiletTargetUserIds = new Set<string>(TOILET_GUIDANCE_TARGET_USER_IDS);
-
 export const ToiletDailyBoard: React.FC = () => {
   const location = useLocation();
   const todayIso = toLocalDateISO(new Date());
@@ -85,7 +82,7 @@ export const ToiletDailyBoard: React.FC = () => {
     () =>
       users
         .filter((user) => user.IsActive !== false)
-        .filter((user) => toiletTargetUserIds.has(resolveUserKey(user))),
+        .filter((user) => user.RequiresToiletGuidance === true),
     [users],
   );
 
