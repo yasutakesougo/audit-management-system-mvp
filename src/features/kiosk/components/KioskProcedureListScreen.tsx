@@ -247,10 +247,31 @@ export const KioskProcedureListScreen: React.FC = () => {
 
     let active = true;
     const fetchRecords = async () => {
-      if (executionUserIdCandidates.length === 0) return;
+      const dateStr = selectedDateIso;
+      if (!dateStr) return;
+      const isSharePoint = executionRepositoryKind === 'sharepoint';
+      // Deduplicate user IDs that would produce the same SharePoint query candidates.
+      // If not SharePoint, we keep all candidates to support local mock/Zustand stores.
+      const queryUserIds = isSharePoint
+        ? (() => {
+            const canonicalize = (id: string) => {
+              const clean = id.replace(/^u-/i, '').replace(/^u/i, '').replace(/-/g, '').trim();
+              const num = parseInt(clean, 10);
+              return Number.isNaN(num) ? clean.toLowerCase() : String(num);
+            };
+            const seen = new Set<string>();
+            return executionUserIdCandidates.filter((id) => {
+              const canonical = canonicalize(id);
+              if (seen.has(canonical)) return false;
+              seen.add(canonical);
+              return true;
+            });
+          })()
+        : executionUserIdCandidates;
+
       const results = await Promise.allSettled(
-        executionUserIdCandidates.map((candidateUserId) =>
-          executionRepo.getRecords(selectedDateIso, candidateUserId),
+        queryUserIds.map((candidateUserId) =>
+          executionRepo.getRecords(dateStr, candidateUserId),
         ),
       );
       const successfulBatches = results
@@ -293,6 +314,9 @@ export const KioskProcedureListScreen: React.FC = () => {
     isUserLoading,
     executionRepo,
     selectedDateIso,
+    executionRepositoryKind,
+    user?.UserID,
+    userId,
     location.key,
     location.search,
   ]);

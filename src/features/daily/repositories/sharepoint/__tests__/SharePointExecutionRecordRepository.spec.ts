@@ -452,6 +452,66 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(mapped.date).toBe('2026-05-20');
     });
 
+    it('correctly falls back to regex-based parsing from Title when userId is empty/unresolved', () => {
+      const mockItem = {
+        Title: '2026-05-26-U-017-2',
+        User_x0020_ID: '', // empty userId
+        Status: 'completed',
+        Memo: 'Test memo',
+        Recorded_x0020_At: '2026-05-26T12:00:00Z',
+      };
+
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+
+      expect(mapped.scheduleItemId).toBe('2');
+      expect(mapped.date).toBe('2026-05-26');
+    });
+
+    it('correctly falls back to regex-based parsing from Title containing base-prefix when userId is empty/unresolved', () => {
+      const mockItem = {
+        Title: '2026-05-26-U-017-base-2',
+        User_x0020_ID: undefined, // undefined userId
+        Status: 'completed',
+        Memo: 'Test memo',
+        Recorded_x0020_At: '2026-05-26T12:00:00Z',
+      };
+
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+
+      expect(mapped.scheduleItemId).toBe('base-2');
+      expect(mapped.date).toBe('2026-05-26');
+    });
+
     it('uses Memo when Memo has content', () => {
       const mockItem = {
         Title: '2026-05-08-4-1',
