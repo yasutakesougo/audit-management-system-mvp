@@ -966,3 +966,48 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 
 #bugfix #a11y #kiosk #abc #sharepoint #stability #skill-matrix-20260522-a11y
 
+### 2026-05-26 — キオスク端末 トイレ確認ボード PR-A 実装・マージ
+
+**PR**: #2026 `[codex] feat(kiosk): add toilet guidance board`  
+**状態**: merged  
+**対象**: `/kiosk/toilet`, `src/features/kiosk/toilet/*`
+
+#### 実装内容
+- キオスク下部メニューに「トイレ確認」を追加
+- `/kiosk/toilet` ルートを追加
+- トイレ誘導対象者の当日記録有無を一覧表示
+- 対象者は PR-A 時点では固定IDで管理
+  - `I005` 石渡 由喜子
+  - `I022` 中村 裕樹
+- 各利用者ごとに「未記録 / 記録済み」を表示
+- 記録フォームを追加
+  - 時間
+  - 種類（排尿 / 排便 / 両方 / その他）
+  - 量（少量 / 普通 / 多量 / 不明）
+  - メモ
+- 本日の全記録を個人別に表示
+- 保存先は PR-A では browser localStorage のみ
+- `/kiosk/toilet` を navigation diagnostics の kiosk allowlist に追加
+
+#### 判断
+| 判断 | 内容 |
+|---|---|
+| 採用 | まずはキオスク専用画面として `/kiosk/toilet` に閉じる |
+| 採用 | 対象者は User Master 列追加前のため固定IDで開始 |
+| 採用 | 記録有無の一覧確認を主目的にし、入力フォームは各利用者行から開く |
+| 採用 | PR-A では SharePoint schema 追加を避け、localStorage でUX検証を優先 |
+| 保留 | `ToiletRecords` SharePoint 永続化 |
+| 保留 | Users_Master の `RequiresToiletGuidance` / `ToiletGuidanceNote` 追加 |
+
+#### 検証
+- `npm run typecheck`
+- `npx playwright test tests/e2e/kiosk-home-smoke.spec.ts -g "toilet board" --project=chromium --reporter=line`
+- `npx vitest run tests/unit/app/navigation/nav-router-consistency.spec.ts tests/unit/pages/NavigationDiagnosticsPage.spec.tsx --reporter=verbose`
+- commit hook lint/typecheck
+
+#### 次アクション
+1. PR-B1: `ToiletRecords` SharePoint 永続化
+2. PR-B2: Users_Master に `RequiresToiletGuidance` / `ToiletGuidanceNote` を追加し、固定ID管理から移行
+
+#### メモ
+PR-A は、現場で「今日トイレ誘導対象者が利用済みか」を一覧で確認するためのUX確立を目的とした。永続保存はまだ本番記録ではなく、PR-B1で SharePoint `ToiletRecords` に昇格する。
