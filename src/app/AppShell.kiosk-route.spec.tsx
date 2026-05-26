@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import AppShell from './AppShell';
@@ -14,6 +14,14 @@ const createTestQueryClient = () =>
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
 
+vi.mock('./components/KioskExitFab', () => ({
+  KioskExitFab: ({ onExit }: { onExit: () => void }) => (
+    <button type="button" onClick={onExit}>
+      exit kiosk
+    </button>
+  ),
+}));
+
 vi.mock('@/features/auth/store', async () => {
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,6 +32,11 @@ vi.mock('@/features/auth/store', async () => {
       }),
   };
 });
+
+const CurrentPath = () => {
+  const location = useLocation();
+  return <div data-testid="current-path">{location.pathname}</div>;
+};
 
 function renderAppShell(initialPath: string) {
   return render(
@@ -37,6 +50,7 @@ function renderAppShell(initialPath: string) {
                 element={
                   <AppShell>
                     <div data-testid="kiosk-route-child">child</div>
+                    <CurrentPath />
                   </AppShell>
                 }
               />
@@ -93,5 +107,25 @@ describe('AppShell kiosk query routing', () => {
       expect(appShell).toHaveAttribute('data-kiosk', 'true');
     });
   });
-});
 
+  it('navigates out of forced /kiosk routes when exiting kiosk mode', async () => {
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        layoutMode: 'kiosk',
+      }),
+    );
+
+    renderAppShell('/kiosk/users/23/procedures');
+
+    fireEvent.click(screen.getByRole('button', { name: 'exit kiosk' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('current-path')).toHaveTextContent('/dashboard');
+    });
+
+    const stored = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '{}');
+    expect(stored.layoutMode).toBe('normal');
+  });
+});
