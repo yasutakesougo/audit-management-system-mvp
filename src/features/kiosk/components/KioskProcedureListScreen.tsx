@@ -30,7 +30,14 @@ const extractProcedureRowKey = (value: unknown): string => {
   if (/^\d+$/.test(normalized)) return String(Number.parseInt(normalized, 10));
 
   const match = normalized.match(/(?:^|[-_])(row|base|procedure|slot|step)[-_]?(\d+)$/i);
-  return match ? String(Number.parseInt(match[2], 10)) : '';
+  if (match) return String(Number.parseInt(match[2], 10));
+
+  // Planning-sheet derived procedure IDs can be source-scoped, e.g.
+  // "official-<sheetId>-1". The final small numeric segment is the rowNo.
+  const tailNumber = normalized.match(/[-_](\d{1,2})$/);
+  if (!tailNumber) return '';
+  const rowNo = Number.parseInt(tailNumber[1], 10);
+  return rowNo > 0 && rowNo <= 99 ? String(rowNo) : '';
 };
 
 const buildProcedureMatchKeys = (
@@ -57,6 +64,22 @@ const buildProcedureMatchKeys = (
   return Array.from(keys);
 };
 
+const buildProcedureLookupKeys = (procedure: { id?: unknown; rowNo?: unknown }, index: number): string[] => {
+  const keys = new Set<string>();
+  const push = (value: string) => {
+    if (value) keys.add(value);
+  };
+
+  // For SharePoint point lookups, prefer the physical row number first.
+  // Source-scoped planning IDs such as "official-<sheetId>-1" are not row keys.
+  push(extractProcedureRowKey(procedure.rowNo));
+  push(extractProcedureRowKey(procedure.id));
+  push(normalizeScheduleItemId(procedure.rowNo));
+  push(normalizeScheduleItemId(procedure.id));
+  push(index.toString());
+  return Array.from(keys);
+};
+
 const buildRecordMatchKeys = (record: ExecutionRecord): string[] => {
   const keys = new Set<string>();
   const scheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
@@ -64,6 +87,19 @@ const buildRecordMatchKeys = (record: ExecutionRecord): string[] => {
   const rowKey = extractProcedureRowKey(scheduleItemId);
   if (rowKey) keys.add(rowKey);
   return Array.from(keys);
+};
+
+const isSharePointThrottleError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const message = `${error.name} ${error.message}`.toLowerCase();
+  return (
+    message.includes('spthrottleredirecterror') ||
+    message.includes('throttle.htm') ||
+    message.includes('throttled') ||
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('cors')
+  );
 };
 
 export const KioskProcedureListScreen: React.FC = () => {
@@ -214,6 +250,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   const [hasFetchedRecords, setHasFetchedRecords] = useState(false);
   const [fetchFailed, setFetchFailed] = useState(false);
   const [showFetchError, setShowFetchError] = useState(false);
+  const procedureLookupThrottleKeyRef = React.useRef('');
 
   // Synchronously reset records state when the active user or date changes
   // to prevent rendering stale records from the previous context.
@@ -227,6 +264,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     setRecords([]);
     setHasFetchedRecords(false);
     setFetchFailed(false);
+    procedureLookupThrottleKeyRef.current = '';
   }
 
   const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
@@ -297,10 +335,83 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
 
       const deduped = new Map<string, ExecutionRecord>();
-      for (const record of successfulBatches.flat()) {
+      const addRecord = (record: ExecutionRecord) => {
         const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
         deduped.set(key, record);
+      };
+      for (const record of successfulBatches.flat()) {
+        addRecord(record);
       }
+
+      const procedureLookupKey = `${dateStr}|${queryUserIds.join('|')}`;
+      if (
+        procedures.length > 0 &&
+        deduped.size < procedures.length &&
+        typeof executionRepo.getRecord === 'function' &&
+        procedureLookupThrottleKeyRef.current !== procedureLookupKey
+      ) {
+        const matchedKeys = new Set<string>();
+        for (const record of deduped.values()) {
+          for (const key of buildRecordMatchKeys(record)) {
+            matchedKeys.add(key);
+          }
+        }
+
+        let lookupAttempts = 0;
+        let abortProcedureLookups = false;
+        const maxLookupAttempts = executionRepositoryKind === 'sharepoint' ? 12 : Number.POSITIVE_INFINITY;
+
+        for (let index = 0; index < procedures.length; index += 1) {
+          const procedureKeys = buildProcedureMatchKeys(procedures[index], index, allPrimaryScheduleKeys);
+          if (procedureKeys.some((key) => matchedKeys.has(key))) continue;
+
+          let foundRecord: ExecutionRecord | undefined;
+          const lookupKeys = buildProcedureLookupKeys(procedures[index], index);
+          for (const candidateUserId of queryUserIds) {
+            for (const scheduleItemId of lookupKeys) {
+              if (lookupAttempts >= maxLookupAttempts) {
+                abortProcedureLookups = true;
+                break;
+              }
+              lookupAttempts += 1;
+              try {
+                const record = await executionRepo.getRecord(dateStr, candidateUserId, scheduleItemId);
+                if (record) {
+                  foundRecord = record;
+                  break;
+                }
+              } catch (error) {
+                if (isSharePointThrottleError(error)) {
+                  console.warn('Procedure-level execution lookup stopped because SharePoint is throttling:', {
+                    userId: candidateUserId,
+                    scheduleItemId,
+                    error,
+                  });
+                  procedureLookupThrottleKeyRef.current = procedureLookupKey;
+                  abortProcedureLookups = true;
+                  break;
+                }
+                console.warn('Procedure-level execution record lookup failed:', {
+                  userId: candidateUserId,
+                  scheduleItemId,
+                  error,
+                });
+              }
+            }
+            if (foundRecord || abortProcedureLookups) break;
+          }
+
+          if (foundRecord) {
+            addRecord(foundRecord);
+            for (const key of buildRecordMatchKeys(foundRecord)) {
+              matchedKeys.add(key);
+            }
+          }
+
+          if (abortProcedureLookups) break;
+        }
+      }
+
       const data = Array.from(deduped.values());
       if (active) {
         setRecords(data);
@@ -318,6 +429,8 @@ export const KioskProcedureListScreen: React.FC = () => {
     executionRepo,
     selectedDateIso,
     executionRepositoryKind,
+    allPrimaryScheduleKeys,
+    procedures,
     user?.UserID,
     userId,
     location.key,
