@@ -204,6 +204,12 @@ export {
     ABC_RECORD_CANDIDATES, ABC_RECORD_ESSENTIALS
 } from './abcRecordFields';
 
+// ── Toilet Records ──
+export {
+    buildToiletRecordSelectFields, FIELD_MAP_TOILET_RECORD,
+    TOILET_RECORD_CANDIDATES, TOILET_RECORD_ESSENTIALS
+} from './toiletRecordFields';
+
 // ──────────────────────────────────────────────────────────────
 // 統合 FIELD_MAP（後方互換用）
 //

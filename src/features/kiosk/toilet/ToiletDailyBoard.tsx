@@ -70,8 +70,9 @@ const toiletTargetUserIds = new Set<string>(TOILET_GUIDANCE_TARGET_USER_IDS);
 export const ToiletDailyBoard: React.FC = () => {
   const location = useLocation();
   const todayIso = toLocalDateISO(new Date());
-  const { data: users, isLoading } = useUsers({ selectMode: 'core' });
-  const { records, create } = useToiletRecords(todayIso);
+  const { data: users, isLoading: isUsersLoading } = useUsers({ selectMode: 'core' });
+  const { records, create, isLoading: isRecordsLoading } = useToiletRecords(todayIso);
+  const isLoading = isUsersLoading || isRecordsLoading;
   const [selectedUser, setSelectedUser] = React.useState<IUserMaster | null>(null);
   const [form, setForm] = React.useState<FormState>({
     occurredAt: toMinuteInputValue(new Date()),
@@ -118,17 +119,22 @@ export const ToiletDailyBoard: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedUser) return;
-    create({
-      userId: resolveUserKey(selectedUser),
-      occurredAt: new Date(form.occurredAt).toISOString(),
-      toiletType: form.toiletType,
-      amount: form.amount,
-      memo: form.memo,
-      recorderName: 'kiosk',
-    });
-    setSelectedUser(null);
+    try {
+      await create({
+        userId: resolveUserKey(selectedUser),
+        occurredAt: new Date(form.occurredAt).toISOString(),
+        toiletType: form.toiletType,
+        amount: form.amount,
+        memo: form.memo,
+        recorderName: 'kiosk',
+      });
+    } catch (err) {
+      console.error('[ToiletDailyBoard] Failed to save record:', err);
+    } finally {
+      setSelectedUser(null);
+    }
   };
 
   return (

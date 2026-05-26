@@ -9,6 +9,7 @@ export type ToiletAmount = 'small' | 'normal' | 'large' | 'unknown';
 export type ToiletRecord = {
   id: string;
   userId: string;
+  recordDate?: string;
   occurredAt: string;
   toiletType: ToiletType;
   amount: ToiletAmount;
@@ -42,3 +43,8 @@ export const TOILET_AMOUNT_LABELS: Record<ToiletAmount, string> = {
   large: '多量',
   unknown: '不明',
 };
+
+export interface IToiletRecordRepository {
+  listByDate(dateIso: string): Promise<ToiletRecord[]>;
+  create(input: ToiletRecordInput): Promise<ToiletRecord>;
+}
