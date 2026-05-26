@@ -336,6 +336,33 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('shows stale store records without the recency filter when SharePoint record fetch fails', async () => {
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockGetStoreRecords.mockReturnValue([
+      {
+        scheduleItemId: '1',
+        status: 'completed',
+        memo: 'saved before throttling',
+        recordedAt: '2026-05-07T23:50:00+09:00',
+      },
+    ]);
+    mockGetRecords.mockRejectedValue(new Error('SharePoint throttled'));
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+      expect(within(firstCard).queryByText('未実施')).toBeNull();
+      expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
+      expect(screen.getByText('記録の取得に失敗しました。再読み込みしてください。')).toBeInTheDocument();
+    });
+  });
+
   it('matches legacy index scheduleItemId with guarded fallback consistently', async () => {
     mockGetRecords.mockResolvedValue([
       { scheduleItemId: '0', status: 'completed' },
