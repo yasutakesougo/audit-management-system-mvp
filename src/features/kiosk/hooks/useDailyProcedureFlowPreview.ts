@@ -3,6 +3,7 @@ import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
 import { useUser } from '@/features/users/useUsers';
+import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 import { 
   buildDailyProcedureFlowPreview, 
   type DailyProcedureFlowStep 
@@ -27,7 +28,7 @@ export function useDailyProcedureFlowPreview(
   }, [getRecords]);
 
   const { data: user } = useUser(userId);
-  const canonicalUserId = user?.UserID || userId;
+  const canonicalUserId = resolveProcedureUserQueryCandidates(user, userId);
 
   const procedureStore = useProcedureStore();
   

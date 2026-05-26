@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useDailyProcedureFlowPreview } from '../useDailyProcedureFlowPreview';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
+import { useUser } from '@/features/users/useUsers';
 
 // Mock the hooks
 vi.mock('@/features/daily/hooks/useExecutionData', () => ({
@@ -11,6 +12,10 @@ vi.mock('@/features/daily/hooks/useExecutionData', () => ({
 
 vi.mock('@/features/daily/stores/procedureStore', () => ({
   useProcedureStore: vi.fn(),
+}));
+
+vi.mock('@/features/users/useUsers', () => ({
+  useUser: vi.fn(),
 }));
 
 describe('useDailyProcedureFlowPreview', () => {
@@ -28,6 +33,11 @@ describe('useDailyProcedureFlowPreview', () => {
     vi.mocked(useProcedureStore).mockReturnValue({
       getByUser: mockGetByUser,
     } as unknown as ReturnType<typeof useProcedureStore>);
+
+    vi.mocked(useUser).mockReturnValue({
+      data: undefined,
+      status: 'idle',
+    } as any);
   });
 
   it('fetches records, matches them with slots, and returns merged daily steps', async () => {
@@ -86,5 +96,26 @@ describe('useDailyProcedureFlowPreview', () => {
 
     expect(result.current.error).toEqual(fetchError);
     expect(result.current.steps).toHaveLength(0);
+  });
+
+  it('uses resolveProcedureUserQueryCandidates to resolve user ID consistently', async () => {
+    mockGetByUser.mockReturnValue([]);
+    mockGetRecords.mockResolvedValue([]);
+
+    // We pass U001 but mock useUser to return U-001 (canonical UserID)
+    vi.mocked(useUser).mockReturnValue({
+      data: { UserID: 'U-001' },
+      status: 'success',
+    } as any);
+
+    const { result } = renderHook(() => useDailyProcedureFlowPreview('U001', '2026-05-11'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // U-001 should be queried instead of raw U001
+    expect(mockGetRecords).toHaveBeenCalledWith('2026-05-11', 'U-001');
+    expect(mockGetByUser).toHaveBeenCalledWith('U-001');
   });
 });
