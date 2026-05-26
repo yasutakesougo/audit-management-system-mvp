@@ -19,6 +19,7 @@ import {
   parseKioskProcedureMemo,
   serializeKioskProcedureMemo,
 } from '../domain/kioskProcedureMemo';
+import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
@@ -75,12 +76,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   }, [deepLinkUserId, userId]);
   
   const procedure = React.useMemo(() => {
-    const queryId = user?.UserID || userId;
+    const queryId = resolveProcedureUserQueryCandidates(user, userId);
     if (!queryId || slotKey === undefined) return null;
     const procedures = procedureRepo.getByUser(queryId);
     const index = parseInt(slotKey, 10);
     return procedures[index] || null;
-  }, [userId, user?.UserID, slotKey, procedureRepo]);
+  }, [userId, user, slotKey, procedureRepo]);
 
   // rowNo is the canonical slot identity for kiosk procedure completion tracking.
   // Some procedure IDs can vary by source/runtime, so prefer rowNo for persistence keys.

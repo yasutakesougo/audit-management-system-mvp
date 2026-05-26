@@ -358,7 +358,7 @@ function isQueryKatsuragawa(userId: string | number): boolean {
 
 function isQueryNakamura(userId: string | number): boolean {
   const s = String(userId);
-  return s === '7' || s === '23' || s === 'U-006' || s === 'I017' || s === 'I022';
+  return s === '7' || s === 'U-006' || s === 'I017' || s === 'I022';
 }
 
 function isQueryShiota(userId: string | number): boolean {
