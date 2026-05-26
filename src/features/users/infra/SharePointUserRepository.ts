@@ -395,6 +395,8 @@ export class SharePointUserRepository implements UserRepository {
       IsSupportProcedureTarget:
         get<boolean | null>(fields.isSupportProcedureTarget) ?? null,
       severeFlag: get<boolean | null>('severeFlag') ?? null,
+      RequiresToiletGuidance: get<boolean | null>(fields.requiresToiletGuidance) ?? null,
+      ToiletGuidanceNote: get<string | null>(fields.toiletGuidanceNote) ?? null,
       IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
@@ -454,6 +456,12 @@ export class SharePointUserRepository implements UserRepository {
       assign('isSupportProcedureTarget', dto.IsSupportProcedureTarget);
     }
     if (dto.IsActive !== undefined) assign('isActive', dto.IsActive);
+    if (dto.RequiresToiletGuidance !== undefined) {
+      assign('requiresToiletGuidance', dto.RequiresToiletGuidance);
+    }
+    if (dto.ToiletGuidanceNote !== undefined) {
+      assign('toiletGuidanceNote', dto.ToiletGuidanceNote);
+    }
     if (dto.AttendanceDays !== undefined) assign('attendanceDays', normalizeAttendanceDays(dto.AttendanceDays));
     if (dto.TransportToDays !== undefined) assign('transportToDays', normalizeAttendanceDays(dto.TransportToDays));
     if (dto.TransportFromDays !== undefined) assign('transportFromDays', normalizeAttendanceDays(dto.TransportFromDays));
