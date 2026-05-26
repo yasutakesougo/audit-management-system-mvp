@@ -54,6 +54,7 @@ export enum ListKeys {
   User_Feature_Flags = 'User_Feature_Flags',
   AbcBehaviorRecords = 'AbcBehaviorRecords',
   SurveyTokuseiV2 = 'List2', // 特性確認シート
+  ToiletRecords = 'ToiletRecords',
 }
 
 
@@ -106,5 +107,6 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.User_Feature_Flags]: { title: 'User_Feature_Flags' },
   [ListKeys.AbcBehaviorRecords]: { title: 'AbcBehaviorRecords' },
   [ListKeys.SurveyTokuseiV2]: { title: 'List2' }, // 特性確認シート
+  [ListKeys.ToiletRecords]: { title: 'ToiletRecords' },
 };
 

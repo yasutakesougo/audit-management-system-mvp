@@ -1,4 +1,4 @@
-import type { ToiletRecord, ToiletRecordInput } from './types';
+import type { ToiletRecord, ToiletRecordInput, IToiletRecordRepository } from './types';
 import { toLocalDateISO } from '@/utils/getNow';
 
 const STORAGE_KEY = 'kiosk.toiletRecords.v1';
@@ -29,29 +29,32 @@ const writeStorage = (shape: StorageShape): void => {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(shape));
 };
 
-export const listToiletRecordsByDate = (dateIso: string): ToiletRecord[] => {
-  return readStorage().records
-    .filter((record) => !record.isDeleted && toLocalDateISO(new Date(record.occurredAt)) === dateIso)
-    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
-};
+export class LocalStorageToiletRecordRepository implements IToiletRecordRepository {
+  async listByDate(dateIso: string): Promise<ToiletRecord[]> {
+    return readStorage().records
+      .filter((record) => !record.isDeleted && toLocalDateISO(new Date(record.occurredAt)) === dateIso)
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+  }
 
-export const createToiletRecord = (input: ToiletRecordInput): ToiletRecord => {
-  const now = new Date().toISOString();
-  const record: ToiletRecord = {
-    id: `toilet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    userId: input.userId,
-    occurredAt: input.occurredAt,
-    toiletType: input.toiletType,
-    amount: input.amount,
-    memo: input.memo?.trim() ?? '',
-    recorderName: input.recorderName?.trim() ?? '',
-    source: 'kiosk',
-    isDeleted: false,
-    createdAt: now,
-    updatedAt: now,
-  };
+  async create(input: ToiletRecordInput): Promise<ToiletRecord> {
+    const now = new Date().toISOString();
+    const record: ToiletRecord = {
+      id: `toilet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId: input.userId,
+      recordDate: toLocalDateISO(new Date(input.occurredAt)),
+      occurredAt: input.occurredAt,
+      toiletType: input.toiletType,
+      amount: input.amount,
+      memo: input.memo?.trim() ?? '',
+      recorderName: input.recorderName?.trim() ?? '',
+      source: 'kiosk',
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-  const storage = readStorage();
-  writeStorage({ version: 1, records: [record, ...storage.records] });
-  return record;
-};
+    const storage = readStorage();
+    writeStorage({ version: 1, records: [record, ...storage.records] });
+    return record;
+  }
+}
