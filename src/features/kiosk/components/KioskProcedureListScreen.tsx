@@ -212,6 +212,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [hasFetchedRecords, setHasFetchedRecords] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [showFetchError, setShowFetchError] = useState(false);
 
   // Synchronously reset records state when the active user or date changes
@@ -225,6 +226,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     setPrevDate(selectedDateIso);
     setRecords([]);
     setHasFetchedRecords(false);
+    setFetchFailed(false);
   }
 
   const buildKioskAbcRecordLink = React.useCallback((slotId: string) => {
@@ -284,6 +286,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         if (active) {
           console.error('Failed to fetch execution records:', error);
           setShowFetchError(true);
+          setFetchFailed(true);
           setHasFetchedRecords(true);
         }
         return;
@@ -340,20 +343,24 @@ export const KioskProcedureListScreen: React.FC = () => {
     // In SharePoint mode, once the server read has completed it is authoritative.
     // However, to protect against SharePoint indexing/replication lag, we keep recently
     // saved optimistic local records (within 2 minutes) even after the fetch completes.
+    // When the server fetch failed (e.g. throttled), use ALL store records as the
+    // best available data without the 2-minute recency filter.
     const allCandidateRecords =
       executionRepositoryKind === 'sharepoint' && hasFetchedRecords
-        ? [
-            ...records,
-            ...storeRecords.filter((r) => {
-              if (!r.recordedAt) return false;
-              try {
-                const ageMs = Date.now() - new Date(r.recordedAt).getTime();
-                return ageMs >= 0 && ageMs < 120 * 1000;
-              } catch {
-                return false;
-              }
-            }),
-          ]
+        ? fetchFailed
+          ? [...storeRecords, ...records]
+          : [
+              ...records,
+              ...storeRecords.filter((r) => {
+                if (!r.recordedAt) return false;
+                try {
+                  const ageMs = Date.now() - new Date(r.recordedAt).getTime();
+                  return ageMs >= 0 && ageMs < 120 * 1000;
+                } catch {
+                  return false;
+                }
+              }),
+            ]
         : [...storeRecords, ...records];
     
     for (const record of allCandidateRecords) {
@@ -365,7 +372,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
     }
     return map;
-  }, [executionRepositoryKind, hasFetchedRecords, storeRecords, records, hasRecordInput]);
+  }, [executionRepositoryKind, hasFetchedRecords, fetchFailed, storeRecords, records, hasRecordInput]);
   const getRecordedRecordForProcedure = React.useCallback((procedure: { id?: unknown; rowNo?: unknown }, index: number) => {
     const procedureKeys = buildProcedureMatchKeys(procedure, index, allPrimaryScheduleKeys);
     const matchedRecord = procedureKeys

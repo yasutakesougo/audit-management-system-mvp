@@ -420,8 +420,12 @@ export function createSpFetch(deps: SpFetchDeps) {
           // eslint-disable-next-line no-restricted-globals
           const response = await fetch(url, { ...init, headers, signal: mergedSignal });
 
+          // After the browser follows redirects naturally, check the final URL
+          // for SharePoint throttle indicators. This is safe in both dev (Vite proxy)
+          // and production (direct CORS) modes because the browser transparently
+          // follows the 302 and we inspect the landing page URL.
           if (isThrottleRedirect(response.url)) {
-            const responseUrl = typeof response.url === 'string' ? response.url : '';
+            const responseUrl = (typeof response.url === 'string' && response.url) ? response.url : url;
             if (!hasWarnedThrottleRedirect) {
               hasWarnedThrottleRedirect = true;
               auditLog.warn('sp:fetch', 'throttle_redirect_detected_retry_stopped', {
@@ -557,16 +561,32 @@ export function createSpFetch(deps: SpFetchDeps) {
           }
 
           const retryableNetwork = !isLikelyCorsOrRedirectFailure(error);
-          if (!retryableNetwork && !hasWarnedCorsOrRedirectFailure) {
-            hasWarnedCorsOrRedirectFailure = true;
-            auditLog.warn('sp:fetch', 'cors_or_redirect_failure_retry_stopped', {
+          if (!retryableNetwork) {
+            // CORS / redirect failure is the primary signal for SharePoint
+            // throttle redirects (302 → Throttle.htm without CORS headers).
+            // Wrap as SpThrottleRedirectError to stop retries and surface
+            // the issue clearly to the UI layer.
+            if (!hasWarnedCorsOrRedirectFailure) {
+              hasWarnedCorsOrRedirectFailure = true;
+              auditLog.warn('sp:fetch', 'cors_or_redirect_failure_retry_stopped', {
+                method,
+                lane,
+                message: error instanceof Error ? error.message : 'NetworkError',
+              });
+            }
+            recordTelemetry('sp:request_failed', {
+              url: url.split('?')[0],
               method,
               lane,
+              attempt,
+              durationMs: Date.now() - attemptStartedAt,
               message: error instanceof Error ? error.message : 'NetworkError',
             });
+            span.error('SpThrottleRedirectError', attempt - 1);
+            throw new SpThrottleRedirectError(url);
           }
 
-          const retryable = !skipRetry && attempt <= maxRetries && retryableNetwork;
+          const retryable = !skipRetry && attempt <= maxRetries;
           if (retryable) {
             const delayMs = computeBackoffMs(attempt, baseDelay, capDelay);
             recordTelemetry('sp:retry', {
