@@ -160,5 +160,37 @@ describe('buildDailyProcedureFlowPreview', () => {
     expect(result[0].record).toBeDefined();
     expect(result[0].record?.memo).toBe('美味しく食べました。');
   });
+
+  it('handles 0-based and 1-based index offsets robustly (e.g. slot.rowNo is 1 but record.scheduleItemId is 0)', () => {
+    const customSlots: ProcedureItem[] = [
+      {
+        id: 'base-1',
+        rowNo: 1,
+        time: '09:30',
+        activity: '通所・朝の準備',
+        instruction: '',
+        isKey: false,
+        block: 'morning',
+      }
+    ];
+
+    const customRecords: ExecutionRecord[] = [
+      {
+        id: 'R0',
+        date: '2026-05-22',
+        userId: 'U006',
+        scheduleItemId: '0', // 0-based index from Kiosk routes
+        status: 'completed',
+        memo: '落ち着いていた',
+        recordedAt: '2026-05-22T09:30:00Z',
+        recordedBy: 'Staff C',
+        triggeredBipIds: [],
+      }
+    ];
+
+    const result = buildDailyProcedureFlowPreview(customSlots, customRecords);
+    expect(result[0].record).toBeDefined();
+    expect(result[0].record?.memo).toBe('落ち着いていた');
+  });
 });
 
