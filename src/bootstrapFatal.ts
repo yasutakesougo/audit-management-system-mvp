@@ -8,6 +8,18 @@
  * - Displays error detail on screen since console may not be accessible on tablet
  */
 
+import { isAuthRequiredError } from '@/lib/errors';
+
+declare global {
+  interface Window {
+    __APP_RENDERED__?: boolean;
+  }
+}
+
+function isBootstrapFatalActive(): boolean {
+  return typeof window !== 'undefined' && window.__APP_RENDERED__ !== true;
+}
+
 function renderFatalPanel(title: string, detail?: unknown): void {
   const root = document.getElementById('root');
   if (!root) return;
@@ -99,6 +111,7 @@ export function installFatalHandlers(): void {
   window.addEventListener('error', (event: ErrorEvent) => {
     // eslint-disable-next-line no-console
     console.error('[bootstrap] Error event:', event.error ?? event.message);
+    if (!isBootstrapFatalActive()) return;
     renderFatalPanel('起動エラー (Synchronous)', event.error ?? event.message);
   });
 
@@ -106,6 +119,11 @@ export function installFatalHandlers(): void {
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
     // eslint-disable-next-line no-console
     console.error('[bootstrap] Unhandled rejection:', event.reason);
+    if (isAuthRequiredError(event.reason)) {
+      event.preventDefault();
+      return;
+    }
+    if (!isBootstrapFatalActive()) return;
     renderFatalPanel('起動エラー (Async Promise)', event.reason);
   });
 }

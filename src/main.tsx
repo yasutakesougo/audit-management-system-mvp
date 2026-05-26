@@ -395,6 +395,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </React.Suspense>
   </ErrorBoundary>
     );
+    if (typeof window !== 'undefined') {
+      window.__APP_RENDERED__ = true;
+    }
 
     const settle = (error?: unknown) => {
       finalizeHydrationSpan(completeRender, error);
