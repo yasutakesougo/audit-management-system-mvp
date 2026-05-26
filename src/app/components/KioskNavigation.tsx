@@ -12,6 +12,23 @@ import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import { appendKioskSearchParams } from '@/features/kiosk/utils/navigation';
 
+type KioskNavItem =
+  | {
+      label: string;
+      icon: React.ReactElement;
+      path: string;
+      testId: string;
+      kind: 'link';
+      activeMatch: (pathname: string) => boolean;
+    }
+  | {
+      label: string;
+      icon: React.ReactElement;
+      testId: string;
+      kind: 'dialog';
+      onClick: () => void;
+    };
+
 /**
  * KioskNavigation - キオスクモード専用のナビゲーションメニュー
  * 
@@ -22,13 +39,14 @@ export const KioskNavigation: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navItems = [
+  const navItems: KioskNavItem[] = [
     {
       label: 'ホーム',
       icon: <HomeIcon />,
       path: '/kiosk',
       testId: 'kiosk-nav-home',
       kind: 'link',
+      activeMatch: (pathname) => pathname === '/kiosk',
     },
     {
       label: '予定',
@@ -36,6 +54,7 @@ export const KioskNavigation: React.FC = () => {
       path: '/schedules/day',
       testId: 'kiosk-nav-schedule',
       kind: 'link',
+      activeMatch: (pathname) => pathname.startsWith('/schedules'),
     },
     {
       label: '通所',
@@ -43,6 +62,7 @@ export const KioskNavigation: React.FC = () => {
       path: '/daily/attendance',
       testId: 'kiosk-nav-attendance',
       kind: 'link',
+      activeMatch: (pathname) => pathname.startsWith('/daily/attendance'),
     },
     {
       label: '記録',
@@ -50,6 +70,7 @@ export const KioskNavigation: React.FC = () => {
       path: '/daily/table',
       testId: 'kiosk-nav-activity',
       kind: 'link',
+      activeMatch: (pathname) => pathname.startsWith('/daily/table'),
     },
     {
       label: '支援手順',
@@ -57,6 +78,7 @@ export const KioskNavigation: React.FC = () => {
       path: '/kiosk/users',
       testId: 'kiosk-nav-procedures',
       kind: 'link',
+      activeMatch: (pathname) => pathname.startsWith('/kiosk/users'),
     },
     {
       label: '受電ログ',
@@ -76,6 +98,7 @@ export const KioskNavigation: React.FC = () => {
 
   return (
     <Paper
+      data-testid="kiosk-navigation"
       elevation={0}
       sx={{
         position: 'fixed',
@@ -114,11 +137,12 @@ export const KioskNavigation: React.FC = () => {
         }}
       >
         {navItems.map((item) => {
-          const isActive = item.kind === 'link' && location.pathname === item.path;
+          const isActive = item.kind === 'link' && item.activeMatch(location.pathname);
           return (
             <Button
               key={item.label}
               data-testid={item.testId}
+              aria-current={isActive ? 'page' : undefined}
               variant={isActive ? 'contained' : 'text'}
               color={isActive ? 'primary' : 'inherit'}
               startIcon={React.cloneElement(item.icon as React.ReactElement, { sx: { fontSize: '1.5rem !important' } })}
