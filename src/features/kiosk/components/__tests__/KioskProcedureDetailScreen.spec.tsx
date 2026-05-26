@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
+import { resolveProcedureUserQueryCandidates } from '../../utils/resolveProcedureUserQuery';
 
 // Mock dependencies
 const mockNavigate = vi.fn();
@@ -219,5 +220,18 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByText('手順記録の内容を1つ以上入力してください。')).toBeInTheDocument();
     });
     expect(mockSaveRecord).not.toHaveBeenCalled();
+  });
+
+  describe('resolveProcedureUserQueryCandidates alias resolution logic', () => {
+    it('resolves correct candidates and prevents route and user code collision', () => {
+      // Case 1: user has canonical UserID (e.g. U-006)
+      expect(resolveProcedureUserQueryCandidates({ UserID: 'U-006' } as any, '7')).toBe('U-006');
+
+      // Case 2: no user loaded, falls back to route id
+      expect(resolveProcedureUserQueryCandidates(null, '7')).toBe('7');
+
+      // Case 3: query parameter override is present
+      expect(resolveProcedureUserQueryCandidates({ UserID: 'U-006' } as any, '7', 'override-id')).toBe('override-id');
+    });
   });
 });

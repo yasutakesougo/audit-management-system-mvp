@@ -22,6 +22,7 @@ import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/us
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
 import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
 import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
+import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 
 const extractProcedureRowKey = (value: unknown): string => {
   const normalized = normalizeScheduleItemId(value);
@@ -107,10 +108,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   }, [deepLinkUserId, userId]);
 
   const procedures = React.useMemo(() => {
-    const queryId = queryUserIdFromSearch || user?.UserID || userId;
+    const queryId = resolveProcedureUserQueryCandidates(user, userId, queryUserIdFromSearch);
     if (!queryId) return [];
     return procedureRepo.getByUser(queryId);
-  }, [queryUserIdFromSearch, userId, user?.UserID, procedureRepo]);
+  }, [queryUserIdFromSearch, userId, user, procedureRepo]);
   const allPrimaryScheduleKeys = React.useMemo(() => {
     const keys = new Set<string>();
     for (const step of procedures) {
@@ -137,7 +138,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     isLoading: isLoadingPlanningSheet,
   } = usePlanningSheetData(targetPlanningSheetId, planningRepo);
 
-  const queryUserId = queryUserIdFromSearch || user?.UserID || userId || null;
+  const queryUserId = resolveProcedureUserQueryCandidates(user, userId, queryUserIdFromSearch) || null;
   const {
     currentSheet,
     isLoading: isLoadingCurrentSheet,
