@@ -132,6 +132,25 @@ test.describe('Kiosk Home Smoke (memory provider for local kiosk flow checks)', 
       await expect(page).toHaveURL(/\/daily\/table(\?.*provider=memory.*)?/);
     });
 
+    test('should keep schedule navigation active after schedule route redirects', async ({ page }) => {
+      await bootKiosk(page, { route: '/kiosk?kiosk=1' });
+
+      const scheduleNav = page.getByTestId('kiosk-nav-schedule');
+      await scheduleNav.click();
+
+      await expect(page).toHaveURL(/\/schedules/);
+      await expect(scheduleNav).toHaveAttribute('aria-current', 'page');
+    });
+
+    test('should keep exit FAB above the bottom navigation', async ({ page }) => {
+      const fabBox = await page.getByTestId('kiosk-exit-fab').boundingBox();
+      const navBox = await page.getByTestId('kiosk-navigation').boundingBox();
+
+      expect(fabBox).not.toBeNull();
+      expect(navBox).not.toBeNull();
+      expect(fabBox!.y + fabBox!.height).toBeLessThanOrEqual(navBox!.y + 1);
+    });
+
     test('should not display regular footer actions twice', async ({ page }) => {
       // 既存の FooterQuickActions のテスト ID が kiosk-nav-* 以外で存在しないことを確認
       const regularFooterAction = page.getByTestId('footer-action-call-log-quick');

@@ -20,6 +20,7 @@
   --kiosk-font-label: 14px;
   --kiosk-font-hero: 24px;
   --kiosk-gap: 12px;
+  --kiosk-bottom-nav-height: 96px;
 
   /* Prevent accidental double-tap zoom & swipe gestures */
   touch-action: manipulation;
@@ -118,7 +119,9 @@
 
 /* キーボード表示時に固定要素を退避 */
 [data-kiosk='true'] [data-testid='kiosk-exit-fab'] {
-  bottom: calc(16px + var(--keyboard-inset, 0px));
+  bottom: calc(
+    var(--kiosk-bottom-nav-height, 96px) + env(safe-area-inset-bottom) + 16px + var(--keyboard-inset, 0px)
+  );
   transition:
     opacity 0.3s ease,
     bottom 0.3s ease;
