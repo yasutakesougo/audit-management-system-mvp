@@ -10,6 +10,7 @@ import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import WcIcon from '@mui/icons-material/Wc';
 import { appendKioskSearchParams } from '@/features/kiosk/utils/navigation';
 
 type KioskNavItem =
@@ -79,6 +80,14 @@ export const KioskNavigation: React.FC = () => {
       testId: 'kiosk-nav-procedures',
       kind: 'link',
       activeMatch: (pathname) => pathname.startsWith('/kiosk/users'),
+    },
+    {
+      label: 'トイレ確認',
+      icon: <WcIcon />,
+      path: '/kiosk/toilet',
+      testId: 'kiosk-nav-toilet',
+      kind: 'link',
+      activeMatch: (pathname) => pathname.startsWith('/kiosk/toilet'),
     },
     {
       label: '受電ログ',

@@ -103,6 +103,7 @@ export const APP_ROUTE_PATHS = [
   'monitoring-meeting/:userId',
   'call-logs',
   'kiosk',
+  'kiosk/toilet',
   'kiosk-users',
   'kiosk-procedures',
 ] as const;
