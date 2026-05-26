@@ -26,12 +26,19 @@ export const FIELD_MAP_TOILET_RECORD = defineFieldMap({
  * ToiletRecords リストの Schema Drift 候補（揺れ吸収）
  */
 export const TOILET_RECORD_CANDIDATES = {
-  userId: ['UserId', 'UserID'],
-  recordDate: ['RecordDate'],
+  userId: ['UserId', 'UserID', 'User_x0020_Id', 'User_x0020_ID', 'User Id', 'User ID'],
+  recordDate: ['RecordDate', 'Record_x0020_Date', 'Record Date'],
+  occurredAt: ['OccurredAt', 'Occurred_x0020_At', 'Occurred At'],
+  toiletType: ['ToiletType', 'Toilet_x0020_Type', 'Toilet Type'],
+  amount: ['Amount'],
+  memo: ['Memo'],
+  recorderName: ['RecorderName', 'Recorder_x0020_Name', 'Recorder Name'],
+  source: ['Source'],
+  isDeleted: ['IsDeleted', 'Is_x0020_Deleted', 'Is Deleted'],
 } as const;
 
 export const TOILET_RECORD_ESSENTIALS: (keyof typeof TOILET_RECORD_CANDIDATES)[] = [
-  'userId', 'recordDate'
+  'userId', 'recordDate', 'occurredAt', 'toiletType', 'isDeleted'
 ];
 
 /**

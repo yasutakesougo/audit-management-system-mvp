@@ -84,10 +84,25 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
     await this.initFields(listTitle);
 
     const recordDateField = this.rfFallback('recordDate');
-    const filter = `(${recordDateField} eq '${dateIso}') and (IsDeleted ne true)`;
+    const isDeletedField = this.rfFallback('isDeleted');
+    const filter = `(${recordDateField} eq '${dateIso}') and (${isDeletedField} ne true)`;
     
     // OData query
-    const select = ['Id', 'Title', 'Created', 'Modified', 'UserId', 'RecordDate', 'OccurredAt', 'ToiletType', 'Amount', 'Memo', 'RecorderName', 'Source', 'IsDeleted'];
+    const select = [
+      'Id',
+      'Title',
+      'Created',
+      'Modified',
+      this.rfFallback('userId'),
+      recordDateField,
+      this.rfFallback('occurredAt'),
+      this.rfFallback('toiletType'),
+      this.rfFallback('amount'),
+      this.rfFallback('memo'),
+      this.rfFallback('recorderName'),
+      this.rfFallback('source'),
+      isDeletedField,
+    ];
     const selectQuery = select.join(',');
 
     const url = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$filter=${encodeURIComponent(filter)}&$select=${selectQuery}`;
@@ -116,13 +131,13 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
       Title: recordId,
       [this.rfFallback('userId')]: input.userId,
       [this.rfFallback('recordDate')]: recordDate,
-      OccurredAt: input.occurredAt,
-      ToiletType: input.toiletType,
-      Amount: input.amount,
-      Memo: input.memo?.trim() ?? '',
-      RecorderName: input.recorderName?.trim() ?? 'kiosk',
-      Source: 'kiosk',
-      IsDeleted: false,
+      [this.rfFallback('occurredAt')]: input.occurredAt,
+      [this.rfFallback('toiletType')]: input.toiletType,
+      [this.rfFallback('amount')]: input.amount,
+      [this.rfFallback('memo')]: input.memo?.trim() ?? '',
+      [this.rfFallback('recorderName')]: input.recorderName?.trim() ?? 'kiosk',
+      [this.rfFallback('source')]: 'kiosk',
+      [this.rfFallback('isDeleted')]: false,
     };
 
     const body = this.filterPayload(rawPayload);
@@ -147,21 +162,30 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
 
   private mapToDomain(item: JsonRecord): ToiletRecord {
     const title = (item.Title || '') as string;
-    const isDeletedRaw = item.IsDeleted;
+    const isDeletedField = this.rfFallback('isDeleted');
+    const isDeletedRaw = item[isDeletedField] ?? item.IsDeleted;
     const isDeleted = typeof isDeletedRaw === 'boolean' ? isDeletedRaw : isDeletedRaw === 'true' || isDeletedRaw === 1;
 
-    const recordDateRaw = (item.RecordDate || item.recordDate || '') as string;
+    const recordDateField = this.rfFallback('recordDate');
+    const recordDateRaw = (item[recordDateField] ?? item.RecordDate ?? item.recordDate ?? '') as string;
     const recordDate = recordDateRaw ? recordDateRaw.slice(0, 10) : '';
+
+    const userIdField = this.rfFallback('userId');
+    const occurredAtField = this.rfFallback('occurredAt');
+    const toiletTypeField = this.rfFallback('toiletType');
+    const amountField = this.rfFallback('amount');
+    const memoField = this.rfFallback('memo');
+    const recorderNameField = this.rfFallback('recorderName');
 
     return {
       id: title || String(item.Id),
-      userId: (item.UserId || item.userId || '') as string,
+      userId: (item[userIdField] ?? item.UserId ?? item.userId ?? '') as string,
       recordDate,
-      occurredAt: (item.OccurredAt || item.occurredAt || item.Created || '') as string,
-      toiletType: (item.ToiletType || item.toiletType || 'urination') as ToiletRecord['toiletType'],
-      amount: (item.Amount || item.amount || 'normal') as ToiletRecord['amount'],
-      memo: (item.Memo || item.memo || '') as string,
-      recorderName: (item.RecorderName || item.recorderName || '') as string,
+      occurredAt: (item[occurredAtField] ?? item.OccurredAt ?? item.occurredAt ?? item.Created ?? '') as string,
+      toiletType: (item[toiletTypeField] ?? item.ToiletType ?? item.toiletType ?? 'urination') as ToiletRecord['toiletType'],
+      amount: (item[amountField] ?? item.Amount ?? item.amount ?? 'normal') as ToiletRecord['amount'],
+      memo: (item[memoField] ?? item.Memo ?? item.memo ?? '') as string,
+      recorderName: (item[recorderNameField] ?? item.RecorderName ?? item.recorderName ?? '') as string,
       source: 'kiosk',
       isDeleted,
       createdAt: (item.Created || item.createdAt || '') as string,
