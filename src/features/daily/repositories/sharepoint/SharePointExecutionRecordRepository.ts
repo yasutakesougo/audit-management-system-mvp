@@ -568,6 +568,33 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
               scheduleItemId = normalizeScheduleItemId(suffix.slice(matchedCandidate.length + 1));
             }
             break;
+          } else {
+            // Secondary fallback: regex-based extraction if userId candidates didn't match
+            // Try matching with keyword prefix first
+            const kwMatch = suffix.match(/(?:^|.*[-_])(base|row|procedure|slot|step)[-_](\d+)$/i);
+            if (kwMatch) {
+              if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
+                date = parsedDate;
+              }
+              if (!scheduleItemId) {
+                const prefix = kwMatch[1];
+                const digits = kwMatch[2];
+                const separator = suffix.includes(`${prefix}_${digits}`) ? '_' : '-';
+                scheduleItemId = `${prefix}${separator}${digits}`;
+              }
+              break;
+            }
+            // Try matching digits only
+            const digitsMatch = suffix.match(/(?:^|.*[-_])(\d+)$/i);
+            if (digitsMatch) {
+              if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
+                date = parsedDate;
+              }
+              if (!scheduleItemId) {
+                scheduleItemId = digitsMatch[1];
+              }
+              break;
+            }
           }
         }
       }
