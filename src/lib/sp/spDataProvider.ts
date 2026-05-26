@@ -53,6 +53,12 @@ export class SharePointDataProvider implements IDataProvider {
         return;
       }
 
+      // 🩺 Bypass self-healing list provisioning on Kiosk routes to prevent 429 throttling
+      const isKiosk = typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
+      if (isKiosk) {
+        return;
+      }
+
       const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => 
         e.key.toLowerCase() === name.toLowerCase() || 
         e.resolve().toLowerCase() === name.toLowerCase()

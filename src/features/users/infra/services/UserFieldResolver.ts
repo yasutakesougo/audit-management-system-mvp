@@ -46,6 +46,7 @@ export class UserFieldResolver {
   private resolvedFields: Record<string, string | undefined> | null = null;
   private fieldStatus: Record<string, UserFieldStatus> | null = null;
   private resolvingPromise: Promise<Record<string, string | undefined> | null> | null = null;
+  private accessoryResolvingPromises = new Map<string, Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }>>();
   private cachedBenefitCutoverStage: CutoverStageValue | null = null;
 
   constructor(
@@ -118,56 +119,71 @@ export class UserFieldResolver {
     candidates: Record<string, string[]>,
     essentials: string[] = []
   ): Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }> {
-    try {
-      const available = await this.provider.getFieldInternalNames(listTitle);
+    const existing = this.accessoryResolvingPromises.get(listTitle);
+    if (existing) return existing;
 
-      const essentialsSet = new Set(essentials);
-      const { resolved } = resolveInternalNamesDetailed(
-        available,
-        candidates,
-        {
-          onDrift: (fieldName, resolutionType, driftType) => {
-            const isEssential = essentialsSet.has(fieldName as string);
-            if (isEssential) {
-              emitDriftRecord(listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
-            } else {
-              // Silent drift: log to internal auditLog only, no persistent event
-              auditLog.info('users:drift', `Silent drift detected in non-essential field "${fieldName}" of list "${listTitle}".`, { resolutionType, driftType });
+    const promise = (async () => {
+      try {
+        const available = await this.provider.getFieldInternalNames(listTitle);
+
+        const essentialsSet = new Set(essentials);
+        const { resolved } = resolveInternalNamesDetailed(
+          available,
+          candidates,
+          {
+            onDrift: (fieldName, resolutionType, driftType) => {
+              const isEssential = essentialsSet.has(fieldName as string);
+              if (isEssential) {
+                emitDriftRecord(listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
+              } else {
+                // Silent drift: log to internal auditLog only, no persistent event
+                auditLog.info('users:drift', `Silent drift detected in non-essential field "${fieldName}" of list "${listTitle}".`, { resolutionType, driftType });
+              }
             }
           }
+        );
+
+        const bestEffort: Record<string, string | undefined> = {};
+        const resolvedKeys = new Set<string>();
+
+        const hasAnyResolved = Object.values(resolved).some(v => typeof v === 'string' && v.length > 0);
+
+        for (const [key, cands] of Object.entries(candidates)) {
+          if (resolved[key]) {
+            bestEffort[key] = resolved[key] as string;
+            resolvedKeys.add(key);
+          } else if (essentials.includes(key)) {
+            bestEffort[key] = cands[0];
+          } else if (!hasAnyResolved) {
+            // スキーマ情報が十分に観測できない初期状態（例: 空リスト）では
+            // optional も primary 候補へ best-effort でフォールバックして write を阻害しない。
+            bestEffort[key] = cands[0];
+          } else {
+            bestEffort[key] = undefined;
+          }
         }
-      );
-      
-      const bestEffort: Record<string, string | undefined> = {};
-      const resolvedKeys = new Set<string>();
 
-      const hasAnyResolved = Object.values(resolved).some(v => typeof v === 'string' && v.length > 0);
-
-      for (const [key, cands] of Object.entries(candidates)) {
-        if (resolved[key]) {
-          bestEffort[key] = resolved[key] as string;
-          resolvedKeys.add(key);
-        } else if (essentials.includes(key)) {
-          bestEffort[key] = cands[0];
-        } else if (!hasAnyResolved) {
-          // スキーマ情報が十分に観測できない初期状態（例: 空リスト）では
-          // optional も primary 候補へ best-effort でフォールバックして write を阻害しない。
-          bestEffort[key] = cands[0];
-        } else {
-          bestEffort[key] = undefined;
+        return { resolvedFields: bestEffort, resolvedKeys };
+      } catch (err) {
+        if (isAuthRequiredLike(err)) {
+          throw err;
         }
+        const fallback: Record<string, string | undefined> = {};
+        for (const [key, cands] of Object.entries(candidates)) {
+          fallback[key] = essentials.includes(key) ? cands[0] : undefined;
+        }
+        return { resolvedFields: fallback, resolvedKeys: new Set<string>() };
       }
+    })();
 
-      return { resolvedFields: bestEffort, resolvedKeys };
-    } catch (err) {
-      if (isAuthRequiredLike(err)) {
-        throw err;
+    this.accessoryResolvingPromises.set(listTitle, promise);
+
+    try {
+      return await promise;
+    } finally {
+      if (this.accessoryResolvingPromises.get(listTitle) === promise) {
+        this.accessoryResolvingPromises.delete(listTitle);
       }
-      const fallback: Record<string, string | undefined> = {};
-      for (const [key, cands] of Object.entries(candidates)) {
-        fallback[key] = essentials.includes(key) ? cands[0] : undefined;
-      }
-      return { resolvedFields: fallback, resolvedKeys: new Set() };
     }
   }
 

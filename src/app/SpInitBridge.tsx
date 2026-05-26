@@ -44,6 +44,15 @@ export const SpInitBridge: React.FC = () => {
     bootstrapStartedRef.current = true;
 
     const bootstrap = async () => {
+      // 🩺 Bypass heavy list provisioning on Kiosk routes to prevent 429 throttling
+      const isKiosk = typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
+      if (isKiosk) {
+        await loadHolidaysFromSharePoint(sp).catch((err) => {
+          console.warn('[SpInitBridge] Holiday load failed (non-fatal):', err);
+        });
+        return;
+      }
+
       // 1. SharePoint リストの一括プロビジョニング・検証（SharePoint モードのみ）
       // Demo/Smoke モード（VITE_SKIP_SHAREPOINT=1）ではプロビジョニングをスキップして 404 を回避する
       const { shouldSkipSharePoint } = await import('@/lib/env');

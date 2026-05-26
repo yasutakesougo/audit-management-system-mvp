@@ -37,6 +37,7 @@ import type {
 const DEFAULT_LIST_TEMPLATE = 100;
 const runtimeFieldsCache = new Map<string, FieldsCacheEntry>();
 const inFlightFieldsRequests = new Map<string, Promise<Set<string>>>();
+const inFlightExistingFieldsRequests = new Map<string, Promise<Map<string, ExistingFieldShape>>>();
 
 const cloneFieldSet = (fields: Set<string>): Set<string> => new Set(fields);
 
@@ -143,21 +144,40 @@ export async function fetchExistingFields(
   spFetch: SpFetchFn,
   listTitle: string,
 ): Promise<Map<string, ExistingFieldShape>> {
-  const base = resolveListPath(listTitle);
-  // SharePoint fields endpoint is paged; without $top large lists can hide existing fields,
-  // causing false negatives in ensureListExists() and duplicate-suffixed columns
-  // (e.g. ApprovedBy0, ApprovedBy1 regrowth on Approval_Logs).
-  const path = `${base}/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000`;
-  const res = await spFetch(path);
-  const json = (await res.json().catch(() => ({ value: [] }))) as {
-    value?: ExistingFieldShape[];
-  };
-  const map = new Map<string, ExistingFieldShape>();
-  for (const row of json.value ?? []) {
-    if (!row || typeof row.InternalName !== 'string') continue;
-    map.set(row.InternalName, row);
+  const cacheKey = listTitle;
+  const existingRequest = inFlightExistingFieldsRequests.get(cacheKey);
+  if (existingRequest) {
+    return existingRequest;
   }
-  return map;
+
+  const doFetch = async (): Promise<Map<string, ExistingFieldShape>> => {
+    const base = resolveListPath(listTitle);
+    // SharePoint fields endpoint is paged; without $top large lists can hide existing fields,
+    // causing false negatives in ensureListExists() and duplicate-suffixed columns
+    // (e.g. ApprovedBy0, ApprovedBy1 regrowth on Approval_Logs).
+    const path = `${base}/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000`;
+    const res = await spFetch(path);
+    const json = (await res.json().catch(() => ({ value: [] }))) as {
+      value?: ExistingFieldShape[];
+    };
+    const map = new Map<string, ExistingFieldShape>();
+    for (const row of json.value ?? []) {
+      if (!row || typeof row.InternalName !== 'string') continue;
+      map.set(row.InternalName, row);
+    }
+    return map;
+  };
+
+  const request = doFetch();
+  inFlightExistingFieldsRequests.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    if (inFlightExistingFieldsRequests.get(cacheKey) === request) {
+      inFlightExistingFieldsRequests.delete(cacheKey);
+    }
+  }
 }
 
 /**
