@@ -418,10 +418,10 @@ export function createSpFetch(deps: SpFetchDeps) {
 
         try {
           // eslint-disable-next-line no-restricted-globals
-          const response = await fetch(url, { ...init, headers, signal: mergedSignal });
+          const response = await fetch(url, { ...init, headers, signal: mergedSignal, redirect: 'manual' });
 
-          if (isThrottleRedirect(response.url)) {
-            const responseUrl = typeof response.url === 'string' ? response.url : '';
+          if (response.type === 'opaqueredirect' || response.status === 0 || isThrottleRedirect(response.url)) {
+            const responseUrl = (typeof response.url === 'string' && response.url) ? response.url : url;
             if (!hasWarnedThrottleRedirect) {
               hasWarnedThrottleRedirect = true;
               auditLog.warn('sp:fetch', 'throttle_redirect_detected_retry_stopped', {

@@ -66,6 +66,32 @@ describe('spFetch retry guard for SharePoint throttle/cors', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('detects type opaqueredirect as throttle redirect and stops immediately', async () => {
+    const opaqueredirect = new Response('', { status: 200 });
+    Object.defineProperty(opaqueredirect, 'type', { value: 'opaqueredirect' });
+
+    const fetchMock = vi.fn().mockResolvedValue(opaqueredirect);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const spFetch = createFetcher();
+
+    await expect(spFetch('/_api/web/lists')).rejects.toThrow('Throttled: redirected to Throttle.htm');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('detects status 0 as throttle redirect and stops immediately', async () => {
+    const statusZero = new Response('', { status: 200 });
+    Object.defineProperty(statusZero, 'status', { value: 0 });
+
+    const fetchMock = vi.fn().mockResolvedValue(statusZero);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const spFetch = createFetcher();
+
+    await expect(spFetch('/_api/web/lists')).rejects.toThrow('Throttled: redirected to Throttle.htm');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('retries 429/503 with exponential backoff and then succeeds', async () => {
     const r503a = new Response('busy', { status: 503 });
     const r503b = new Response('busy', { status: 503 });
