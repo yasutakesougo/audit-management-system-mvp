@@ -48,6 +48,8 @@ function App() {
     return () => clearInterval(saveInterval);
   }, []);
 
+  const isKiosk = typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
+
   return (
     <MsalProvider>
       <QueryClientProvider client={queryClient}>
@@ -57,8 +59,8 @@ function App() {
             <DataLayerStatusBanner />
             <WriteDisabledBanner />
             <ToastProvider>
-              <DriftMonitor />
-              <RemediationAuditMonitor />
+              {!isKiosk && <DriftMonitor />}
+              {!isKiosk && <RemediationAuditMonitor />}
               <SpInitBridge />
               <DemoProcedureSeeder />
               <ToastNotifierBridge />

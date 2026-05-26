@@ -99,5 +99,27 @@ describe('UserFieldResolver', () => {
         resolver.resolveAccessoryFields('accessory_list', candidates, ['essentialField'])
       ).rejects.toThrow(authError);
     });
+
+    it('should singleflight concurrent resolveAccessoryFields calls for the same list', async () => {
+      let resolvePromise: (value: any) => void = () => {};
+      const promise = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
+      mockProvider.getFieldInternalNames.mockReturnValue(promise);
+
+      const candidates = {
+        essentialField: ['essentialField'],
+      };
+
+      const call1 = resolver.resolveAccessoryFields('accessory_list', candidates, ['essentialField']);
+      const call2 = resolver.resolveAccessoryFields('accessory_list', candidates, ['essentialField']);
+
+      resolvePromise(new Set(['essentialField']));
+
+      const [res1, res2] = await Promise.all([call1, call2]);
+
+      expect(res1).toEqual(res2);
+      expect(mockProvider.getFieldInternalNames).toHaveBeenCalledTimes(1);
+    });
   });
 });
