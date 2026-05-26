@@ -98,7 +98,7 @@ export const KioskExitFab: React.FC<KioskExitFabProps> = ({ onExit, disablePorta
       <Box
         sx={{
           position: 'fixed',
-          bottom: 16,
+          bottom: 'calc(var(--kiosk-bottom-nav-height, 96px) + env(safe-area-inset-bottom) + 16px)',
           right: 16,
           zIndex: (t) => t.zIndex.modal + 1,
         }}
