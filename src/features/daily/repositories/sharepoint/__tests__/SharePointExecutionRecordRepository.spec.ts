@@ -50,28 +50,18 @@ describe('SharePointExecutionRecordRepository', () => {
       triggeredBipIds: [],
     };
 
-    // 1. resolveParentPath probe
-    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [] }) });
-    // 2. resolveRowsPath probe
-    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [] }) });
-    // 3. resolveRowsFields -> getListFieldNames (if getListFieldInternalNames is provided, it might skip this or use it)
-    
-    // 4. ensureParentRecord lookup
-    mockSpFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ value: [{ Id: 123 }] }),
-    });
-    
-    // 5. getRecord (checks if exists)
-    mockSpFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ value: [] }),
-    });
-
-    // 6. Final call to createItem (the one we want to check)
-    mockSpFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ d: { Id: 456 } }),
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({ d: { Id: 456 } }) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
     });
 
     await repo.upsertRecord(record);
@@ -293,6 +283,106 @@ describe('SharePointExecutionRecordRepository', () => {
         memo: expect.stringContaining('new memo'),
       }),
     );
+  });
+
+  it('updates an existing row without repeating the row-key lookup', async () => {
+    const repoWithFreshFields = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+    const record: ExecutionRecord = {
+      id: '2024-01-01-U001-S001',
+      date: '2024-01-01',
+      userId: 'U001',
+      scheduleItemId: 'S001',
+      status: 'completed',
+      memo: 'updated memo',
+      recordedAt: '2024-01-01T10:00:00Z',
+      recordedBy: 'Staff A',
+      triggeredBipIds: [],
+    };
+
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              {
+                Id: 456,
+                Title: '2024-01-01-U001-S001',
+                User_x0020_ID: 'U001',
+                RowNo: 'S001',
+                Status: 'completed',
+                Memo: 'existing memo',
+                Recorded_x0020_At: '2024-01-01T09:00:00Z',
+              },
+            ],
+          }),
+        };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items(456)') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({}) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    await repoWithFreshFields.upsertRecord(record);
+
+    const rowLookupCalls = mockSpFetch.mock.calls.filter((call) =>
+      String(call[0]).includes('DailyRecordRows') && String(call[0]).includes('/items?$filter='),
+    );
+    const updateCall = mockSpFetch.mock.calls.find((call) =>
+      String(call[0]).includes('DailyRecordRows') && String(call[0]).includes('/items(456)'),
+    );
+
+    expect(rowLookupCalls).toHaveLength(1);
+    expect(updateCall).toBeDefined();
+  });
+
+  it('caches parent record lookup by daily key across row saves', async () => {
+    const repoWithFreshFields = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+    const makeRecord = (scheduleItemId: string): ExecutionRecord => ({
+      id: `2024-01-01-U001-${scheduleItemId}`,
+      date: '2024-01-01',
+      userId: 'U001',
+      scheduleItemId,
+      status: 'completed',
+      memo: 'memo',
+      recordedAt: '2024-01-01T10:00:00Z',
+      recordedBy: 'Staff A',
+      triggeredBipIds: [],
+    });
+
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({ Id: 456 }) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    await repoWithFreshFields.upsertRecord(makeRecord('S001'));
+    await repoWithFreshFields.upsertRecord(makeRecord('S002'));
+
+    const parentLookupCalls = mockSpFetch.mock.calls.filter((call) =>
+      String(call[0]).includes('SupportRecord_Daily') && String(call[0]).includes('/items?$filter='),
+    );
+
+    expect(parentLookupCalls).toHaveLength(1);
   });
 
   it('uses a delimited RowKey prefix with multiple user candidates when fetching records for one user/date', async () => {

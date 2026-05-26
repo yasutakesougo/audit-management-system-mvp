@@ -28,6 +28,11 @@ type SharePointExecutionRecordRepositoryOptions = {
   };
 };
 
+type SharePointRecordLookup = {
+  internalId: number;
+  record: ExecutionRecord;
+};
+
 /**
  * SharePointExecutionRecordRepository — 17行記録の SharePoint 永続化アダプター
  * スキーマドリフト（Payload vs Memo等）を動的に解決する。
@@ -44,9 +49,12 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   private resolvedParentFields: ResolvedParentFields | null = null;
   private resolvedParentPath: string | null = null;
   private resolvedChildPath: string | null = null;
+  private resolvedFieldsPromise: Promise<ResolvedRowsFields> | null = null;
   private availableFields = new Map<string, Set<string>>();
   private initPromises = new Map<string, Promise<void>>();
   private entityTypes = new Map<string, string>();
+  private parentRecordIds = new Map<string, number>();
+  private parentRecordPromises = new Map<string, Promise<number>>();
 
   private escapeODataString(value: string): string {
     return value.replace(/'/g, "''");
@@ -91,22 +99,37 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
   private async getResolvedFields(): Promise<ResolvedRowsFields> {
     if (this.resolvedFields) return this.resolvedFields;
-    
-    // Resolve paths first
-    this.resolvedParentPath = await this.resolver.resolveListPath();
-    if (!this.resolvedParentPath) {
-      this.resolvedParentPath = `lists/getbytitle('${this.parentListTitle}')`;
-    }
-    this.resolvedChildPath = await this.resolver.resolveRowsPath(this.childListTitle);
+    if (this.resolvedFieldsPromise) return this.resolvedFieldsPromise;
 
-    if (!this.resolvedChildPath) {
-       // Fallback to direct path if resolution fails
-       this.resolvedChildPath = `lists/getbytitle('${this.childListTitle}')`;
-    }
+    this.resolvedFieldsPromise = (async () => {
+      // Resolve paths first
+      this.resolvedParentPath = await this.resolver.resolveListPath();
+      if (!this.resolvedParentPath) {
+        this.resolvedParentPath = `lists/getbytitle('${this.parentListTitle}')`;
+      }
+      this.resolvedChildPath = await this.resolver.resolveRowsPath(this.childListTitle);
 
-    this.resolvedParentFields = await this.resolver.resolveParentFields(this.resolvedParentPath);
-    this.resolvedFields = await this.resolver.resolveRowsFields(this.resolvedChildPath);
-    return this.resolvedFields!;
+      if (!this.resolvedChildPath) {
+        // Fallback to direct path if resolution fails
+        this.resolvedChildPath = `lists/getbytitle('${this.childListTitle}')`;
+      }
+
+      const [parentFields, rowsFields] = await Promise.all([
+        this.resolver.resolveParentFields(this.resolvedParentPath),
+        this.resolver.resolveRowsFields(this.resolvedChildPath),
+      ]);
+
+      this.resolvedParentFields = parentFields;
+      this.resolvedFields = rowsFields;
+      return rowsFields;
+    })();
+
+    try {
+      return await this.resolvedFieldsPromise;
+    } catch (error) {
+      this.resolvedFieldsPromise = null;
+      throw error;
+    }
   }
 
   private async initFields(listTitle: string): Promise<void> {
@@ -164,9 +187,33 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   }
 
   private async ensureParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
+    const cachedId = this.parentRecordIds.get(dailyKey);
+    if (cachedId) return cachedId;
+
+    const cachedPromise = this.parentRecordPromises.get(dailyKey);
+    if (cachedPromise) return cachedPromise;
+
+    const promise = this.fetchOrCreateParentRecord(dailyKey, date, _userId)
+      .then((id) => {
+        this.parentRecordIds.set(dailyKey, id);
+        return id;
+      })
+      .catch((error) => {
+        this.parentRecordIds.delete(dailyKey);
+        throw error;
+      })
+      .finally(() => {
+        this.parentRecordPromises.delete(dailyKey);
+      });
+
+    this.parentRecordPromises.set(dailyKey, promise);
+    return promise;
+  }
+
+  private async fetchOrCreateParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
     await this.getResolvedFields(); // Ensure paths resolved
     const pf = this.resolvedParentFields!;
-    const filter = `${pf.title} eq '${dailyKey}'`;
+    const filter = `${pf.title} eq '${this.escapeODataString(dailyKey)}'`;
     const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
     
     const response = await this.spFetch(url, { method: 'GET' });
@@ -206,6 +253,36 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
 
     throw new Error(`[ExecutionRepo] Failed to ensure parent record for ${dailyKey}`);
+  }
+
+  private async getRecordLookupByRowKey(
+    rf: ResolvedRowsFields,
+    rowKey: string,
+    normalizedDate: string,
+    normalizedUserId: string,
+    normalizedScheduleItemId: string,
+  ): Promise<SharePointRecordLookup | undefined> {
+    const filter = `${rf.rowKey} eq '${this.escapeODataString(rowKey)}'`;
+    const select = this.getSelectFields(rf);
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
+
+    const response = await this.spFetch(url);
+    if (!response.ok) return undefined;
+
+    const data: SharePointResponse<JsonRecord> = await response.json();
+    if (!data.value || data.value.length === 0) return undefined;
+
+    const item = data.value[0];
+    const mapped = this.mapToDomain(item, rf);
+    return {
+      internalId: item.Id as number,
+      record: {
+        ...mapped,
+        date: normalizedDate,
+        userId: normalizedUserId,
+        scheduleItemId: normalizedScheduleItemId,
+      },
+    };
   }
 
   async getRecordsInRange(userId: string, from: string, to: string): Promise<ExecutionRecord[]> {
@@ -272,23 +349,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
     const rf = await this.getResolvedFields();
     const rowKey = `${normalizedDate}-${normalizedUserId}-${normalizedScheduleItemId}`;
-    const filter = `${rf.rowKey} eq '${rowKey}'`;
-    const select = this.getSelectFields(rf);
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
-
-    const response = await this.spFetch(url);
-    if (!response.ok) return undefined;
-
-    const data: SharePointResponse<JsonRecord> = await response.json();
-    if (!data.value || data.value.length === 0) return undefined;
-
-    const mapped = this.mapToDomain(data.value[0], rf);
-    return {
-      ...mapped,
-      date: normalizedDate,
-      userId: normalizedUserId,
-      scheduleItemId: normalizedScheduleItemId,
-    };
+    return (await this.getRecordLookupByRowKey(
+      rf,
+      rowKey,
+      normalizedDate,
+      normalizedUserId,
+      normalizedScheduleItemId,
+    ))?.record;
   }
 
   async upsertRecord(record: ExecutionRecord): Promise<void> {
@@ -305,8 +372,18 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const dailyKey = `${normalizedDate}-${normalizedUserId}`;
     const rowKey = `${dailyKey}-${normalizedScheduleItemId}`;
 
-    const parentId = await this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
-    const existing = await this.getRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
+    const parentPromise = this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
+    const existingPromise = this.getRecordLookupByRowKey(
+      rf,
+      rowKey,
+      normalizedDate,
+      normalizedUserId,
+      normalizedScheduleItemId,
+    );
+    const childFieldsPromise = this.initFields(this.childListTitle);
+
+    const existingLookup = await existingPromise;
+    const existing = existingLookup?.record;
 
     // Concurrency Protection: Merge memos if existing record has a different memo.
     let finalMemo = normalizedRecord.memo;
@@ -327,7 +404,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       memo: finalMemo,
     };
 
-    await this.initFields(this.childListTitle);
+    const parentId = await parentPromise;
+    await childFieldsPromise;
+
     const rawBody: Record<string, unknown> = {
       [rf.rowKey]: rowKey,
       [rf.parentId]: parentId,
@@ -344,22 +423,14 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     
     // Title is needed for POST (creation) but often ignored in MERGE if it doesn't change
     if (!existing) {
-        rawBody[this.resolvedParentFields?.title ?? DAILY_RECORD_FIELDS.title] = mergedRecord.id;
+      rawBody[DAILY_RECORD_FIELDS.title] = mergedRecord.id;
     }
 
     const body = this.filterPayload(this.childListTitle, rawBody);
 
     if (existing) {
-      const filter = `${rf.rowKey} eq '${rowKey}'`;
-      const searchUrl = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
-      const searchResp = await this.spFetch(searchUrl);
-      if (!searchResp.ok) {
-        throw new Error(`[ExecutionRepo] row search failed: ${searchResp.status} ${searchResp.statusText}`);
-      }
-      const searchData: SharePointResponse<JsonRecord> = await searchResp.json();
-      
-      if (searchData.value && searchData.value.length > 0) {
-        const internalId = searchData.value[0].Id;
+      if (existingLookup) {
+        const internalId = existingLookup.internalId;
         const updateUrl = `${this.resolvedChildPath}/items(${internalId})`;
         const updateResp = await this.spFetch(updateUrl, {
           method: 'POST',
