@@ -25,6 +25,8 @@ export interface IUserMaster {
   IsHighIntensitySupportTarget?: boolean | null;
   IsSupportProcedureTarget?: boolean | null;  // 支援手順記録対象フラグ
   severeFlag?: boolean | null;
+  RequiresToiletGuidance?: boolean | null;
+  ToiletGuidanceNote?: string | null;
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
   TransportFromDays?: string[] | null;
@@ -78,6 +80,8 @@ export interface IUserMasterCreateDto {
   IsHighIntensitySupportTarget?: boolean | null;
   IsSupportProcedureTarget?: boolean | null;  // 支援手順記録対象フラグ
   severeFlag?: boolean | null;
+  RequiresToiletGuidance?: boolean | null;
+  ToiletGuidanceNote?: string | null;
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
   TransportFromDays?: string[] | null;
@@ -129,6 +133,8 @@ export const USERS_MASTER_CORE_FIELD_MAP = {
   isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
   isSupportProcedureTarget: 'IsSupportProcedureTarget',
   severeFlag: 'severeFlag',
+  requiresToiletGuidance: 'RequiresToiletGuidance',
+  toiletGuidanceNote: 'ToiletGuidanceNote',
   isActive: 'IsActive',
   usageStatus: 'UsageStatus',
   attendanceDays: 'AttendanceDays',
@@ -156,6 +162,8 @@ const CANDIDATE_SERVICE_END_DATE = ['ServiceEndDate', 'EndDate', 'cr013_serviceE
 const CANDIDATE_IS_HIGH_INTENSITY = ['IsHighIntensitySupportTarget', 'IntensityTarget', 'IsHighIntensitySupportTarget0', 'cr013_isHighIntensity'];
 const CANDIDATE_IS_SUPPORT_PROCEDURE = ['IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'];
 const CANDIDATE_SEVERE_FLAG = ['severeFlag', 'HighSeverityFlag', 'cr013_severeFlag'];
+const CANDIDATE_REQUIRES_TOILET_GUIDANCE = ['RequiresToiletGuidance', 'RequiresToiletGuidance0', 'cr013_requiresToiletGuidance'];
+const CANDIDATE_TOILET_GUIDANCE_NOTE = ['ToiletGuidanceNote', 'ToiletGuidanceNote0', 'cr013_toiletGuidanceNote'];
 const CANDIDATE_IS_ACTIVE = ['IsActive', 'Active', 'IsEnabled', 'cr013_isActive'];
 const CANDIDATE_USAGE_STATUS = ['UsageStatus', 'Status', 'UsageStatus0', 'cr013_usageStatus'];
 const CANDIDATE_ATTENDANCE_DAYS = ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'];
@@ -201,6 +209,8 @@ export const USERS_MASTER_CANDIDATES = {
   isHighIntensitySupportTarget: CANDIDATE_IS_HIGH_INTENSITY,
   isSupportProcedureTarget: CANDIDATE_IS_SUPPORT_PROCEDURE,
   severeFlag: CANDIDATE_SEVERE_FLAG,
+  requiresToiletGuidance: CANDIDATE_REQUIRES_TOILET_GUIDANCE,
+  toiletGuidanceNote: CANDIDATE_TOILET_GUIDANCE_NOTE,
   isActive: CANDIDATE_IS_ACTIVE,
   usageStatus: CANDIDATE_USAGE_STATUS,
   attendanceDays: CANDIDATE_ATTENDANCE_DAYS,
@@ -306,6 +316,8 @@ export const USERS_SELECT_FIELDS_CORE = [
   USERS_MASTER_FIELD_MAP.isHighIntensitySupportTarget,
   USERS_MASTER_FIELD_MAP.isSupportProcedureTarget,
   USERS_MASTER_FIELD_MAP.severeFlag,
+  USERS_MASTER_FIELD_MAP.requiresToiletGuidance,
+  USERS_MASTER_FIELD_MAP.toiletGuidanceNote,
   USERS_MASTER_FIELD_MAP.isActive,
   USERS_MASTER_FIELD_MAP.usageStatus,
   USERS_MASTER_FIELD_MAP.attendanceDays,

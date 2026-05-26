@@ -54,6 +54,7 @@ export const DEMO_USERS: IUserMaster[] = [
     IsActive: true,
     IsHighIntensitySupportTarget: true,
     IsSupportProcedureTarget: true,
+    RequiresToiletGuidance: true,
     ServiceEndDate: null,
     AttendanceDays: ['月', '水', '金'],
   },
