@@ -39,6 +39,8 @@ export type UseCallLogsOptions = {
   activeTab?: CallLogTabValue;
   /** 担当者名でフィルタ（省略時は全担当者） */
   targetStaffName?: string;
+  /** ログ一覧を取得するかどうか */
+  enabled?: boolean;
 };
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ export const useCallLogs = (options: UseCallLogsOptions = {}) => {
         targetStaffName: options.targetStaffName,
       }),
     staleTime: 10_000,
+    enabled: options.enabled !== false,
   });
 
   // ── 新規作成 ──────────────────────────────────────────────────────────────

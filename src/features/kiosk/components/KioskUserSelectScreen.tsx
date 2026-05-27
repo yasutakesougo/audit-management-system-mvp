@@ -3,11 +3,12 @@ import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, C
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
-import { useUsers } from '@/features/users/useUsers';
+import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 
 export const KioskUserSelectScreen: React.FC = () => {
   const location = useLocation();
-  const { data: users, isLoading } = useUsers({ selectMode: 'core' });
+  const { data: users, status } = useUsersQuery({ selectMode: 'core' });
+  const isLoading = status === 'loading';
 
   // キオスクモードでは「支援手順対象」または「強度行動障害支援対象」の利用者を表示。
   // IsActive が明示的に false の場合は除外する。

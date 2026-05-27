@@ -49,7 +49,7 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { show } = useToast();
 
-  const { createLog } = useCallLogs();
+  const { createLog } = useCallLogs({ enabled: false });
   const { data: users } = useUsersQuery();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
