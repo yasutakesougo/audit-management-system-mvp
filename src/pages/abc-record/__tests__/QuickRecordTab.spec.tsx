@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import QuickRecordTab, { getInitialOccurredAt } from '../QuickRecordTab';
 import { MemoryRouter } from 'react-router-dom';
@@ -144,5 +144,42 @@ describe('QuickRecordTab Component - ExecutionRecord linkage', () => {
       // 3. コールバックが呼ばれたこと
       expect(mockOnSaved).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('既存 memo がある場合、ABC連携 hook 側では既存 memo を手動連結せず repository merge に任せる', async () => {
+    mockGetRecord.mockResolvedValueOnce({
+      id: '2026-05-22-user-1-1',
+      date: '2026-05-22',
+      userId: 'user-1',
+      scheduleItemId: '1',
+      status: 'completed',
+      triggeredBipIds: [],
+      memo: '既存メモ',
+      recordedBy: '前回記録者',
+      recordedAt: '2026-05-22T09:00:00.000Z',
+    });
+
+    const { result } = renderHook(() => useAbcDailySupportIntegration());
+
+    await result.current.linkExecutionRecord(
+      'user-1',
+      '大声を出した',
+      '静かな部屋へ誘導した',
+      {
+        source: 'daily-support',
+        date: '2026-05-22',
+        slotId: '10:00|朝のバイタルチェック',
+      },
+      'テスト記録者',
+    );
+
+    expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
+    expect(mockUpsertRecord).toHaveBeenCalledWith(expect.objectContaining({
+      date: '2026-05-22',
+      userId: 'user-1',
+      scheduleItemId: '1',
+      memo: '【メモ】[ABC記録] 行動: 大声を出した\n結果: 静かな部屋へ誘導した',
+      recordedBy: 'テスト記録者',
+    }));
   });
 });
