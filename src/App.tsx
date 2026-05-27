@@ -20,8 +20,29 @@ import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 import { RemediationAuditMonitor } from '@/features/sp/health/remediation/RemediationAuditMonitor';
 import { DemoProcedureSeeder } from '@/features/demo/DemoProcedureSeeder';
 
+import { isSharePointThrottleError } from '@/lib/sp';
+
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (isSharePointThrottleError(error)) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+    },
+    mutations: {
+      retry: (failureCount, error) => {
+        if (isSharePointThrottleError(error)) {
+          return false;
+        }
+        return false;
+      },
+    },
+  },
+});
 
 export const ToastNotifierBridge: React.FC = () => {
   const { show } = useToast();

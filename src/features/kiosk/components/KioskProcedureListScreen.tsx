@@ -5,7 +5,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
-import { useUser, useUsers } from '@/features/users/useUsers';
+import { useUser } from '@/features/users/useUsers';
+import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
+import { isSharePointThrottleError } from '@/lib/sp';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { formatDateJapanese } from '@/lib/dateFormat';
@@ -89,19 +91,6 @@ const buildRecordMatchKeys = (record: ExecutionRecord): string[] => {
   return Array.from(keys);
 };
 
-const isSharePointThrottleError = (error: unknown): boolean => {
-  if (!(error instanceof Error)) return false;
-  const message = `${error.name} ${error.message}`.toLowerCase();
-  return (
-    message.includes('spthrottleredirecterror') ||
-    message.includes('throttle.htm') ||
-    message.includes('throttled') ||
-    message.includes('failed to fetch') ||
-    message.includes('networkerror') ||
-    message.includes('cors')
-  );
-};
-
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -113,7 +102,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   const userLookupId = queryUserIdFromSearch || userId || '';
   const numericUserLookupId = Number.isFinite(Number(userLookupId)) ? Number(userLookupId) : undefined;
   const { data: userByNumericId, status: numericUserStatus } = useUser(numericUserLookupId);
-  const { data: users, status: usersStatus } = useUsers({ selectMode: 'core' });
+  const { data: users, status: usersStatus } = useUsersQuery({ selectMode: 'core' });
   const userByCode = React.useMemo(() => {
     const lookup = String(userLookupId).trim();
     if (!lookup) return null;

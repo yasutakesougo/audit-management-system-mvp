@@ -210,11 +210,26 @@ function isLikelyCorsOrRedirectFailure(error: unknown): boolean {
   );
 }
 
-class SpThrottleRedirectError extends Error {
+export class SpThrottleRedirectError extends Error {
   constructor(public readonly responseUrl: string) {
     super('[SharePoint] Throttled: redirected to Throttle.htm. Retry stopped to avoid request storm.');
     this.name = 'SpThrottleRedirectError';
   }
+}
+
+export function isSharePointThrottleError(error: unknown): boolean {
+  if (!error) return false;
+  if (error instanceof SpThrottleRedirectError) return true;
+  if (!(error instanceof Error)) return false;
+  const message = `${error.name} ${error.message}`.toLowerCase();
+  return (
+    message.includes('spthrottleredirecterror') ||
+    message.includes('throttle.htm') ||
+    message.includes('throttled') ||
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('cors')
+  );
 }
 
 let hasWarnedThrottleRedirect = false;
