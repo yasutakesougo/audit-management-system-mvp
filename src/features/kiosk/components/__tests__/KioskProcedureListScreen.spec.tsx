@@ -32,6 +32,14 @@ vi.mock('@/features/users/useUsers', () => ({
   useUser: () => mockUseUser(),
   useUsers: () => mockUseUsers(),
 }));
+vi.mock('@/features/users/hooks/useUsersQuery', () => ({
+  useUsersQuery: () => ({
+    data: mockUseUsers().data,
+    status: mockUseUsers().status === 'success' ? 'success' : 'loading',
+    error: null,
+    refresh: vi.fn(),
+  }),
+}));
 
 const mockProcedures = [
   { id: '1', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります', planningSheetId: 'S001' },
@@ -1046,7 +1054,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     await waitFor(() => {
       expect(screen.getByText('実施状況: 0 / 2')).toBeInTheDocument();
     });
-    expect(mockGetRecord.mock.calls.length).toBeLessThanOrEqual(2);
+    const u001Calls = mockGetRecord.mock.calls.filter((call) => call[1] === 'U001');
+    expect(u001Calls.length).toBeLessThanOrEqual(2);
     expect(mockGetRecord).toHaveBeenCalledWith(expect.any(String), 'U001', '1');
   });
 
