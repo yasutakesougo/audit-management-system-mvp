@@ -277,11 +277,93 @@ describe('SharePointExecutionRecordRepository', () => {
       expect.objectContaining({
         memo: expect.stringContaining('existing memo'),
       }),
+      undefined,
     );
     expect(store.upsertRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         memo: expect.stringContaining('new memo'),
       }),
+      undefined,
+    );
+  });
+
+  it('overwrites an existing memo when upsert requests overwrite mode', async () => {
+    const mockGetFieldsWithMemo = vi.fn().mockResolvedValue(new Set([
+      'Title',
+      'RecordDate',
+      EXECUTION_RECORD_FIELDS.rowKey,
+      EXECUTION_RECORD_FIELDS.status,
+      EXECUTION_RECORD_FIELDS.parentId,
+      EXECUTION_RECORD_FIELDS.userId,
+      EXECUTION_RECORD_FIELDS.rowNo,
+      EXECUTION_RECORD_FIELDS.memo,
+      EXECUTION_RECORD_FIELDS.recordedAt,
+      EXECUTION_RECORD_FIELDS.bipsJSON,
+      'Payload',
+    ]));
+    const store = {
+      getRecords: vi.fn(() => []),
+      upsertRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+    };
+    const repoWithStore = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFieldsWithMemo,
+      store,
+    });
+    const record: ExecutionRecord = {
+      id: '2024-01-01-U001-S001',
+      date: '2024-01-01',
+      userId: 'U001',
+      scheduleItemId: 'S001',
+      status: 'completed',
+      memo: 'new memo',
+      recordedAt: '2024-01-01T10:00:00Z',
+      recordedBy: 'Staff A',
+      triggeredBipIds: [],
+    };
+
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              {
+                Id: 456,
+                Title: '2024-01-01-U001-S001',
+                User_x0020_ID: 'U001',
+                RowNo: 'S001',
+                Status: 'completed',
+                Memo: 'existing memo',
+                Recorded_x0020_At: '2024-01-01T09:00:00Z',
+              },
+            ],
+          }),
+        };
+      }
+      if (url.includes('DailyRecordRows') && url.includes('/items(456)') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({}) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    await repoWithStore.upsertRecord(record, { memoMode: 'overwrite' });
+
+    const updateCall = mockSpFetch.mock.calls.find((call) =>
+      String(call[0]).includes('DailyRecordRows') && String(call[0]).includes('/items(456)'),
+    );
+    expect(updateCall).toBeDefined();
+    const body = JSON.parse(updateCall![1]!.body as string);
+    expect(body[EXECUTION_RECORD_FIELDS.memo]).toBe('new memo');
+    expect(body.Payload).toBe('new memo');
+    expect(store.upsertRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ memo: 'new memo' }),
+      { memoMode: 'overwrite' },
     );
   });
 

@@ -14,6 +14,7 @@ import {
     type DailyUserRecords,
     type ExecutionRecord,
 } from '@/features/daily/domain/executionRecordTypes';
+import type { ExecutionRecordUpsertOptions } from '@/features/daily/domain/ExecutionRecordRepository';
 import {
   normalizeExecutionDate,
   normalizeExecutionUserId,
@@ -140,7 +141,7 @@ export function useExecutionStore() {
 
   /** 記録を追加/更新 (upsert) */
   const upsertRecord = useCallback(
-    (record: ExecutionRecord) => {
+    (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) => {
       const normalizedDate = normalizeExecutionDate(record.date);
       const normalizedUserId = normalizeExecutionUserId(record.userId);
       const normalizedScheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
@@ -156,7 +157,13 @@ export function useExecutionStore() {
 
       // Concurrency Protection: Merge memos if existing record has a different memo.
       let finalMemo = normalizedRecord.memo;
-      if (existing && existing.memo && normalizedRecord.memo && existing.memo !== normalizedRecord.memo) {
+      if (
+        options?.memoMode !== 'overwrite' &&
+        existing &&
+        existing.memo &&
+        normalizedRecord.memo &&
+        existing.memo !== normalizedRecord.memo
+      ) {
         if (!existing.memo.includes(normalizedRecord.memo)) {
           const timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
           const staffName = normalizedRecord.recordedBy || '職員';
@@ -244,4 +251,3 @@ export function useExecutionStore() {
     getRecordsInRange,
   }), [getRecords, getRecord, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]);
 }
-

@@ -72,6 +72,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, [navigate, location.pathname]);
 
+  const handleExitKioskMode = React.useCallback(() => {
+    updateSettings({ layoutMode: 'normal' });
+    if (location.pathname.startsWith('/kiosk')) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [location.pathname, navigate, updateSettings]);
+
   const headerContent = isFullscreenMode ? null : (
     <AppShellHeader
       isDesktop={isDesktop}
@@ -175,7 +182,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {isKioskMode && (
             <>
               <KioskNavigation />
-              <KioskExitFab onExit={() => updateSettings({ layoutMode: 'normal' })} />
+              <KioskExitFab onExit={handleExitKioskMode} />
             </>
           )}
         </div>

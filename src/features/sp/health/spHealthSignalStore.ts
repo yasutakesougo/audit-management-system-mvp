@@ -105,7 +105,7 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
   sp_schema_drift: {
     actionUrl: '/admin/status?highlight=sp_schema_drift',
     actionType: 'internal',
-    actionGuide: '列名に微細な不整合（末尾 host _0 付与等）が検出されました。放置すると 8KB 制限の原因となるため、クリーンアップが必要です。',
+    actionGuide: '列名の差異が検出されました。アプリ側で自動吸収できている場合は、列削除ではなく診断結果と実保存を確認してください。',
   },
   sp_gate_escape_hatch: {
     actionUrl: '/admin/status?highlight=sp_gate_escape_hatch',

@@ -46,6 +46,7 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 }));
 
 const mockGetRecords = vi.fn();
+const mockGetRecord = vi.fn();
 const mockGetStoreRecords = vi.fn();
 const mockGetCurrentExecutionRepositoryKind = vi.fn(() => 'local' as 'local' | 'sharepoint');
 
@@ -57,7 +58,8 @@ vi.mock('@/features/daily/stores/executionStore', () => ({
 
 vi.mock('@/features/daily/hooks/useExecutionData', () => ({
   useExecutionData: () => ({
-    getRecords: mockGetRecords
+    getRecords: mockGetRecords,
+    getRecord: mockGetRecord,
   }),
 }));
 
@@ -109,6 +111,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     mockUsePlanningSheetData.mockReturnValue({ data: null, isLoading: false });
     mockUseCurrentPlanningSheet.mockReturnValue({ currentSheet: null, allCurrentSheets: [], isLoading: false, error: null });
     mockGetRecords.mockResolvedValue([]);
+    mockGetRecord.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -944,6 +947,107 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
       expect(within(firstCard).queryByText('未実施')).toBeNull();
     });
+  });
+
+  it('matches planning-sheet scoped procedure IDs to row-number execution records', async () => {
+    mockGetByUser.mockReturnValue([
+      {
+        id: 'official-sheet-1809-1',
+        time: '9:30頃',
+        activity: '通所・朝の準備',
+        instruction: '送迎担当と引継ぎ',
+      },
+      {
+        id: 'official-sheet-1809-2',
+        time: '10:00頃',
+        activity: '体操',
+        instruction: '見守り',
+      },
+    ]);
+    mockGetRecords.mockResolvedValue([
+      { scheduleItemId: '1', status: 'completed', memo: 'saved row 1' },
+      { scheduleItemId: '2', status: 'completed', memo: 'saved row 2' },
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 2 / 2')).toBeInTheDocument();
+      expect(screen.getAllByText('記録済み')).toHaveLength(2);
+    });
+  });
+
+  it('fills sparse bulk results with procedure-level record lookups', async () => {
+    mockGetByUser.mockReturnValue([
+      {
+        id: 'official-sheet-1809-1',
+        time: '9:30頃',
+        activity: '通所・朝の準備',
+        instruction: '送迎担当と引継ぎ',
+      },
+      {
+        id: 'official-sheet-1809-2',
+        time: '10:00頃',
+        activity: '体操',
+        instruction: '見守り',
+      },
+    ]);
+    mockGetRecords.mockResolvedValue([]);
+    mockGetRecord.mockImplementation(async (_date, _userId, scheduleItemId) => {
+      if (scheduleItemId === '1') {
+        return { scheduleItemId: '1', status: 'completed', memo: 'saved row 1' };
+      }
+      return undefined;
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+      expect(within(firstCard).queryByText('未実施')).toBeNull();
+    });
+  });
+
+  it('stops procedure-level lookups when SharePoint throttle/CORS is detected', async () => {
+    mockGetByUser.mockReturnValue([
+      {
+        id: 'official-sheet-1809-1',
+        time: '9:30頃',
+        activity: '通所・朝の準備',
+        instruction: '送迎担当と引継ぎ',
+      },
+      {
+        id: 'official-sheet-1809-2',
+        time: '10:00頃',
+        activity: '体操',
+        instruction: '見守り',
+      },
+    ]);
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockGetRecords.mockResolvedValue([]);
+    mockGetRecord.mockRejectedValue(new Error('[SharePoint] Throttled: redirected to Throttle.htm.'));
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 0 / 2')).toBeInTheDocument();
+    });
+    expect(mockGetRecord.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(mockGetRecord).toHaveBeenCalledWith(expect.any(String), 'U001', '1');
   });
 
   it('waits for user to load before fetching route and master user ID candidates', async () => {
