@@ -166,7 +166,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
   // 以前の保存記録からステートを復元する（1回限り）
   React.useEffect(() => {
-    if (isLoading || isInitialized) return;
+    const isRecordLoading = isLoading || isUserLoading || !resolvedUserId;
+    if (isRecordLoading || isInitialized) return;
     
     if (record) {
       const parsedMemo = parseKioskProcedureMemo(record.memo);
@@ -177,7 +178,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     }
     
     setIsInitialized(true);
-  }, [record, isLoading, isInitialized]);
+  }, [record, isLoading, isUserLoading, resolvedUserId, isInitialized]);
 
   const serializeMemo = () => {
     return serializeKioskProcedureMemo({
