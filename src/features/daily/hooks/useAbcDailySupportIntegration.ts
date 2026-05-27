@@ -45,9 +45,6 @@ export function useAbcDailySupportIntegration() {
     const existing = await executionRepo.getRecord(date, userId, scheduleItemId);
 
     const abcMemo = `【メモ】[ABC記録] 行動: ${behavior.trim()}\n結果: ${consequence.trim()}`;
-    const newMemo = existing?.memo
-      ? `${existing.memo}\n${abcMemo}`
-      : abcMemo;
 
     const nextRecord = {
       id: makeRecordId(date, userId, scheduleItemId),
@@ -56,7 +53,7 @@ export function useAbcDailySupportIntegration() {
       scheduleItemId,
       status: 'completed' as const,
       triggeredBipIds: existing?.triggeredBipIds || [],
-      memo: newMemo,
+      memo: abcMemo,
       recordedBy: recorderName || existing?.recordedBy || '',
       recordedAt: new Date().toISOString(),
     };
