@@ -88,6 +88,57 @@ describe('executionStore', () => {
     expect(records[0].memo).toBe('パニック発生');
   });
 
+  it('merges different memo text by default for existing records', () => {
+    const { result } = renderHook(() => useExecutionStore());
+    const record = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-0900'),
+      status: 'completed' as const,
+      memo: '既存メモ',
+      recordedBy: 'Staff A',
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+
+    act(() => {
+      result.current.upsertRecord(record);
+    });
+    act(() => {
+      result.current.upsertRecord({
+        ...record,
+        memo: '修正メモ',
+        recordedAt: '2025-04-01T10:05:00Z',
+      });
+    });
+
+    const records = result.current.getRecords('2025-04-01', 'I001');
+    expect(records[0].memo).toContain('既存メモ');
+    expect(records[0].memo).toContain('修正メモ');
+  });
+
+  it('overwrites memo text when requested for existing records', () => {
+    const { result } = renderHook(() => useExecutionStore());
+    const record = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-0900'),
+      status: 'completed' as const,
+      memo: '既存メモ',
+      recordedBy: 'Staff A',
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+
+    act(() => {
+      result.current.upsertRecord(record);
+    });
+    act(() => {
+      result.current.upsertRecord({
+        ...record,
+        memo: '修正メモ',
+        recordedAt: '2025-04-01T10:05:00Z',
+      }, { memoMode: 'overwrite' });
+    });
+
+    const records = result.current.getRecords('2025-04-01', 'I001');
+    expect(records[0].memo).toBe('修正メモ');
+  });
+
   // -----------------------------------------------------------------------
   // getRecord (single)
   // -----------------------------------------------------------------------

@@ -107,7 +107,7 @@ export function useExecutionRecord(
         recordedAt: new Date().toISOString(),
       };
       setRecord(next);
-      await upsertRecordRef.current(next);
+      await upsertRecordRef.current(next, { memoMode: 'overwrite' });
     },
     [record],
   );
@@ -127,7 +127,7 @@ export function useExecutionRecord(
         recordedAt: new Date().toISOString(),
       };
       setRecord(next);
-      await upsertRecordRef.current(next);
+      await upsertRecordRef.current(next, { memoMode: 'overwrite' });
     },
     [record, resolveMutationTarget],
   );

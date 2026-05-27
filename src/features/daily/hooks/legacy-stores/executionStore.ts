@@ -14,6 +14,7 @@ import {
     type DailyUserRecords,
     type ExecutionRecord,
 } from '@/features/daily/domain/legacy/executionRecordTypes';
+import type { ExecutionRecordUpsertOptions } from '@/features/daily/domain/legacy/ExecutionRecordRepository';
 
 // ---------------------------------------------------------------------------
 // localStorage persistence
@@ -120,7 +121,7 @@ export function useExecutionStore() {
 
   /** 記録を追加/更新 (upsert) */
   const upsertRecord = useCallback(
-    (record: ExecutionRecord) => {
+    (record: ExecutionRecord, _options?: ExecutionRecordUpsertOptions) => {
       const existing = getRecords(record.date, record.userId);
       const index = existing.findIndex((r) => r.scheduleItemId === record.scheduleItemId);
 

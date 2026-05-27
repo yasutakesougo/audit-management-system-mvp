@@ -73,6 +73,7 @@ describe('useExecutionRecord', () => {
         scheduleItemId: legacyRecord.scheduleItemId,
         memo: 'new memo',
       }),
+      { memoMode: 'overwrite' },
     );
   });
 

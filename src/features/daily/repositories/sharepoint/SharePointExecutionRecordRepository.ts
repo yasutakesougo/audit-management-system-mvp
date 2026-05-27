@@ -1,6 +1,6 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import type { ExecutionRecord, RecordStatus } from '../../domain/legacy/executionRecordTypes';
-import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRecordRepository';
+import type { ExecutionRecordRepository, ExecutionRecordUpsertOptions } from '../../domain/legacy/ExecutionRecordRepository';
 import { 
   getListTitle, 
   getRowsListTitle, 
@@ -23,7 +23,7 @@ type SharePointExecutionRecordRepositoryOptions = {
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
   store?: {
     getRecords: (date: string, userId: string) => ExecutionRecord[];
-    upsertRecord: (record: ExecutionRecord) => void;
+    upsertRecord: (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) => void;
     deleteRecord?: (date: string, userId: string, scheduleItemId: string) => void;
   };
 };
@@ -358,7 +358,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     ))?.record;
   }
 
-  async upsertRecord(record: ExecutionRecord): Promise<void> {
+  async upsertRecord(record: ExecutionRecord, options?: ExecutionRecordUpsertOptions): Promise<void> {
     const normalizedDate = normalizeExecutionDate(record.date);
     const normalizedUserId = normalizeExecutionUserId(record.userId);
     const normalizedScheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
@@ -387,7 +387,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     // Concurrency Protection: Merge memos if existing record has a different memo.
     let finalMemo = normalizedRecord.memo;
-    if (existing && existing.memo && normalizedRecord.memo && existing.memo !== normalizedRecord.memo) {
+    if (
+      options?.memoMode !== 'overwrite' &&
+      existing &&
+      existing.memo &&
+      normalizedRecord.memo &&
+      existing.memo !== normalizedRecord.memo
+    ) {
       if (!existing.memo.includes(normalizedRecord.memo)) {
         const timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
         const staffName = normalizedRecord.recordedBy || '職員';
@@ -463,7 +469,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     // Sync to local store
     if (this.store) {
-      this.store.upsertRecord(mergedRecord);
+      this.store.upsertRecord(mergedRecord, options);
     }
   }
 

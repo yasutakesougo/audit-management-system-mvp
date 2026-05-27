@@ -20,7 +20,7 @@ import {
     readBool,
     readOptionalEnv,
 } from '@/lib/env';
-import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRecordRepository';
+import type { ExecutionRecordRepository, ExecutionRecordUpsertOptions } from '../../domain/legacy/ExecutionRecordRepository';
 import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
 import { SharePointExecutionRecordRepository } from './SharePointExecutionRecordRepository';
 import type { SpFetchFn } from '@/lib/sp/spLists';
@@ -114,7 +114,7 @@ const resolveKind = (forced?: ExecutionRepositoryKind): ExecutionRepositoryKind 
 export type ExecutionStoreHooks = {
   getRecords: (date: string, userId: string) => ExecutionRecord[];
   getRecord: (date: string, userId: string, scheduleItemId: string) => ExecutionRecord | undefined;
-  upsertRecord: (record: ExecutionRecord) => void;
+  upsertRecord: (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) => void;
   deleteRecord: (date: string, userId: string, scheduleItemId: string) => void;
   getCompletionRate: (
     date: string,
@@ -144,13 +144,13 @@ function createLocalStorageExecutionAdapter(
         normalizeExecutionUserId(userId),
         normalizeScheduleItemId(scheduleItemId),
       ),
-    upsertRecord: async (record: ExecutionRecord) =>
+    upsertRecord: async (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) =>
       store.upsertRecord({
         ...record,
         date: normalizeExecutionDate(record.date),
         userId: normalizeExecutionUserId(record.userId),
         scheduleItemId: normalizeScheduleItemId(record.scheduleItemId),
-      }),
+      }, options),
     deleteRecord: async (date: string, userId: string, scheduleItemId: string) =>
       store.deleteRecord(
         normalizeExecutionDate(date),
@@ -173,8 +173,8 @@ function createSharePointExecutionAdapter(
       repository.getRecords(date, userId),
     getRecord: async (date: string, userId: string, scheduleItemId: string) =>
       repository.getRecord(date, userId, scheduleItemId),
-    upsertRecord: async (record: ExecutionRecord) =>
-      repository.upsertRecord(record),
+    upsertRecord: async (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) =>
+      repository.upsertRecord(record, options),
     deleteRecord: async (date: string, userId: string, scheduleItemId: string) =>
       repository.deleteRecord(date, userId, scheduleItemId),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>

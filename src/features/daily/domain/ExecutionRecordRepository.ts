@@ -20,6 +20,14 @@
  */
 import type { ExecutionRecord } from './executionRecordTypes';
 
+export type ExecutionRecordUpsertOptions = {
+  /**
+   * - merge: keep existing memo text and append a different incoming memo.
+   * - overwrite: replace the memo with the incoming value.
+   */
+  memoMode?: 'merge' | 'overwrite';
+};
+
 export interface ExecutionRecordRepository {
   /**
    * Get all execution records for a given date × user.
@@ -38,7 +46,7 @@ export interface ExecutionRecordRepository {
    * If a record with the same (date, userId, scheduleItemId) exists, it is replaced.
    * Otherwise a new record is appended.
    */
-  upsertRecord(record: ExecutionRecord): Promise<void>;
+  upsertRecord(record: ExecutionRecord, options?: ExecutionRecordUpsertOptions): Promise<void>;
 
   /**
    * Calculate completion rate for a date × user.
@@ -69,4 +77,3 @@ export interface ExecutionRecordRepository {
    */
   deleteRecord(date: string, userId: string, scheduleItemId: string): Promise<void>;
 }
-
