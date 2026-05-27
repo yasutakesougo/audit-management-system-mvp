@@ -865,6 +865,70 @@ describe('SharePointExecutionRecordRepository', () => {
 
     });
 
+    it('handles SP Lookup objects in userId and rowNo fields without [object Object] corruption', () => {
+      const mockItem = {
+        Title: '2026-05-08-4-1',
+        User_x0020_ID: { Title: '4', Id: 4 },   // SP Lookup型
+        RowNo: { Title: '1', Id: 1 },             // SP Lookup型
+        Status: 'completed',
+        Memo: 'SP Lookup test',
+        Recorded_x0020_At: '2026-05-08T12:00:00Z',
+      };
+
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      expect(mapped.userId).toBe('4');
+      expect(mapped.scheduleItemId).toBe('1');
+      expect(mapped.date).toBe('2026-05-08');
+      expect(mapped.status).toBe('completed');
+      // Ensure no [object Object] contamination
+      expect(mapped.userId).not.toContain('[object');
+      expect(mapped.scheduleItemId).not.toContain('[object');
+    });
+
+    it('handles SP Person object in userId field', () => {
+      const mockItem = {
+        Title: '2026-05-10-U004-3',
+        User_x0020_ID: { Title: 'U004', EMail: 'u004@example.com', Id: 4 },
+        RowNo: '3',
+        Status: 'completed',
+        Recorded_x0020_At: '2026-05-10T09:00:00Z',
+      };
+
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (repo as any).mapToDomain(mockItem, rf);
+      expect(mapped.userId).toBe('U004');
+      expect(mapped.scheduleItemId).toBe('3');
+    });
+
   });
 
   describe('Strict Field Filtering Regressions', () => {
