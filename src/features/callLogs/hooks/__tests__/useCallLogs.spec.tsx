@@ -173,4 +173,18 @@ describe('useCallLogs', () => {
     expect(typeof result.current.updateStatus.mutate).toBe('function');
     expect(typeof result.current.updateStatus.mutateAsync).toBe('function');
   });
+
+  it('should not fetch logs when enabled option is false', async () => {
+    const wrapper = makeWrapper(qc);
+    const { result } = renderHook(() => useCallLogs({ enabled: false }), { wrapper });
+
+    // enabled: false なので、初期状態からクエリは pending ではなく、かつ data (logs) は undefined のままとなる
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.logs).toBeUndefined();
+    expect(result.current.error).toBeNull();
+
+    // それでも createLog や updateStatus の mutation 関数は引き続き利用可能であること
+    expect(typeof result.current.createLog.mutate).toBe('function');
+    expect(typeof result.current.updateStatus.mutate).toBe('function');
+  });
 });

@@ -47,9 +47,6 @@ export const SpInitBridge: React.FC = () => {
       // 🩺 Bypass heavy list provisioning on Kiosk routes to prevent 429 throttling
       const isKiosk = typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
       if (isKiosk) {
-        await loadHolidaysFromSharePoint(sp).catch((err) => {
-          console.warn('[SpInitBridge] Holiday load failed (non-fatal):', err);
-        });
         return;
       }
 

@@ -171,15 +171,17 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean; onlyDialogs?: boole
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          <HandoffQuickNoteCard />
+          {quickNoteOpen && <HandoffQuickNoteCard />}
         </DialogContent>
       </Dialog>
 
       {/* 受電ログ クイック Drawer（CallLogPage と同一 Drawer を FooterQuickActions でも共有） */}
-      <CallLogQuickDrawer
-        open={callLogOpen}
-        onClose={() => setCallLogOpen(false)}
-      />
+      {callLogOpen && (
+        <CallLogQuickDrawer
+          open={callLogOpen}
+          onClose={() => setCallLogOpen(false)}
+        />
+      )}
     </Box>
   );
 };

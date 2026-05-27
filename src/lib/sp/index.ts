@@ -38,7 +38,7 @@ export { createListOperations } from './spLists';
 export type { NormalizePathFn, SpFetchFn, SpListOperations } from './spLists';
 
 // Fetch (HTTP fetch + retry + mock)
-export { createNormalizePath, createSpFetch } from './spFetch';
+export { createNormalizePath, createSpFetch, SpThrottleRedirectError, isSharePointThrottleError } from './spFetch';
 export type { SpFetchDeps } from './spFetch';
 
 // Batch POST (retry-aware)
