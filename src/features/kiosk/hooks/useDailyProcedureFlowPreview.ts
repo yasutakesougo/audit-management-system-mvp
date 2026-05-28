@@ -72,7 +72,7 @@ export function useDailyProcedureFlowPreview(
     [userId]
   );
   
-  const { getRecords: getStoreRecords } = useExecutionStore();
+  const { store, getRecords: getStoreRecords } = useExecutionStore();
   const storeRecords = useMemo(() => {
     const deduped = new Map<string, ExecutionRecord>();
     for (const candidateUserId of executionUserIdCandidates) {
@@ -84,17 +84,36 @@ export function useDailyProcedureFlowPreview(
     return Array.from(deduped.values());
   }, [executionUserIdCandidates, getStoreRecords, recordDate]);
 
+  // Identify which candidate user IDs have their records loaded or synced in the Zustand store.
+  // If a key exists in store, the store is the authoritative single source of truth for that user/date.
+  const storeKeysFetched = useMemo(() => {
+    const keys = new Set<string>();
+    for (const candidateUserId of executionUserIdCandidates) {
+      const key = `${recordDate}::${candidateUserId}`;
+      if (store && store[key]) {
+        keys.add(candidateUserId);
+      }
+    }
+    return keys;
+  }, [executionUserIdCandidates, recordDate, store]);
+
   // Merge server records and Zustand store records to allow instant reactive updates
+  // If a user/date combination is initialized in the Zustand store, we ignore rawRecords
+  // for that user ID to ensure deletions are correctly reflected (instead of stale server records reviving).
   const mergedRecords = useMemo(() => {
     const deduped = new Map<string, ExecutionRecord>();
     const addRecord = (r: ExecutionRecord) => {
       const key = `${r.date}|${r.userId}|${r.scheduleItemId}`;
       deduped.set(key, r);
     };
-    rawRecords.forEach(addRecord);
+    rawRecords.forEach(r => {
+      if (!storeKeysFetched.has(r.userId)) {
+        addRecord(r);
+      }
+    });
     storeRecords.forEach(addRecord);
     return Array.from(deduped.values());
-  }, [rawRecords, storeRecords]);
+  }, [rawRecords, storeRecords, storeKeysFetched]);
 
   // Merge slots and actual execution records to build daily flow sequence
   const steps = useMemo(() => {

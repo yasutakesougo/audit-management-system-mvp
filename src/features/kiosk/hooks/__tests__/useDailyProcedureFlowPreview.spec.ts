@@ -46,6 +46,7 @@ describe('useDailyProcedureFlowPreview', () => {
     } as any);
 
     vi.mocked(useExecutionStore).mockReturnValue({
+      store: {},
       getRecords: mockGetStoreRecords.mockReturnValue([]),
     } as any);
   });
@@ -155,5 +156,42 @@ describe('useDailyProcedureFlowPreview', () => {
       status: 'completed',
       memo: 'Optimistic completed',
     }));
+  });
+
+  it('correctly handles deletion by hiding stale repository records when the store contains empty records for that user/date', async () => {
+    const mockSlots = [
+      { id: '1', rowNo: 1, time: '09:30', activity: 'Morning Assembly', block: 'morning' },
+    ];
+    const mockRepositoryRecords = [
+      { scheduleItemId: '1', status: 'completed', memo: 'Old completed', date: '2026-05-11', userId: 'U001' },
+    ];
+    const mockStoreRecords: any[] = [];
+
+    mockGetByUser.mockReturnValue(mockSlots);
+    mockGetRecords.mockResolvedValue(mockRepositoryRecords);
+    mockGetStoreRecords.mockReturnValue(mockStoreRecords);
+
+    // Mock store to have key populated, indicating the store is authoritative for this user/date
+    vi.mocked(useExecutionStore).mockReturnValue({
+      store: {
+        '2026-05-11::U001': {
+          date: '2026-05-11',
+          userId: 'U001',
+          records: [],
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      getRecords: mockGetStoreRecords,
+    } as any);
+
+    const { result } = renderHook(() => useDailyProcedureFlowPreview('U001', '2026-05-11'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.steps).toHaveLength(1);
+    // The stale repository record should be hidden because the store is the authoritative source of truth and shows no records
+    expect(result.current.steps[0].record).toBeUndefined();
   });
 });

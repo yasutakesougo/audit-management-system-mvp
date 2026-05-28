@@ -243,11 +243,12 @@ export function useExecutionStore() {
   );
 
   return useMemo(() => ({
+    store: snapshot,
     getRecords,
     getRecord,
     upsertRecord,
     deleteRecord,
     getCompletionRate,
     getRecordsInRange,
-  }), [getRecords, getRecord, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]);
+  }), [snapshot, getRecords, getRecord, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]);
 }
