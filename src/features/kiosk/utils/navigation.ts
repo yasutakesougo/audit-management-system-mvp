@@ -21,8 +21,28 @@ export const mergeKioskSearchParams = (currentSearch: string, extraParams: Recor
 
 /**
  * Appends current search parameters to a base path.
+ * Merges existing query parameters but clears specific user/slot state when navigating internally within kiosk.
  */
 export const appendKioskSearchParams = (path: string, currentSearch: string, extraParams: Record<string, string> = {}): string => {
-  const search = mergeKioskSearchParams(currentSearch, extraParams);
-  return `${path}${search}`;
+  const params = new URLSearchParams(currentSearch);
+  
+  // キオスクモード内での画面遷移時、以前の特定利用者のIDやスロット情報がクエリパラメータに
+  // 残留し、他の利用者の画面への遷移がロックされてしまうバグを防ぐため自動的にクレンジングする。
+  if (path.startsWith('/kiosk')) {
+    params.delete('userId');
+    params.delete('user');
+    params.delete('slotId');
+    params.delete('step');
+  }
+
+  Object.entries(extraParams).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      params.delete(key);
+    } else {
+      params.set(key, value);
+    }
+  });
+
+  const search = params.toString();
+  return `${path}${search ? `?${search}` : ''}`;
 };
