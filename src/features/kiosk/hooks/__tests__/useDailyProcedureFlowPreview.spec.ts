@@ -27,6 +27,7 @@ describe('useDailyProcedureFlowPreview', () => {
   const mockGetRecords = vi.fn();
   const mockGetByUser = vi.fn();
   const mockGetStoreRecords = vi.fn();
+  const mockHasInitializedRecords = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,6 +48,7 @@ describe('useDailyProcedureFlowPreview', () => {
 
     vi.mocked(useExecutionStore).mockReturnValue({
       getRecords: mockGetStoreRecords.mockReturnValue([]),
+      hasInitializedRecords: mockHasInitializedRecords.mockReturnValue(false),
     } as any);
   });
 
@@ -155,5 +157,28 @@ describe('useDailyProcedureFlowPreview', () => {
       status: 'completed',
       memo: 'Optimistic completed',
     }));
+  });
+
+  it('does not revive stale repository records after the store initialized an empty user/date', async () => {
+    const mockSlots = [
+      { id: '1', rowNo: 1, time: '09:30', activity: 'Morning Assembly', block: 'morning' },
+    ];
+    const mockRepositoryRecords = [
+      { scheduleItemId: '1', status: 'completed', memo: 'Deleted on client', date: '2026-05-11', userId: 'U001' },
+    ];
+
+    mockGetByUser.mockReturnValue(mockSlots);
+    mockGetRecords.mockResolvedValue(mockRepositoryRecords);
+    mockGetStoreRecords.mockReturnValue([]);
+    mockHasInitializedRecords.mockReturnValue(true);
+
+    const { result } = renderHook(() => useDailyProcedureFlowPreview('U001', '2026-05-11'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.steps).toHaveLength(1);
+    expect(result.current.steps[0].record).toBeUndefined();
   });
 });
