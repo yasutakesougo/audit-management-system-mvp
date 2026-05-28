@@ -8,6 +8,8 @@ import { type RecordStatus, makeRecordId, type ExecutionRecord } from '../domain
 import { useExecutionData } from './useExecutionData';
 import { normalizeScheduleItemId } from '../utils/normalizeScheduleItemId';
 
+const EMPTY_IDS: string[] = [];
+
 export function useExecutionRecord(
   date: string,
   userId: string,
@@ -18,23 +20,36 @@ export function useExecutionRecord(
   const { getRecord, upsertRecord, deleteRecord } = useExecutionData();
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const getRecordRef = useRef(getRecord);
   const upsertRecordRef = useRef(upsertRecord);
+  const deleteRecordRef = useRef(deleteRecord);
+  const requestSeqRef = useRef(0);
 
   useEffect(() => {
     getRecordRef.current = getRecord;
     upsertRecordRef.current = upsertRecord;
-  }, [getRecord, upsertRecord]);
+    deleteRecordRef.current = deleteRecord;
+  }, [getRecord, upsertRecord, deleteRecord]);
+
+  const fallbackScheduleKey = (fallbackScheduleItemIds ?? EMPTY_IDS).join('\u0000');
+  const fallbackUserKey = (fallbackUserIds ?? EMPTY_IDS).join('\u0000');
 
   const fetchRecord = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
     setIsLoading(true);
+    setError(null);
+
+    const fallbackUserIdsParsed = fallbackUserKey ? fallbackUserKey.split('\u0000') : EMPTY_IDS;
     const userIds = Array.from(
-      new Set([userId, ...(fallbackUserIds ?? [])].map((value) => String(value ?? '').trim()).filter(Boolean)),
+      new Set([userId, ...fallbackUserIdsParsed].map((value) => String(value ?? '').trim()).filter(Boolean)),
     );
+
+    const fallbackScheduleIdsParsed = fallbackScheduleKey ? fallbackScheduleKey.split('\u0000') : EMPTY_IDS;
     const scheduleItemIds = Array.from(
       new Set(
-        [scheduleItemId, ...(fallbackScheduleItemIds ?? [])]
+        [scheduleItemId, ...fallbackScheduleIdsParsed]
           .map((value) => normalizeScheduleItemId(value))
           .filter(Boolean),
       ),
@@ -46,21 +61,31 @@ export function useExecutionRecord(
       return;
     }
 
-    let resolved: ExecutionRecord | undefined;
-    for (const candidateUserId of userIds) {
-      for (const candidateScheduleItemId of scheduleItemIds) {
-        const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
-        if (candidateRecord) {
-          resolved = candidateRecord;
-          break;
+    try {
+      let resolved: ExecutionRecord | undefined;
+      for (const candidateUserId of userIds) {
+        for (const candidateScheduleItemId of scheduleItemIds) {
+          const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
+          if (seq !== requestSeqRef.current) return;
+          if (candidateRecord) {
+            resolved = candidateRecord;
+            break;
+          }
         }
+        if (resolved) break;
       }
-      if (resolved) break;
-    }
 
-    setRecord(resolved);
-    setIsLoading(false);
-  }, [date, userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds]);
+      if (seq === requestSeqRef.current) {
+        setRecord(resolved);
+        setIsLoading(false);
+      }
+    } catch (err) {
+      if (seq === requestSeqRef.current) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch execution record'));
+        setIsLoading(false);
+      }
+    }
+  }, [date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
 
   useEffect(() => {
     void fetchRecord();
@@ -134,9 +159,9 @@ export function useExecutionRecord(
 
   const deleteRecordFn = useCallback(async () => {
     const target = resolveMutationTarget();
-    await deleteRecord(target.date, target.userId, target.scheduleItemId);
+    await deleteRecordRef.current(target.date, target.userId, target.scheduleItemId);
     setRecord(undefined);
-  }, [deleteRecord, resolveMutationTarget]);
+  }, [resolveMutationTarget]);
 
-  return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, refresh: fetchRecord } as const;
+  return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, error, refresh: fetchRecord } as const;
 }
