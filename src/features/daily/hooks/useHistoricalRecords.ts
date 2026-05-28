@@ -1,31 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useExecutionData } from './useExecutionData';
 import type { ExecutionRecord } from '../domain/legacy/executionRecordTypes';
 import { normalizeScheduleItemId } from '../utils/normalizeScheduleItemId';
 import { buildExecutionUserIdCandidates } from '../utils/normalizeExecutionLookup';
 
+const EMPTY_IDS: readonly string[] = [];
+
 export function useHistoricalRecords(
   userId: string,
   scheduleItemId: string,
-  fallbackScheduleItemIds: string[] = [],
-  fallbackUserIds: string[] = [],
+  fallbackScheduleItemIds: readonly string[] = EMPTY_IDS,
+  fallbackUserIds: readonly string[] = EMPTY_IDS,
 ) {
   const { getHistoricalRecords, getRecordsInRange } = useExecutionData();
+
+  // 最新の関数の参照を useRef に格納
+  const getHistoricalRecordsRef = useRef(getHistoricalRecords);
+  const getRecordsInRangeRef = useRef(getRecordsInRange);
+  const requestSeqRef = useRef(0);
+
+  useEffect(() => {
+    getHistoricalRecordsRef.current = getHistoricalRecords;
+    getRecordsInRangeRef.current = getRecordsInRange;
+  }, [getHistoricalRecords, getRecordsInRange]);
 
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // 配列の参照揺れを防ぐため文字列キー化
+  const fallbackScheduleKey = fallbackScheduleItemIds.join('\u0000');
+  const fallbackUserKey = fallbackUserIds.join('\u0000');
+
   const fetchHistory = useCallback(async () => {
-    if (!userId || !scheduleItemId) return;
-    
+    const requestSeq = ++requestSeqRef.current;
+
+    if (!userId || !scheduleItemId) {
+      setRecords([]);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const userCandidates = buildExecutionUserIdCandidates(userId, ...fallbackUserIds);
+      const fallbackScheduleIds = fallbackScheduleKey
+        ? fallbackScheduleKey.split('\u0000')
+        : [];
+
+      const fallbackUsers = fallbackUserKey
+        ? fallbackUserKey.split('\u0000')
+        : [];
+
+      const userCandidates = buildExecutionUserIdCandidates(userId, ...fallbackUsers);
 
       const primaryId = normalizeScheduleItemId(scheduleItemId);
-      const fallbackIds = fallbackScheduleItemIds
+      const fallbackIds = fallbackScheduleIds
         .map((id) => normalizeScheduleItemId(id))
         .filter((id) => Boolean(id) && id !== primaryId);
       const scheduleCandidates = [primaryId, ...fallbackIds];
@@ -60,7 +91,7 @@ export function useHistoricalRecords(
       let history: ExecutionRecord[] = [];
       for (const candidateUserId of userCandidates) {
         for (const candidateScheduleId of scheduleCandidates) {
-          const result = await getHistoricalRecords(candidateUserId, candidateScheduleId, 150);
+          const result = await getHistoricalRecordsRef.current(candidateUserId, candidateScheduleId, 150);
           merge(result);
         }
       }
@@ -86,7 +117,7 @@ export function useHistoricalRecords(
       };
 
       for (const candidateUserId of userCandidates) {
-        const rangeRecords = await getRecordsInRange(candidateUserId, fromStr, toStr);
+        const rangeRecords = await getRecordsInRangeRef.current(candidateUserId, fromStr, toStr);
         const matched = rangeRecords
           .filter((record) => isScheduleMatch(record.scheduleItemId))
           .sort((a, b) => (b.recordedAt || b.id).localeCompare(a.recordedAt || a.id));
@@ -97,14 +128,19 @@ export function useHistoricalRecords(
       history = Array.from(byId.values())
         .sort((a, b) => (b.recordedAt || b.id).localeCompare(a.recordedAt || a.id))
         .slice(0, 150);
+
+      if (requestSeq !== requestSeqRef.current) return;
       setRecords(history);
     } catch (err) {
+      if (requestSeq !== requestSeqRef.current) return;
       console.error('[useHistoricalRecords] Failed to fetch history:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch history'));
     } finally {
-      setIsLoading(false);
+      if (requestSeq === requestSeqRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds, getHistoricalRecords, getRecordsInRange]);
+  }, [userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
 
   useEffect(() => {
     void fetchHistory();
