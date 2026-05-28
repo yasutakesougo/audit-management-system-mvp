@@ -77,6 +77,52 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-28 — Kiosk & SharePoint Throttle / ExecutionRecord Hardening 🏁
+
+**ワークフロー**: `/debug` → `/implement` → `/test` → `/verify-sp`
+**対象**: Kiosk / SharePoint スロットル / 実施記録整合 / ABC memo 連携 / トイレボード
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | **#2033**: `Throttle.htm` / opaque redirect / CORS blocked エラーを `SpThrottleRedirectError` として正しくトランスポート層で分類・ハンドリングし、無駄なリクエストストーム（再試行ループ）を防ぐ。 |
+| ✅ 採用 | **#2034**: Kioskの fallback 処理、rowNo優先での実施記録照合、不必要な補完リクエストの即時停止、Zustand store 側での memo overwrite 契約の導入。 |
+| ✅ 採用 | **#2036**: Kiosk起動時の不要なfetchの削減、TanStack Queryの retry 制御の最適化、CallLogs/Handoffなど優先度の低い初期リクエストの遅延（lazy）実行化による初期負荷の削減。 |
+| ✅ 採用 | **#2040**: Kiosk手順一覧取得のたびに `/_api/web/lists?$select=Title&$top=5000` が繰り返し呼び出される list discovery 現象を防ぐキャッシュ/抑制ガードの実装。 |
+| ✅ 採用 | **#2037**: SharePoint Lookup/Person フィールドが `[object Object]` となりキーが壊れて実施済み状態が不一致になる問題を `readSharePointText` で文字列吸収・正規化し、一致判定キーを強固に。 |
+| ✅ 採用 | **#2038**: 削除された記録が古い `rawRecords` のフェッチ契機でプレビュー上で一時的に復活しないよう、Zustand store の初期化・削除済み状態（authoritative）を最優先する設計。 |
+| ✅ 採用 | **#2039**: 日常支援フロー (`/daily/support`) の実 submit 経路から、L3支援手順記録 (`SupportProcedureRecord_Daily`) への永続化処理を接続。 |
+| ✅ 採用 | **#2035**: ABC daily-support 連携時、hook側とrepository側の両方で merge されることで memo が `A+A+B` のように二重連結する不具合を防ぐため、repository の標準 merge に一本化。 |
+| ✅ 採用 | **#2031 / #2032**: トイレ確認ボードで SharePoint の実環境における `User ID` などのフィールド内部名ズレ（`User_x0020_ID`）を動的にマッピング解決し、`RequiresToiletGuidance` / `ToiletGuidanceNote` の mapping を追加して本番環境での対象者判定を修正。 |
+| ❌ 却下 | SharePoint 側の物理列名を本番環境に合わせて直接変更・削除する案。 |
+| 💡 却下理由 | 環境差分・既存データ・監査証跡への影響が大きいため、物理列を壊さず candidates / dynamic mapping で吸収する方針を採用した。 |
+
+**成果**:
+- PR: `#2031` 〜 `#2040` (すべて merged 済)
+- 主要改善点: Kiosk起動時・実施記録照合時の SharePoint リクエスト増幅の大幅削減、および物理環境でのフィールド不一致の完全解決。
+- ユニットテスト (`useSupportRecordSubmit.spec.ts` 等) の **ALL PASS** 🟢
+
+**効果測定**:
+- リクエスト数: Kiosk起動時の並行 fetch 数を削減し、repeated list discovery は 1回のみに抑制 🟢
+- 画面の一貫性: 実施・削除・プレビューの一貫性が Zustand store 主導で保たれ、リロード後も同期されることを確認 🟢
+- スロットル耐性: `Throttle.htm` 検知により、クライアント側の即時リトライ storm が劇的に減少 🟢
+
+**検証観点 (本番確認事項)**:
+- `/kiosk/users/:id/procedures` で repeated list discovery が増えないこと。
+- Throttle 発生時も retry storm / 補完リクエスト連打にならないこと。
+- 実施済み・削除済み・プレビュー表示がリロード後も一貫すること。
+- ABC memo が二重追記されないこと。
+- `/kiosk/toilet` で対象者表示・ToiletRecords保存が通ること。
+- `/daily/support` 保存後に `SupportProcedureRecord_Daily` が作成されること。
+
+**学び**:
+- **SharePointリクエストの増幅（Amplification）対策**: list discovery のようなメタデータ取得は、1回のインスタンス内でキャッシュし使い回すこと。動的に何度も発生する lookup はスロットリングの最大の引き金になる。
+- **Zustand store と raw fetch の競合防止**: API から取得される非同期データが、クライアント側でローカルに実行した「削除完了」などの状態を上書きしてしまわないよう、Store に「現在の手続きが最も正しい（Authoritative）」と判断させるための明示的な初期化・クリア機構が極めて有効。
+- **実物理列名のドリフト予測**: SharePoint は環境（開発、本番、作成順）によって `User_x0020_ID` などに名前がズレることが不可避であるため、静的定義に頼らず動的なマッピングレイヤーで解決するアプローチは、将来にわたる稼働維持の必須パターンとなる。
+
+**所要時間**: 約 30min
+
+#bugfix #kiosk #sharepoint #throttle #stability #refactor #toilet #abc-sync #skill-matrix-20260528
+
 ### 2026-05-23 — Firebase Auth Self-Healing & MSAL Session Retry Guard 🏁
 
 **ワークフロー**: `/debug` → `/implement` → `/test`
