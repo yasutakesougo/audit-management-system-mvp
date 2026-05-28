@@ -106,6 +106,23 @@ export function __resetStore() {
 export function useExecutionStore() {
   const snapshot = useExecutionStoreBase((s) => s.store);
 
+  /** 日付×ユーザーの記録集合が store 側で確定済みかを判定 */
+  const hasInitializedRecords = useCallback(
+    (date: string, userId: string): boolean => {
+      const normalizedDate = normalizeExecutionDate(date);
+      const normalizedUserId = normalizeExecutionUserId(userId);
+      const key = makeDailyUserKey(normalizedDate, normalizedUserId);
+      if (snapshot[key]) return true;
+
+      // Legacy fallback: scan keys and compare normalized date/userId
+      return Object.values(snapshot).some((daily) => (
+        normalizeExecutionDate(daily.date) === normalizedDate &&
+        normalizeExecutionUserId(daily.userId) === normalizedUserId
+      ));
+    },
+    [snapshot],
+  );
+
   /** 日付×ユーザーの全記録を取得 */
   const getRecords = useCallback(
     (date: string, userId: string): ExecutionRecord[] => {
@@ -245,9 +262,10 @@ export function useExecutionStore() {
   return useMemo(() => ({
     getRecords,
     getRecord,
+    hasInitializedRecords,
     upsertRecord,
     deleteRecord,
     getCompletionRate,
     getRecordsInRange,
-  }), [getRecords, getRecord, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]);
+  }), [getRecords, getRecord, hasInitializedRecords, upsertRecord, deleteRecord, getCompletionRate, getRecordsInRange]);
 }
