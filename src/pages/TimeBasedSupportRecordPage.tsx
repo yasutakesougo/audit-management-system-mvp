@@ -143,6 +143,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     targetDate,
     totalSteps,
     unfilledStepsCount,
+    schedule,
   });
 
   // ── Derived data ──

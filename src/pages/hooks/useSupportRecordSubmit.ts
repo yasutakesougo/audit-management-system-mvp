@@ -6,18 +6,37 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ABCRecord } from '@/domain/behavior';
+import { getScheduleKey } from '@/features/daily';
 import type { BehaviorRepository, ExecutionRecordRepository } from '@/features/daily';
 import {
     makeIdempotencyKey,
     persistDailySubmission,
     type PersistDailyPdcaInput,
 } from '@/features/ibd/analysis/pdca/persistDailyPdca';
+import { useIspRepository } from '@/features/planning-sheet/hooks/useIspRepository';
+import {
+  canConvertToRecord,
+  toProcedureRecord,
+} from '@/domain/isp/bridge/toProcedureRecord';
+import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
+import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
 import { auditLog } from '@/lib/debugLogger';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { canAccess } from '@/auth/roles';
 
 const ERROR_STORAGE_KEY = 'daily-support-submit-error';
+
+// Helper to find the matching step in the schedule for the given planSlotKey
+const findCurrentProcedureStep = (params: {
+  schedule: readonly ProcedureStep[];
+  planSlotKey?: string;
+}): ProcedureStep | undefined => {
+  if (!params.planSlotKey) return undefined;
+  return params.schedule.find(
+    (item) => getScheduleKey(item.time, item.activity) === params.planSlotKey
+  );
+};
 
 export type UseSupportRecordSubmitArgs = {
   behaviorRepo: BehaviorRepository;
@@ -26,6 +45,7 @@ export type UseSupportRecordSubmitArgs = {
   targetDate: string;
   totalSteps: number;
   unfilledStepsCount: number;
+  schedule: readonly ProcedureStep[];
 };
 
 export function useSupportRecordSubmit({
@@ -35,10 +55,14 @@ export function useSupportRecordSubmit({
   targetDate,
   totalSteps,
   unfilledStepsCount,
+  schedule, // Added
 }: UseSupportRecordSubmitArgs) {
   const navigate = useNavigate();
   const { role } = useUserAuthz();
   const isSimpleMode = role === 'viewer' || (!canAccess(role, 'reception') && !canAccess(role, 'admin'));
+
+  const procedureRecordRepo = useProcedureRecordRepository();
+  const ispRepo = useIspRepository();
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('記録が完了しました');
@@ -59,7 +83,7 @@ export function useSupportRecordSubmit({
   const handleRecordSubmit = useCallback(async (payload: Omit<ABCRecord, 'id' | 'userId'>) => {
     if (!targetUserId) return;
     try {
-      await behaviorRepo.add({
+      const savedRecord = await behaviorRepo.add({
         ...payload,
         userId: targetUserId,
       });
@@ -80,6 +104,52 @@ export function useSupportRecordSubmit({
           recordedAt: new Date().toISOString(),
         });
 
+      }
+
+      // 第3層永続化 (SupportProcedureRecord_Daily への自動接続)
+      try {
+        const currentStep = findCurrentProcedureStep({
+          schedule,
+          planSlotKey: payload.planSlotKey,
+        });
+
+        if (currentStep && canConvertToRecord(currentStep)) {
+          let resolvedIspId: string | undefined = undefined;
+          try {
+            const currentIsp = await ispRepo.getCurrentByUser(targetUserId);
+            resolvedIspId = currentIsp?.id;
+          } catch (ispError) {
+            // ISP解決失敗は警告ログを残すが、全体の処理は止めない
+            auditLog.warn(
+              'daily/support',
+              'Failed to resolve current ISP ID for Layer 3 persistence',
+              ispError,
+              targetUserId,
+              payload.planSlotKey
+            );
+          }
+
+          const options = resolvedIspId ? { ispId: resolvedIspId } : undefined;
+
+          const recordInput = toProcedureRecord(
+            savedRecord,
+            currentStep,
+            actorUserId,
+            options
+          );
+
+          if (recordInput) {
+            await procedureRecordRepo.create(recordInput);
+          }
+        }
+      } catch (layer3Error) {
+        auditLog.warn(
+          'daily/support',
+          'Failed to persist Layer 3 SupportProcedureRecord',
+          layer3Error,
+          targetUserId,
+          payload.planSlotKey
+        );
       }
 
       if (typeof window !== 'undefined') {
@@ -185,6 +255,9 @@ export function useSupportRecordSubmit({
     totalSteps,
     unfilledStepsCount,
     isSimpleMode,
+    schedule,
+    procedureRecordRepo,
+    ispRepo,
   ]);
 
   const handleRetryPersist = useCallback(async () => {
