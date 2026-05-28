@@ -18,8 +18,9 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎' }, status: 'success' }));
 vi.mock('@/features/users/useUsers', () => ({
-  useUser: () => ({ data: { FullName: '田中 太郎' }, status: 'success' }),
+  useUser: () => mockUseUser(),
 }));
 
 const mockProcedures = [
@@ -65,6 +66,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
+    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
     mockUseExecutionRecord.mockReturnValue({
       record: null,
       saveRecord: mockSaveRecord,
@@ -220,6 +222,66 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByText('手順記録の内容を1つ以上入力してください。')).toBeInTheDocument();
     });
     expect(mockSaveRecord).not.toHaveBeenCalled();
+  });
+
+  it('postpones form state initialization and populates form from saved record after user load transitions from loading to success', async () => {
+    mockUseUser.mockReturnValue({ data: undefined, status: 'loading' });
+
+    mockUseExecutionRecord.mockImplementation((
+      _date,
+      userId,
+    ) => {
+      const isLoaded = userId === 'U001';
+      return {
+        record: isLoaded
+          ? {
+              id: 'rec-1',
+              date: '2026-05-28',
+              userId: 'U001',
+              scheduleItemId: 'P001',
+              status: 'completed' as const,
+              memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】問題なく実施完了',
+            }
+          : undefined,
+        saveRecord: mockSaveRecord,
+        isLoading: !isLoaded,
+      };
+    });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    // Initial render during user loading shows spinner
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+
+    // Transition useUser status to success
+    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎', UserID: 'U001' }, status: 'success' });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    // Form should render once loaded
+    await waitFor(() => {
+      expect(screen.queryByText('読み込み中...')).toBeNull();
+      expect(screen.getByText('10:00 - 朝のバイタルチェック')).toBeInTheDocument();
+    });
+
+    // Check if chips and memo are populated from the saved record
+    await waitFor(() => {
+      const moodChip = screen.getByTestId('mood-chip-落ち着いていた');
+      expect(moodChip.className).toContain('MuiChip-filledWarning');
+      const actionChip = screen.getByTestId('action-chip-見守り');
+      expect(actionChip.className).toContain('MuiChip-filledWarning');
+      const resultChip = screen.getByTestId('result-chip-改善した');
+      expect(resultChip.className).toContain('MuiChip-filledWarning');
+      const memoInput = screen.getByTestId('kiosk-observation-memo');
+      expect(memoInput).toHaveValue('問題なく実施完了');
+    });
   });
 
   describe('resolveProcedureUserQueryCandidates alias resolution logic', () => {

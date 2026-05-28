@@ -12,6 +12,7 @@ import {
 import type { JsonRecord } from '@/lib/sp/types';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
+import { readSharePointText } from './utils/readSharePointText';
 import {
   normalizeExecutionDate,
   normalizeExecutionUserId,
@@ -604,7 +605,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   }
 
   private mapToDomain(item: JsonRecord, rf: ResolvedRowsFields): ExecutionRecord {
-    const title = (item.Title || item.title || '') as string;
+    const title = readSharePointText(item.Title) || readSharePointText(item.title);
     let triggeredBipIds: string[] = [];
     try {
       if (rf.bipsJSON && item[rf.bipsJSON]) {
@@ -615,12 +616,12 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
 
     let date = title.slice(0, 10);
-    const userId = (item[rf.userId] || '') as string;
-    let scheduleItemId = rf.rowNo ? normalizeScheduleItemId(item[rf.rowNo]) : '';
+    const userId = readSharePointText(item[rf.userId]);
+    let scheduleItemId = rf.rowNo ? normalizeScheduleItemId(readSharePointText(item[rf.rowNo])) : '';
 
     // Fallback: extract scheduleItemId and/or date from composite key if missing or empty
     if (!scheduleItemId || !/^\d{4}-\d{2}-\d{2}/.test(date)) {
-      const keys = [title, (item[rf.rowKey] || '') as string];
+      const keys = [title, readSharePointText(item[rf.rowKey])];
       for (const key of keys) {
         if (key.length > 11 && /^\d{4}-\d{2}-\d{2}-/.test(key)) {
           const parsedDate = key.slice(0, 10);
@@ -709,8 +710,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         item.Observation,
         item.observation,
       ),
-      recordedBy: (rf.staffName ? item[rf.staffName] : '') as string,
-      recordedAt: (item[rf.recordedAt] || item.Created || item.Modified || '') as string,
+      recordedBy: rf.staffName ? readSharePointText(item[rf.staffName]) : '',
+      recordedAt: readSharePointText(item[rf.recordedAt])
+        || readSharePointText(item.Created)
+        || readSharePointText(item.Modified),
     };
   }
 }

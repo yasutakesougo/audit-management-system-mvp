@@ -8,6 +8,8 @@ import {
   buildDailyProcedureFlowPreview, 
   type DailyProcedureFlowStep 
 } from '../domain/buildDailyProcedureFlowPreview';
+import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import { buildExecutionUserIdCandidates } from '@/features/daily/utils/normalizeExecutionLookup';
 
 export interface UseDailyProcedureFlowPreviewResult {
   steps: DailyProcedureFlowStep[];
@@ -64,10 +66,40 @@ export function useDailyProcedureFlowPreview(
     return procedureStore.getByUser(canonicalUserId);
   }, [procedureStore, canonicalUserId]);
 
+  // Reactively resolve user candidates and fetch from Zustand store
+  const executionUserIdCandidates = useMemo(
+    () => buildExecutionUserIdCandidates(userId),
+    [userId]
+  );
+  
+  const { getRecords: getStoreRecords } = useExecutionStore();
+  const storeRecords = useMemo(() => {
+    const deduped = new Map<string, ExecutionRecord>();
+    for (const candidateUserId of executionUserIdCandidates) {
+      for (const record of getStoreRecords(recordDate || '', candidateUserId)) {
+        const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
+        deduped.set(key, record);
+      }
+    }
+    return Array.from(deduped.values());
+  }, [executionUserIdCandidates, getStoreRecords, recordDate]);
+
+  // Merge server records and Zustand store records to allow instant reactive updates
+  const mergedRecords = useMemo(() => {
+    const deduped = new Map<string, ExecutionRecord>();
+    const addRecord = (r: ExecutionRecord) => {
+      const key = `${r.date}|${r.userId}|${r.scheduleItemId}`;
+      deduped.set(key, r);
+    };
+    rawRecords.forEach(addRecord);
+    storeRecords.forEach(addRecord);
+    return Array.from(deduped.values());
+  }, [rawRecords, storeRecords]);
+
   // Merge slots and actual execution records to build daily flow sequence
   const steps = useMemo(() => {
-    return buildDailyProcedureFlowPreview(slots, rawRecords);
-  }, [slots, rawRecords]);
+    return buildDailyProcedureFlowPreview(slots, mergedRecords);
+  }, [slots, mergedRecords]);
 
   return {
     steps,

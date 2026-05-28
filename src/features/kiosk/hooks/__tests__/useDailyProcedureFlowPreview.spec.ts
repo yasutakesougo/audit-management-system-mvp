@@ -4,6 +4,7 @@ import { useDailyProcedureFlowPreview } from '../useDailyProcedureFlowPreview';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { useUser } from '@/features/users/useUsers';
+import { useExecutionStore } from '@/features/daily/stores/executionStore';
 
 // Mock the hooks
 vi.mock('@/features/daily/hooks/useExecutionData', () => ({
@@ -18,9 +19,14 @@ vi.mock('@/features/users/useUsers', () => ({
   useUser: vi.fn(),
 }));
 
+vi.mock('@/features/daily/stores/executionStore', () => ({
+  useExecutionStore: vi.fn(),
+}));
+
 describe('useDailyProcedureFlowPreview', () => {
   const mockGetRecords = vi.fn();
   const mockGetByUser = vi.fn();
+  const mockGetStoreRecords = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,6 +43,10 @@ describe('useDailyProcedureFlowPreview', () => {
     vi.mocked(useUser).mockReturnValue({
       data: undefined,
       status: 'idle',
+    } as any);
+
+    vi.mocked(useExecutionStore).mockReturnValue({
+      getRecords: mockGetStoreRecords.mockReturnValue([]),
     } as any);
   });
 
@@ -117,5 +127,33 @@ describe('useDailyProcedureFlowPreview', () => {
     // U-001 should be queried instead of raw U001
     expect(mockGetRecords).toHaveBeenCalledWith('2026-05-11', 'U-001');
     expect(mockGetByUser).toHaveBeenCalledWith('U-001');
+  });
+
+  it('merges reactive Zustand store records, overwriting stale repository records', async () => {
+    const mockSlots = [
+      { id: '1', rowNo: 1, time: '09:30', activity: 'Morning Assembly', block: 'morning' },
+    ];
+    const mockRepositoryRecords = [
+      { scheduleItemId: '1', status: 'skipped', memo: 'Old skipped', date: '2026-05-11', userId: 'U001' },
+    ];
+    const mockStoreRecords = [
+      { scheduleItemId: '1', status: 'completed', memo: 'Optimistic completed', date: '2026-05-11', userId: 'U001' },
+    ];
+
+    mockGetByUser.mockReturnValue(mockSlots);
+    mockGetRecords.mockResolvedValue(mockRepositoryRecords);
+    mockGetStoreRecords.mockReturnValue(mockStoreRecords);
+
+    const { result } = renderHook(() => useDailyProcedureFlowPreview('U001', '2026-05-11'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.steps).toHaveLength(1);
+    expect(result.current.steps[0].record).toEqual(expect.objectContaining({
+      status: 'completed',
+      memo: 'Optimistic completed',
+    }));
   });
 });

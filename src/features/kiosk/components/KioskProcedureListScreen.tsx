@@ -39,7 +39,7 @@ const extractProcedureRowKey = (value: unknown): string => {
   const tailNumber = normalized.match(/[-_](\d{1,2})$/);
   if (!tailNumber) return '';
   const rowNo = Number.parseInt(tailNumber[1], 10);
-  return rowNo > 0 && rowNo <= 99 ? String(rowNo) : '';
+  return rowNo >= 0 && rowNo <= 99 ? String(rowNo) : '';
 };
 
 const buildProcedureMatchKeys = (
