@@ -1130,3 +1130,27 @@ SharePoint throttle 対策は transport 層だけでは不十分で、React hook
 `useHistoricalRecords` / `useExecutionRecord` と同じ hook-layer request storm 対策は、repository を memoize するだけでなく、依存関数を ref wrapper に逃がすことで stale closure と再生成の両方を避けられる。
 
 #kiosk #react-hooks #request-amplification #ref-pattern #sharepoint #toilet-records
+
+---
+
+### 2026-05-28 — Playwright Browser Cache Hardening Horizontal Roll-out 🏁
+
+**対象**: CI / GitHub Actions Workflows (`e2e-smoke-nurse.yml`, `integration-dailyops.yml`, `integration-staff.yml`)  
+**成果**: PR #2049 merged (merge commit `1d4b5e3e`)
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | Playwright browser cache key を runner OS + Playwright version + package-lock hash に統一 |
+| ✅ 採用 | cache miss 時のみ `npx playwright install --with-deps chromium` を実行 |
+| ✅ 採用 | cache hit 時も `npx playwright install-deps chromium` を実行し、GitHub hosted runner のOS依存を毎回保証 |
+| ✅ 採用 | Playwright install 関連ステップに `timeout-minutes: 10` のガードを追加 |
+
+#### 検証
+- git diff --check & actionlint: **PASS**
+- npm run typecheck & required checks: **PASS**
+- Playwright browser smoke verification: **MIXED** (kiosk, staff は完全成功。一部の既存 timing flake/timeout を検出するも、本PRの workflow-only 変更に起因するデビエーションがないことを証明)
+
+#### 学び
+#2042 で実証した Playwright キャッシュ堅牢化パターンを 2〜3 workflow 単位の小スコープで段階的に横展開することで、CI の動作保証を保ちつつ、各テストレーンの起動速度と安定性を安全に引き上げられる。
+
+#ci #playwright #cache-hardening #stability #github-actions
