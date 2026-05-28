@@ -23,6 +23,12 @@ import {
 } from '../utils/Helpers';
 import { resolveInternalNames } from '@/lib/sp/helpers';
 
+let availableListTitlesCache = new WeakMap<SpFetchFn, Promise<string[] | null>>();
+
+export const __clearDailyRecordSchemaResolverCachesForTests = (): void => {
+    availableListTitlesCache = new WeakMap<SpFetchFn, Promise<string[] | null>>();
+};
+
 export class DailyRecordSchemaResolver {
     private resolvedListPath: string | null = null;
     private listPathResolutionFailed = false;
@@ -336,13 +342,24 @@ export class DailyRecordSchemaResolver {
     }
 
     private async getAvailableListTitles(): Promise<string[] | null> {
-        try {
+        const cached = availableListTitlesCache.get(this.spFetch);
+        if (cached) return cached;
+
+        const request = (async () => {
             const response = await this.spFetch("lists?$select=Title&$top=5000");
             const payload = (await response.json()) as SharePointResponse<{ Title?: string }>;
             return (payload.value ?? [])
                 .map((item) => item.Title?.trim())
                 .filter((title): title is string => Boolean(title));
+        })();
+        availableListTitlesCache.set(this.spFetch, request);
+
+        try {
+            return await request;
         } catch (error) {
+            if (availableListTitlesCache.get(this.spFetch) === request) {
+                availableListTitlesCache.delete(this.spFetch);
+            }
             if (getHttpStatus(error) === 404) return null;
             throw error;
         }
