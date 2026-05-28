@@ -1107,3 +1107,26 @@ SharePoint throttle 対策は transport 層だけでは不十分で、React hook
 2. `useToiletRecords.ts` は wrapper-ref pattern を検証してから別PRで実施
 
 #kiosk #react-hooks #request-amplification #ref-pattern #sharepoint
+
+---
+
+### 2026-05-28 — useToiletRecords Repository Reference Hardening 🏁
+
+**対象**: `useToiletRecords`
+**成果**: PR #2047 merged (merge commit `78243bf6`, head `f590abdc`)
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `spFetchRef` / `getListFieldInternalNamesRef` で SharePoint 依存関数の最新参照を保持 |
+| ✅ 採用 | repository は `useMemo([])` で固定し、wrapper 経由で最新 ref へ委譲 |
+| ✅ 採用 | `requestSeqRef` により stale fetch result と stale error を破棄 |
+| ✅ 採用 | repository 参照が render ごとに変わらないことを回帰テストで固定 |
+
+#### 検証
+- PR #2047 required checks green
+- `useToiletRecords.spec.ts` に repository reference hardening の回帰テストを追加
+
+#### 学び
+`useHistoricalRecords` / `useExecutionRecord` と同じ hook-layer request storm 対策は、repository を memoize するだけでなく、依存関数を ref wrapper に逃がすことで stale closure と再生成の両方を避けられる。
+
+#kiosk #react-hooks #request-amplification #ref-pattern #sharepoint #toilet-records
