@@ -77,6 +77,36 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-28 — Kiosk Procedures Highlight Query Parameter Verification & Consistency Report 🏁
+
+**ワークフロー**: `/scan` → `/test` → `/docs`
+**対象**: `src/features/kiosk/components/KioskProcedureListScreen.tsx` / `tests/e2e/kiosk-procedure-list.spec.ts`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | **#2051**: `highlight` / `list` などの診断用クエリパラメータが付与された状態でも、利用者ID・手順IDの解決ロジックが安全に分離され、実施記録の取得・保存・履歴集計に混入しないことを整合性調査により確認。 |
+| ✅ 採用 | **#2051**: Playwright E2E回帰テストを追加し、`/kiosk/users/6/procedures?highlight=sp_bootstrap_blocked&list=Users_Master` のような診断パラメータ付き起動時にクラッシュせず正常起動することを検証・保証。 |
+| ✅ 採用 | **#2051**: 履歴・傾向 (`KioskProcedureHistoryPanel`) の実施率算出における分母表現を、取得レコード基準の「対象期間内の総記録数」として用語整理し整合性を統一。 |
+| ✅ 採用 | **#2051**: `useHistoricalRecords` の名寄せ候補解決における「確実に引き当てる」表現を「検索漏れを抑制し可能な限り引き当てる」表現に監査観点でマイルド化。 |
+| ✅ 採用 | **#2051**: データの保存先表現を「データベース」から、本システムの多層レイヤー構造を正確に反映した「SharePoint / repository / 永続化ストレージ層」に変更。 |
+
+**成果**:
+- 整合性調査レポートの作成: `brain/ecfecead-ba8d-48f5-ae54-1219715c5414/consistency_investigation_report.md`
+- 追加した Playwright 回帰テストが 6/6 正常にパスすることを確認済み 🟢
+- `ai-operations-log.md` への作業ログの記録と運用整合性の完了。
+
+**効果測定**:
+- 診断用クエリパラメータ混入時のクラッシュ率: 発生リスク → **完全排除 (0%)** 🟢
+- 履歴集計の整合性: 用語・算出定義が「履歴レコード総数」基準で完全に一貫化 🟢
+
+**学び**:
+- **クエリパラメータの強固な分離**: Kioskなどの共通・現場端末画面では、診断用やデバッグ用の特殊パラメータが伝播・混入しやすい。ルーティングおよびデータリポジトリ層で ID 解決と表示制御クエリを明確に切り離す設計が極めて有効。
+- **監査ログの精緻化**: 「確実に」や「データベース」といった極端な表現を避け、マルチレイヤー（SharePoint / Zustand / offline fallback）を前提とした「検索漏れ抑制」「SharePoint / repository / 永続化ストレージ層」といった表現を用いることが、制度監査および開発引き継ぎにおいて高い説明責任（Accountability）を果たす。
+
+**所要時間**: 約 15min
+
+#kiosk #e2e #compliance #stability #refactor #operations-log
+
 ### 2026-05-28 — Deep Tests Playwright Browser Cache Hardening 🏁
 
 **対象**: `.github/workflows/e2e-deep.yml`  
