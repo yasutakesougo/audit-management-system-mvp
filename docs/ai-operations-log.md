@@ -77,6 +77,26 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-28 — Deep Tests Playwright Browser Cache Hardening 🏁
+
+**対象**: `.github/workflows/e2e-deep.yml`  
+**成果**: PR #2042 merged
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | Playwright browser cache key を runner OS + Playwright version + package-lock hash に強化 |
+| ✅ 採用 | cache miss 時のみ `npx playwright install --with-deps chromium` を実行 |
+| ✅ 採用 | cache hit 時も `npx playwright install-deps chromium` を実行し、GitHub hosted runner のOS依存を毎回保証 |
+| ✅ 採用 | install timeout を 5分から10分へ緩和 |
+| ❌ 却下 | 12 workflow への一括横展開 |
+| 💡 却下理由 | CI基盤変更の切り分けを容易にするため、まず Deep Tests のみに限定した |
+
+**効果測定**: Deep Tests (Chromium) PASS / Workflow Lint PASS  
+**学び**: Playwright browser binary はキャッシュできるが、Linux system deps はrunnerごとに揮発するため、cache hit時も `install-deps chromium` を実行する設計が安全。  
+**所要時間**: 約 20min
+
+#ci #playwright #deep-tests #stability #github-actions
+
 ### 2026-05-28 — Kiosk & SharePoint Throttle / ExecutionRecord Hardening 🏁
 
 **ワークフロー**: `/debug` → `/implement` → `/test` → `/verify-sp`
