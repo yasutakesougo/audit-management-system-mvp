@@ -1,31 +1,62 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { getToiletRepository } from './toiletRepositoryFactory';
 import type { ToiletRecord, ToiletRecordInput } from './types';
 import { useSP } from '@/lib/spClient';
+import type { SpFetchFn } from '@/lib/sp/spLists';
 
 export function useToiletRecords(dateIso: string) {
   const [records, setRecords] = useState<ToiletRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
   const { spFetch, getListFieldInternalNames } = useSP();
 
-  const repository = useMemo(() => {
-    return getToiletRepository(spFetch, getListFieldInternalNames);
+  const spFetchRef = useRef(spFetch);
+  const getListFieldInternalNamesRef = useRef(getListFieldInternalNames);
+  const requestSeqRef = useRef(0);
+
+  useEffect(() => {
+    spFetchRef.current = spFetch;
+    getListFieldInternalNamesRef.current = getListFieldInternalNames;
   }, [spFetch, getListFieldInternalNames]);
 
+  const repository = useMemo(() => {
+    const stableSpFetch: SpFetchFn = (path, init) => spFetchRef.current(path, init);
+    const stableGetListFieldInternalNames = (listTitle: string) => {
+      if (getListFieldInternalNamesRef.current) {
+        return getListFieldInternalNamesRef.current(listTitle);
+      }
+      return Promise.resolve(new Set<string>());
+    };
+    return getToiletRepository(stableSpFetch, stableGetListFieldInternalNames);
+  }, []);
+
   const refresh = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
     setIsLoading(true);
+    setError(null);
     try {
+      if (!dateIso) {
+        if (seq === requestSeqRef.current) {
+          setRecords([]);
+          setIsLoading(false);
+        }
+        return;
+      }
       const data = await repository.listByDate(dateIso);
-      setRecords(data);
-    } catch (error) {
-      console.error('[useToiletRecords] Failed to load toilet records:', error);
-    } finally {
-      setIsLoading(false);
+      if (seq === requestSeqRef.current) {
+        setRecords(data);
+        setIsLoading(false);
+      }
+    } catch (err) {
+      if (seq === requestSeqRef.current) {
+        setError(err instanceof Error ? err : new Error('Failed to load toilet records'));
+        setIsLoading(false);
+      }
     }
   }, [dateIso, repository]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const create = useCallback(async (input: ToiletRecordInput) => {
@@ -33,11 +64,11 @@ export function useToiletRecords(dateIso: string) {
       const record = await repository.create(input);
       await refresh();
       return record;
-    } catch (error) {
-      console.error('[useToiletRecords] Failed to create toilet record:', error);
-      throw error;
+    } catch (err) {
+      console.error('[useToiletRecords] Failed to create toilet record:', err);
+      throw err;
     }
   }, [refresh, repository]);
 
-  return { records, create, refresh, isLoading };
+  return { records, create, refresh, isLoading, error };
 }
