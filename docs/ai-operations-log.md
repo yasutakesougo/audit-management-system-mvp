@@ -1077,3 +1077,33 @@ PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day 
 
 #### メモ
 PR-A は、現場で「今日トイレ誘導対象者が利用済みか」を一覧で確認するためのUX確立を目的とした。永続保存はまだ本番記録ではなく、PR-B1で SharePoint `ToiletRecords` に昇格する。
+
+---
+
+### 2026-05-28 — Kiosk History Panel Request Storm / Ref Pattern Hardening 🏁
+
+**対象**: `useHistoricalRecords`
+**成果**: PR #2044 merged (commit `7bd7483f`)
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `getHistoricalRecords` / `getRecordsInRange` を `useRef` で安定化 |
+| ✅ 採用 | `fallbackScheduleItemIds` / `fallbackUserIds` を stable key 化し、親からの new array で再fetchしないようにした |
+| ✅ 採用 | `requestSeqRef` により stale fetch result を破棄 |
+| ✅ 採用 | `userId` / `scheduleItemId` が空になった場合も sequence を進め、古い履歴結果の復活を防止 |
+| ✅ 採用 | error state 更新時に再fetchループへ入らない回帰テストを追加 |
+
+#### 検証
+- `useHistoricalRecords.spec.ts` 7件 PASS
+- `npm run typecheck` PASS
+- `git diff --check` PASS
+- kiosk-e2e CI green
+
+#### 学び
+SharePoint throttle 対策は transport 層だけでは不十分で、React hook 層でも「関数参照・配列参照・非同期結果」の3点を安定化する必要がある。
+
+#### 次アクション
+1. `useExecutionRecord.ts` の小PR hardening（同一パターン転用）
+2. `useToiletRecords.ts` は wrapper-ref pattern を検証してから別PRで実施
+
+#kiosk #react-hooks #request-amplification #ref-pattern #sharepoint
