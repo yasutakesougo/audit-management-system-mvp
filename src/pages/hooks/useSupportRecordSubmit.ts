@@ -3,7 +3,7 @@
  *
  * TimeBasedSupportRecordPage の handleRecordSubmit, handleRetryPersist を抽出 (#766)
  */
-import { useCallback, useRef, useState, useMemo } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ABCRecord } from '@/domain/behavior';
 import { getScheduleKey } from '@/features/daily';
@@ -13,7 +13,7 @@ import {
     persistDailySubmission,
     type PersistDailyPdcaInput,
 } from '@/features/ibd/analysis/pdca/persistDailyPdca';
-import { getLatestSPS } from '@/features/ibd/core/ibdStore';
+import { useIspRepository } from '@/features/planning-sheet/hooks/useIspRepository';
 import {
   canConvertToRecord,
   toProcedureRecord,
@@ -62,8 +62,7 @@ export function useSupportRecordSubmit({
   const isSimpleMode = role === 'viewer' || (!canAccess(role, 'reception') && !canAccess(role, 'admin'));
 
   const procedureRecordRepo = useProcedureRecordRepository();
-  const numericUserId = targetUserId ? Number(targetUserId.replace(/\D/g, '')) || 0 : 0;
-  const latestSPS = useMemo(() => (numericUserId ? getLatestSPS(numericUserId) : undefined), [numericUserId]);
+  const ispRepo = useIspRepository();
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('記録が完了しました');
@@ -115,7 +114,21 @@ export function useSupportRecordSubmit({
         });
 
         if (currentStep && canConvertToRecord(currentStep)) {
-          const resolvedIspId = (latestSPS as Record<string, unknown> | undefined)?.ispId as string | undefined;
+          let resolvedIspId: string | undefined = undefined;
+          try {
+            const currentIsp = await ispRepo.getCurrentByUser(targetUserId);
+            resolvedIspId = currentIsp?.id;
+          } catch (ispError) {
+            // ISP解決失敗は警告ログを残すが、全体の処理は止めない
+            auditLog.warn(
+              'daily/support',
+              'Failed to resolve current ISP ID for Layer 3 persistence',
+              ispError,
+              targetUserId,
+              payload.planSlotKey
+            );
+          }
+
           const options = resolvedIspId ? { ispId: resolvedIspId } : undefined;
 
           const recordInput = toProcedureRecord(
@@ -244,7 +257,7 @@ export function useSupportRecordSubmit({
     isSimpleMode,
     schedule,
     procedureRecordRepo,
-    latestSPS,
+    ispRepo,
   ]);
 
   const handleRetryPersist = useCallback(async () => {

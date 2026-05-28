@@ -11,6 +11,7 @@ const mockExecutionUpsert = vi.fn();
 const mockProcedureCreate = vi.fn();
 const mockPersistDailySubmission = vi.fn();
 const mockAuditLogWarn = vi.fn();
+const mockGetCurrentByUser = vi.fn();
 
 vi.mock('@/features/regulatory/hooks/useProcedureRecordRepository', () => ({
   useProcedureRecordRepository: () => ({
@@ -39,13 +40,27 @@ vi.mock('@/lib/runtimeEnv', () => ({
   },
 }));
 
+vi.mock('@/features/planning-sheet/hooks/useIspRepository', () => ({
+  useIspRepository: () => ({
+    getCurrentByUser: mockGetCurrentByUser,
+  }),
+}));
+
 vi.mock('@/features/ibd/core/ibdStore', () => ({
   getLatestSPS: (userId: number) => ({
     id: 'sps-001',
     userId,
-    ispId: 'isp-001',
+    version: 'v1',
     createdAt: '2026-03-01T00:00:00Z',
-    status: 'confirmed',
+    status: 'confirmed' as const,
+    confirmedBy: null,
+    confirmedAt: null,
+    icebergModel: {
+      observableBehaviors: [],
+      underlyingFactors: [],
+      environmentalAdjustments: [],
+    },
+    positiveConditions: [],
   }),
 }));
 
@@ -80,6 +95,7 @@ describe('useSupportRecordSubmit - Layer 3 Persistence', () => {
     mockProcedureCreate.mockReset();
     mockPersistDailySubmission.mockReset();
     mockAuditLogWarn.mockReset();
+    mockGetCurrentByUser.mockReset();
 
     // Default successes
     mockBehaviorRepoAdd.mockImplementation(async (payload) => ({
@@ -90,6 +106,7 @@ describe('useSupportRecordSubmit - Layer 3 Persistence', () => {
     mockExecutionUpsert.mockResolvedValue(undefined);
     mockProcedureCreate.mockResolvedValue({} as SupportProcedureRecord);
     mockPersistDailySubmission.mockResolvedValue(undefined);
+    mockGetCurrentByUser.mockResolvedValue({ id: 'isp-001' });
   });
 
   it('successfully persists SupportProcedureRecord (Layer 3) when step is convertible', async () => {
@@ -241,5 +258,114 @@ describe('useSupportRecordSubmit - Layer 3 Persistence', () => {
     // Layer 3 create must NOT be called since step is not convertible
     expect(mockProcedureCreate).not.toHaveBeenCalled();
     expect(mockAuditLogWarn).not.toHaveBeenCalled();
+  });
+
+  it('keeps submission flow completely successful when current ISP is not found (L3 created without ispId)', async () => {
+    // Current ISP is not found (null)
+    mockGetCurrentByUser.mockResolvedValue(null);
+
+    const { result } = renderHook(() =>
+      useSupportRecordSubmit({
+        behaviorRepo: { add: mockBehaviorRepoAdd } as any,
+        executionStore: { upsertRecord: mockExecutionUpsert } as any,
+        targetUserId: 'U001',
+        targetDate: '2026-05-28',
+        totalSteps: 1,
+        unfilledStepsCount: 1,
+        schedule: defaultSchedule,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleRecordSubmit({
+        recordedAt: '2026-05-28T10:00:00.000Z',
+        behavior: '日常記録',
+        actualObservation: '元気に登校した',
+        staffResponse: '挨拶を交わした',
+        followUpNote: '',
+        planSlotKey: '09:00|朝の会',
+        antecedent: '',
+        antecedentTags: [],
+        consequence: '',
+        intensity: 1,
+      });
+    });
+
+    expect(mockBehaviorRepoAdd).toHaveBeenCalled();
+    expect(mockExecutionUpsert).toHaveBeenCalled();
+
+    // Layer 3 create must be called but ispId should be undefined
+    expect(mockProcedureCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'U001',
+        planningSheetId: 'ps-001',
+        ispId: undefined, // no ispId
+        recordDate: '2026-05-28',
+        timeSlot: '09:00',
+        activity: '朝の会',
+        procedureText: '挨拶と検温',
+        executionStatus: 'done',
+      })
+    );
+    expect(mockAuditLogWarn).not.toHaveBeenCalled();
+  });
+
+  it('keeps submission flow completely successful when ISP resolution throws an error (L3 created without ispId)', async () => {
+    // Current ISP throws an error
+    const testError = new Error('ISP fetch failed');
+    mockGetCurrentByUser.mockRejectedValue(testError);
+
+    const { result } = renderHook(() =>
+      useSupportRecordSubmit({
+        behaviorRepo: { add: mockBehaviorRepoAdd } as any,
+        executionStore: { upsertRecord: mockExecutionUpsert } as any,
+        targetUserId: 'U001',
+        targetDate: '2026-05-28',
+        totalSteps: 1,
+        unfilledStepsCount: 1,
+        schedule: defaultSchedule,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleRecordSubmit({
+        recordedAt: '2026-05-28T10:00:00.000Z',
+        behavior: '日常記録',
+        actualObservation: '元気に登校した',
+        staffResponse: '挨拶を交わした',
+        followUpNote: '',
+        planSlotKey: '09:00|朝の会',
+        antecedent: '',
+        antecedentTags: [],
+        consequence: '',
+        intensity: 1,
+      });
+    });
+
+    expect(mockBehaviorRepoAdd).toHaveBeenCalled();
+    expect(mockExecutionUpsert).toHaveBeenCalled();
+
+    // Layer 3 create must be called but ispId should be undefined
+    expect(mockProcedureCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'U001',
+        planningSheetId: 'ps-001',
+        ispId: undefined,
+        recordDate: '2026-05-28',
+        timeSlot: '09:00',
+        activity: '朝の会',
+        procedureText: '挨拶と検温',
+        executionStatus: 'done',
+      })
+    );
+
+    // Warning log must be recorded specifically for ISP resolution failure
+    expect(mockAuditLogWarn).toHaveBeenCalledWith(
+      'daily/support',
+      'Failed to resolve current ISP ID for Layer 3 persistence',
+      testError,
+      'U001',
+      '09:00|朝の会'
+    );
   });
 });
