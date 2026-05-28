@@ -72,7 +72,7 @@ export function useDailyProcedureFlowPreview(
     [userId]
   );
   
-  const { getRecords: getStoreRecords } = useExecutionStore();
+  const { getRecords: getStoreRecords, hasInitializedRecords } = useExecutionStore();
   const storeRecords = useMemo(() => {
     const deduped = new Map<string, ExecutionRecord>();
     for (const candidateUserId of executionUserIdCandidates) {
@@ -84,8 +84,21 @@ export function useDailyProcedureFlowPreview(
     return Array.from(deduped.values());
   }, [executionUserIdCandidates, getStoreRecords, recordDate]);
 
-  // Merge server records and Zustand store records to allow instant reactive updates
+  const hasInitializedStoreRecords = useMemo(
+    () => executionUserIdCandidates.some((candidateUserId) => (
+      hasInitializedRecords(recordDate || '', candidateUserId)
+    )),
+    [executionUserIdCandidates, hasInitializedRecords, recordDate],
+  );
+
+  // Once the local store has initialized a user/date, it is authoritative for
+  // reactive changes including deletes. Otherwise stale raw records can revive
+  // a preview item immediately after deletion.
   const mergedRecords = useMemo(() => {
+    if (hasInitializedStoreRecords) {
+      return storeRecords;
+    }
+
     const deduped = new Map<string, ExecutionRecord>();
     const addRecord = (r: ExecutionRecord) => {
       const key = `${r.date}|${r.userId}|${r.scheduleItemId}`;
@@ -94,7 +107,7 @@ export function useDailyProcedureFlowPreview(
     rawRecords.forEach(addRecord);
     storeRecords.forEach(addRecord);
     return Array.from(deduped.values());
-  }, [rawRecords, storeRecords]);
+  }, [hasInitializedStoreRecords, rawRecords, storeRecords]);
 
   // Merge slots and actual execution records to build daily flow sequence
   const steps = useMemo(() => {
@@ -108,4 +121,3 @@ export function useDailyProcedureFlowPreview(
     refresh: fetchDailyRecords,
   };
 }
-

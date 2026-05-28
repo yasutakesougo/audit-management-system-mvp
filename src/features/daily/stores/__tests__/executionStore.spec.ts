@@ -32,6 +32,7 @@ describe('executionStore', () => {
   it('returns empty array for unknown date/user', () => {
     const { result } = renderHook(() => useExecutionStore());
     expect(result.current.getRecords('2025-04-01', 'I001')).toEqual([]);
+    expect(result.current.hasInitializedRecords('2025-04-01', 'I001')).toBe(false);
   });
 
   // -----------------------------------------------------------------------
@@ -53,6 +54,26 @@ describe('executionStore', () => {
     const records = result.current.getRecords('2025-04-01', 'I001');
     expect(records).toHaveLength(1);
     expect(records[0].status).toBe('completed');
+    expect(result.current.hasInitializedRecords('2025-04-01', 'I001')).toBe(true);
+  });
+
+  it('keeps a user/date initialized after deleting the last record', () => {
+    const { result } = renderHook(() => useExecutionStore());
+    const record = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-0900'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+
+    act(() => {
+      result.current.upsertRecord(record);
+    });
+    act(() => {
+      result.current.deleteRecord('2025-04-01', 'I001', 'base-0900');
+    });
+
+    expect(result.current.getRecords('2025-04-01', 'I001')).toEqual([]);
+    expect(result.current.hasInitializedRecords('2025-04-01', 'I001')).toBe(true);
   });
 
   // -----------------------------------------------------------------------
