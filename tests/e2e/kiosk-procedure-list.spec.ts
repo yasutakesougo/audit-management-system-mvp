@@ -66,4 +66,13 @@ test.describe('Kiosk Procedure List', () => {
     await expect(firstCard.getByText('記録済み')).toBeVisible();
     await expect(firstCard.getByText('未実施')).toHaveCount(0);
   });
+
+  test('should boot successfully with highlight and list query parameters without crashing', async ({ page }) => {
+    await bootKiosk(page, {
+      route: '/kiosk/users/6/procedures?highlight=sp_bootstrap_blocked&list=Users_Master',
+      userId: '6',
+    });
+
+    await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 15000 });
+  });
 });
