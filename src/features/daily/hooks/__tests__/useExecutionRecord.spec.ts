@@ -7,11 +7,15 @@ const mockGetRecord = vi.fn<(...args: unknown[]) => Promise<ExecutionRecord | un
 const mockUpsertRecord = vi.fn<(...args: unknown[]) => Promise<void>>();
 const mockDeleteRecord = vi.fn<(...args: unknown[]) => Promise<void>>();
 
+let getRecordRefChanger = mockGetRecord;
+let upsertRecordRefChanger = mockUpsertRecord;
+let deleteRecordRefChanger = mockDeleteRecord;
+
 vi.mock('../useExecutionData', () => ({
   useExecutionData: () => ({
-    getRecord: mockGetRecord,
-    upsertRecord: mockUpsertRecord,
-    deleteRecord: mockDeleteRecord,
+    getRecord: (...args: unknown[]) => getRecordRefChanger(...args),
+    upsertRecord: (...args: unknown[]) => upsertRecordRefChanger(...args),
+    deleteRecord: (...args: unknown[]) => deleteRecordRefChanger(...args),
   }),
 }));
 
@@ -37,6 +41,9 @@ describe('useExecutionRecord', () => {
     mockDeleteRecord.mockReset();
     mockUpsertRecord.mockResolvedValue(undefined);
     mockDeleteRecord.mockResolvedValue(undefined);
+    getRecordRefChanger = mockGetRecord;
+    upsertRecordRefChanger = mockUpsertRecord;
+    deleteRecordRefChanger = mockDeleteRecord;
   });
 
   it('updates the concrete record key found through fallback lookup', async () => {
@@ -104,5 +111,178 @@ describe('useExecutionRecord', () => {
     });
 
     expect(mockDeleteRecord).toHaveBeenCalledWith('2026-05-07', 'legacy-user', 'legacy-slot');
+  });
+
+  it('does not re-fetch when new arrays with identical values are passed for fallbacks', async () => {
+    mockGetRecord.mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ fallbackSchedules, fallbackUsers }) =>
+        useExecutionRecord('2026-05-07', 'user-1', 'slot-1', fallbackSchedules, fallbackUsers),
+      {
+        initialProps: {
+          fallbackSchedules: ['slot-2'],
+          fallbackUsers: ['user-2'],
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(mockGetRecord).toHaveBeenCalledTimes(4); // 2 users * 2 slots
+    mockGetRecord.mockClear();
+
+    // Rerender with new array instances containing identical values
+    rerender({
+      fallbackSchedules: ['slot-2'],
+      fallbackUsers: ['user-2'],
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockGetRecord).not.toHaveBeenCalled();
+  });
+
+  it('does not trigger infinite fetch loop when function references from useExecutionData change', async () => {
+    mockGetRecord.mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(() =>
+      useExecutionRecord('2026-05-07', 'user-1', 'slot-1', ['slot-2'], ['user-2']),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(mockGetRecord).toHaveBeenCalledTimes(4);
+    mockGetRecord.mockClear();
+
+    // Force hook to get new function wrapper instances by triggering rerender
+    getRecordRefChanger = (...args: unknown[]) => mockGetRecord(...args);
+    upsertRecordRefChanger = (...args: unknown[]) => mockUpsertRecord(...args);
+    deleteRecordRefChanger = (...args: unknown[]) => mockDeleteRecord(...args);
+    rerender();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockGetRecord).not.toHaveBeenCalled();
+  });
+
+  it('discards stale fetch results if parameters change mid-flight', async () => {
+    let resolveFirstFetch: (value: ExecutionRecord | undefined) => void = () => {};
+    const firstFetchPromise = new Promise<ExecutionRecord | undefined>((resolve) => {
+      resolveFirstFetch = resolve;
+    });
+
+    mockGetRecord.mockImplementation(async (date, userId, scheduleItemId) => {
+      if (userId === 'user-1' && scheduleItemId === 'slot-1') {
+        return firstFetchPromise;
+      }
+      if (userId === 'user-2' && scheduleItemId === 'slot-2') {
+        return {
+          id: 'record-2',
+          date: '2026-05-07',
+          userId: 'user-2',
+          scheduleItemId: 'slot-2',
+          status: 'completed',
+          triggeredBipIds: [],
+          memo: 'second memo',
+          recordedBy: 'Staff A',
+          recordedAt: '2026-05-07T09:00:00.000Z',
+        };
+      }
+      return undefined;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ userId, scheduleItemId }) =>
+        useExecutionRecord('2026-05-07', userId, scheduleItemId),
+      {
+        initialProps: { userId: 'user-1', scheduleItemId: 'slot-1' },
+      },
+    );
+
+    // Props change mid-flight
+    rerender({ userId: 'user-2', scheduleItemId: 'slot-2' });
+
+    await waitFor(() => {
+      expect(result.current.record?.id).toBe('record-2');
+    });
+
+    // Resolve the first fetch
+    resolveFirstFetch({
+      id: 'record-1',
+      date: '2026-05-07',
+      userId: 'user-1',
+      scheduleItemId: 'slot-1',
+      status: 'completed',
+      triggeredBipIds: [],
+      memo: 'first memo',
+      recordedBy: 'Staff A',
+      recordedAt: '2026-05-07T09:00:00.000Z',
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.record?.id).toBe('record-2');
+  });
+
+  it('clears record and increments sequence when parameters become empty mid-flight', async () => {
+    let resolveFirstFetch: (value: ExecutionRecord | undefined) => void = () => {};
+    const firstFetchPromise = new Promise<ExecutionRecord | undefined>((resolve) => {
+      resolveFirstFetch = resolve;
+    });
+
+    mockGetRecord.mockImplementation(async (date, userId, scheduleItemId) => {
+      if (userId === 'user-1' && scheduleItemId === 'slot-1') {
+        return firstFetchPromise;
+      }
+      return undefined;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ userId, scheduleItemId }) =>
+        useExecutionRecord('2026-05-07', userId, scheduleItemId),
+      {
+        initialProps: { userId: 'user-1', scheduleItemId: 'slot-1' },
+      },
+    );
+
+    // Empty parameters mid-flight
+    rerender({ userId: '', scheduleItemId: '' });
+
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.isLoading).toBe(false);
+
+    resolveFirstFetch({
+      id: 'record-1',
+      date: '2026-05-07',
+      userId: 'user-1',
+      scheduleItemId: 'slot-1',
+      status: 'completed',
+      triggeredBipIds: [],
+      memo: 'first memo',
+      recordedBy: 'Staff A',
+      recordedAt: '2026-05-07T09:00:00.000Z',
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.record).toBeUndefined();
+  });
+
+  it('sets error and sets isLoading to false when getRecord rejects, without infinite looping', async () => {
+    const errorInstance = new Error('Database connection failed');
+    mockGetRecord.mockRejectedValue(errorInstance);
+
+    const { result } = renderHook(() =>
+      useExecutionRecord('2026-05-07', 'user-1', 'slot-1'),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.error).toBe(errorInstance);
+    expect(mockGetRecord).toHaveBeenCalledTimes(1);
+
+    mockGetRecord.mockClear();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockGetRecord).not.toHaveBeenCalled();
   });
 });
