@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      - run: npx playwright install --with-deps
+      - run: npx playwright install --with-deps chromium
       - name: Run nurse smokes
         env:
           VITE_FEATURE_NURSE_UI: "1"
