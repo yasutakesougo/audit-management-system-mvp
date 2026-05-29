@@ -89,9 +89,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
   // rowNo is the canonical slot identity for kiosk procedure completion tracking.
   // Some procedure IDs can vary by source/runtime, so prefer rowNo for persistence keys.
-  const scheduleItemId = normalizeScheduleItemId(procedure?.rowNo) ||
-    normalizeScheduleItemId(procedure?.id) ||
-    normalizeScheduleItemId(indexPlusOne || slotKey);
+  const rawRowNo = normalizeScheduleItemId(procedure?.rowNo) || indexPlusOne;
+  const scheduleItemId = rawRowNo ? `procedure-${rawRowNo}` : normalizeScheduleItemId(procedure?.id || slotKey);
   const historyScheduleItemIds = React.useMemo(() => {
     const indexValue = Number.parseInt(String(slotKey ?? ''), 10);
     const idxPlusOne = Number.isNaN(indexValue) ? '' : normalizeScheduleItemId(indexValue + 1);

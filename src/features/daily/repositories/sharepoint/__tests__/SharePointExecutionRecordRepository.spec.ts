@@ -684,6 +684,43 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(mapped.date).toBe('2026-05-26');
     });
 
+    it('correctly parses canonical prefixed scheduleItemId with hyphenated userId U-023', () => {
+      const rf = {
+        parentId: 'Parent_x0020_ID',
+        userId: 'User_x0020_ID',
+        version: 'Version',
+        status: 'Status',
+        payload: 'Payload',
+        recordedAt: 'Recorded_x0020_At',
+        rowKey: 'Title',
+        rowNo: 'RowNo',
+        memo: 'Memo',
+        staffName: 'StaffName',
+        bipsJSON: 'BipsJSON',
+      };
+
+      const testCases = [
+        { title: '2026-05-30-U-023-procedure-2', expected: 'procedure-2' },
+        { title: '2026-05-30-U-023-slot-2', expected: 'slot-2' },
+        { title: '2026-05-30-U-023-slot_2', expected: 'slot_2' },
+        { title: '2026-05-30-U-023-step-2', expected: 'step-2' },
+        { title: '2026-05-30-U-023-2', expected: '2' },
+      ];
+
+      for (const tc of testCases) {
+        const mockItem = {
+          Title: tc.title,
+          User_x0020_ID: 'U-023',
+          Status: 'completed',
+          Memo: 'Test memo',
+          Recorded_x0020_At: '2026-05-30T12:00:00Z',
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = (repo as any).mapToDomain(mockItem, rf);
+        expect(mapped.scheduleItemId).toBe(tc.expected);
+      }
+    });
+
     it('uses Memo when Memo has content', () => {
       const mockItem = {
         Title: '2026-05-08-4-1',

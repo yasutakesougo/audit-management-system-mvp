@@ -17,6 +17,7 @@ import {
   normalizeExecutionDate,
   normalizeExecutionUserId,
   buildExecutionUserIdCandidates,
+  extractProcedureRowKey,
 } from '@/features/daily/utils/normalizeExecutionLookup';
 
 type SharePointExecutionRecordRepositoryOptions = {
@@ -423,7 +424,15 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       [rf.recordedAt]: mergedRecord.recordedAt,
     };
     
-    if (rf.rowNo) rawBody[rf.rowNo] = mergedRecord.scheduleItemId;
+    if (rf.rowNo) {
+      const rawRowNo = extractProcedureRowKey(mergedRecord.scheduleItemId);
+      if (rawRowNo) {
+        rawBody[rf.rowNo] = Number.parseInt(rawRowNo, 10);
+      } else {
+        const fallbackNum = Number.parseInt(mergedRecord.scheduleItemId, 10);
+        rawBody[rf.rowNo] = Number.isNaN(fallbackNum) ? mergedRecord.scheduleItemId : fallbackNum;
+      }
+    }
     if (rf.memo) rawBody[rf.memo] = mergedRecord.memo;
     if (rf.staffName) rawBody[rf.staffName] = mergedRecord.recordedBy;
     if (rf.bipsJSON) rawBody[rf.bipsJSON] = JSON.stringify(mergedRecord.triggeredBipIds);
@@ -617,65 +626,62 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     let date = title.slice(0, 10);
     const userId = readSharePointText(item[rf.userId]);
-    let scheduleItemId = rf.rowNo ? normalizeScheduleItemId(readSharePointText(item[rf.rowNo])) : '';
+    let scheduleItemId = '';
 
-    // Fallback: extract scheduleItemId and/or date from composite key if missing or empty
-    if (!scheduleItemId || !/^\d{4}-\d{2}-\d{2}/.test(date)) {
-      const keys = [title, readSharePointText(item[rf.rowKey])];
-      for (const key of keys) {
-        if (key.length > 11 && /^\d{4}-\d{2}-\d{2}-/.test(key)) {
-          const parsedDate = key.slice(0, 10);
-          const suffix = key.slice(11); // userId-scheduleItemId
+    // First attempt: extract scheduleItemId from Title or RowKey (composite keys)
+    const keys = [title, readSharePointText(item[rf.rowKey])].filter(Boolean) as string[];
+    for (const key of keys) {
+      if (key.length > 11 && /^\d{4}-\d{2}-\d{2}-/.test(key)) {
+        const parsedDate = key.slice(0, 10);
+        const suffix = key.slice(11); // userId-scheduleItemId
 
-          // Build user ID candidates including both current userId and any logical representations
-          const userCandidates = buildExecutionUserIdCandidates(userId);
-          let matchedCandidate: string | null = null;
+        // Build user ID candidates including both current userId and any logical representations
+        const userCandidates = buildExecutionUserIdCandidates(userId);
+        let matchedCandidate: string | null = null;
 
-          for (const candidate of userCandidates) {
-            if (suffix.startsWith(`${candidate}-`)) {
-              matchedCandidate = candidate;
-              break;
-            }
+        for (const candidate of userCandidates) {
+          if (suffix.startsWith(`${candidate}-`)) {
+            matchedCandidate = candidate;
+            break;
           }
+        }
 
-          if (matchedCandidate) {
+        if (matchedCandidate) {
+          if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
+            date = parsedDate;
+          }
+          scheduleItemId = normalizeScheduleItemId(suffix.slice(matchedCandidate.length + 1)) || '';
+          break;
+        } else {
+          // Secondary fallback: regex-based extraction if userId candidates didn't match
+          // Try matching with keyword prefix first
+          const kwMatch = suffix.match(/(?:^|.*[-_])(base|row|procedure|slot|step)[-_](\d+)$/i);
+          if (kwMatch) {
             if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
               date = parsedDate;
             }
-            if (!scheduleItemId) {
-              scheduleItemId = normalizeScheduleItemId(suffix.slice(matchedCandidate.length + 1));
-            }
+            const prefix = kwMatch[1];
+            const digits = kwMatch[2];
+            const separator = suffix.includes(`${prefix}_${digits}`) ? '_' : '-';
+            scheduleItemId = `${prefix}${separator}${digits}`;
             break;
-          } else {
-            // Secondary fallback: regex-based extraction if userId candidates didn't match
-            // Try matching with keyword prefix first
-            const kwMatch = suffix.match(/(?:^|.*[-_])(base|row|procedure|slot|step)[-_](\d+)$/i);
-            if (kwMatch) {
-              if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
-                date = parsedDate;
-              }
-              if (!scheduleItemId) {
-                const prefix = kwMatch[1];
-                const digits = kwMatch[2];
-                const separator = suffix.includes(`${prefix}_${digits}`) ? '_' : '-';
-                scheduleItemId = `${prefix}${separator}${digits}`;
-              }
-              break;
+          }
+          // Try matching digits only
+          const digitsMatch = suffix.match(/(?:^|.*[-_])(\d+)$/i);
+          if (digitsMatch) {
+            if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
+              date = parsedDate;
             }
-            // Try matching digits only
-            const digitsMatch = suffix.match(/(?:^|.*[-_])(\d+)$/i);
-            if (digitsMatch) {
-              if (!/^\d{4}-\d{2}-\d{2}/.test(date)) {
-                date = parsedDate;
-              }
-              if (!scheduleItemId) {
-                scheduleItemId = digitsMatch[1];
-              }
-              break;
-            }
+            scheduleItemId = digitsMatch[1];
+            break;
           }
         }
       }
+    }
+
+    // Fallback: use RowNo field if composite key parsing failed
+    if (!scheduleItemId && rf.rowNo) {
+      scheduleItemId = normalizeScheduleItemId(readSharePointText(item[rf.rowNo])) || '';
     }
 
     const rawStatus = String(item[rf.status] || '').trim();

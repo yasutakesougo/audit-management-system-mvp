@@ -16,6 +16,7 @@ import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import {
   buildExecutionUserIdCandidates,
   normalizeScheduleItemId,
+  extractProcedureRowKey,
 } from '@/features/daily/utils/normalizeExecutionLookup';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { matchExecutionRecordsToProcedures } from '../domain/executionRecordMatching';
@@ -27,26 +28,9 @@ import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurr
 import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 
-const extractProcedureRowKey = (value: unknown): string => {
-  const normalized = normalizeScheduleItemId(value);
-  if (!normalized) return '';
-  if (/^\d+$/.test(normalized)) return String(Number.parseInt(normalized, 10));
-
-  const match = normalized.match(/(?:^|[-_])(row|base|procedure|slot|step)[-_]?(\d+)$/i);
-  if (match) return String(Number.parseInt(match[2], 10));
-
-  // Planning-sheet derived procedure IDs can be source-scoped, e.g.
-  // "official-<sheetId>-1". The final small numeric segment is the rowNo.
-  const tailNumber = normalized.match(/[-_](\d{1,2})$/);
-  if (!tailNumber) return '';
-  const rowNo = Number.parseInt(tailNumber[1], 10);
-  return rowNo >= 0 && rowNo <= 99 ? String(rowNo) : '';
-};
-
 const buildProcedureMatchKeys = (
   procedure: { id?: unknown; rowNo?: unknown },
   index: number,
-  allPrimaryScheduleKeys: Set<string>,
 ): string[] => {
   const keys = new Set<string>();
   const push = (value: string) => {
@@ -55,14 +39,23 @@ const buildProcedureMatchKeys = (
 
   const idKey = normalizeScheduleItemId(procedure.id);
   const rowNoKey = normalizeScheduleItemId(procedure.rowNo);
+  const rowNoVal = extractProcedureRowKey(procedure.rowNo);
+  const idRowVal = extractProcedureRowKey(procedure.id);
+  const indexPlusOne = String(index + 1);
+
   push(idKey);
   push(rowNoKey);
-  push(extractProcedureRowKey(procedure.id));
-  push(extractProcedureRowKey(procedure.rowNo));
+  push(rowNoVal);
+  push(idRowVal);
 
-  const indexKey = index.toString();
-  const canUseIndexFallback = !allPrimaryScheduleKeys.has(indexKey) || keys.has(indexKey);
-  if (canUseIndexFallback) push(indexKey);
+  // Add prefixed candidates based on rowNo or indexPlusOne
+  const rowCandidates = [rowNoKey, rowNoVal, indexPlusOne].filter(Boolean);
+  for (const rc of rowCandidates) {
+    push(`procedure-${rc}`);
+    push(`slot-${rc}`);
+    push(`slot_${rc}`);
+    push(`step-${rc}`);
+  }
 
   return Array.from(keys);
 };
@@ -73,13 +66,26 @@ const buildProcedureLookupKeys = (procedure: { id?: unknown; rowNo?: unknown }, 
     if (value) keys.add(value);
   };
 
-  // For SharePoint point lookups, prefer the physical row number first.
-  // Source-scoped planning IDs such as "official-<sheetId>-1" are not row keys.
-  push(extractProcedureRowKey(procedure.rowNo));
-  push(extractProcedureRowKey(procedure.id));
-  push(normalizeScheduleItemId(procedure.rowNo));
-  push(normalizeScheduleItemId(procedure.id));
-  push(index.toString());
+  const rowNoKey = normalizeScheduleItemId(procedure.rowNo);
+  const idKey = normalizeScheduleItemId(procedure.id);
+  const rowNoVal = extractProcedureRowKey(procedure.rowNo);
+  const idRowVal = extractProcedureRowKey(procedure.id);
+  const indexPlusOne = String(index + 1);
+
+  push(rowNoVal);
+  push(idRowVal);
+  push(rowNoKey);
+  push(idKey);
+
+  // Add prefixed candidates for robust SharePoint lookup
+  const rowCandidates = [rowNoKey, rowNoVal, indexPlusOne].filter(Boolean);
+  for (const rc of rowCandidates) {
+    push(`procedure-${rc}`);
+    push(`slot-${rc}`);
+    push(`slot_${rc}`);
+    push(`step-${rc}`);
+  }
+
   return Array.from(keys);
 };
 
@@ -352,7 +358,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         const maxLookupAttempts = executionRepositoryKind === 'sharepoint' ? 12 : Number.POSITIVE_INFINITY;
 
         for (let index = 0; index < procedures.length; index += 1) {
-          const procedureKeys = buildProcedureMatchKeys(procedures[index], index, allPrimaryScheduleKeys);
+          const procedureKeys = buildProcedureMatchKeys(procedures[index], index);
           if (procedureKeys.some((key) => matchedKeys.has(key))) continue;
 
           let foundRecord: ExecutionRecord | undefined;
