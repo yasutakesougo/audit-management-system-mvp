@@ -51,7 +51,25 @@ async function runListChecks(
     ? { ok: true as const, v: { id: `mock-${spec.key}`, title: spec.resolvedTitle } }
     : await safe(() => sp.getListByTitle(spec.resolvedTitle));
   if (!listInfo.ok) {
-    if (spec.isOptional) {
+    if (listInfo.isThrottled) {
+      results.push(
+        warn({
+          key: `lists.exists.${spec.key}`,
+          label: `リスト存在：${spec.displayName}`,
+          category: "lists",
+          summary: `SharePoint 側の一時的なスロットリングを検知しました。`,
+          detail: `SharePoint throttling detected. This is treated as an external transient condition, not an application schema failure. Retry after the tenant recovers. (Error: ${listInfo.err})`,
+          evidence: { listKey: spec.key, listTitle: spec.resolvedTitle, label: spec.displayName },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
+              value: "Health 診断を 5〜10 分後に再実行してください。",
+            },
+          ],
+        })
+      );
+    } else if (spec.isOptional) {
       results.push(
         warn({
           key: `lists.exists.${spec.key}`,
@@ -128,16 +146,36 @@ async function runListChecks(
       }
     : await safe(() => sp.getFields(spec.resolvedTitle));
   if (!fields.ok) {
-    results.push(
-      fail({
-        key: `schema.fields.${spec.key}`,
-        label: `スキーマ：${spec.displayName}`,
-        category: "schema",
-        summary: "列（フィールド）情報の取得に失敗しました。",
-        detail: fields.err,
-        evidence: { listTitle: spec.resolvedTitle },
-      })
-    );
+    if (fields.isThrottled) {
+      results.push(
+        warn({
+          key: `schema.fields.${spec.key}`,
+          label: `スキーマ：${spec.displayName}`,
+          category: "schema",
+          summary: `SharePoint 側の一時的なスロットリングを検知しました。`,
+          detail: `SharePoint throttling detected. This is treated as an external transient condition, not an application schema failure. Retry after the tenant recovers. (Error: ${fields.err})`,
+          evidence: { listTitle: spec.resolvedTitle },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
+              value: "Health 診断を 5〜10 分後に再実行してください。",
+            },
+          ],
+        })
+      );
+    } else {
+      results.push(
+        fail({
+          key: `schema.fields.${spec.key}`,
+          label: `スキーマ：${spec.displayName}`,
+          category: "schema",
+          summary: "列（フィールド）情報の取得に失敗しました。",
+          detail: fields.err,
+          evidence: { listTitle: spec.resolvedTitle },
+        })
+      );
+    }
   } else {
     // 1. Resolve fields with drift detection
     const candidates = Object.fromEntries(
@@ -311,19 +349,23 @@ async function runListChecks(
     ? { ok: true as const, v: [] as unknown[] }
     : await safe(() => sp.getItemsTop1(spec.resolvedTitle));
   if (!read.ok) {
-    if (isTransientPermissionStatus(read.status)) {
+    if (isTransientPermissionStatus(read.status) || read.isThrottled) {
       results.push(
         warn({
           key: `permissions.read.${spec.key}`,
           label: `権限：Read（${spec.displayName}）`,
           category: "permissions",
-          summary: `閲覧（Read）確認中に一時的エラー（${summarizeHttpStatus(read.status)}）を検出しました。`,
-          detail: read.err,
+          summary: read.isThrottled
+            ? `一時的エラー：SharePoint 側の一時的なスロットリングを検知しました。`
+            : `閲覧（Read）確認中に一時的エラー（${summarizeHttpStatus(read.status)}）を検出しました。`,
+          detail: read.isThrottled
+            ? `SharePoint throttling detected. This is treated as an external transient condition, not an application schema failure. Retry after the tenant recovers. (Error: ${read.err})`
+            : read.err,
           evidence: { listTitle: spec.resolvedTitle },
           nextActions: [
             {
               kind: "doc",
-              label: "時間をおいて再実行する（429/5xx は一時エラー）",
+              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
               value: "Health 診断を 5〜10 分後に再実行してください。",
             },
           ],
@@ -406,23 +448,26 @@ async function runListChecks(
         isTransientPermissionStatus,
       );
   if (!created.ok) {
-    if (isTransientPermissionStatus(created.status)) {
+    if (isTransientPermissionStatus(created.status) || created.isThrottled) {
       const retryCount = Math.max(0, created.attempts - 1);
       results.push(
         warn({
           key: `permissions.create.${spec.key}`,
           label: `権限：Create（${spec.displayName}）`,
           category: "permissions",
-          summary: `作成（Create）確認中に一時的エラー（${summarizeHttpStatus(created.status)}）を検出しました。`,
-          detail:
-            retryCount > 0
+          summary: created.isThrottled
+            ? `一時的エラー：SharePoint 側の一時的なスロットリングを検知しました。`
+            : `作成（Create）確認中に一時的エラー（${summarizeHttpStatus(created.status)}）を検出しました。`,
+          detail: created.isThrottled
+            ? `SharePoint throttling detected. Retry after the tenant recovers. (Error: ${created.err})`
+            : retryCount > 0
               ? `${created.err} (自動リトライ ${retryCount} 回後も解消せず)`
               : created.err,
           evidence: { listTitle: spec.resolvedTitle, payload: createBody },
           nextActions: [
             {
               kind: "doc",
-              label: "時間をおいて再実行する（429/5xx は一時エラー）",
+              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
               value: "Health 診断を 5〜10 分後に再実行してください。",
             },
           ],
@@ -473,23 +518,26 @@ async function runListChecks(
         }
       );
   if (!updated.ok) {
-    if (isTransientPermissionStatus(updated.status)) {
+    if (isTransientPermissionStatus(updated.status) || updated.isThrottled) {
       const retryCount = Math.max(0, updated.attempts - 1);
       results.push(
         warn({
           key: `permissions.update.${spec.key}`,
           label: `権限：Update（${spec.displayName}）`,
           category: "permissions",
-          summary: `更新（Update）確認中に一時的エラー（${summarizeHttpStatus(updated.status)}）を検出しました。`,
-          detail:
-            retryCount > 0
+          summary: updated.isThrottled
+            ? `一時的エラー：SharePoint 側の一時的なスロットリングを検知しました。`
+            : `更新（Update）確認中に一時的エラー（${summarizeHttpStatus(updated.status)}）を検出しました。`,
+          detail: updated.isThrottled
+            ? `SharePoint throttling detected. Retry after the tenant recovers. (Error: ${updated.err})`
+            : retryCount > 0
               ? `${updated.err} (自動リトライ ${retryCount} 回後も解消せず)`
               : updated.err,
           evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
           nextActions: [
             {
               kind: "doc",
-              label: "時間をおいて再実行する（429/5xx は一時エラー）",
+              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
               value: "Health 診断を 5〜10 分後に再実行してください。",
             },
           ],

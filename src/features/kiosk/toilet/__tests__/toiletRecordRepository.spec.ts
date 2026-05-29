@@ -4,6 +4,7 @@ import { SharePointToiletRecordRepository } from '../SharePointToiletRecordRepos
 import { getToiletRepository } from '../toiletRepositoryFactory';
 import type { ToiletRecordInput } from '../types';
 import * as env from '@/lib/env';
+import * as factory from '@/lib/createRepositoryFactory';
 
 // Mock list registry
 vi.mock('@/sharepoint/spListRegistry', () => ({
@@ -16,6 +17,7 @@ vi.mock('@/sharepoint/spListRegistry', () => ({
 describe('ToiletRecord Repository & Factory Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     if (typeof window !== 'undefined') {
       window.localStorage.clear();
     }
@@ -97,7 +99,7 @@ describe('ToiletRecord Repository & Factory Tests', () => {
 
   // ── 2. SharePointToiletRecordRepository ──
   describe('SharePointToiletRecordRepository', () => {
-    it('should list records using spFetch and filter by date', async () => {
+    it('should list records using spFetch and filter by JST local-day UTC range', async () => {
       const mockSpFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -106,7 +108,7 @@ describe('ToiletRecord Repository & Factory Tests', () => {
               Id: 101,
               Title: 'toilet-1',
               UserId: 'I005',
-              RecordDate: '2026-05-26T00:00:00Z',
+              RecordDate: '2026-05-25T15:00:00Z', // 2026-05-26 00:00:00 JST
               OccurredAt: '2026-05-26T10:00:00Z',
               ToiletType: 'urination',
               Amount: 'normal',
@@ -131,9 +133,18 @@ describe('ToiletRecord Repository & Factory Tests', () => {
       const [url] = mockSpFetch.mock.calls[0];
       expect(url).toContain("/lists/getbytitle('ToiletRecords')/items");
       const decodedUrl = decodeURIComponent(url);
-      expect(decodedUrl).toContain("RecordDate eq '2026-05-26'");
+
+      // 1. Should not use exact date equality filter
+      expect(decodedUrl).not.toContain("RecordDate eq '2026-05-26'");
+
+      // 2. Should use local-day UTC range query
+      expect(decodedUrl).toContain("RecordDate ge '2026-05-25T15:00:00Z'");
+      expect(decodedUrl).toContain("RecordDate lt '2026-05-26T15:00:00Z'");
+
+      // 4. IsDeleted condition should be preserved
       expect(decodedUrl).toContain("IsDeleted ne true");
 
+      // 3. SharePoint '2026-05-25T15:00:00Z' maps back to JST local date '2026-05-26'
       expect(records).toHaveLength(1);
       expect(records[0]).toMatchObject({
         id: 'toilet-1',
@@ -199,16 +210,22 @@ describe('ToiletRecord Repository & Factory Tests', () => {
 
   // ── 3. toiletRepositoryFactory ──
   describe('toiletRepositoryFactory', () => {
-    it('should resolve LocalStorageRepository when env or demo mode mandates it', () => {
-      vi.spyOn(env, 'isDemoModeEnabled').mockReturnValue(true);
+    it('should resolve LocalStorageRepository when defaultShouldUseDemo() resolves to true', () => {
+      vi.spyOn(factory, 'defaultShouldUseDemo').mockReturnValue(true);
       const repo = getToiletRepository(vi.fn());
       expect(repo).toBeInstanceOf(LocalStorageToiletRecordRepository);
     });
 
-    it('should resolve SharePointRepository when fetch exists and demo/test modes are off', () => {
-      vi.spyOn(env, 'isDemoModeEnabled').mockReturnValue(false);
-      vi.spyOn(env, 'isForceDemoEnabled').mockReturnValue(false);
-      vi.spyOn(env, 'shouldSkipLogin').mockReturnValue(false);
+    it('should resolve LocalStorageRepository when defaultShouldUseDemo() is false but provider is memory', () => {
+      vi.spyOn(factory, 'defaultShouldUseDemo').mockReturnValue(false);
+      vi.spyOn(env, 'readOptionalEnv').mockReturnValue('memory');
+
+      const repo = getToiletRepository(vi.fn());
+      expect(repo).toBeInstanceOf(LocalStorageToiletRecordRepository);
+    });
+
+    it('should resolve SharePointRepository when defaultShouldUseDemo() resolves to false', () => {
+      vi.spyOn(factory, 'defaultShouldUseDemo').mockReturnValue(false);
       vi.spyOn(env, 'readOptionalEnv').mockReturnValue('sharepoint');
 
       const repo = getToiletRepository(vi.fn());
