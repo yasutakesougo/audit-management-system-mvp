@@ -18,6 +18,7 @@ import {
   normalizeScheduleItemId,
 } from '@/features/daily/utils/normalizeExecutionLookup';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import { isStrictSameProcedureSlot, isShiftedProcedureSlot } from '../domain/buildDailyProcedureFlowPreview';
 
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -439,14 +440,7 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   // 進捗サマリーの計算
   const totalCount = procedures.length;
-  const recordsByScheduleItemId = React.useMemo(() => {
-    const map = new Map<string, ExecutionRecord[]>();
-
-    // In SharePoint mode, once the server read has completed it is authoritative.
-    // However, to protect against SharePoint indexing/replication lag, we keep recently
-    // saved optimistic local records (within 2 minutes) even after the fetch completes.
-    // When the server fetch failed (e.g. throttled), use ALL store records as the
-    // best available data without the 2-minute recency filter.
+  const recordedRecordsByProcedure = React.useMemo(() => {
     const allCandidateRecords =
       executionRepositoryKind === 'sharepoint' && hasFetchedRecords
         ? fetchFailed
@@ -464,29 +458,57 @@ export const KioskProcedureListScreen: React.FC = () => {
               }),
             ]
         : [...storeRecords, ...records];
-    
+
+    const uniqueRecordsMap = new Map<string, ExecutionRecord>();
     for (const record of allCandidateRecords) {
-      for (const key of buildRecordMatchKeys(record)) {
-        const existing = map.get(key) ?? [];
-        if (existing.length === 0 || hasRecordInput(record)) {
-          map.set(key, [record, ...existing.filter((item) => item !== record)]);
-        }
+      const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
+      const existing = uniqueRecordsMap.get(key);
+      if (!existing || (!hasRecordInput(existing) && hasRecordInput(record))) {
+        uniqueRecordsMap.set(key, record);
       }
     }
-    return map;
-  }, [executionRepositoryKind, hasFetchedRecords, fetchFailed, storeRecords, records, hasRecordInput]);
-  const getRecordedRecordForProcedure = React.useCallback((procedure: { id?: unknown; rowNo?: unknown }, index: number) => {
-    const procedureKeys = buildProcedureMatchKeys(procedure, index, allPrimaryScheduleKeys);
-    const matchedRecord = procedureKeys
-      .flatMap((key) => recordsByScheduleItemId.get(key) ?? [])
-      .find((record) => hasRecordInput(record));
-    if (matchedRecord) return matchedRecord;
-    return undefined;
-  }, [allPrimaryScheduleKeys, hasRecordInput, recordsByScheduleItemId]);
-  const recordedRecordsByProcedure = React.useMemo(
-    () => procedures.map((procedure, index) => getRecordedRecordForProcedure(procedure, index)),
-    [procedures, getRecordedRecordForProcedure]
-  );
+    const dedupedRecords = Array.from(uniqueRecordsMap.values());
+
+    const strictlyMatchedRecords = new Set<ExecutionRecord>();
+    const strictMatchMap = new Map<number, ExecutionRecord>();
+
+    procedures.forEach((step, index) => {
+      const slot = {
+        ...step,
+        rowNo: step.rowNo !== undefined ? Number(step.rowNo) : undefined,
+        id: step.id ? String(step.id) : undefined,
+      } as any;
+
+      const strictMatch = dedupedRecords.find(r => isStrictSameProcedureSlot(slot, r));
+      if (strictMatch) {
+        const key = slot.rowNo ?? (index + 1);
+        strictMatchMap.set(key, strictMatch);
+        strictlyMatchedRecords.add(strictMatch);
+      }
+    });
+
+    return procedures.map((step, index) => {
+      const slot = {
+        ...step,
+        rowNo: step.rowNo !== undefined ? Number(step.rowNo) : undefined,
+        id: step.id ? String(step.id) : undefined,
+      } as any;
+
+      const key = slot.rowNo ?? (index + 1);
+      let matchedRecord = strictMatchMap.get(key);
+
+      if (!matchedRecord) {
+        matchedRecord = dedupedRecords.find(r =>
+          !strictlyMatchedRecords.has(r) && isShiftedProcedureSlot(slot, r)
+        );
+      }
+
+      if (matchedRecord && hasRecordInput(matchedRecord)) {
+        return matchedRecord;
+      }
+      return undefined;
+    });
+  }, [executionRepositoryKind, hasFetchedRecords, fetchFailed, storeRecords, records, procedures, hasRecordInput]);
   const doneCount = recordedRecordsByProcedure.filter((r) => r?.status === 'completed').length;
   const recordedCount = recordedRecordsByProcedure.filter(Boolean).length;
   const progress = totalCount > 0 ? (recordedCount / totalCount) * 100 : 0;
