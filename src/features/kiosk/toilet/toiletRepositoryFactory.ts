@@ -2,7 +2,8 @@ import { IToiletRecordRepository } from './types';
 import { LocalStorageToiletRecordRepository } from './toiletRecordRepository';
 import { SharePointToiletRecordRepository } from './SharePointToiletRecordRepository';
 import type { SpFetchFn } from '@/lib/sp/spLists';
-import { readOptionalEnv, isDemoModeEnabled, isForceDemoEnabled, shouldSkipLogin } from '@/lib/env';
+import { readOptionalEnv } from '@/lib/env';
+import { defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
 
 export type ToiletRepositoryKind = 'local' | 'sharepoint';
 
@@ -12,8 +13,8 @@ const shouldUseLocalRepository = (): boolean => {
   const providerEnv = readOptionalEnv('VITE_DATA_PROVIDER');
   const providerHint = (providerParam ?? providerEnv ?? '').trim().toLowerCase();
 
-  // 1. demo / skip-login / force-demo は最優先で local
-  if (isDemoModeEnabled() || isForceDemoEnabled() || shouldSkipLogin()) {
+  // 1. 全体標準のデモ判定（hasSpfxContext などの安全なフォールバックを含む）に従う
+  if (defaultShouldUseDemo()) {
     return true;
   }
 
