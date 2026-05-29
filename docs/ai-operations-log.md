@@ -77,7 +77,39 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-29 — kiosk: diagnostic query propagation 追補PR完成 🏁
+
+**ワークフロー**: `/test` → `/docs`
+**対象**: `src/features/kiosk/utils/__tests__/navigation.spec.ts` / `tests/e2e/kiosk-procedure-list.spec.ts`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | **Unit Test 追加**: `appendKioskSearchParams` に空文字列・`?`なしクエリのエッジケース、および `/kiosk` 完全一致・サブパスの両方でstate paramsがクレンジングされることを検証する2件を追加（合計7件）。 |
+| ✅ 採用 | **E2E Test 追加**: 手順一覧画面の「戻る」ボタン押下時に `highlight` / `list` が維持され、`userId` / `slotId` / `step` がクレンジングされることを `new URL(page.url()).searchParams` レベルで検証する1件を追加（合計9件）。 |
+| ❌ 却下 | 業務ロジック・SharePoint永続化ロジック・workflow ymlへの変更。 |
+| 💡 却下理由 | 本PRのスコープはテスト強化と運用ログ更新のみに限定し、回帰リスクを排除するため。 |
+
+**成果**:
+- Unit test: `navigation.spec.ts` — **7/7 PASS** 🟢
+- E2E test: `kiosk-procedure-list.spec.ts` — **9/9 PASS** 🟢
+- Typecheck: **PASS** 🟢
+- `git diff --check`: **PASS** 🟢
+- 差分は対象3ファイルのみに収まっている。
+
+**効果測定**:
+- Kiosk画面間遷移（前進・後退の両方向）で診断パラメータの伝播が自動テストで保証された 🟢
+- エッジケース（空クエリ、`?`なし入力）に対する防御がユニットテストで明示的に保証された 🟢
+
+**学び**:
+- **双方向遷移のテスト**: 「ユーザー選択→手順一覧」の前進遷移だけでなく、「手順一覧→ユーザー選択」の後退遷移でもクエリパラメータの挙動を検証することで、`appendKioskSearchParams` の契約を全方向から封じ込められる。
+- **`git diff --check` の早期実行**: trailing whitespace はCIで落ちるため、コミット前に `git diff --check` を毎回実行するルーチンが手戻りを防ぐ。
+
+**所要時間**: 約 10min
+
+#kiosk #e2e #testing #stability #operations-log
+
 ### 2026-05-28 — kiosk: verify diagnostic query propagation (follow-up PR) 🏁
+
 
 **ワークフロー**: `/implement` → `/test` → `/docs`
 **対象**: `src/features/kiosk/utils/navigation.ts` / `tests/e2e/kiosk-procedure-list.spec.ts`

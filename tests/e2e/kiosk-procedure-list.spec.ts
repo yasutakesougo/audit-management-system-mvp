@@ -113,4 +113,41 @@ test.describe('Kiosk Procedure List', () => {
     expect(searchParams.has('slotId')).toBe(false);
     expect(searchParams.has('step')).toBe(false);
   });
+
+  test('should preserve diagnostic params when navigating back to user selection from procedure list', async ({ page }) => {
+    test.setTimeout(120000);
+
+    // Boot directly to procedure list with diagnostic and state query parameters
+    await bootKiosk(page, {
+      route: '/kiosk/users/1/procedures?highlight=sp_bootstrap_blocked&list=Users_Master&userId=1&slotId=123&step=2',
+      userId: '1',
+    });
+
+    await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 15000 });
+
+    const selector = '[data-testid="kiosk-procedure-list-back"]';
+
+    // Stabilization wait
+    await page.waitForTimeout(2000);
+
+    // Click "back" button to go back to user selection
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel) as HTMLElement;
+      if (el) el.click();
+    }, selector);
+
+    await expect(page).toHaveURL(/.*\/kiosk\/users.*/, { timeout: 30000 });
+
+    const url = new URL(page.url());
+    const searchParams = url.searchParams;
+
+    // Diagnostic params must be preserved
+    expect(searchParams.get('highlight')).toBe('sp_bootstrap_blocked');
+    expect(searchParams.get('list')).toBe('Users_Master');
+
+    // State params of the user must be cleared on transition back
+    expect(searchParams.has('userId')).toBe(false);
+    expect(searchParams.has('slotId')).toBe(false);
+    expect(searchParams.has('step')).toBe(false);
+  });
 });
