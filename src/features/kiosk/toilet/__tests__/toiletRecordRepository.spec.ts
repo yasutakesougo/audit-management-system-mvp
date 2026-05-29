@@ -138,8 +138,8 @@ describe('ToiletRecord Repository & Factory Tests', () => {
       expect(decodedUrl).not.toContain("RecordDate eq '2026-05-26'");
 
       // 2. Should use local-day UTC range query
-      expect(decodedUrl).toContain("RecordDate ge datetime'2026-05-25T15:00:00Z'");
-      expect(decodedUrl).toContain("RecordDate lt datetime'2026-05-26T15:00:00Z'");
+      expect(decodedUrl).toContain("RecordDate ge '2026-05-25T15:00:00Z'");
+      expect(decodedUrl).toContain("RecordDate lt '2026-05-26T15:00:00Z'");
 
       // 4. IsDeleted condition should be preserved
       expect(decodedUrl).toContain("IsDeleted ne true");
