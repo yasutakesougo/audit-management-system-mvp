@@ -19,6 +19,7 @@ import {
 } from '@/features/daily/utils/normalizeExecutionLookup';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { isStrictSameProcedureSlot, isShiftedProcedureSlot } from '../domain/buildDailyProcedureFlowPreview';
+import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
 
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -477,7 +478,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         ...step,
         rowNo: step.rowNo !== undefined ? Number(step.rowNo) : undefined,
         id: step.id ? String(step.id) : undefined,
-      } as any;
+      } as ProcedureItem;
 
       const strictMatch = dedupedRecords.find(r => isStrictSameProcedureSlot(slot, r));
       if (strictMatch) {
@@ -492,7 +493,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         ...step,
         rowNo: step.rowNo !== undefined ? Number(step.rowNo) : undefined,
         id: step.id ? String(step.id) : undefined,
-      } as any;
+      } as ProcedureItem;
 
       const key = slot.rowNo ?? (index + 1);
       let matchedRecord = strictMatchMap.get(key);
