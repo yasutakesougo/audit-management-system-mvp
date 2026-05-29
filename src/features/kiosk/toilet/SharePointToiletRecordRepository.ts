@@ -96,7 +96,7 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
     const startUtc = new Date(startMs).toISOString().replace('.000Z', 'Z');
     const endUtc = new Date(endMs).toISOString().replace('.000Z', 'Z');
 
-    const filter = `(${recordDateField} ge datetime'${startUtc}') and (${recordDateField} lt datetime'${endUtc}') and (${isDeletedField} ne true)`;
+    const filter = `(${recordDateField} ge '${startUtc}') and (${recordDateField} lt '${endUtc}') and (${isDeletedField} ne true)`;
     
     // OData query
     const select = [
