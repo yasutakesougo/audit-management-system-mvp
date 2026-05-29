@@ -99,7 +99,7 @@ describe('ToiletRecord Repository & Factory Tests', () => {
 
   // ── 2. SharePointToiletRecordRepository ──
   describe('SharePointToiletRecordRepository', () => {
-    it('should list records using spFetch and filter by date', async () => {
+    it('should list records using spFetch and filter by JST local-day UTC range', async () => {
       const mockSpFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -108,7 +108,7 @@ describe('ToiletRecord Repository & Factory Tests', () => {
               Id: 101,
               Title: 'toilet-1',
               UserId: 'I005',
-              RecordDate: '2026-05-26T00:00:00Z',
+              RecordDate: '2026-05-25T15:00:00Z', // 2026-05-26 00:00:00 JST
               OccurredAt: '2026-05-26T10:00:00Z',
               ToiletType: 'urination',
               Amount: 'normal',
@@ -133,9 +133,18 @@ describe('ToiletRecord Repository & Factory Tests', () => {
       const [url] = mockSpFetch.mock.calls[0];
       expect(url).toContain("/lists/getbytitle('ToiletRecords')/items");
       const decodedUrl = decodeURIComponent(url);
-      expect(decodedUrl).toContain("RecordDate eq '2026-05-26'");
+
+      // 1. Should not use exact date equality filter
+      expect(decodedUrl).not.toContain("RecordDate eq '2026-05-26'");
+
+      // 2. Should use local-day UTC range query
+      expect(decodedUrl).toContain("RecordDate ge datetime'2026-05-25T15:00:00Z'");
+      expect(decodedUrl).toContain("RecordDate lt datetime'2026-05-26T15:00:00Z'");
+
+      // 4. IsDeleted condition should be preserved
       expect(decodedUrl).toContain("IsDeleted ne true");
 
+      // 3. SharePoint '2026-05-25T15:00:00Z' maps back to JST local date '2026-05-26'
       expect(records).toHaveLength(1);
       expect(records[0]).toMatchObject({
         id: 'toilet-1',
