@@ -16,10 +16,7 @@ interface ComplianceBadgeContextValue {
 
 const ComplianceBadgeContext = createContext<ComplianceBadgeContextValue | null>(null);
 
-export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const location = useLocation();
-  const isKiosk = location.pathname.startsWith('/kiosk');
-
+const ComplianceBadgeLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { data: users, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff, isLoading: staffLoading, error: staffError } = useStaff();
   
@@ -39,7 +36,7 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
     procedureRecordRepo,
     monitoringMeetingRepo,
     undefined,
-    { enabled: !isKiosk }
+    { enabled: true }
   );
 
   const { input: addonInput, isLoading: addonLoading } = useSevereAddonRealData(
@@ -51,7 +48,7 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
     null, // observation repo not used for count for now
     null, // qualification repo not used for count for now
     undefined,
-    { enabled: !isKiosk }
+    { enabled: true }
   );
 
   const addonFindingCount = useMemo(() => {
@@ -66,14 +63,34 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
 
   const value = useMemo(() => ({
     totalCount,
-    isLoading: isKiosk ? false : (findingsLoading || addonLoading || dataLoading),
-  }), [totalCount, findingsLoading, addonLoading, dataLoading, isKiosk]);
+    isLoading: findingsLoading || addonLoading || dataLoading,
+  }), [totalCount, findingsLoading, addonLoading, dataLoading]);
 
   return (
     <ComplianceBadgeContext.Provider value={value}>
       {children}
     </ComplianceBadgeContext.Provider>
   );
+};
+
+export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const isKiosk = location.pathname.startsWith('/kiosk');
+
+  const emptyValue = useMemo(() => ({
+    totalCount: 0,
+    isLoading: false,
+  }), []);
+
+  if (isKiosk) {
+    return (
+      <ComplianceBadgeContext.Provider value={emptyValue}>
+        {children}
+      </ComplianceBadgeContext.Provider>
+    );
+  }
+
+  return <ComplianceBadgeLoader>{children}</ComplianceBadgeLoader>;
 };
 
 export const useComplianceBadge = () => {
