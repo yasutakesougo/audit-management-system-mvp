@@ -85,7 +85,18 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
 
     const recordDateField = this.rfFallback('recordDate');
     const isDeletedField = this.rfFallback('isDeleted');
-    const filter = `(${recordDateField} eq '${dateIso}') and (${isDeletedField} ne true)`;
+
+    // Convert dateIso (YYYY-MM-DD) to JST UTC range (since welfare records operate in JST/UTC+9)
+    const parts = dateIso.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const startMs = Date.UTC(year, month, day, 0, 0, 0) - 9 * 60 * 60 * 1000;
+    const endMs = startMs + 24 * 60 * 60 * 1000;
+    const startUtc = new Date(startMs).toISOString().replace('.000Z', 'Z');
+    const endUtc = new Date(endMs).toISOString().replace('.000Z', 'Z');
+
+    const filter = `(${recordDateField} ge datetime'${startUtc}') and (${recordDateField} lt datetime'${endUtc}') and (${isDeletedField} ne true)`;
     
     // OData query
     const select = [
