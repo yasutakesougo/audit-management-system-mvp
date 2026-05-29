@@ -77,6 +77,36 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-28 — kiosk: verify diagnostic query propagation (follow-up PR) 🏁
+
+**ワークフロー**: `/implement` → `/test` → `/docs`
+**対象**: `src/features/kiosk/utils/navigation.ts` / `tests/e2e/kiosk-procedure-list.spec.ts`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | **Unit Test**: `appendKioskSearchParams` に対する網羅的な単体テストを追加し、業務状態パラメータ（`userId`, `user`, `slotId`, `step`）のクレンジング、診断用パラメータ（`highlight`, `list`）の維持、および `extraParams` 統合や別パス非クレンジングの挙動を保証。 |
+| ✅ 採用 | **E2E Test**: 利用者選択画面の起動E2E（`/kiosk/users?highlight=sp_bootstrap_blocked&list=Users_Master`）を追加し、診断パラメータ付与時の非クラッシュ起動を保証。 |
+| ✅ 採用 | **E2E Test**: 「利用者選択 → 手順一覧への遷移E2E」を追加し、古い業務状態パラメータ（`userId=stale` 等）が除去されつつ、診断パラメータが遷移後の `searchParams` に維持・伝播されることを `new URL(page.url())` レベルで厳密検証。 |
+| ❌ 却下 | 診断パラメータをキオスク外の全画面に一貫して永続伝播させる仕組みの追加。 |
+| 💡 却下理由 | 本 follow-up のスコープは、利用者選択および手順一覧ルートにおける「診断用と業務状態のクリーンな分離」に限定し、無用な回帰リスクや過剰設計を避けるため。 |
+
+**成果**:
+- 新規ユニットテスト: `src/features/kiosk/utils/__tests__/navigation.spec.ts`
+- E2Eテストケースの追加: `tests/e2e/kiosk-procedure-list.spec.ts`
+- 全テストおよび型チェックの **ALL PASS** (Vitest 92件 + Playwright 8件) 🟢
+
+**効果測定**:
+- Kiosk内遷移時の状態競合バグ: **完全排除** (パラメータの自動クレンジングにより、前ユーザーの状態引き継ぎロックを防御) 🟢
+- 診断・ハイライトパラメータ伝播力: 遷移時にも診断コンテキストを意図通り維持できることがPlaywrightにて検証済み 🟢
+
+**学び**:
+- **ユニットとE2Eのサンドイッチ補強**: ルーターやURLユーティリティの挙動は、境界条件をユニットテストで厳密に押さえ、実際のページ遷移や状態クリアのインテグレーション部分を Playwright の実ブラウザ遷移で挟み撃ちにして検証する設計が、回帰バグに対して最も安全なバリアになる。
+- **検索パラメータの直接アサーション**: Playwright で遷移先URLのパラメータを確認する際、単純な文字列マッチではなく `new URL(page.url()).searchParams` で各キーの存在有無をアサートすることで、誤検知やFlakinessを排除した厳密な結合テストが可能になる。
+
+**所要時間**: 約 15min
+
+#kiosk #e2e #testing #stability #refactor #operations-log
+
 ### 2026-05-28 — Kiosk Procedures Highlight Query Parameter Verification & Consistency Report 🏁
 
 **ワークフロー**: `/scan` → `/test` → `/docs`
