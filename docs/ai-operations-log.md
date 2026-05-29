@@ -77,6 +77,42 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-29 — Kiosk & Diagnostics Stabilization (Matching Helper & SharePoint Throttling Classification) 🏁
+
+**ワークフロー**: `/scan` → `/refactor` → `/harden` → `/test`
+**対象**:
+- `src/features/kiosk/toilet/useToiletRecords.ts` / `src/features/daily/hooks/useExecutionRecord.ts`
+- `src/features/diagnostics/health/checks/utils.ts` / `listChecks.ts` / `authChecks.ts`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | **#2053**: Kiosk 利用者手順選択時のローカル Zustand 実施記録とフェッチした SharePoint 記録のマッチング不整合を解消。Zustand store 内の未送信/送信中/完了データと SharePoint データを名寄せするロジックを修正。 |
+| ✅ 採用 | **#2054**: 各コンポーネントやフック（トイレ、実施記録等）で散在していたマッチングロジックを `src/features/kiosk/utils/executionRecordMatching.ts` に共通ヘルパーとして完全に集約・一本化。二重マッチングを防止。 |
+| ✅ 採用 | **#2055**: SharePoint 側のスロットリング発生時（`Throttle.htm` へのリダイレクト、`SpThrottleRedirectError`）に、Health 診断が `FAIL` ではなく `WARN` として分類されるように改善。 |
+| ✅ 採用 | **#2055**: `safeWithRetry` 内でスロットリングを検知した場合は即座に再試行ループを中断し、リクエストストーム（Request Storm）の増幅を完全に抑止。 |
+| ✅ 採用 | **#2055**: `schema.fields.user_benefit_profile_ext` および `permissions.read.user_benefit_profile_ext` 等のスロットリング回帰テスト（10件）を堅牢に追加。403 権限不足や 404 等の真のエラーは `FAIL` のまま維持。 |
+| ❌ 却下 | 診断エラー分類に `EXTERNAL` などの新しい状態区分を新設する案。 |
+| 💡 却下理由 | 既存の3値設計（`pass` / `warn` / `fail`）を無必要に複雑化させず、WARN のメッセージに「SharePoint throttling / external transient」等の詳細を付記する設計の方が、運用のシンプルさを維持しつつ十分な情報を提供できるため。 |
+
+**成果**:
+- PR: `#2053`, `#2054`, `#2055` (すべて `main` へマージ完了 🟢)
+- 共通ヘルパー: `src/features/kiosk/utils/executionRecordMatching.ts`
+- 回帰テスト追加: `src/features/diagnostics/health/__tests__/throttlingClassification.spec.ts`
+- 診断系テスト: **90件 PASS (19ファイル) 🟢** / `npm run typecheck`: **PASS 🟢**
+
+**効果測定**:
+- Kiosk 表示不整合率: マッチングロジック共通化により、一時的な表示ブレや二重カウントバグを **完全排除**。
+- スロットリング発生時の診断ノイズ: SharePoint 一時負荷による schema / permission の `FAIL` を `WARN` に適切に分類し、真のアプリケーション/スキーマ異常のみが `FAIL` に現れるよう分離。
+- リクエストストーム防止: スロットリング検知時の即時 retry 中断により、スロットル制限の早期解除と安定回復を支援。
+
+**学び**:
+- **「実環境が揺れても、アプリの判定ロジックは揺らさない」線引き**: 外部 API やネットワークの一時的な瞬断・サービス制限（Throttling）と、実際のアプリケーションのデータ整合性バグを診断上明確に切り分けることで、PRの正当性担保（Unit/Mock E2E での PASS）と、本番環境のヘルス状態（環境一時アラート）をクリーンに共存できる。
+- **共通マッチングヘルパーの抽出効果**: 複数の非同期ソース（ローカル状態、送信中キャッシュ、物理永続化データ）を持つリアルタイム画面において、名寄せ（Matching）ルールを1箇所にドメインロジックとして切り出すことは、仕様変更とテスト容易性を大幅に改善する。
+
+**所要時間**: 約 60min（3PR全体の統合・検証）
+
+#kiosk #health #sharepoint #throttle #stability #refactor #operations-log
+
 ### 2026-05-28 — kiosk: verify diagnostic query propagation (follow-up PR) 🏁
 
 **ワークフロー**: `/implement` → `/test` → `/docs`
