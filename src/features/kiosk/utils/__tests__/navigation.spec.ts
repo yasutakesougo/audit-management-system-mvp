@@ -56,5 +56,28 @@ describe('kiosk navigation utilities', () => {
       expect(params.get('userId')).toBe('active');
       expect(params.get('slotId')).toBe('123');
     });
+
+    it('handles empty or malformed search queries safely', () => {
+      const resultEmpty = appendKioskSearchParams('/kiosk/users', '');
+      expect(resultEmpty).toBe('/kiosk/users');
+
+      const resultMalformed = appendKioskSearchParams('/kiosk/users', 'no-question-mark=true&userId=stale');
+      const params = new URLSearchParams(resultMalformed.split('?')[1]);
+      expect(params.get('no-question-mark')).toBe('true');
+      expect(params.has('userId')).toBe(false);
+    });
+
+    it('clears state params on exact /kiosk and subpaths starting with /kiosk', () => {
+      const current = '?userId=stale&highlight=active';
+      const exactResult = appendKioskSearchParams('/kiosk', current);
+      const exactParams = new URLSearchParams(exactResult.split('?')[1]);
+      expect(exactParams.get('highlight')).toBe('active');
+      expect(exactParams.has('userId')).toBe(false);
+
+      const subpathResult = appendKioskSearchParams('/kiosk/sub', current);
+      const subpathParams = new URLSearchParams(subpathResult.split('?')[1]);
+      expect(subpathParams.get('highlight')).toBe('active');
+      expect(subpathParams.has('userId')).toBe(false);
+    });
   });
 });
