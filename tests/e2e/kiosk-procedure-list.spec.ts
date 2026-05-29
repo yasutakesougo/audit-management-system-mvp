@@ -75,4 +75,42 @@ test.describe('Kiosk Procedure List', () => {
 
     await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 15000 });
   });
+
+  test('should boot user selection with diagnostic query parameters without crashing', async ({ page }) => {
+    await bootKiosk(page, {
+      route: '/kiosk/users?highlight=sp_bootstrap_blocked&list=Users_Master',
+      userId: '1',
+    });
+
+    await expect(page.getByText('利用者を選択してください')).toBeVisible({ timeout: 15000 });
+  });
+
+  test('should preserve diagnostic params and clear stale kiosk state params during navigation', async ({ page }) => {
+    await bootKiosk(page, {
+      route: '/kiosk/users?highlight=sp_bootstrap_blocked&list=Users_Master&userId=stale&slotId=old&step=2',
+      userId: '1',
+    });
+
+    await expect(page.getByText('利用者を選択してください')).toBeVisible({ timeout: 15000 });
+
+    // Click on target user card "kiosk-user-card-1" (which navigates to /kiosk/users/1/procedures)
+    const card = page.getByTestId('kiosk-user-card-1');
+    await card.click();
+
+    // Wait for the procedure page to load
+    await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 15000 });
+
+    // Verify search params directly using new URL(page.url())
+    const url = new URL(page.url());
+    const searchParams = url.searchParams;
+
+    // Preserved
+    expect(searchParams.get('highlight')).toBe('sp_bootstrap_blocked');
+    expect(searchParams.get('list')).toBe('Users_Master');
+
+    // Cleared
+    expect(searchParams.has('userId')).toBe(false);
+    expect(searchParams.has('slotId')).toBe(false);
+    expect(searchParams.has('step')).toBe(false);
+  });
 });
