@@ -206,6 +206,137 @@ describe('ToiletRecord Repository & Factory Tests', () => {
       expect(record.userId).toBe('I022');
       expect(record.recordDate).toBe('2026-05-26');
     });
+
+    it('should NOT execute fallback query when primary range query returns items', async () => {
+      const mockSpFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          value: [
+            {
+              Id: 101,
+              Title: 'toilet-1',
+              UserId: 'I005',
+              RecordDate: '2026-05-25T15:00:00Z',
+              OccurredAt: '2026-05-26T10:00:00Z',
+              ToiletType: 'urination',
+              Amount: 'normal',
+              Memo: 'sp test',
+              RecorderName: 'kiosk',
+              IsDeleted: false,
+              Created: '2026-05-26T10:05:00Z',
+              Modified: '2026-05-26T10:05:00Z',
+            },
+          ],
+        }),
+      });
+
+      const mockGetFields = vi.fn().mockResolvedValue(new Set([
+        'UserId', 'RecordDate', 'OccurredAt', 'ToiletType', 'Amount', 'Memo', 'RecorderName', 'Source', 'IsDeleted'
+      ]));
+
+      const repo = new SharePointToiletRecordRepository(mockSpFetch, mockGetFields);
+      const records = await repo.listByDate('2026-05-26');
+
+      expect(mockSpFetch).toHaveBeenCalledTimes(1);
+      expect(records).toHaveLength(1);
+      expect(records[0].id).toBe('toilet-1');
+    });
+
+    it('should execute fallback query when primary range query returns 0 items and filter client-side', async () => {
+      let callCount = 0;
+      const mockSpFetch = vi.fn().mockImplementation(async (_url) => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            ok: true,
+            json: async () => ({ value: [] })
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              {
+                Id: 50,
+                Title: 'toilet-fallback-1',
+                UserId: 'I005',
+                RecordDate: '2026-05-28T15:00:00Z', // 2026-05-29 00:00:00 JST -> target date
+                OccurredAt: '2026-05-29T10:00:00Z',
+                ToiletType: 'urination',
+                Amount: 'normal',
+                Memo: 'should match',
+                IsDeleted: false,
+                Created: '2026-05-29T10:05:00Z',
+              },
+              {
+                Id: 51,
+                Title: 'toilet-fallback-2',
+                UserId: 'I005',
+                RecordDate: '2026-05-27T15:00:00Z', // 2026-05-28 00:00:00 JST -> other date, should filter out
+                OccurredAt: '2026-05-28T10:00:00Z',
+                ToiletType: 'urination',
+                Amount: 'normal',
+                Memo: 'other date',
+                IsDeleted: false,
+                Created: '2026-05-28T10:05:00Z',
+              },
+              {
+                Id: 52,
+                Title: 'toilet-fallback-3',
+                UserId: 'I005',
+                RecordDate: '2026-05-28T15:00:00Z', // 2026-05-29 00:00:00 JST -> target date, but IsDeleted: true, should filter out
+                OccurredAt: '2026-05-29T11:00:00Z',
+                ToiletType: 'urination',
+                Amount: 'normal',
+                Memo: 'deleted record',
+                IsDeleted: true,
+                Created: '2026-05-29T11:05:00Z',
+              },
+              {
+                Id: 53,
+                Title: 'toilet-fallback-4',
+                UserId: 'I005',
+                RecordDate: '2026-05-28T15:00:00Z', // 2026-05-29 00:00:00 JST -> target date, occurredAt: 09:00:00Z (earlier)
+                OccurredAt: '2026-05-29T09:00:00Z',
+                ToiletType: 'urination',
+                Amount: 'normal',
+                Memo: 'should match earlier',
+                IsDeleted: false,
+                Created: '2026-05-29T09:05:00Z',
+              }
+            ]
+          })
+        };
+      });
+
+      const mockGetFields = vi.fn().mockResolvedValue(new Set([
+        'UserId', 'RecordDate', 'OccurredAt', 'ToiletType', 'Amount', 'Memo', 'RecorderName', 'Source', 'IsDeleted'
+      ]));
+
+      const repo = new SharePointToiletRecordRepository(mockSpFetch, mockGetFields);
+      const records = await repo.listByDate('2026-05-29');
+
+      expect(mockSpFetch).toHaveBeenCalledTimes(2);
+
+      // Verify the URL for the fallback query
+      const [firstCallUrl] = mockSpFetch.mock.calls[0];
+      const [secondCallUrl] = mockSpFetch.mock.calls[1];
+      const decodedFirstUrl = decodeURIComponent(firstCallUrl);
+      const decodedSecondUrl = decodeURIComponent(secondCallUrl);
+      expect(decodedFirstUrl).toContain('RecordDate ge');
+      expect(decodedSecondUrl).not.toContain('RecordDate ge');
+      expect(decodedSecondUrl).toContain('orderby=Created desc');
+      expect(decodedSecondUrl).toContain('top=500');
+
+      // Verify the filtered & sorted results:
+      // - toilet-fallback-1 (10:00:00) and toilet-fallback-4 (09:00:00) match target date '2026-05-29'
+      // - toilet-fallback-2 is filtered out (wrong date)
+      // - toilet-fallback-3 is filtered out (deleted)
+      // - Ordered by occurredAt desc -> fallback-1 (10:00) then fallback-4 (09:00)
+      expect(records).toHaveLength(2);
+      expect(records[0].id).toBe('toilet-fallback-1');
+      expect(records[1].id).toBe('toilet-fallback-4');
+    });
   });
 
   // ── 3. toiletRepositoryFactory ──
