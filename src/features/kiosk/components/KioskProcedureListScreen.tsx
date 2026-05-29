@@ -18,8 +18,7 @@ import {
   normalizeScheduleItemId,
 } from '@/features/daily/utils/normalizeExecutionLookup';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
-import { isStrictSameProcedureSlot, isShiftedProcedureSlot } from '../domain/buildDailyProcedureFlowPreview';
-import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
+import { matchExecutionRecordsToProcedures } from '../domain/executionRecordMatching';
 
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -470,40 +469,8 @@ export const KioskProcedureListScreen: React.FC = () => {
     }
     const dedupedRecords = Array.from(uniqueRecordsMap.values());
 
-    const strictlyMatchedRecords = new Set<ExecutionRecord>();
-    const strictMatchMap = new Map<number, ExecutionRecord>();
-
-    procedures.forEach((step, index) => {
-      const slot = {
-        ...step,
-        rowNo: step.rowNo !== undefined ? Number(step.rowNo) : undefined,
-        id: step.id ? String(step.id) : undefined,
-      } as ProcedureItem;
-
-      const strictMatch = dedupedRecords.find(r => isStrictSameProcedureSlot(slot, r));
-      if (strictMatch) {
-        const key = slot.rowNo ?? (index + 1);
-        strictMatchMap.set(key, strictMatch);
-        strictlyMatchedRecords.add(strictMatch);
-      }
-    });
-
-    return procedures.map((step, index) => {
-      const slot = {
-        ...step,
-        rowNo: step.rowNo !== undefined ? Number(step.rowNo) : undefined,
-        id: step.id ? String(step.id) : undefined,
-      } as ProcedureItem;
-
-      const key = slot.rowNo ?? (index + 1);
-      let matchedRecord = strictMatchMap.get(key);
-
-      if (!matchedRecord) {
-        matchedRecord = dedupedRecords.find(r =>
-          !strictlyMatchedRecords.has(r) && isShiftedProcedureSlot(slot, r)
-        );
-      }
-
+    const matchedRecords = matchExecutionRecordsToProcedures(procedures, dedupedRecords);
+    return matchedRecords.map((matchedRecord) => {
       if (matchedRecord && hasRecordInput(matchedRecord)) {
         return matchedRecord;
       }

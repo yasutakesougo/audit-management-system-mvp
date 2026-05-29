@@ -1143,5 +1143,12 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(screen.getByText('6 完了')).toBeInTheDocument();
       expect(screen.getAllByText('記録済み')).toHaveLength(6);
     });
+
+    // Explicitly verify that 7th card (index 6) onwards are not completed
+    for (let i = 6; i < 17; i++) {
+      const card = screen.getByTestId(`kiosk-procedure-card-${i}`);
+      expect(within(card).getByText('未実施')).toBeInTheDocument();
+      expect(within(card).queryByText('記録済み')).toBeNull();
+    }
   });
 });
