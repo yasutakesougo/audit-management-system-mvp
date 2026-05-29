@@ -46,9 +46,9 @@ export function isStrictSameProcedureSlot(slot: ProcedureItem, record: Execution
 
   const recordKeys = new Set<string>();
   recordKeys.add(normRecordId);
-  recordKeys.add(record.scheduleItemId);
+  recordKeys.add(String(record.scheduleItemId));
 
-  const recordTrailingMatch = record.scheduleItemId.match(/\d+$/);
+  const recordTrailingMatch = String(record.scheduleItemId).match(/\d+$/);
   if (recordTrailingMatch) {
     recordKeys.add(recordTrailingMatch[0]);
     recordKeys.add(normalizeScheduleItemId(recordTrailingMatch[0]));
@@ -64,9 +64,10 @@ export function isStrictSameProcedureSlot(slot: ProcedureItem, record: Execution
  * Robust matching with 0-based to 1-based index shift fallback
  */
 export function isShiftedProcedureSlot(slot: ProcedureItem, record: ExecutionRecord): boolean {
+  const recordScheduleItemIdStr = String(record.scheduleItemId ?? '');
   // Support 0-based and 1-based index mismatch robustly only when the record scheduleItemId is a pure numeric string
-  if (/^\d+$/.test(record.scheduleItemId)) {
-    const recordNum = parseInt(record.scheduleItemId, 10);
+  if (/^\d+$/.test(recordScheduleItemIdStr)) {
+    const recordNum = parseInt(recordScheduleItemIdStr, 10);
     if (slot.rowNo === recordNum + 1) {
       return true;
     }
@@ -74,9 +75,9 @@ export function isShiftedProcedureSlot(slot: ProcedureItem, record: ExecutionRec
   // Also check if slotId trailing digit has index shift (e.g. slotId ends with 'base-1' and record.scheduleItemId is '0')
   const slotId = slot.id || '';
   const slotTrailingMatch = slotId.match(/\d+$/);
-  if (slotTrailingMatch && /^\d+$/.test(record.scheduleItemId)) {
+  if (slotTrailingMatch && /^\d+$/.test(recordScheduleItemIdStr)) {
     const slotVal = parseInt(slotTrailingMatch[0], 10);
-    const recordVal = parseInt(record.scheduleItemId, 10);
+    const recordVal = parseInt(recordScheduleItemIdStr, 10);
     if (slotVal === recordVal + 1) {
       return true;
     }
@@ -153,7 +154,7 @@ export function buildDailyProcedureFlowPreview(
   const sortedSlots = [...slots].sort((a, b) => (a.rowNo ?? 0) - (b.rowNo ?? 0));
 
   // Build strict matching map first to prevent cross-row mismatch pollution
-  const strictlyMatchedRecordIds = new Set<string>();
+  const strictlyMatchedRecords = new Set<ExecutionRecord>();
   const strictMatchMap = new Map<number, ExecutionRecord>();
 
   sortedSlots.forEach(slot => {
@@ -161,9 +162,7 @@ export function buildDailyProcedureFlowPreview(
     const strictMatch = records.find(r => isStrictSameProcedureSlot(slot, r));
     if (strictMatch) {
       strictMatchMap.set(rowNo, strictMatch);
-      if (strictMatch.id) {
-        strictlyMatchedRecordIds.add(strictMatch.id);
-      }
+      strictlyMatchedRecords.add(strictMatch);
     }
   });
 
@@ -176,7 +175,7 @@ export function buildDailyProcedureFlowPreview(
     // 2. If no strict match, fallback to index shift matching (filtering out strictly matched records)
     if (!matchedRecord) {
       matchedRecord = records.find(r =>
-        (!r.id || !strictlyMatchedRecordIds.has(r.id)) && isShiftedProcedureSlot(slot, r)
+        !strictlyMatchedRecords.has(r) && isShiftedProcedureSlot(slot, r)
       );
     }
 
