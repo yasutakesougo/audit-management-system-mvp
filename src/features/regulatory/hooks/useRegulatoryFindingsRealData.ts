@@ -78,10 +78,12 @@ export function useRegulatoryFindingsRealData(
   procedureRecordRepo?: ProcedureRecordRepository | null,
   monitoringMeetingRepo?: MonitoringMeetingRepository | null,
   authReadyOverride?: boolean,
+  options?: { enabled?: boolean },
 ): RegulatoryFindingsRealDataResult {
   const { isAuthReady } = useAuth();
   const authReady = authReadyOverride ?? isAuthReady;
   const authSkipLoggedRef = useRef(false);
+  const enabled = options?.enabled !== false;
 
   const isAuthRequiredError = useCallback((err: unknown): boolean => {
     if (err instanceof AuthRequiredError) return true;
@@ -117,11 +119,12 @@ export function useRegulatoryFindingsRealData(
 
   // 有効な利用者IDリスト（安定参照）
   const activeUserIds = useMemo(() => {
-    if (isLoading || error || users.length === 0) return [];
+    if (!enabled || isLoading || error || users.length === 0) return [];
     return users
       .filter(u => u.IsActive !== false)
-      .map(u => u.UserID ?? `user-${u.Id}`);
-  }, [users, isLoading, error]);
+      .map(u => u.UserID ?? `user-${u.Id}`)
+      .filter(id => !id.startsWith('user-hc-'));
+  }, [users, isLoading, error, enabled]);
   const activeUserIdsKey = useMemo(() => activeUserIds.join('|'), [activeUserIds]);
   const planningFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
     inFlightKey: null,
@@ -134,6 +137,11 @@ export function useRegulatoryFindingsRealData(
 
   // ── Phase 1: PlanningSheet 取得 ──
   const fetchPlanningSheets = useCallback(async () => {
+    if (!enabled) {
+      setSheetsByUser(new Map());
+      planningFetchStateRef.current = { inFlightKey: null, completedKey: null };
+      return;
+    }
     if (!authReady) {
       logAuthSkipOnce();
       setSheetsByUser(new Map());
@@ -194,7 +202,7 @@ export function useRegulatoryFindingsRealData(
       }
       setSheetsLoading(false);
     }
-  }, [planningSheetRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce]);
+  }, [planningSheetRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchPlanningSheets();
@@ -202,6 +210,10 @@ export function useRegulatoryFindingsRealData(
 
   // ── Phase 2: ProcedureRecord 取得（PlanningSheet 確定後） ──
   const fetchProcedureRecords = useCallback(async () => {
+    if (!enabled) {
+      setRecordsBySheet(new Map());
+      return;
+    }
     if (!authReady) {
       logAuthSkipOnce();
       setRecordsBySheet(new Map());
@@ -236,12 +248,12 @@ export function useRegulatoryFindingsRealData(
           const records: ProcedureRecordListItem[] =
             await procedureRecordRepo.listByPlanningSheet(sheetId);
           results.set(
-            sheetId,
-            records.map(r => ({
-              id: r.id,
-              planningSheetId: r.planningSheetId,
-              recordDate: r.recordDate,
-            })),
+              sheetId,
+              records.map(r => ({
+                id: r.id,
+                planningSheetId: r.planningSheetId,
+                recordDate: r.recordDate,
+              })),
           );
         } catch (err) {
           if (isAuthRequiredError(err)) {
@@ -259,7 +271,7 @@ export function useRegulatoryFindingsRealData(
     } finally {
       setRecordsLoading(false);
     }
-  }, [procedureRecordRepo, sheetsByUser, sheetsLoading, authReady, isAuthRequiredError, logAuthSkipOnce]);
+  }, [procedureRecordRepo, sheetsByUser, sheetsLoading, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchProcedureRecords();
@@ -267,6 +279,11 @@ export function useRegulatoryFindingsRealData(
 
   // ── Phase 3: MonitoringMeeting 取得 ──
   const fetchMonitoringMeetings = useCallback(async () => {
+    if (!enabled) {
+      setMeetingsByUser(new Map());
+      meetingFetchStateRef.current = { inFlightKey: null, completedKey: null };
+      return;
+    }
     if (!authReady) {
       logAuthSkipOnce();
       setMeetingsByUser(new Map());
@@ -315,19 +332,19 @@ export function useRegulatoryFindingsRealData(
       }
       setMeetingsLoading(false);
     }
-  }, [monitoringMeetingRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce]);
+  }, [monitoringMeetingRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchMonitoringMeetings();
   }, [fetchMonitoringMeetings]);
 
   // ── 統合状態 ──
-  const combinedLoading = isLoading || (authReady && (sheetsLoading || recordsLoading || meetingsLoading));
-  const combinedError = error || sheetsError;
+  const combinedLoading = enabled && (isLoading || (authReady && (sheetsLoading || recordsLoading || meetingsLoading)));
+  const combinedError = enabled ? (error || sheetsError) : null;
 
   // ── findings 構築 ──
   const result = useMemo<{ findings: AuditFinding[]; inputs: AuditCheckInput[] }>(() => {
-    if (combinedLoading || combinedError) return { findings: [], inputs: [] };
+    if (!enabled || combinedLoading || combinedError) return { findings: [], inputs: [] };
     if (users.length === 0) return { findings: [], inputs: [] };
 
     const today = new Date().toISOString().slice(0, 10);
@@ -350,15 +367,15 @@ export function useRegulatoryFindingsRealData(
     }
 
     return { findings, inputs };
-  }, [users, staff, sheetsByUser, recordsBySheet, meetingsByUser, combinedLoading, combinedError]);
+  }, [users, staff, sheetsByUser, recordsBySheet, meetingsByUser, combinedLoading, combinedError, enabled]);
 
-  const isRealData = !combinedLoading && !combinedError && users.length > 0;
+  const isRealData = enabled && !combinedLoading && !combinedError && users.length > 0;
 
   return {
     findings: result.findings,
     inputs: result.inputs,
     isLoading: combinedLoading,
     error: combinedError,
-    dataSourceLabel: isRealData ? '実データ' : 'デモデータ',
+    dataSourceLabel: isRealData ? '実データ' : (enabled ? 'デモデータ' : '無効'),
   };
 }

@@ -89,6 +89,97 @@ describe('regulatory real-data hook dedupe', () => {
     });
   });
 
+  it('does not start per-user fetch when enabled option is false', async () => {
+    const listCurrentByUser = vi.fn().mockResolvedValue([]);
+    const listByUser = vi.fn().mockResolvedValue([]);
+    const planningRepo = createPlanningSheetRepo(listCurrentByUser);
+    const monitoringRepo = createMonitoringMeetingRepo(listByUser);
+    const procedureRepo = createProcedureRecordRepo();
+    const users = buildUsers();
+
+    const { result } = renderHook(() =>
+      useRegulatoryFindingsRealData(
+        users,
+        [],
+        false,
+        null,
+        planningRepo,
+        procedureRepo,
+        monitoringRepo,
+        true,
+        { enabled: false },
+      ),
+    );
+
+    await waitFor(() => {
+      expect(listCurrentByUser).toHaveBeenCalledTimes(0);
+      expect(listByUser).toHaveBeenCalledTimes(0);
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.findings).toEqual([]);
+  });
+
+  it('does not start per-user fetch in severe addon hook when enabled is false', async () => {
+    const listCurrentByUser = vi.fn().mockResolvedValue([]);
+    const planningRepo = createPlanningSheetRepo(listCurrentByUser);
+    const users = buildUsers();
+
+    const { result } = renderHook(() =>
+      useSevereAddonRealData(
+        users,
+        [],
+        false,
+        null,
+        planningRepo,
+        null,
+        null,
+        true,
+        { enabled: false },
+      ),
+    );
+
+    await waitFor(() => {
+      expect(listCurrentByUser).toHaveBeenCalledTimes(0);
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.input).toBeNull();
+  });
+
+  it('filters out user-hc- synthetic users from fetching', async () => {
+    const listCurrentByUser = vi.fn().mockResolvedValue([]);
+    const listByUser = vi.fn().mockResolvedValue([]);
+    const planningRepo = createPlanningSheetRepo(listCurrentByUser);
+    const monitoringRepo = createMonitoringMeetingRepo(listByUser);
+    const procedureRepo = createProcedureRecordRepo();
+    const users = [
+      { Id: 1, UserID: 'U001', FullName: 'Real User', IsActive: true },
+      { Id: 2, UserID: 'user-hc-12345', FullName: 'Synthetic Health Check', IsActive: true },
+    ] as IUserMaster[];
+
+    renderHook(() =>
+      useRegulatoryFindingsRealData(
+        users,
+        [],
+        false,
+        null,
+        planningRepo,
+        procedureRepo,
+        monitoringRepo,
+        true,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(listCurrentByUser).toHaveBeenCalledTimes(1);
+      expect(listCurrentByUser).toHaveBeenCalledWith('U001');
+      expect(listCurrentByUser).not.toHaveBeenCalledWith('user-hc-12345');
+    });
+  });
+
   it('suppresses repeated AUTH_REQUIRED warnings per user and treats as auth skip', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const listCurrentByUser = vi.fn().mockRejectedValue(new AuthRequiredError());

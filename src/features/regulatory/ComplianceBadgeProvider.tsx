@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/features/staff/store';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -16,6 +17,9 @@ interface ComplianceBadgeContextValue {
 const ComplianceBadgeContext = createContext<ComplianceBadgeContextValue | null>(null);
 
 export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const isKiosk = location.pathname.startsWith('/kiosk');
+
   const { data: users, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff, isLoading: staffLoading, error: staffError } = useStaff();
   
@@ -33,7 +37,9 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
     dataError,
     planningSheetRepo,
     procedureRecordRepo,
-    monitoringMeetingRepo
+    monitoringMeetingRepo,
+    undefined,
+    { enabled: !isKiosk }
   );
 
   const { input: addonInput, isLoading: addonLoading } = useSevereAddonRealData(
@@ -43,7 +49,9 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
     dataError,
     planningSheetRepo,
     null, // observation repo not used for count for now
-    null  // qualification repo not used for count for now
+    null, // qualification repo not used for count for now
+    undefined,
+    { enabled: !isKiosk }
   );
 
   const addonFindingCount = useMemo(() => {
@@ -58,8 +66,8 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
 
   const value = useMemo(() => ({
     totalCount,
-    isLoading: findingsLoading || addonLoading || dataLoading,
-  }), [totalCount, findingsLoading, addonLoading, dataLoading]);
+    isLoading: isKiosk ? false : (findingsLoading || addonLoading || dataLoading),
+  }), [totalCount, findingsLoading, addonLoading, dataLoading, isKiosk]);
 
   return (
     <ComplianceBadgeContext.Provider value={value}>
