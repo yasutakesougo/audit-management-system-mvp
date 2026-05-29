@@ -168,7 +168,7 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
 
     const recordDateField = this.rfFallback('recordDate');
     const recordDateRaw = (item[recordDateField] ?? item.RecordDate ?? item.recordDate ?? '') as string;
-    const recordDate = recordDateRaw ? recordDateRaw.slice(0, 10) : '';
+    const recordDate = recordDateRaw ? toLocalDateISO(new Date(recordDateRaw)) : '';
 
     const userIdField = this.rfFallback('userId');
     const occurredAtField = this.rfFallback('occurredAt');

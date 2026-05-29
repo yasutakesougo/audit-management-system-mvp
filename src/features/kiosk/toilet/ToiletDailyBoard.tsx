@@ -71,6 +71,8 @@ export const ToiletDailyBoard: React.FC = () => {
   const { records, create, isLoading: isRecordsLoading } = useToiletRecords(todayIso);
   const isLoading = isUsersLoading || isRecordsLoading;
   const [selectedUser, setSelectedUser] = React.useState<IUserMaster | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<FormState>({
     occurredAt: toMinuteInputValue(new Date()),
     toiletType: 'urination',
@@ -108,6 +110,8 @@ export const ToiletDailyBoard: React.FC = () => {
 
   const openForm = (user: IUserMaster) => {
     setSelectedUser(user);
+    setSaveError(null);
+    setIsSaving(false);
     setForm({
       occurredAt: toMinuteInputValue(new Date()),
       toiletType: 'urination',
@@ -118,6 +122,8 @@ export const ToiletDailyBoard: React.FC = () => {
 
   const handleSave = async () => {
     if (!selectedUser) return;
+    setIsSaving(true);
+    setSaveError(null);
     try {
       await create({
         userId: resolveUserKey(selectedUser),
@@ -127,10 +133,12 @@ export const ToiletDailyBoard: React.FC = () => {
         memo: form.memo,
         recorderName: 'kiosk',
       });
+      setSelectedUser(null);
     } catch (err) {
       console.error('[ToiletDailyBoard] Failed to save record:', err);
+      setSaveError(err instanceof Error ? err.message : '記録の保存に失敗しました。');
     } finally {
-      setSelectedUser(null);
+      setIsSaving(false);
     }
   };
 
@@ -284,12 +292,18 @@ export const ToiletDailyBoard: React.FC = () => {
         </Stack>
       )}
 
-      <Dialog open={Boolean(selectedUser)} onClose={() => setSelectedUser(null)} fullWidth maxWidth="sm">
+      <Dialog open={Boolean(selectedUser)} onClose={() => !isSaving && setSelectedUser(null)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 900 }}>
           {selectedUser ? `${selectedUser.FullName}さんのトイレ記録` : 'トイレ記録'}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            {saveError && (
+              <Box sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1, p: 1.5, borderRadius: 1.5, bgcolor: 'error.light', opacity: 0.9 }}>
+                <ErrorOutlineIcon />
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{saveError}</Typography>
+              </Box>
+            )}
             <TextField
               label="利用者"
               value={selectedUser?.FullName ?? ''}
@@ -341,9 +355,15 @@ export const ToiletDailyBoard: React.FC = () => {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setSelectedUser(null)}>キャンセル</Button>
-          <Button data-testid="toilet-record-save" variant="contained" onClick={handleSave}>
-            保存
+          <Button onClick={() => setSelectedUser(null)} disabled={isSaving}>キャンセル</Button>
+          <Button
+            data-testid="toilet-record-save"
+            variant="contained"
+            onClick={handleSave}
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {isSaving ? '保存中...' : '保存'}
           </Button>
         </DialogActions>
       </Dialog>
