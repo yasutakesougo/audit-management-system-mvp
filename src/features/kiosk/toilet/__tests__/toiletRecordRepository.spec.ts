@@ -4,6 +4,7 @@ import { SharePointToiletRecordRepository } from '../SharePointToiletRecordRepos
 import { getToiletRepository } from '../toiletRepositoryFactory';
 import type { ToiletRecordInput } from '../types';
 import * as env from '@/lib/env';
+import * as factory from '@/lib/createRepositoryFactory';
 
 // Mock list registry
 vi.mock('@/sharepoint/spListRegistry', () => ({
@@ -16,6 +17,7 @@ vi.mock('@/sharepoint/spListRegistry', () => ({
 describe('ToiletRecord Repository & Factory Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     if (typeof window !== 'undefined') {
       window.localStorage.clear();
     }
@@ -199,16 +201,22 @@ describe('ToiletRecord Repository & Factory Tests', () => {
 
   // ── 3. toiletRepositoryFactory ──
   describe('toiletRepositoryFactory', () => {
-    it('should resolve LocalStorageRepository when env or demo mode mandates it', () => {
-      vi.spyOn(env, 'isDemoModeEnabled').mockReturnValue(true);
+    it('should resolve LocalStorageRepository when defaultShouldUseDemo() resolves to true', () => {
+      vi.spyOn(factory, 'defaultShouldUseDemo').mockReturnValue(true);
       const repo = getToiletRepository(vi.fn());
       expect(repo).toBeInstanceOf(LocalStorageToiletRecordRepository);
     });
 
-    it('should resolve SharePointRepository when fetch exists and demo/test modes are off', () => {
-      vi.spyOn(env, 'isDemoModeEnabled').mockReturnValue(false);
-      vi.spyOn(env, 'isForceDemoEnabled').mockReturnValue(false);
-      vi.spyOn(env, 'shouldSkipLogin').mockReturnValue(false);
+    it('should resolve LocalStorageRepository when defaultShouldUseDemo() is false but provider is memory', () => {
+      vi.spyOn(factory, 'defaultShouldUseDemo').mockReturnValue(false);
+      vi.spyOn(env, 'readOptionalEnv').mockReturnValue('memory');
+
+      const repo = getToiletRepository(vi.fn());
+      expect(repo).toBeInstanceOf(LocalStorageToiletRecordRepository);
+    });
+
+    it('should resolve SharePointRepository when defaultShouldUseDemo() resolves to false', () => {
+      vi.spyOn(factory, 'defaultShouldUseDemo').mockReturnValue(false);
       vi.spyOn(env, 'readOptionalEnv').mockReturnValue('sharepoint');
 
       const repo = getToiletRepository(vi.fn());
