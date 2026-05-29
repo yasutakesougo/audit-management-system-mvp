@@ -1,4 +1,5 @@
 import { HealthCheckResult, HealthStatus } from "../types";
+import { isSharePointThrottleError } from "@/lib/sp";
 
 // statusRank is retained for potential future worst-of aggregation.
 export const statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
@@ -89,7 +90,7 @@ export function isEnabled(v: unknown): boolean {
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }
 
-export type SafeResult<T> = { ok: true; v: T } | { ok: false; err: string; status?: number };
+export type SafeResult<T> = { ok: true; v: T } | { ok: false; err: string; status?: number; isThrottled?: boolean };
 
 export async function safe<T>(
   fn: () => Promise<T>
@@ -97,7 +98,12 @@ export async function safe<T>(
   try {
     return { ok: true, v: await fn() };
   } catch (e) {
-    return { ok: false, err: stringifyErr(e), status: extractHttpStatus(e) };
+    return {
+      ok: false,
+      err: stringifyErr(e),
+      status: extractHttpStatus(e),
+      isThrottled: isSharePointThrottleError(e),
+    };
   }
 }
 
@@ -116,7 +122,7 @@ export async function safeWithRetry<T>(
     if (result.ok) {
       return { ...result, attempts };
     }
-    if (!shouldRetry(result.status) || attempts >= maxAttempts) {
+    if (result.isThrottled || !shouldRetry(result.status) || attempts >= maxAttempts) {
       return { ...result, attempts };
     }
     const jitter = options.jitterMs > 0 ? Math.floor(Math.random() * options.jitterMs) : 0;
