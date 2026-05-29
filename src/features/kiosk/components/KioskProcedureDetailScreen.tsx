@@ -41,7 +41,8 @@ const buildScheduleItemIdCandidates = (
   const rowCandidates = [rowNo, indexPlusOne].filter(Boolean);
 
   push(procedure?.id);
-  push(slotKey);
+  // Do not add raw route-index based candidates.
+  // route index is 0-based and can collide with rowNo-based persisted records.
   for (const rowCandidate of rowCandidates) {
     push(rowCandidate);
     push(`base-${rowCandidate}`);
@@ -83,19 +84,20 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     return procedures[index] || null;
   }, [userId, user, slotKey, procedureRepo]);
 
+  const slotIndex = Number.parseInt(String(slotKey ?? ''), 10);
+  const indexPlusOne = Number.isNaN(slotIndex) ? '' : String(slotIndex + 1);
+
   // rowNo is the canonical slot identity for kiosk procedure completion tracking.
   // Some procedure IDs can vary by source/runtime, so prefer rowNo for persistence keys.
-  const scheduleItemId = normalizeScheduleItemId(procedure?.rowNo) ||
-    normalizeScheduleItemId(procedure?.id) ||
-    normalizeScheduleItemId(slotKey);
+  const rawRowNo = normalizeScheduleItemId(procedure?.rowNo) || indexPlusOne;
+  const scheduleItemId = rawRowNo ? `procedure-${rawRowNo}` : normalizeScheduleItemId(procedure?.id || slotKey);
   const historyScheduleItemIds = React.useMemo(() => {
     const indexValue = Number.parseInt(String(slotKey ?? ''), 10);
-    const indexPlusOne = Number.isNaN(indexValue) ? '' : normalizeScheduleItemId(indexValue + 1);
+    const idxPlusOne = Number.isNaN(indexValue) ? '' : normalizeScheduleItemId(indexValue + 1);
     return [
       normalizeScheduleItemId(procedure?.rowNo),
       normalizeScheduleItemId(procedure?.id),
-      normalizeScheduleItemId(slotKey),
-      indexPlusOne,
+      idxPlusOne,
     ].filter((value, idx, arr): value is string => Boolean(value) && arr.indexOf(value) === idx);
   }, [procedure?.id, procedure?.rowNo, slotKey]);
   const historyUserIds = React.useMemo(() => {

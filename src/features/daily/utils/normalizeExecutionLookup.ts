@@ -81,4 +81,20 @@ export const buildExecutionUserIdCandidates = (...values: unknown[]): string[] =
   return out;
 };
 
+export const extractProcedureRowKey = (value: unknown): string => {
+  const normalized = normalizeScheduleItemId(value);
+  if (!normalized) return '';
+  if (/^\d+$/.test(normalized)) return String(Number.parseInt(normalized, 10));
+
+  const match = normalized.match(/(?:^|[-_])(row|base|procedure|slot|step)[-_]?(\d+)$/i);
+  if (match) return String(Number.parseInt(match[2], 10));
+
+  // Planning-sheet derived procedure IDs can be source-scoped, e.g.
+  // "official-<sheetId>-1". The final small numeric segment is the rowNo.
+  const tailNumber = normalized.match(/[-_](\d{1,2})$/);
+  if (!tailNumber) return '';
+  const rowNo = Number.parseInt(tailNumber[1], 10);
+  return rowNo >= 0 && rowNo <= 99 ? String(rowNo) : '';
+};
+
 export { normalizeScheduleItemId };
