@@ -67,7 +67,7 @@ const findLatestRecord = (records: ToiletRecord[], userId: string): ToiletRecord
 export const ToiletDailyBoard: React.FC = () => {
   const location = useLocation();
   const todayIso = toLocalDateISO(new Date());
-  const { data: users, isLoading: isUsersLoading } = useUsers({ selectMode: 'core' });
+  const { data: users, isLoading: isUsersLoading, status: usersStatus } = useUsers({ selectMode: 'core' });
   const { records, create, isLoading: isRecordsLoading } = useToiletRecords(todayIso);
   const isLoading = isUsersLoading || isRecordsLoading;
   const [selectedUser, setSelectedUser] = React.useState<IUserMaster | null>(null);
@@ -177,7 +177,33 @@ export const ToiletDailyBoard: React.FC = () => {
       ) : (
         <Stack spacing={3}>
           <Grid container spacing={1.5}>
-            {rows.map(({ user, latestRecord, recorded }) => (
+            {usersStatus === 'error' && (
+              <Grid size={12}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 3,
+                    borderRadius: 2,
+                    borderColor: 'error.light',
+                    bgcolor: 'rgba(211, 47, 47, 0.05)',
+                  }}
+                >
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <ErrorOutlineIcon color="error" sx={{ fontSize: 32 }} />
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 900, color: 'error.main' }}>
+                        利用者の読み込みに失敗しました
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        SharePointリスト「Users_Master」へのアクセス権限がないか、セッションが切れている可能性があります。リストのアクセス権限または認証状態を確認してください。
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Grid>
+            )}
+
+            {usersStatus !== 'error' && rows.map(({ user, latestRecord, recorded }) => (
               <Grid key={user.Id} size={12}>
                 <Paper
                   data-testid={`toilet-user-row-${resolveUserKey(user)}`}
@@ -221,7 +247,7 @@ export const ToiletDailyBoard: React.FC = () => {
               </Grid>
             ))}
 
-            {rows.length === 0 && (
+            {usersStatus !== 'error' && rows.length === 0 && (
               <Grid size={12}>
                 <Paper variant="outlined" sx={{ p: 5, textAlign: 'center', borderRadius: 2 }}>
                   <Typography color="text.secondary">トイレ誘導対象の利用者がいません</Typography>
