@@ -1109,4 +1109,39 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U001');
     expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), '17');
   });
+
+  it('correctly matches 6 completed execution records (1 to 6) to the first 6 procedure rows (1-based rowNo match)', async () => {
+    const procedures17 = Array.from({ length: 17 }, (_, index) => {
+      const rowNo = index + 1;
+      return {
+        id: `base-${rowNo}`,
+        rowNo,
+        time: `${String(9 + Math.floor(index / 2)).padStart(2, '0')}:00`,
+        activity: `手順 ${rowNo}`,
+        instruction: `支援内容 ${rowNo}`,
+      };
+    });
+    mockGetByUser.mockReturnValue(procedures17);
+
+    mockGetRecords.mockResolvedValue([
+      { scheduleItemId: '1', status: 'completed', memo: '実施済み1' },
+      { scheduleItemId: '2', status: 'completed', memo: '実施済み2' },
+      { scheduleItemId: '3', status: 'completed', memo: '実施済み3' },
+      { scheduleItemId: '4', status: 'completed', memo: '実施済み4' },
+      { scheduleItemId: '5', status: 'completed', memo: '実施済み5' },
+      { scheduleItemId: '6', status: 'completed', memo: '実施済み6' },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('実施状況: 6 / 17')).toBeInTheDocument();
+      expect(screen.getByText('6 完了')).toBeInTheDocument();
+      expect(screen.getAllByText('記録済み')).toHaveLength(6);
+    });
+  });
 });
