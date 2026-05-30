@@ -183,8 +183,40 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npx playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}-
+            ${{ runner.os }}-playwright-
+
       - name: Playwright install (preview server)
+        id: playwright-install
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 8
+        continue-on-error: true
         run: npx playwright install --with-deps chromium
+
+      - name: Playwright install retry (preview server)
+        if: steps.playwright-cache.outputs.cache-hit != 'true' && steps.playwright-install.outcome == 'failure'
+        timeout-minutes: 8
+        run: |
+          npx playwright install-deps chromium
+          npx playwright install chromium
+
+      - name: Playwright system dependencies (preview server)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        timeout-minutes: 8
+        run: npx playwright install-deps chromium
+
       - name: Build (preview server)
         run: VITE_E2E='1' VITE_E2E_MSAL_MOCK='1' VITE_FEATURE_SCHEDULES='1' VITE_SKIP_LOGIN='1' VITE_SKIP_SHAREPOINT='1' VITE_DEMO_MODE='1' npm run build --if-present
       - name: Start preview server
