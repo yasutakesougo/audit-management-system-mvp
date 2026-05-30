@@ -7,7 +7,7 @@ import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-r
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
-import { isSharePointThrottleError, isThrottleCircuitOpen } from '@/lib/sp';
+import { isSharePointThrottleError, isThrottleCircuitOpen, getSharePointThrottleCircuitBreakerState } from '@/lib/sp';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { formatDateJapanese } from '@/lib/dateFormat';
@@ -249,6 +249,43 @@ export const KioskProcedureListScreen: React.FC = () => {
   const [showFetchError, setShowFetchError] = useState(false);
   const procedureLookupThrottleKeyRef = React.useRef('');
 
+  const [isThrottleActive, setIsThrottleActive] = useState(() => isThrottleCircuitOpen());
+  const [throttleRemaining, setThrottleRemaining] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Monitor circuit breaker status and remaining cooldown seconds (read-only)
+  useEffect(() => {
+    const checkThrottle = () => {
+      const active = isThrottleCircuitOpen();
+      setIsThrottleActive(active);
+      if (active) {
+        const state = getSharePointThrottleCircuitBreakerState();
+        setThrottleRemaining(Math.max(0, Math.ceil(state.remainingMs / 1000)));
+      } else {
+        setThrottleRemaining(0);
+      }
+    };
+
+    checkThrottle();
+    const timer = setInterval(checkThrottle, 1000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+
+  // When breaker closes, automatically reset states and trigger a fresh fetch
+  const prevThrottleActiveRef = React.useRef(isThrottleActive);
+  useEffect(() => {
+    if (!isThrottleActive && prevThrottleActiveRef.current) {
+      setFetchFailed(false);
+      setHasFetchedRecords(false);
+      setShowFetchError(false);
+      setRecords([]);
+      setRetryCount((prev) => prev + 1);
+    }
+    prevThrottleActiveRef.current = isThrottleActive;
+  }, [isThrottleActive]);
+
   // Synchronously reset records state when the active user or date changes
   // to prevent rendering stale records from the previous context.
   const currentQueryId = executionUserIdCandidates.join('|');
@@ -289,7 +326,8 @@ export const KioskProcedureListScreen: React.FC = () => {
       if (isThrottleCircuitOpen()) {
         console.warn('[Kiosk] Circuit breaker is open. Aborting execution record fetch to suppress storm.');
         if (active) {
-          setShowFetchError(true);
+          setShowFetchError(false);
+          setIsThrottleActive(true);
           setFetchFailed(true);
           setHasFetchedRecords(true);
         }
@@ -329,7 +367,12 @@ export const KioskProcedureListScreen: React.FC = () => {
         const error = failedResults[0]?.reason ?? new Error('No execution record fetches completed');
         if (active) {
           console.error('Failed to fetch execution records:', error);
-          setShowFetchError(true);
+          if (isSharePointThrottleError(error)) {
+            setShowFetchError(false);
+            setIsThrottleActive(true);
+          } else {
+            setShowFetchError(true);
+          }
           setFetchFailed(true);
           setHasFetchedRecords(true);
         }
@@ -452,6 +495,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     userId,
     location.key,
     location.search,
+    retryCount,
   ]);
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
@@ -576,6 +620,45 @@ export const KioskProcedureListScreen: React.FC = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* サーキットブレーカー / エラー警告バナー */}
+      {(isThrottleActive || fetchFailed) && (
+        <Alert
+          severity={isThrottleActive ? "warning" : "error"}
+          sx={{ mb: 3, borderRadius: 2 }}
+          data-testid="kiosk-throttle-alert"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={isThrottleActive}
+              onClick={() => {
+                setFetchFailed(false);
+                setHasFetchedRecords(false);
+                setShowFetchError(false);
+                setRecords([]);
+                setRetryCount((prev) => prev + 1);
+              }}
+            >
+              {isThrottleActive ? `再試行（${throttleRemaining}秒）` : '再試行する'}
+            </Button>
+          }
+        >
+          {isThrottleActive ? (
+            <>
+              SharePointが一時的に混み合っています。
+              <br />
+              安全のため、サーバーへの再接続を少し待っています。
+              <br />
+              表示できる範囲のローカル情報を表示しています。
+              <br />
+              しばらくしてから再試行してください。
+            </>
+          ) : (
+            "一時的な接続エラーが発生しました。再試行ボタンを押してデータを読み込んでください。"
+          )}
+        </Alert>
+      )}
 
       {/* 手順一覧 */}
       <Grid container spacing={2}>

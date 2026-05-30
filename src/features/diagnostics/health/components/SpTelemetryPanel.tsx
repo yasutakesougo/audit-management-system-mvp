@@ -1,23 +1,35 @@
-import { Box, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Box, Divider, Paper, Stack, Typography, Chip } from "@mui/material";
 import { StatusChip } from "./StatusChip";
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
+import { getSharePointThrottleCircuitBreakerState } from "@/lib/sp";
 import React from "react";
 
 /**
  * 🌐 SP通信状態パネル
  *
- * spTelemetryStore を 2 秒間隔でポーリングし、
- * Throttled / Retry / Failed / Duration / Top Endpoints を表示する。
+ * spTelemetryStore と circuit breaker を 1 秒間隔でポーリングし、
+ * 通信統計情報とサーキットブレーカーの稼働状況を表示する。
  */
 export function SpTelemetryPanel() {
   const [spSnapshot, setSpSnapshot] = React.useState(() => spTelemetryStore.getSnapshot());
+  const [breakerState, setBreakerState] = React.useState(() => getSharePointThrottleCircuitBreakerState());
 
   React.useEffect(() => {
     const timer = setInterval(() => {
       setSpSnapshot(spTelemetryStore.getSnapshot());
-    }, 2000);
+      setBreakerState(getSharePointThrottleCircuitBreakerState());
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const formatTime = (timestamp: number) => {
+    if (!timestamp) return "なし";
+    try {
+      return new Date(timestamp).toLocaleTimeString("ja-JP");
+    } catch {
+      return "なし";
+    }
+  };
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -55,6 +67,32 @@ export function SpTelemetryPanel() {
           </Box>
         </Box>
       )}
+
+      <Divider sx={{ my: 1.5 }} />
+      <Box sx={{ mt: 1.5 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }} data-testid="sp-telemetry-breaker-section">
+          <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+            🛑 サーキットブレーカー:
+          </Typography>
+          <Chip
+            size="small"
+            label={breakerState.isOpen ? "動作中 (OPEN)" : "待機中 (CLOSED)"}
+            color={breakerState.isOpen ? "error" : "success"}
+            data-testid="sp-telemetry-breaker-chip"
+          />
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          {breakerState.isOpen ? (
+            <>
+              発生時刻: {formatTime(breakerState.openedAt)}
+              <br />
+              解除までの時間: <strong style={{ color: "#d32f2f" }}>残り {Math.ceil(breakerState.remainingMs / 1000)} 秒</strong>
+            </>
+          ) : (
+            "現在、サーキットブレーカーは動作していません。"
+          )}
+        </Typography>
+      </Box>
     </Paper>
   );
 }
