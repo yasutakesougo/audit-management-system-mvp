@@ -1,4 +1,5 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
+import { isSharePointThrottleError } from '@/lib/sp';
 import { ACTIVITY_DIARY_CANDIDATES, ACTIVITY_DIARY_ESSENTIALS } from '@/sharepoint/fields/activityDiaryFields';
 import { resolveInternalNamesDetailed, areEssentialFieldsResolved } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
@@ -10,6 +11,13 @@ import {
   suggestListTitles,
 } from '../../utils/Helpers';
 import type { ADFieldKey, ADMapping } from '../constants';
+
+let activityDiaryAvailableTitlesCooldowns = new WeakMap<SpFetchFn, number>();
+
+/** @internal - For testing only */
+export function __clearActivityDiaryAvailableTitlesCooldownsForTests(): void {
+  activityDiaryAvailableTitlesCooldowns = new WeakMap<SpFetchFn, number>();
+}
 
 export class ActivityDiarySchemaResolver {
   private resolvedListPath: string | null = null;
@@ -95,8 +103,13 @@ export class ActivityDiarySchemaResolver {
     this.resolutionFailed = true;
     return null;
   }
-
   private async getAvailableListTitles(): Promise<string[] | null> {
+    const cooldownUntil = activityDiaryAvailableTitlesCooldowns.get(this.spFetch) ?? 0;
+    if (Date.now() < cooldownUntil) {
+      console.info('[ActivityDiarySchemaResolver] getAvailableListTitles suppressed due to throttle cooldown.');
+      return null;
+    }
+
     try {
       const response = await this.spFetch('lists?$select=Title&$top=5000');
       const payload = (await response.json()) as { value?: Array<{ Title?: string }> };
@@ -104,6 +117,11 @@ export class ActivityDiarySchemaResolver {
         .map((item) => item.Title?.trim())
         .filter((title): title is string => Boolean(title));
     } catch (error) {
+      if (isSharePointThrottleError(error)) {
+        activityDiaryAvailableTitlesCooldowns.set(this.spFetch, Date.now() + 30000);
+        console.warn('[ActivityDiarySchemaResolver] getAvailableListTitles throttled. Cooldown set.');
+        return null;
+      }
       if (getHttpStatus(error) === 404) return null;
       throw error;
     }
