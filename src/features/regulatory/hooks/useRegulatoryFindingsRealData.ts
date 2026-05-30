@@ -37,6 +37,12 @@ import {
   type RecordMinimal,
 } from '@/domain/regulatory/auditCheckInputBuilder';
 
+export type FetchState = {
+  key: string | null;
+  inFlight: boolean;
+  completed: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Result type
 // ---------------------------------------------------------------------------
@@ -125,7 +131,7 @@ export function useRegulatoryFindingsRealData(
       .map(u => u.UserID ?? `user-${u.Id}`)
       .filter(id => !id.startsWith('user-hc-'));
   }, [users, isLoading, error, enabled]);
-  const activeUserIdsKey = useMemo(() => activeUserIds.join('|'), [activeUserIds]);
+  const activeUserIdsKey = useMemo(() => activeUserIds.slice().sort().join('|'), [activeUserIds]);
   const planningFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
     inFlightKey: null,
     completedKey: null,
@@ -133,6 +139,11 @@ export function useRegulatoryFindingsRealData(
   const meetingFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
     inFlightKey: null,
     completedKey: null,
+  });
+  const procedureFetchStateRef = useRef<FetchState>({
+    key: null,
+    inFlight: false,
+    completed: false,
   });
 
   // ── Phase 1: PlanningSheet 取得 ──
@@ -212,15 +223,18 @@ export function useRegulatoryFindingsRealData(
   const fetchProcedureRecords = useCallback(async () => {
     if (!enabled) {
       setRecordsBySheet(new Map());
+      procedureFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!authReady) {
       logAuthSkipOnce();
       setRecordsBySheet(new Map());
+      procedureFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!procedureRecordRepo || sheetsByUser.size === 0 || sheetsLoading) {
       setRecordsBySheet(new Map());
+      procedureFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
 
@@ -236,8 +250,21 @@ export function useRegulatoryFindingsRealData(
 
     if (allSheetIds.length === 0) {
       setRecordsBySheet(new Map());
+      procedureFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
+
+    const key = allSheetIds.slice().sort().join('|');
+    const state = procedureFetchStateRef.current;
+    if (state.key === key && (state.inFlight || state.completed)) {
+      return;
+    }
+
+    procedureFetchStateRef.current = {
+      key,
+      inFlight: true,
+      completed: false,
+    };
 
     setRecordsLoading(true);
     try {
@@ -268,6 +295,19 @@ export function useRegulatoryFindingsRealData(
 
       await Promise.all(promises);
       setRecordsBySheet(results);
+
+      procedureFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: true,
+      };
+    } catch (err) {
+      procedureFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: false,
+      };
+      throw err;
     } finally {
       setRecordsLoading(false);
     }
