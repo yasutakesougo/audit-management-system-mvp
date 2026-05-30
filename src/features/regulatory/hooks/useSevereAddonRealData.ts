@@ -67,6 +67,12 @@ import {
 // Re-export for backward compatibility (テストからの直接 import)
 export { buildLastReassessmentMap };
 
+export type FetchState = {
+  key: string | null;
+  inFlight: boolean;
+  completed: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Staff → 加算関連集計
 // ---------------------------------------------------------------------------
@@ -207,10 +213,20 @@ export function useSevereAddonRealData(
       .map(u => u.UserID ?? `user-${u.Id}`)
       .filter(id => !id.startsWith('user-hc-'));
   }, [users, isLoading, error, enabled]);
-  const activeUserIdsKey = useMemo(() => activeUserIds.join('|'), [activeUserIds]);
+  const activeUserIdsKey = useMemo(() => activeUserIds.slice().sort().join('|'), [activeUserIds]);
   const planningFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
     inFlightKey: null,
     completedKey: null,
+  });
+  const obsFetchStateRef = useRef<FetchState>({
+    key: null,
+    inFlight: false,
+    completed: false,
+  });
+  const assignFetchStateRef = useRef<FetchState>({
+    key: null,
+    inFlight: false,
+    completed: false,
   });
 
   const fetchPlanningSheets = useCallback(async () => {
@@ -296,17 +312,32 @@ export function useSevereAddonRealData(
   const fetchObservations = useCallback(async () => {
     if (!enabled) {
       setAllObservations([]);
+      obsFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!authReady) {
       logAuthSkipOnce();
       setAllObservations([]);
+      obsFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!weeklyObsRepo || activeUserIds.length === 0) {
       setAllObservations([]);
+      obsFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
+
+    const key = activeUserIdsKey;
+    const state = obsFetchStateRef.current;
+    if (state.key === key && (state.inFlight || state.completed)) {
+      return;
+    }
+
+    obsFetchStateRef.current = {
+      key,
+      inFlight: true,
+      completed: false,
+    };
 
     setObsLoading(true);
     setObsError(null);
@@ -331,18 +362,35 @@ export function useSevereAddonRealData(
 
       await Promise.all(promises);
       setAllObservations(results);
+
+      obsFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: true,
+      };
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       if (isAuthRequiredError(e)) {
         logAuthSkipOnce();
+        obsFetchStateRef.current = {
+          key,
+          inFlight: false,
+          completed: false,
+        };
         return;
       }
       setObsError(e);
       console.warn('[useSevereAddonRealData] Observation fetch failed:', e.message);
+
+      obsFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: false,
+      };
     } finally {
       setObsLoading(false);
     }
-  }, [weeklyObsRepo, activeUserIds, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
+  }, [weeklyObsRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchObservations();
@@ -356,17 +404,32 @@ export function useSevereAddonRealData(
   const fetchAssignments = useCallback(async () => {
     if (!enabled) {
       setAllAssignments([]);
+      assignFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!authReady) {
       logAuthSkipOnce();
       setAllAssignments([]);
+      assignFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!assignmentRepo || activeUserIds.length === 0) {
       setAllAssignments([]);
+      assignFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
+
+    const key = activeUserIdsKey;
+    const state = assignFetchStateRef.current;
+    if (state.key === key && (state.inFlight || state.completed)) {
+      return;
+    }
+
+    assignFetchStateRef.current = {
+      key,
+      inFlight: true,
+      completed: false,
+    };
 
     setAssignLoading(true);
     setAssignError(null);
@@ -382,18 +445,35 @@ export function useSevereAddonRealData(
           assignmentType: r.assignmentType,
         })),
       );
+
+      assignFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: true,
+      };
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       if (isAuthRequiredError(e)) {
         logAuthSkipOnce();
+        assignFetchStateRef.current = {
+          key,
+          inFlight: false,
+          completed: false,
+        };
         return;
       }
       setAssignError(e);
       console.warn('[useSevereAddonRealData] Assignment fetch failed:', e.message);
+
+      assignFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: false,
+      };
     } finally {
       setAssignLoading(false);
     }
-  }, [assignmentRepo, activeUserIds, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
+  }, [assignmentRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchAssignments();
