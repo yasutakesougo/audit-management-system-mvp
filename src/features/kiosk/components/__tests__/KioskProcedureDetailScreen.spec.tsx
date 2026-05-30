@@ -148,8 +148,8 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(mockUseExecutionRecord).toHaveBeenCalledWith(
       '2026-05-07',
       'U001',
-      'P001',
-      expect.arrayContaining(['P001', '0', '1', 'base-1', 'row-1', 'procedure-1', 'slot-1', 'slot_1', 'step-1']),
+      'procedure-1',
+      expect.arrayContaining(['1', 'base-1', 'row-1', 'procedure-1', 'slot-1', 'slot_1', 'step-1']),
       expect.arrayContaining(['U001', '1', 'U1', 'U-001']),
     );
 

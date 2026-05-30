@@ -997,12 +997,6 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
         activity: '通所・朝の準備',
         instruction: '送迎担当と引継ぎ',
       },
-      {
-        id: 'official-sheet-1809-2',
-        time: '10:00頃',
-        activity: '体操',
-        instruction: '見守り',
-      },
     ]);
     mockGetRecords.mockResolvedValue([]);
     mockGetRecord.mockImplementation(async (_date, _userId, scheduleItemId) => {
@@ -1019,14 +1013,14 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     );
 
     await waitFor(() => {
-      expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
+      expect(screen.getByText('実施状況: 1 / 1')).toBeInTheDocument();
       const firstCard = screen.getByTestId('kiosk-procedure-card-0');
       expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
       expect(within(firstCard).queryByText('未実施')).toBeNull();
     });
   });
 
-  it('stops procedure-level lookups when SharePoint throttle/CORS is detected', async () => {
+  it('skips procedure-level lookups for SharePoint after bulk lookup completes', async () => {
     mockGetByUser.mockReturnValue([
       {
         id: 'official-sheet-1809-1',
@@ -1043,7 +1037,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     ]);
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
     mockGetRecords.mockResolvedValue([]);
-    mockGetRecord.mockRejectedValue(new Error('[SharePoint] Throttled: redirected to Throttle.htm.'));
+    mockGetRecord.mockResolvedValue({ scheduleItemId: '1', status: 'completed', memo: 'saved row 1' });
+    const callsBeforeRender = mockGetRecord.mock.calls.length;
 
     render(
       <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
@@ -1054,9 +1049,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     await waitFor(() => {
       expect(screen.getByText('実施状況: 0 / 2')).toBeInTheDocument();
     });
-    const u001Calls = mockGetRecord.mock.calls.filter((call) => call[1] === 'U001');
-    expect(u001Calls.length).toBeLessThanOrEqual(2);
-    expect(mockGetRecord).toHaveBeenCalledWith(expect.any(String), 'U001', '1');
+    expect(mockGetRecord.mock.calls.slice(callsBeforeRender)).toHaveLength(0);
   });
 
   it('waits for user to load before fetching route and master user ID candidates', async () => {

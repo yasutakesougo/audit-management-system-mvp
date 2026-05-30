@@ -67,6 +67,12 @@ import {
 // Re-export for backward compatibility (テストからの直接 import)
 export { buildLastReassessmentMap };
 
+export type FetchState = {
+  key: string | null;
+  inFlight: boolean;
+  completed: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Staff → 加算関連集計
 // ---------------------------------------------------------------------------
@@ -168,10 +174,12 @@ export function useSevereAddonRealData(
   weeklyObsRepo?: WeeklyObservationRepository | null,
   assignmentRepo?: QualificationAssignmentRepository | null,
   authReadyOverride?: boolean,
+  options?: { enabled?: boolean },
 ): SevereAddonRealDataResult {
   const { isAuthReady } = useAuth();
   const authReady = authReadyOverride ?? isAuthReady;
   const authSkipLoggedRef = useRef(false);
+  const enabled = options?.enabled !== false;
 
   const isAuthRequiredError = useCallback((err: unknown): boolean => {
     if (err instanceof AuthRequiredError) return true;
@@ -199,18 +207,34 @@ export function useSevereAddonRealData(
 
   // 候補利用者の userId リスト（stable reference）
   const activeUserIds = useMemo(() => {
-    if (isLoading || error || users.length === 0) return [];
+    if (!enabled || isLoading || error || users.length === 0) return [];
     return users
       .filter(u => u.IsActive !== false)
-      .map(u => u.UserID ?? `user-${u.Id}`);
-  }, [users, isLoading, error]);
-  const activeUserIdsKey = useMemo(() => activeUserIds.join('|'), [activeUserIds]);
+      .map(u => u.UserID ?? `user-${u.Id}`)
+      .filter(id => !id.startsWith('user-hc-'));
+  }, [users, isLoading, error, enabled]);
+  const activeUserIdsKey = useMemo(() => activeUserIds.slice().sort().join('|'), [activeUserIds]);
   const planningFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
     inFlightKey: null,
     completedKey: null,
   });
+  const obsFetchStateRef = useRef<FetchState>({
+    key: null,
+    inFlight: false,
+    completed: false,
+  });
+  const assignFetchStateRef = useRef<FetchState>({
+    key: null,
+    inFlight: false,
+    completed: false,
+  });
 
   const fetchPlanningSheets = useCallback(async () => {
+    if (!enabled) {
+      setSheetsByUser(new Map());
+      planningFetchStateRef.current = { inFlightKey: null, completedKey: null };
+      return;
+    }
     if (!authReady) {
       logAuthSkipOnce();
       setSheetsByUser(new Map());
@@ -274,7 +298,7 @@ export function useSevereAddonRealData(
       }
       setSheetsLoading(false);
     }
-  }, [planningSheetRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce]);
+  }, [planningSheetRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchPlanningSheets();
@@ -286,15 +310,34 @@ export function useSevereAddonRealData(
   const [obsError, setObsError] = useState<Error | null>(null);
 
   const fetchObservations = useCallback(async () => {
+    if (!enabled) {
+      setAllObservations([]);
+      obsFetchStateRef.current = { key: null, inFlight: false, completed: false };
+      return;
+    }
     if (!authReady) {
       logAuthSkipOnce();
       setAllObservations([]);
+      obsFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!weeklyObsRepo || activeUserIds.length === 0) {
       setAllObservations([]);
+      obsFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
+
+    const key = activeUserIdsKey;
+    const state = obsFetchStateRef.current;
+    if (state.key === key && (state.inFlight || state.completed)) {
+      return;
+    }
+
+    obsFetchStateRef.current = {
+      key,
+      inFlight: true,
+      completed: false,
+    };
 
     setObsLoading(true);
     setObsError(null);
@@ -319,18 +362,35 @@ export function useSevereAddonRealData(
 
       await Promise.all(promises);
       setAllObservations(results);
+
+      obsFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: true,
+      };
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       if (isAuthRequiredError(e)) {
         logAuthSkipOnce();
+        obsFetchStateRef.current = {
+          key,
+          inFlight: false,
+          completed: false,
+        };
         return;
       }
       setObsError(e);
       console.warn('[useSevereAddonRealData] Observation fetch failed:', e.message);
+
+      obsFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: false,
+      };
     } finally {
       setObsLoading(false);
     }
-  }, [weeklyObsRepo, activeUserIds, authReady, isAuthRequiredError, logAuthSkipOnce]);
+  }, [weeklyObsRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchObservations();
@@ -342,15 +402,34 @@ export function useSevereAddonRealData(
   const [assignError, setAssignError] = useState<Error | null>(null);
 
   const fetchAssignments = useCallback(async () => {
+    if (!enabled) {
+      setAllAssignments([]);
+      assignFetchStateRef.current = { key: null, inFlight: false, completed: false };
+      return;
+    }
     if (!authReady) {
       logAuthSkipOnce();
       setAllAssignments([]);
+      assignFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
     if (!assignmentRepo || activeUserIds.length === 0) {
       setAllAssignments([]);
+      assignFetchStateRef.current = { key: null, inFlight: false, completed: false };
       return;
     }
+
+    const key = activeUserIdsKey;
+    const state = assignFetchStateRef.current;
+    if (state.key === key && (state.inFlight || state.completed)) {
+      return;
+    }
+
+    assignFetchStateRef.current = {
+      key,
+      inFlight: true,
+      completed: false,
+    };
 
     setAssignLoading(true);
     setAssignError(null);
@@ -366,29 +445,46 @@ export function useSevereAddonRealData(
           assignmentType: r.assignmentType,
         })),
       );
+
+      assignFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: true,
+      };
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       if (isAuthRequiredError(e)) {
         logAuthSkipOnce();
+        assignFetchStateRef.current = {
+          key,
+          inFlight: false,
+          completed: false,
+        };
         return;
       }
       setAssignError(e);
       console.warn('[useSevereAddonRealData] Assignment fetch failed:', e.message);
+
+      assignFetchStateRef.current = {
+        key,
+        inFlight: false,
+        completed: false,
+      };
     } finally {
       setAssignLoading(false);
     }
-  }, [assignmentRepo, activeUserIds, authReady, isAuthRequiredError, logAuthSkipOnce]);
+  }, [assignmentRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce, enabled]);
 
   useEffect(() => {
     fetchAssignments();
   }, [fetchAssignments]);
 
   // ── メイン BulkInput 構築 ──
-  const combinedLoading = isLoading || (authReady && (sheetsLoading || obsLoading || assignLoading));
-  const combinedError = error || sheetsError || obsError || assignError;
+  const combinedLoading = enabled && (isLoading || (authReady && (sheetsLoading || obsLoading || assignLoading)));
+  const combinedError = enabled ? (error || sheetsError || obsError || assignError) : null;
 
   const input = useMemo<SevereAddonBulkInput | null>(() => {
-    if (combinedLoading || combinedError) return null;
+    if (!enabled || combinedLoading || combinedError) return null;
     if (users.length === 0 && staff.length === 0) return null;
 
     const today = new Date().toISOString().slice(0, 10);
@@ -444,12 +540,12 @@ export function useSevereAddonRealData(
       usersWithoutAssignmentQualification,
       today,
     };
-  }, [users, staff, combinedLoading, combinedError, sheetsByUser, allObservations, allAssignments, weeklyObsRepo, assignmentRepo]);
+  }, [users, staff, combinedLoading, combinedError, sheetsByUser, allObservations, allAssignments, weeklyObsRepo, assignmentRepo, enabled]);
 
   return {
     input,
     isLoading: combinedLoading,
     error: combinedError,
-    dataSourceLabel: input ? '実データ' : 'デモデータ',
+    dataSourceLabel: input ? '実データ' : (enabled ? 'デモデータ' : '無効'),
   };
 }

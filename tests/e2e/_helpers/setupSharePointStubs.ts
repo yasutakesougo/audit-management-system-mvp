@@ -346,6 +346,10 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           if (filter) {
             const conditions = filter.split(/\s+and\s+/i);
             for (const condition of conditions) {
+              if (/\s+or\s+/i.test(condition)) {
+                // Skip parsing OR conditions to avoid partial match issues in E2E stubs
+                continue;
+              }
               const eqMatch = condition.match(/([a-zA-Z0-9_]+)\s+eq\s+(.+)/i);
               if (eqMatch) {
                 const field = eqMatch[1];

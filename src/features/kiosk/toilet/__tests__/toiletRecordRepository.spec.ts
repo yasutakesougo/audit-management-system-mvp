@@ -137,12 +137,12 @@ describe('ToiletRecord Repository & Factory Tests', () => {
       // 1. Should not use exact date equality filter
       expect(decodedUrl).not.toContain("RecordDate eq '2026-05-26'");
 
-      // 2. Should use local-day UTC range query
-      expect(decodedUrl).toContain("RecordDate ge '2026-05-25T15:00:00Z'");
-      expect(decodedUrl).toContain("RecordDate lt '2026-05-26T15:00:00Z'");
+      // 2. Should use YYYY-MM-DD date range query
+      expect(decodedUrl).toContain("RecordDate ge '2026-05-26'");
+      expect(decodedUrl).toContain("RecordDate lt '2026-05-27'");
 
-      // 4. IsDeleted condition should be preserved
-      expect(decodedUrl).toContain("IsDeleted ne true");
+      // 4. IsDeleted condition should be eq false or eq null
+      expect(decodedUrl).toContain("IsDeleted eq false or IsDeleted eq null");
 
       // 3. SharePoint '2026-05-25T15:00:00Z' maps back to JST local date '2026-05-26'
       expect(records).toHaveLength(1);

@@ -86,17 +86,13 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
     const recordDateField = this.rfFallback('recordDate');
     const isDeletedField = this.rfFallback('isDeleted');
 
-    // Convert dateIso (YYYY-MM-DD) to JST UTC range (since welfare records operate in JST/UTC+9)
-    const parts = dateIso.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    const startMs = Date.UTC(year, month, day, 0, 0, 0) - 9 * 60 * 60 * 1000;
-    const endMs = startMs + 24 * 60 * 60 * 1000;
-    const startUtc = new Date(startMs).toISOString().replace('.000Z', 'Z');
-    const endUtc = new Date(endMs).toISOString().replace('.000Z', 'Z');
+    // Calculate the next day's date string (e.g. "2026-05-29" -> "2026-05-30")
+    // Simple local-date OData range query (e.g. ge '2026-05-29' and lt '2026-05-30')
+    const date = new Date(dateIso);
+    date.setDate(date.getDate() + 1);
+    const nextDateIso = date.toISOString().slice(0, 10);
 
-    const filter = `(${recordDateField} ge '${startUtc}') and (${recordDateField} lt '${endUtc}') and (${isDeletedField} ne true)`;
+    const filter = `(${recordDateField} ge '${dateIso}') and (${recordDateField} lt '${nextDateIso}') and (${isDeletedField} eq false or ${isDeletedField} eq null)`;
     
     // OData query
     const select = [

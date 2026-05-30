@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/features/staff/store';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -15,7 +16,7 @@ interface ComplianceBadgeContextValue {
 
 const ComplianceBadgeContext = createContext<ComplianceBadgeContextValue | null>(null);
 
-export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ComplianceBadgeLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { data: users, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff, isLoading: staffLoading, error: staffError } = useStaff();
   
@@ -33,7 +34,9 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
     dataError,
     planningSheetRepo,
     procedureRecordRepo,
-    monitoringMeetingRepo
+    monitoringMeetingRepo,
+    undefined,
+    { enabled: true }
   );
 
   const { input: addonInput, isLoading: addonLoading } = useSevereAddonRealData(
@@ -43,7 +46,9 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
     dataError,
     planningSheetRepo,
     null, // observation repo not used for count for now
-    null  // qualification repo not used for count for now
+    null, // qualification repo not used for count for now
+    undefined,
+    { enabled: true }
   );
 
   const addonFindingCount = useMemo(() => {
@@ -66,6 +71,26 @@ export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = 
       {children}
     </ComplianceBadgeContext.Provider>
   );
+};
+
+export const ComplianceBadgeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const isKiosk = location.pathname.startsWith('/kiosk');
+
+  const emptyValue = useMemo(() => ({
+    totalCount: 0,
+    isLoading: false,
+  }), []);
+
+  if (isKiosk) {
+    return (
+      <ComplianceBadgeContext.Provider value={emptyValue}>
+        {children}
+      </ComplianceBadgeContext.Provider>
+    );
+  }
+
+  return <ComplianceBadgeLoader>{children}</ComplianceBadgeLoader>;
 };
 
 export const useComplianceBadge = () => {
