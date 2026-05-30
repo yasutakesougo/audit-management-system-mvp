@@ -1,4 +1,5 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
+import { isSharePointThrottleError } from '@/lib/sp';
 import { isDemoModeEnabled, isForceDemoEnabled, shouldSkipLogin } from '@/lib/env';
 import { 
     DAILY_RECORD_FIELDS, 
@@ -24,9 +25,11 @@ import {
 import { resolveInternalNames } from '@/lib/sp/helpers';
 
 let availableListTitlesCache = new WeakMap<SpFetchFn, Promise<string[] | null>>();
+let availableListTitlesCooldowns = new WeakMap<SpFetchFn, number>();
 
 export const __clearDailyRecordSchemaResolverCachesForTests = (): void => {
     availableListTitlesCache = new WeakMap<SpFetchFn, Promise<string[] | null>>();
+    availableListTitlesCooldowns = new WeakMap<SpFetchFn, number>();
 };
 
 export class DailyRecordSchemaResolver {
@@ -342,6 +345,12 @@ export class DailyRecordSchemaResolver {
     }
 
     private async getAvailableListTitles(): Promise<string[] | null> {
+        const cooldownUntil = availableListTitlesCooldowns.get(this.spFetch);
+        if (cooldownUntil && Date.now() < cooldownUntil) {
+            console.info('[DailyRecordSchemaResolver] getAvailableListTitles suppressed due to throttle cooldown.');
+            return null;
+        }
+
         const cached = availableListTitlesCache.get(this.spFetch);
         if (cached) return cached;
 
@@ -359,6 +368,9 @@ export class DailyRecordSchemaResolver {
         } catch (error) {
             if (availableListTitlesCache.get(this.spFetch) === request) {
                 availableListTitlesCache.delete(this.spFetch);
+            }
+            if (isSharePointThrottleError(error)) {
+                availableListTitlesCooldowns.set(this.spFetch, Date.now() + 30000);
             }
             if (getHttpStatus(error) === 404) return null;
             throw error;
