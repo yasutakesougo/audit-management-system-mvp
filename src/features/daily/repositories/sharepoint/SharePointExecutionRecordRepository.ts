@@ -12,6 +12,7 @@ import {
 import type { JsonRecord } from '@/lib/sp/types';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
 import { normalizeScheduleItemId } from '@/features/daily/utils/normalizeScheduleItemId';
+import { isKioskRecordDebugEnabled } from '@/lib/debug/kioskRecordDebug';
 import { readSharePointText } from './utils/readSharePointText';
 import {
   normalizeExecutionDate,
@@ -637,13 +638,19 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
         // Build user ID candidates including both current userId and any logical representations
         const userCandidates = buildExecutionUserIdCandidates(userId);
+        // Sort candidates from longest to shortest to prevent prefix hijacking (e.g. matching "U" before "U-023" or similar)
+        const sortedCandidates = [...userCandidates].sort((a, b) => b.length - a.length);
         let matchedCandidate: string | null = null;
 
-        for (const candidate of userCandidates) {
+        for (const candidate of sortedCandidates) {
           if (suffix.startsWith(`${candidate}-`)) {
             matchedCandidate = candidate;
             break;
           }
+        }
+
+        if (isKioskRecordDebugEnabled()) {
+          console.debug(`[ExecutionRepo] mapToDomain - key: ${key}, userId: ${userId}, candidates: ${JSON.stringify(userCandidates)}, sorted: ${JSON.stringify(sortedCandidates)}, matched: ${matchedCandidate}`);
         }
 
         if (matchedCandidate) {
