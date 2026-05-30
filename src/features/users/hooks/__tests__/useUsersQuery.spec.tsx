@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUserRepository } from '@/features/users/repositoryFactory';
 import type { UserRepository } from '@/features/users/domain/UserRepository';
-import { useUsersQuery } from '../useUsersQuery';
+import { useUsersQuery, __clearUsersQueryCooldownForTests } from '../useUsersQuery';
 
 vi.mock('@/features/users/repositoryFactory', () => ({
   useUserRepository: vi.fn(),
@@ -40,6 +40,7 @@ describe('useUsersQuery', () => {
   };
 
   beforeEach(() => {
+    __clearUsersQueryCooldownForTests();
     vi.clearAllMocks();
     vi.mocked(useUserRepository).mockReturnValue(repositoryStub);
   });
@@ -123,5 +124,35 @@ describe('useUsersQuery', () => {
         }),
       ]),
     );
+  });
+
+  it('prevents retry and triggers cooldown on SpThrottleRedirectError', async () => {
+    const throttleError = new Error('SpThrottleRedirectError');
+    throttleError.name = 'SpThrottleRedirectError';
+    getAll.mockRejectedValue(throttleError);
+
+    const queryClient = createTestQueryClient();
+    const wrapper = makeWrapper(queryClient);
+
+    const { result } = renderHook(() => useUsersQuery(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(getAll).toHaveBeenCalledTimes(1);
+
+    // Call it again - should fail immediately due to cooldown and NOT call repository
+    getAll.mockClear();
+
+    const secondQueryClient = createTestQueryClient();
+    const secondWrapper = makeWrapper(secondQueryClient);
+    const { result: secondResult } = renderHook(() => useUsersQuery(), { wrapper: secondWrapper });
+
+    await waitFor(() => {
+      expect(secondResult.current.status).toBe('error');
+    });
+
+    expect(getAll).toHaveBeenCalledTimes(0); // Suppressed by cooldown!
   });
 });

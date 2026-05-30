@@ -64,7 +64,22 @@ describe('DailyRecordSchemaResolver list discovery cache', () => {
     expect(spFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('does not keep a failed discovery request cached', async () => {
+  it('does not keep a failed discovery request cached for general non-throttle errors, retrying immediately', async () => {
+    const generalError = new Error('GeneralError');
+    const spFetch = vi
+      .fn<SpFetchFn>()
+      .mockRejectedValueOnce(generalError)
+      .mockResolvedValueOnce(responseJson({ value: [{ Title: 'DailyRecordRows' }] }));
+
+    const first = new DailyRecordSchemaResolver(spFetch, 'SupportRecord_Daily');
+    await expect(first.resolveRowsPath('DailyRecordRows')).rejects.toBe(generalError);
+
+    const second = new DailyRecordSchemaResolver(spFetch, 'SupportRecord_Daily');
+    await expect(second.resolveRowsPath('DailyRecordRows')).resolves.toBe("lists/getbytitle('DailyRecordRows')");
+    expect(spFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('triggers a cooldown for throttle errors, avoiding immediate refetch', async () => {
     const throttleError = new Error('SpThrottleRedirectError');
     throttleError.name = 'SpThrottleRedirectError';
     const spFetch = vi
@@ -76,7 +91,9 @@ describe('DailyRecordSchemaResolver list discovery cache', () => {
     await expect(first.resolveRowsPath('DailyRecordRows')).rejects.toBe(throttleError);
 
     const second = new DailyRecordSchemaResolver(spFetch, 'SupportRecord_Daily');
+    // Cooldown returns null, so it falls back to direct candidate resolving
     await expect(second.resolveRowsPath('DailyRecordRows')).resolves.toBe("lists/getbytitle('DailyRecordRows')");
-    expect(spFetch).toHaveBeenCalledTimes(2);
+    // spFetch was NOT called a second time because of the cooldown
+    expect(spFetch).toHaveBeenCalledTimes(1);
   });
 });

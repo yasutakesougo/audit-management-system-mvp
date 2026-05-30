@@ -1,12 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 
+import { isSharePointThrottleError, SpThrottleRedirectError } from '@/lib/sp';
 import type { UserRepositoryListParams } from '../domain/UserRepository';
 import { useUserRepository } from '../repositoryFactory';
 import type { IUserMaster } from '../types';
 import type { AsyncStatus, UsersHookParams } from '../useUsers';
 
 const USERS_LIST_QUERY_KEY = 'users:list';
+
+let usersQueryThrottleCooldownUntil = 0;
+
+export const __clearUsersQueryCooldownForTests = (): void => {
+  usersQueryThrottleCooldownUntil = 0;
+};
 
 const toUsersQueryKey = (params?: UsersHookParams) =>
   [
@@ -27,7 +34,7 @@ export type UseUsersQueryReturn = {
 const EMPTY_ARRAY: IUserMaster[] = [];
 
 /**
- * useUsersQuery — users 読み取り専用の共有 Query Hook
+ * useUsersQuery — users 読み取り専用 of the shared Query Hook
  *
  * /today 系の複数 consumer から同一 key で購読して、
  * Users_Master の重複取得を圧縮する。
@@ -41,14 +48,25 @@ export function useUsersQuery(params?: UsersHookParams): UseUsersQueryReturn {
 
   const query = useQuery({
     queryKey,
-    queryFn: ({ signal }) => {
+    queryFn: async ({ signal }) => {
+      if (Date.now() < usersQueryThrottleCooldownUntil) {
+        console.warn('[useUsersQuery] Suppressed request due to active throttle cooldown');
+        throw new SpThrottleRedirectError('cooldown');
+      }
       const listParams: UserRepositoryListParams = params
         ? { ...params, signal }
         : { signal };
-      return repository.getAll(listParams);
+      try {
+        return await repository.getAll(listParams);
+      } catch (error) {
+        if (isSharePointThrottleError(error)) {
+          usersQueryThrottleCooldownUntil = Date.now() + 15000;
+        }
+        throw error;
+      }
     },
     staleTime: 60_000,
-    retry: false,
+    retry: (_failureCount, error) => !isSharePointThrottleError(error),
   });
 
   const refresh = useCallback(async () => {
