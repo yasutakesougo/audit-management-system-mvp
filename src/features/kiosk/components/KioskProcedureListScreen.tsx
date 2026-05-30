@@ -20,6 +20,7 @@ import {
 } from '@/features/daily/utils/normalizeExecutionLookup';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
 import { matchExecutionRecordsToProcedures } from '../domain/executionRecordMatching';
+import { isKioskRecordDebugEnabled } from '@/lib/debug/kioskRecordDebug';
 
 import { getCurrentExecutionRepositoryKind } from '@/features/daily/repositories/sharepoint/executionRepositoryFactory';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -476,6 +477,16 @@ export const KioskProcedureListScreen: React.FC = () => {
     const dedupedRecords = Array.from(uniqueRecordsMap.values());
 
     const matchedRecords = matchExecutionRecordsToProcedures(procedures, dedupedRecords);
+    if (isKioskRecordDebugEnabled()) {
+      console.debug(`[KioskProcedureList] Matching execution records:`, {
+        userId,
+        userCanonicalId: user?.UserID,
+        candidates: executionUserIdCandidates,
+        procedures: procedures.map((p) => ({ id: p.id, rowNo: p.rowNo })),
+        dedupedRecords: dedupedRecords.map((r) => ({ id: r.id, userId: r.userId, scheduleItemId: r.scheduleItemId, status: r.status })),
+        matchedRecords: matchedRecords.map((r) => (r ? { id: r.id, userId: r.userId, scheduleItemId: r.scheduleItemId, status: r.status } : null)),
+      });
+    }
     return matchedRecords.map((matchedRecord) => {
       if (matchedRecord && hasRecordInput(matchedRecord)) {
         return matchedRecord;
