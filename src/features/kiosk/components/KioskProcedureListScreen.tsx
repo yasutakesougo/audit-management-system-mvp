@@ -341,7 +341,10 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
 
       const procedureLookupKey = `${dateStr}|${queryUserIds.join('|')}`;
+      const shouldRunProcedureLevelLookup = executionRepositoryKind !== 'sharepoint';
+
       if (
+        shouldRunProcedureLevelLookup &&
         procedures.length > 0 &&
         deduped.size < procedures.length &&
         typeof executionRepo.getRecord === 'function' &&
@@ -356,7 +359,7 @@ export const KioskProcedureListScreen: React.FC = () => {
 
         let lookupAttempts = 0;
         let abortProcedureLookups = false;
-        const maxLookupAttempts = executionRepositoryKind === 'sharepoint' ? 12 : Number.POSITIVE_INFINITY;
+        const maxLookupAttempts = Number.POSITIVE_INFINITY;
 
         for (let index = 0; index < procedures.length; index += 1) {
           const procedureKeys = buildProcedureMatchKeys(procedures[index], index);
