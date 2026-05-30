@@ -21,6 +21,7 @@ import {
 import { trackGuidResolution } from '@/lib/telemetry/spTelemetry';
 import type { SpFetchFn } from './spLists';
 import { buildFieldSchema, trimGuidBraces } from './spSchema';
+import { isSharePointThrottleError } from './spFetch';
 import type {
     EnsureListOptions,
     EnsureListResult,
@@ -111,12 +112,29 @@ export async function tryGetListMetadata(
   }
 }
 
+// Cache and cooldown mapping for list title discovery to prevent request storms on throttle
+let getExistingListTitlesCooldowns = new WeakMap<SpFetchFn, number>();
+let getExistingListTitlesCache = new WeakMap<SpFetchFn, Set<string>>();
+
+/** @internal - For testing only */
+export function __clearGetExistingListTitlesCooldownsForTests(): void {
+  // Clear map values by recreating WeakMaps (garbage collection handles cleanup)
+  getExistingListTitlesCooldowns = new WeakMap<SpFetchFn, number>();
+  getExistingListTitlesCache = new WeakMap<SpFetchFn, Set<string>>();
+}
+
 /**
  * Fetch all existing list titles and IDs once to avoid redundant 404 probes.
  */
 export async function getExistingListTitlesAndIds(
   spFetch: SpFetchFn,
 ): Promise<Set<string>> {
+  const cooldownUntil = getExistingListTitlesCooldowns.get(spFetch) ?? 0;
+  if (Date.now() < cooldownUntil) {
+    auditLog.info('sp:metadata', 'bulk_check_suppressed_cooldown');
+    return getExistingListTitlesCache.get(spFetch) ?? new Set<string>();
+  }
+
   const path = `lists?$select=Title,Id`;
   try {
     const res = await spFetch(path);
@@ -128,9 +146,18 @@ export async function getExistingListTitlesAndIds(
       if (list.Title) identifiers.add(list.Title);
       if (list.Id) identifiers.add(trimGuidBraces(list.Id));
     }
+    // Update successful cache
+    getExistingListTitlesCache.set(spFetch, identifiers);
     return identifiers;
   } catch (error) {
-    auditLog.warn('sp:metadata', 'bulk_check_failed', { error });
+    if (isSharePointThrottleError(error)) {
+      getExistingListTitlesCooldowns.set(spFetch, Date.now() + 30000);
+      auditLog.warn('sp:metadata', 'bulk_check_throttled_cooldown_set', { error });
+      // Return the last successful cache to avoid treating throttle as list absence
+      return getExistingListTitlesCache.get(spFetch) ?? new Set<string>();
+    } else {
+      auditLog.warn('sp:metadata', 'bulk_check_failed', { error });
+    }
     return new Set();
   }
 }
