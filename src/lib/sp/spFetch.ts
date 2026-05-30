@@ -232,6 +232,32 @@ export function isSharePointThrottleError(error: unknown): boolean {
   );
 }
 
+const THROTTLE_CIRCUIT_BREAKER_MS = 30_000;
+
+let throttleCircuitOpenUntil = 0;
+
+export function isThrottleCircuitOpen(now = Date.now()): boolean {
+  return throttleCircuitOpenUntil > now;
+}
+
+export function openThrottleCircuit(now = Date.now()): void {
+  throttleCircuitOpenUntil = Math.max(
+    throttleCircuitOpenUntil,
+    now + THROTTLE_CIRCUIT_BREAKER_MS,
+  );
+}
+
+export function __clearSharePointThrottleCircuitBreakerForTests(): void {
+  throttleCircuitOpenUntil = 0;
+}
+
+export function __getSharePointThrottleCircuitBreakerStateForTests(): { openUntil: number; isOpen: boolean } {
+  return {
+    openUntil: throttleCircuitOpenUntil,
+    isOpen: isThrottleCircuitOpen(),
+  };
+}
+
 let hasWarnedThrottleRedirect = false;
 let hasWarnedCorsOrRedirectFailure = false;
 
@@ -299,6 +325,11 @@ export function createSpFetch(deps: SpFetchDeps) {
   };
 
   return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {
+    if (isThrottleCircuitOpen()) {
+      throw new SpThrottleRedirectError(
+        '[SharePoint] Throttled: circuit breaker is open. Request suppressed to avoid request storm.'
+      );
+    }
     const spOptions = init.spOptions || {};
     const resolvedPath = path; // normalizePath is applied BEFORE calling spFetch by createSpClient
     const method = (init.method ?? 'GET').toUpperCase();
@@ -449,6 +480,7 @@ export function createSpFetch(deps: SpFetchDeps) {
                 lane,
               });
             }
+            openThrottleCircuit();
             throw new SpThrottleRedirectError(responseUrl);
           }
 
@@ -598,6 +630,7 @@ export function createSpFetch(deps: SpFetchDeps) {
               message: error instanceof Error ? error.message : 'NetworkError',
             });
             span.error('SpThrottleRedirectError', attempt - 1);
+            openThrottleCircuit();
             throw new SpThrottleRedirectError(url);
           }
 

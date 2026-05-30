@@ -7,7 +7,7 @@ import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-r
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
-import { isSharePointThrottleError } from '@/lib/sp';
+import { isSharePointThrottleError, isThrottleCircuitOpen } from '@/lib/sp';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { formatDateJapanese } from '@/lib/dateFormat';
@@ -286,6 +286,15 @@ export const KioskProcedureListScreen: React.FC = () => {
     const fetchRecords = async () => {
       const dateStr = selectedDateIso;
       if (!dateStr) return;
+      if (isThrottleCircuitOpen()) {
+        console.warn('[Kiosk] Circuit breaker is open. Aborting execution record fetch to suppress storm.');
+        if (active) {
+          setShowFetchError(true);
+          setFetchFailed(true);
+          setHasFetchedRecords(true);
+        }
+        return;
+      }
       const isSharePoint = executionRepositoryKind === 'sharepoint';
       // Deduplicate user IDs that would produce the same SharePoint query candidates.
       // If not SharePoint, we keep all candidates to support local mock/Zustand stores.

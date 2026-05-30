@@ -3,12 +3,13 @@ import {
   getExistingListTitlesAndIds, 
   __clearGetExistingListTitlesCooldownsForTests 
 } from '../spListSchema';
-import { SpThrottleRedirectError } from '../spFetch';
+import { SpThrottleRedirectError, __clearSharePointThrottleCircuitBreakerForTests } from '../spFetch';
 
 describe('getExistingListTitlesAndIds throttle cooldown and cache preservation', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     __clearGetExistingListTitlesCooldownsForTests();
+    __clearSharePointThrottleCircuitBreakerForTests();
   });
 
   afterEach(() => {

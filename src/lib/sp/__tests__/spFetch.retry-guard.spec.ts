@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSpFetch } from '../spFetch';
+import { createSpFetch, __clearSharePointThrottleCircuitBreakerForTests } from '../spFetch';
 import type { EnvRecord } from '@/lib/env';
 
 function createTestEnv(): EnvRecord {
@@ -43,12 +43,14 @@ function createProxyFetcher() {
 describe('spFetch retry guard for SharePoint throttle/cors', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    __clearSharePointThrottleCircuitBreakerForTests();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    __clearSharePointThrottleCircuitBreakerForTests();
   });
 
   it('does not retry when redirected to Throttle.htm', async () => {
