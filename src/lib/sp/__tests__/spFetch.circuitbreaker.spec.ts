@@ -3,6 +3,7 @@ import {
   createSpFetch,
   SpThrottleRedirectError,
   isThrottleCircuitOpen,
+  getSharePointThrottleCircuitBreakerState,
   __clearSharePointThrottleCircuitBreakerForTests,
   __getSharePointThrottleCircuitBreakerStateForTests,
 } from '../spFetch';
@@ -185,5 +186,48 @@ describe('spFetch Throttle Circuit Breaker', () => {
     // Subsequent request should pass through
     const res = await spFetch('/lists');
     expect(res.ok).toBe(true);
+  });
+
+  describe('getSharePointThrottleCircuitBreakerState', () => {
+    it('should return correct initial values', () => {
+      const state = getSharePointThrottleCircuitBreakerState();
+      expect(state.isOpen).toBe(false);
+      expect(state.openUntil).toBe(0);
+      expect(state.openedAt).toBe(0);
+      expect(state.remainingMs).toBe(0);
+    });
+
+    it('should reflect correct openedAt and remainingMs when circuit is open', async () => {
+      const spFetch = createSpFetch(defaultDeps);
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 302,
+        url: 'https://tenant.sharepoint.com/sites/test/_layouts/15/Throttle.htm',
+        headers: new Headers(),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const startTime = Date.now();
+      await expect(spFetch('/lists')).rejects.toThrow(SpThrottleRedirectError);
+
+      const state = getSharePointThrottleCircuitBreakerState();
+      expect(state.isOpen).toBe(true);
+      expect(state.openedAt).toBeGreaterThanOrEqual(startTime);
+      expect(state.openUntil).toBe(state.openedAt + 30000);
+      expect(state.remainingMs).toBeCloseTo(30000, -3); // ±1000ms is acceptable
+
+      // After 10 seconds
+      vi.advanceTimersByTime(10000);
+      const stateAfter10 = getSharePointThrottleCircuitBreakerState();
+      expect(stateAfter10.isOpen).toBe(true);
+      expect(stateAfter10.remainingMs).toBeCloseTo(20000, -3);
+
+      // After 30 seconds
+      vi.advanceTimersByTime(20000);
+      const stateAfter30 = getSharePointThrottleCircuitBreakerState();
+      expect(stateAfter30.isOpen).toBe(false);
+      expect(stateAfter30.remainingMs).toBe(0);
+    });
   });
 });

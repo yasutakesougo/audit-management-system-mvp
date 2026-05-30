@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
+import { openThrottleCircuit, __clearSharePointThrottleCircuitBreakerForTests } from '@/lib/sp';
 import { MemoryRouter } from 'react-router-dom';
 import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/schema';
 
@@ -108,6 +109,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 4, 8));
     vi.clearAllMocks();
+    __clearSharePointThrottleCircuitBreakerForTests();
     mockRouteUserId = 'U001';
     mockLocationSearch = null;
     mockLocationKey = null;
@@ -357,7 +359,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
         recordedAt: '2026-05-07T23:50:00+09:00',
       },
     ]);
-    mockGetRecords.mockRejectedValue(new Error('SharePoint throttled'));
+    mockGetRecords.mockRejectedValue(new Error('Connection failed'));
 
     render(
       <MemoryRouter>
@@ -1143,5 +1145,42 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(within(card).getByText('未実施')).toBeInTheDocument();
       expect(within(card).queryByText('記録済み')).toBeNull();
     }
+  });
+
+  describe('SharePoint Throttle Circuit Breaker UX Alert', () => {
+    it('shows inline warning Alert with countdown and disabled button when circuit breaker is active', async () => {
+      // Open the circuit breaker manually at t=0
+      const startTime = Date.now();
+      openThrottleCircuit(startTime);
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      // Verify the alert is rendered with appropriate styling and text
+      const alert = await screen.findByTestId('kiosk-throttle-alert');
+      expect(alert).toBeInTheDocument();
+      expect(screen.getByText(/SharePointが一時的に混み合っています。/)).toBeInTheDocument();
+      expect(screen.getByText(/安全のため、サーバーへの再接続を少し待っています。/)).toBeInTheDocument();
+
+      // Verify the button is disabled and displays the countdown (30 seconds initially)
+      const button = within(alert).getByRole('button');
+      expect(button).toBeDisabled();
+      expect(button).toHaveTextContent('再試行（30秒）');
+
+      // Advance time by 10 seconds - countdown should decrease
+      vi.advanceTimersByTime(10000);
+      await waitFor(() => {
+        expect(button).toHaveTextContent('再試行（20秒）');
+      });
+
+      // Advance time by 20 more seconds (total 30 seconds) - breaker should close and alert should auto-hide/trigger refetch
+      vi.advanceTimersByTime(20000);
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-throttle-alert')).toBeNull();
+      });
+    });
   });
 });

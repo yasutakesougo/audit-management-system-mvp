@@ -235,20 +235,41 @@ export function isSharePointThrottleError(error: unknown): boolean {
 const THROTTLE_CIRCUIT_BREAKER_MS = 30_000;
 
 let throttleCircuitOpenUntil = 0;
+let throttleCircuitOpenedAt = 0;
 
 export function isThrottleCircuitOpen(now = Date.now()): boolean {
   return throttleCircuitOpenUntil > now;
 }
 
 export function openThrottleCircuit(now = Date.now()): void {
+  if (throttleCircuitOpenUntil <= now) {
+    throttleCircuitOpenedAt = now;
+  }
   throttleCircuitOpenUntil = Math.max(
     throttleCircuitOpenUntil,
     now + THROTTLE_CIRCUIT_BREAKER_MS,
   );
 }
 
+export function getSharePointThrottleCircuitBreakerState(now = Date.now()): {
+  isOpen: boolean;
+  openUntil: number;
+  openedAt: number;
+  remainingMs: number;
+} {
+  const isOpen = throttleCircuitOpenUntil > now;
+  const remainingMs = isOpen ? Math.max(0, throttleCircuitOpenUntil - now) : 0;
+  return {
+    isOpen,
+    openUntil: throttleCircuitOpenUntil,
+    openedAt: throttleCircuitOpenedAt,
+    remainingMs,
+  };
+}
+
 export function __clearSharePointThrottleCircuitBreakerForTests(): void {
   throttleCircuitOpenUntil = 0;
+  throttleCircuitOpenedAt = 0;
 }
 
 export function __getSharePointThrottleCircuitBreakerStateForTests(): { openUntil: number; isOpen: boolean } {
