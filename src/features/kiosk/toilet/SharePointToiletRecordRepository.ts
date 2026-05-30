@@ -122,6 +122,25 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
     const data = await response.json();
     const items = (data.value || data.d?.results || []) as JsonRecord[];
 
+    if (items.length === 0) {
+      console.info(`[SharePointToiletRecordRepo] Primary range query returned 0 items. Triggering fallback query for date: ${dateIso}`);
+      const fallbackFilter = `(${isDeletedField} ne true)`;
+      const fallbackUrl = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$filter=${encodeURIComponent(fallbackFilter)}&$select=${selectQuery}&$orderby=Created desc&$top=500`;
+
+      const fallbackResponse = await this.spFetch(fallbackUrl);
+      if (!fallbackResponse.ok) {
+        throw new Error(`[SharePointToiletRecordRepo] Fallback query failed: ${fallbackResponse.statusText}`);
+      }
+
+      const fallbackData = await fallbackResponse.json();
+      const fallbackItems = (fallbackData.value || fallbackData.d?.results || []) as JsonRecord[];
+
+      return fallbackItems
+        .map((item) => this.mapToDomain(item))
+        .filter((record) => record.recordDate === dateIso && !record.isDeleted)
+        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    }
+
     return items
       .map((item) => this.mapToDomain(item))
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));

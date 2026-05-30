@@ -362,6 +362,10 @@ export const KioskProcedureListScreen: React.FC = () => {
         const maxLookupAttempts = Number.POSITIVE_INFINITY;
 
         for (let index = 0; index < procedures.length; index += 1) {
+          if (!active) {
+            abortProcedureLookups = true;
+            break;
+          }
           const procedureKeys = buildProcedureMatchKeys(procedures[index], index);
           if (procedureKeys.some((key) => matchedKeys.has(key))) continue;
 
@@ -369,6 +373,10 @@ export const KioskProcedureListScreen: React.FC = () => {
           const lookupKeys = buildProcedureLookupKeys(procedures[index], index);
           for (const candidateUserId of queryUserIds) {
             for (const scheduleItemId of lookupKeys) {
+              if (!active) {
+                abortProcedureLookups = true;
+                break;
+              }
               if (lookupAttempts >= maxLookupAttempts) {
                 abortProcedureLookups = true;
                 break;
