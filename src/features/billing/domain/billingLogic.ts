@@ -42,5 +42,8 @@ export function mapToBillingOrder(
     sugar: safeParseString(item[F.sugar ?? 'Sugar'] ?? item['sugar'] ?? ''),
     milk: safeParseString(item[F.milk ?? 'Milk'] ?? item['milk'] ?? ''),
     drinkPrice: safeParseNumber(item[F.drinkPrice ?? 'DrinkPrice'] ?? item['drinkPrice'] ?? 0),
+    paymentStatus: safeParseString(item[F.paymentStatus ?? 'PaymentStatus'] ?? item['paymentStatus'] ?? ''),
+    paidAt: safeParseString(item[F.paidAt ?? 'PaidAt'] ?? item['paidAt'] ?? ''),
+    paidBy: safeParseString(item[F.paidBy ?? 'PaidBy'] ?? item['paidBy'] ?? ''),
   };
 }

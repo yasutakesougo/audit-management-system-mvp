@@ -1,3 +1,4 @@
+import pLimit from 'p-limit';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { 
   BILLING_ORDERS_LIST_ID,
@@ -86,5 +87,51 @@ export class DataProviderBillingOrderRepository implements BillingOrderRepositor
       console.error('[BillingOrderRepository] Fetch error:', err);
       throw err;
     }
+  }
+
+  async isPersistenceColumnsResolved(): Promise<boolean> {
+    const mapping = await this.resolveFields();
+    return !!mapping.paymentStatus;
+  }
+
+  async updatePaymentStatus(
+    id: number,
+    status: '未精算' | '精算済み',
+    paidAt?: string,
+    paidBy?: string
+  ): Promise<void> {
+    const mapping = await this.resolveFields();
+    const payload: Record<string, unknown> = {};
+
+    if (mapping.paymentStatus) {
+      payload[mapping.paymentStatus] = status;
+    } else {
+      throw new Error('精算状態の永続化列が未設定です。SharePoint リストに列を作成してください。');
+    }
+
+    if (mapping.paidAt && paidAt !== undefined) {
+      payload[mapping.paidAt] = paidAt;
+    }
+    if (mapping.paidBy && paidBy !== undefined) {
+      payload[mapping.paidBy] = paidBy;
+    }
+
+    try {
+      await this.provider.updateItem(this.listId, id, payload);
+    } catch (err) {
+      console.error(`[BillingOrderRepository] updatePaymentStatus failed for item ${id}:`, err);
+      throw err;
+    }
+  }
+
+  async bulkUpdatePaymentStatus(
+    ids: number[],
+    status: '未精算' | '精算済み',
+    paidAt?: string,
+    paidBy?: string
+  ): Promise<void> {
+    const limit = pLimit(5);
+    const tasks = ids.map(id => limit(() => this.updatePaymentStatus(id, status, paidAt, paidBy)));
+    await Promise.all(tasks);
   }
 }

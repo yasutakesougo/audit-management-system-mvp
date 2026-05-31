@@ -24,6 +24,9 @@ export const FIELD_MAP_BILLING_ORDERS = {
   sugar: 'Sugar',
   milk: 'Milk',
   drinkPrice: 'DrinkPrice',
+  paymentStatus: 'PaymentStatus',
+  paidAt: 'PaidAt',
+  paidBy: 'PaidBy',
 } as const;
 
 /**
@@ -40,6 +43,9 @@ export const BILLING_ORDERS_CANDIDATES = {
   sugar: ['SugarOption', 'Sugar', 'cr013_sugar'],
   milk: ['MilkOption', 'Milk', 'cr013_milk'],
   drinkPrice: ['DRINK_PRICE', 'DrinkPrice', 'cr013_drinkPrice'],
+  paymentStatus: ['PaymentStatus', 'Payment_x0020_Status', 'cr013_paymentStatus'],
+  paidAt: ['PaidAt', 'Paid_x0020_At', 'cr013_paidAt', 'PaymentDate'],
+  paidBy: ['PaidBy', 'Paid_x0020_By', 'cr013_paidBy', 'PaymentHandler'],
 } as const;
 
 

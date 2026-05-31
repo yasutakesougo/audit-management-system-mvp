@@ -1,0 +1,1 @@
+export { useBillingOrderRepository } from '../repositoryFactory';
