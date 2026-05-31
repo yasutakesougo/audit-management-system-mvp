@@ -77,6 +77,34 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-05-31 — docs(kiosk): record footer navigation safety design 🏁
+
+**ワークフロー**: `/docs`
+**対象**: `docs/navigation.md` / `docs/ai-operations-log.md`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | **ドキュメントのSSOT化**: キオスクモードのナビゲーション（`KioskNavigation`, `FooterQuickActions`, `KioskExitFab`, `appendKioskSearchParams()`）の設計意図と、共有タブレット運用における安全対策（誤操作防止、情報混同防止、一時入力データ保護）を `docs/navigation.md` に明文化。 |
+| ✅ 採用 | **時系列ログの記録**: 今回のドキュメント化作業を `docs/ai-operations-log.md` に記録。 |
+| ❌ 却下 | 実行コードやUIコンポーネント、SharePoint スキーマ等の実行ロジックの変更。 |
+| 💡 却下理由 | 本PRは純粋なドキュメント追加・整理（docs-only）に限定し、プログラム実行への影響を完全に排除するため。 |
+
+**成果**:
+- `git status --short`: **ドキュメントのみの変更を確認** 🟢
+- `git diff --check`: **PASS** 🟢
+- キオスクナビゲーションの設計・安全思想がドキュメントとして蓄積され、開発者および監査担当者の双方に説明可能な体制を確立。
+
+**効果測定**:
+- 開発引き継ぎ・監査説明可能性: 大幅改善（キオスクの誤操作防止やパラメータクレンジングの設計意図が明確に文書化された）🟢
+
+**学び**:
+- **SSOT（Single Source of Truth）としての集約**: キオスクの構造設計を専用ファイルとして分けるのではなく、既存の「ナビゲーションOS設計書 (`docs/navigation.md`)」にマージすることで、ナビゲーションに関連する開発ナレッジが散逸するのを防ぐことができた。
+- **監査に配慮した表現**: 「侵入防止」といった過度に強い表現を避け、「通常モードへ意図せず切り替わることを防ぐ」といった客観的かつ監査時に説明しやすいマイルドな表現に整えることで、資料としての品質が大きく向上した。
+
+**所要時間**: 約 10min
+
+#kiosk #compliance #refactor #foundation #operations-log
+
 ### 2026-05-29 — kiosk: diagnostic query propagation 追補PR完成 🏁
 
 **ワークフロー**: `/test` → `/docs`
