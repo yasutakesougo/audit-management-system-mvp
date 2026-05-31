@@ -31,16 +31,17 @@ export const FIELD_MAP_BILLING_ORDERS = {
  */
 export const BILLING_ORDERS_CANDIDATES = {
   id: ['ID', 'Id'],
-  orderDate: ['Title', 'OrderDate', 'cr013_orderDate'],
-  ordererCode: ['Orderer_x0020_Code', 'OrdererCode', 'cr013_ordererCode'],
-  ordererName: ['Orderer_x0020_Name', 'OrdererName', 'cr013_ordererName'],
-  orderCount: ['Order_x0020_Count', 'OrderCount', 'cr013_orderCount'],
+  orderDate: ['OrderDateTime', 'Title', 'OrderDate', 'cr013_orderDate'],
+  ordererCode: ['RequesterCode', 'Orderer_x0020_Code', 'OrdererCode', 'cr013_ordererCode'],
+  ordererName: ['RequesterName', 'Orderer_x0020_Name', 'OrdererName', 'cr013_ordererName'],
+  orderCount: ['Count', 'Order_x0020_Count', 'OrderCount', 'cr013_orderCount'],
   served: ['Served', 'cr013_served'],
   item: ['Item', 'cr013_item'],
-  sugar: ['Sugar', 'cr013_sugar'],
-  milk: ['Milk', 'cr013_milk'],
-  drinkPrice: ['DrinkPrice', 'cr013_drinkPrice'],
+  sugar: ['SugarOption', 'Sugar', 'cr013_sugar'],
+  milk: ['MilkOption', 'Milk', 'cr013_milk'],
+  drinkPrice: ['DRINK_PRICE', 'DrinkPrice', 'cr013_drinkPrice'],
 } as const;
+
 
 export const BILLING_ORDERS_ESSENTIALS: (keyof typeof BILLING_ORDERS_CANDIDATES)[] = [
   'orderDate',
