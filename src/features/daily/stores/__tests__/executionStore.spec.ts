@@ -307,4 +307,67 @@ describe('executionStore', () => {
 
     expect(result.current.getRecord('2025-04-01', 'I001', '1')?.status).toBe('completed');
   });
+
+  // -----------------------------------------------------------------------
+  // regression: consecutive / synchronous batch upsert record preservation
+  // -----------------------------------------------------------------------
+
+  it('preserves all records when multiple records are upserted synchronously in the same call stack', () => {
+    const { result } = renderHook(() => useExecutionStore());
+
+    const recordA = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-0900'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+    const recordB = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-1000'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:01:00Z',
+    };
+    const recordC = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-1100'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:02:00Z',
+    };
+
+    act(() => {
+      // Simulate consecutive synchronous upsert loop (as performed in repositories during SharePoint sync)
+      [recordA, recordB, recordC].forEach((rec) => {
+        result.current.upsertRecord(rec);
+      });
+    });
+
+    const records = result.current.getRecords('2025-04-01', 'I001');
+    expect(records).toHaveLength(3);
+
+    const scheduleItemIds = records.map((r) => r.scheduleItemId);
+    expect(scheduleItemIds).toContain('base-0900');
+    expect(scheduleItemIds).toContain('base-1000');
+    expect(scheduleItemIds).toContain('base-1100');
+  });
+
+  it('preserves all range records in getRecordsInRange during synchronous updates', () => {
+    const { result } = renderHook(() => useExecutionStore());
+
+    const recordA = {
+      ...createEmptyRecord('2025-04-01', 'I001', 'base-0900'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+    const recordB = {
+      ...createEmptyRecord('2025-04-02', 'I001', 'base-1000'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-02T10:01:00Z',
+    };
+
+    act(() => {
+      [recordA, recordB].forEach((rec) => {
+        result.current.upsertRecord(rec);
+      });
+    });
+
+    const rangeRecords = result.current.getRecordsInRange('I001', '2025-04-01', '2025-04-03');
+    expect(rangeRecords).toHaveLength(2);
+  });
 });

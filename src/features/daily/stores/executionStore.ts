@@ -104,7 +104,9 @@ export function __resetStore() {
 // ---------------------------------------------------------------------------
 
 export function useExecutionStore() {
-  const snapshot = useExecutionStoreBase((s) => s.store);
+  // Subscribe to store changes to trigger React re-renders, but read values
+  // via getState().store to prevent stale closures during synchronous batch upserts.
+  useExecutionStoreBase((s) => s.store);
 
   /** 日付×ユーザーの記録集合が store 側で確定済みかを判定 */
   const hasInitializedRecords = useCallback(
@@ -112,15 +114,16 @@ export function useExecutionStore() {
       const normalizedDate = normalizeExecutionDate(date);
       const normalizedUserId = normalizeExecutionUserId(userId);
       const key = makeDailyUserKey(normalizedDate, normalizedUserId);
-      if (snapshot[key]) return true;
+      const currentStore = useExecutionStoreBase.getState().store;
+      if (currentStore[key]) return true;
 
       // Legacy fallback: scan keys and compare normalized date/userId
-      return Object.values(snapshot).some((daily) => (
+      return Object.values(currentStore).some((daily) => (
         normalizeExecutionDate(daily.date) === normalizedDate &&
         normalizeExecutionUserId(daily.userId) === normalizedUserId
       ));
     },
-    [snapshot],
+    [],
   );
 
   /** 日付×ユーザーの全記録を取得 */
@@ -129,11 +132,12 @@ export function useExecutionStore() {
       const normalizedDate = normalizeExecutionDate(date);
       const normalizedUserId = normalizeExecutionUserId(userId);
       const key = makeDailyUserKey(normalizedDate, normalizedUserId);
-      const direct = snapshot[key]?.records;
+      const currentStore = useExecutionStoreBase.getState().store;
+      const direct = currentStore[key]?.records;
       if (direct) return direct;
 
       // Legacy fallback: scan keys and compare normalized date/userId
-      for (const daily of Object.values(snapshot)) {
+      for (const daily of Object.values(currentStore)) {
         if (
           normalizeExecutionDate(daily.date) === normalizedDate &&
           normalizeExecutionUserId(daily.userId) === normalizedUserId
@@ -143,7 +147,7 @@ export function useExecutionStore() {
       }
       return [];
     },
-    [snapshot],
+    [],
   );
 
   /** scheduleItemId で特定の1レコードを取得 */
@@ -245,8 +249,9 @@ export function useExecutionStore() {
       const normalizedFrom = normalizeExecutionDate(from);
       const normalizedTo = normalizeExecutionDate(to);
       const results: ExecutionRecord[] = [];
+      const currentStore = useExecutionStoreBase.getState().store;
 
-      for (const daily of Object.values(snapshot)) {
+      for (const daily of Object.values(currentStore)) {
         if (normalizeExecutionUserId(daily.userId) === normalizedUserId) {
           const date = normalizeExecutionDate(daily.date);
           if (date >= normalizedFrom && date <= normalizedTo) {
@@ -256,7 +261,7 @@ export function useExecutionStore() {
       }
       return results;
     },
-    [snapshot],
+    [],
   );
 
   return useMemo(() => ({
