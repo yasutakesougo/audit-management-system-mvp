@@ -20,11 +20,13 @@ import BlockIcon from '@mui/icons-material/Block';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useDailyProcedureFlowPreview } from '../hooks/useDailyProcedureFlowPreview';
 import { formatDateShort } from '@/lib/dateFormat';
+import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
 
 interface KioskDailyProcedureFlowPreviewProps {
   userId: string;
   userName: string;
   recordDate: string;
+  seedRecords?: ExecutionRecord[];
   onClose: () => void;
   onBack?: () => void; // Optional if navigated from another panel
 }
@@ -33,10 +35,11 @@ export const KioskDailyProcedureFlowPreview: React.FC<KioskDailyProcedureFlowPre
   userId,
   userName,
   recordDate,
+  seedRecords = [],
   onClose,
   onBack,
 }) => {
-  const { steps, isLoading, error } = useDailyProcedureFlowPreview(userId, recordDate);
+  const { steps, isLoading, error } = useDailyProcedureFlowPreview(userId, recordDate, seedRecords);
 
 
   const getStatusConfig = (status?: string) => {

@@ -20,7 +20,8 @@ export interface UseDailyProcedureFlowPreviewResult {
 
 export function useDailyProcedureFlowPreview(
   userId: string,
-  recordDate: string
+  recordDate: string,
+  seedRecords: ExecutionRecord[] = [],
 ): UseDailyProcedureFlowPreviewResult {
   const { getRecords } = useExecutionData();
   const getRecordsRef = useRef(getRecords);
@@ -105,9 +106,12 @@ export function useDailyProcedureFlowPreview(
       deduped.set(key, r);
     };
     rawRecords.forEach(addRecord);
+    seedRecords
+      .filter((record) => String(record.date ?? '').slice(0, 10) === recordDate)
+      .forEach(addRecord);
     storeRecords.forEach(addRecord);
     return Array.from(deduped.values());
-  }, [hasInitializedStoreRecords, rawRecords, storeRecords]);
+  }, [hasInitializedStoreRecords, rawRecords, recordDate, seedRecords, storeRecords]);
 
   // Merge slots and actual execution records to build daily flow sequence
   const steps = useMemo(() => {

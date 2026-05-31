@@ -54,6 +54,11 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
     fallbackUserIds,
   );
 
+  const selectedFlowRecords = useMemo(() => {
+    if (!selectedFlowDate) return [];
+    return records.filter((record) => String(record.date ?? '').slice(0, 10) === selectedFlowDate);
+  }, [records, selectedFlowDate]);
+
   const handleViewChange = (
     _event: React.MouseEvent<HTMLElement>,
     nextView: ViewMode | null,
@@ -247,6 +252,7 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
         userId={userId}
         userName={userName}
         recordDate={selectedFlowDate}
+        seedRecords={selectedFlowRecords}
         onClose={onClose}
         onBack={() => setSelectedFlowDate(null)}
       />
