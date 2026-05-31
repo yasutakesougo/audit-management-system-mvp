@@ -122,8 +122,8 @@ export const otherListEntries: readonly SpListEntry[] = [
   {
     key: 'billing_orders',
     displayName: '請求オーダー',
-    resolve: () => envOr('VITE_SP_LIST_BILLING_ORDERS', 'BillingOrders'),
-    operations: ['R'],
+    resolve: () => envOr('VITE_SP_LIST_BILLING_ORDERS', 'List3'),
+    operations: ['R', 'W'],
     category: 'other',
     lifecycle: 'optional',
     provisioningFields: [
