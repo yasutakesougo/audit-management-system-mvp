@@ -107,6 +107,21 @@ describe('DataProviderUserRepository Split Logic', () => {
     await expect(authRepo.getAll({ selectMode: 'core' })).rejects.toBe(authError);
   });
 
+  it('propagates AUTH_REQUIRED on getById instead of returning null', async () => {
+    const authError = new AuthRequiredError();
+    const throwingProvider = {
+      getFieldInternalNames: async () => {
+        throw authError;
+      },
+      getItemById: async () => null,
+      listItems: async () => [],
+    } as unknown as IDataProvider;
+
+    const authRepo = new DataProviderUserRepository({ provider: throwingProvider, listTitle: 'Users_Master' });
+
+    await expect(authRepo.getById(23, { selectMode: 'core' })).rejects.toBe(authError);
+  });
+
   it('propagates non-auth failures on getAll (instead of returning empty)', async () => {
     const listError = new Error('SP_LIST_READ_FAILED');
     const throwingProvider = {

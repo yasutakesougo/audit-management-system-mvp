@@ -5,6 +5,7 @@ import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { openThrottleCircuit, __clearSharePointThrottleCircuitBreakerForTests } from '@/lib/sp';
 import { MemoryRouter } from 'react-router-dom';
 import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/schema';
+import { AuthRequiredError } from '@/lib/errors';
 
 // Mock dependencies
 let mockRouteUserId = 'U001';
@@ -36,8 +37,8 @@ vi.mock('@/features/users/useUsers', () => ({
 vi.mock('@/features/users/hooks/useUsersQuery', () => ({
   useUsersQuery: () => ({
     data: mockUseUsers().data,
-    status: mockUseUsers().status === 'success' ? 'success' : 'loading',
-    error: null,
+    status: mockUseUsers().status === 'success' ? 'success' : mockUseUsers().status === 'error' ? 'error' : 'loading',
+    error: mockUseUsers().error ?? null,
     refresh: vi.fn(),
   }),
 }));
@@ -113,8 +114,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     mockRouteUserId = 'U001';
     mockLocationSearch = null;
     mockLocationKey = null;
-    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
-    mockUseUsers.mockReturnValue({ data: [], status: 'success' });
+    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success', error: null });
+    mockUseUsers.mockReturnValue({ data: [], status: 'success', error: null });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
     mockGetByUser.mockReturnValue(mockProcedures);
@@ -148,6 +149,54 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
       expect(screen.getByText('記録済み')).toBeInTheDocument();
     });
+  });
+
+  it('shows an auth-required alert instead of user-not-found when user lookup requires Microsoft 365 auth', async () => {
+    mockRouteUserId = '23';
+    mockUseUser.mockReturnValue({
+      data: null,
+      status: 'error',
+      error: new AuthRequiredError(),
+    });
+    mockUseUsers.mockReturnValue({
+      data: [],
+      status: 'error',
+      error: new AuthRequiredError(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/23/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    const alert = await screen.findByTestId('kiosk-auth-required-alert');
+    expect(alert).toHaveTextContent('Microsoft 365 の認証が必要です。再ログイン後にもう一度お試しください。');
+    expect(within(alert).getByRole('button', { name: '再ログイン' })).toBeInTheDocument();
+    expect(screen.queryByText('利用者が存在しません')).toBeNull();
+  });
+
+  it('keeps the user-not-found state when lookup succeeds without a matching user', async () => {
+    mockRouteUserId = '23';
+    mockUseUser.mockReturnValue({
+      data: null,
+      status: 'success',
+      error: null,
+    });
+    mockUseUsers.mockReturnValue({
+      data: [],
+      status: 'success',
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/23/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('利用者が存在しません')).toBeInTheDocument();
+    expect(screen.queryByTestId('kiosk-auth-required-alert')).toBeNull();
   });
 
   it('shows "未実施" for procedures without records', async () => {
