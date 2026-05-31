@@ -4,6 +4,7 @@ import { useBillingOrders, billingOrdersQueryKey } from '../useBillingOrders';
 import { useBillingOrderRepository } from './useBillingOrderRepository';
 import { useUsersStore } from '@/features/users/store';
 import { useStaffStore } from '@/features/staff/store';
+import { useAuth } from '@/auth/useAuth';
 
 export interface AggregatedBillingRecord {
   ordererCode: string;
@@ -33,6 +34,7 @@ export interface BillingSummary {
 export function useBillingSummary(selectedMonth: string): BillingSummary {
   const repository = useBillingOrderRepository();
   const queryClient = useQueryClient();
+  const { account } = useAuth();
   
   const { data: rawOrders = [], isLoading: ordersLoading, isError: ordersError } = useBillingOrders(repository);
   const { data: users = [], isLoading: usersLoading } = useUsersStore();
@@ -42,6 +44,13 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
   const [isPersistenceMissing, setIsPersistenceMissing] = useState(false);
 
   const isLoading = ordersLoading || usersLoading || staffLoading;
+  const paidByActor = useMemo(() => {
+    const name = account?.name?.trim();
+    if (name) return name;
+    const username = account?.username?.trim();
+    if (username) return username;
+    return 'unknown';
+  }, [account?.name, account?.username]);
 
   // 1. スキーマ存在チェック
   useEffect(() => {
@@ -201,7 +210,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
 
     const nextStatus = targetRecord.isPaid ? '未精算' : '精算済み';
     const paidAt = nextStatus === '精算済み' ? new Date().toISOString() : '';
-    const paidBy = nextStatus === '精算済み' ? '管理担当者' : '';
+    const paidBy = nextStatus === '精算済み' ? paidByActor : '';
 
     setIsMutating(true);
     try {
@@ -224,7 +233,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     } finally {
       setIsMutating(false);
     }
-  }, [records, isPersistenceMissing, repository, queryClient, selectedMonth]);
+  }, [records, isPersistenceMissing, repository, queryClient, selectedMonth, paidByActor]);
 
   // 一括精算 (対象カテゴリ・対象月のみ)
   const bulkSettle = useCallback(async (targetCategory: '利用者' | '職員' | 'ゲスト' | 'すべて') => {
@@ -241,7 +250,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     try {
       if (!isPersistenceMissing) {
         const paidAt = new Date().toISOString();
-        const paidBy = '管理担当者';
+        const paidBy = paidByActor;
         await repository.bulkUpdatePaymentStatus(
           allUnpaidIds,
           '精算済み',
@@ -267,7 +276,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     } finally {
       setIsMutating(false);
     }
-  }, [records, isPersistenceMissing, repository, queryClient, selectedMonth, fallbackPaymentStates]);
+  }, [records, isPersistenceMissing, repository, queryClient, selectedMonth, fallbackPaymentStates, paidByActor]);
 
   // 日本語 Excel 対応 CSV 出力 (BOM 付き)
   const exportCsv = useCallback((targetCategory: '利用者' | '職員' | 'ゲスト' | 'すべて') => {
