@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBillingSummary } from '../useBillingSummary';
 
 // ─── モック定義 ───────────────────────────────────────────
@@ -174,7 +174,7 @@ describe('useBillingSummary', () => {
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
     // スキーマ判定の解決を待つ
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
     });
 
@@ -201,7 +201,7 @@ describe('useBillingSummary', () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
     });
 
@@ -226,7 +226,7 @@ describe('useBillingSummary', () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
     });
 
@@ -250,7 +250,7 @@ describe('useBillingSummary', () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
     });
 
@@ -272,7 +272,7 @@ describe('useBillingSummary', () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
     });
 
@@ -292,7 +292,7 @@ describe('useBillingSummary', () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(false);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(true);
     });
 
@@ -313,7 +313,7 @@ describe('useBillingSummary', () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
     });
 
