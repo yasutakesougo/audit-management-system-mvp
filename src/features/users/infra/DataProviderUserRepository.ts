@@ -2,6 +2,7 @@ import { sanitizeEnvValue, washRow } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
 import { BaseRepository } from '@/lib/data/BaseRepository';
 import { getAppConfig, readEnv, isAuditDebugEnabled } from '@/lib/env';
+import { isAuthRequiredError } from '@/lib/errors';
 import type { AuditEvent } from '@/lib/audit';
 import {
   USER_TRANSPORT_SETTINGS_CANDIDATES,
@@ -170,6 +171,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
       return user;
     } catch (error) {
       auditLog.error('users', 'DataProviderUserRepository.getById_failed', { id, error: String(error) });
+      if (isAuthRequiredError(error)) throw error;
       return null;
     }
   }

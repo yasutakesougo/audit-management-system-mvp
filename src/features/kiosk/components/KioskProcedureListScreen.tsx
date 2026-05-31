@@ -28,6 +28,7 @@ import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlannin
 import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
 import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
+import { isAuthRequiredError } from '@/lib/errors';
 
 const buildProcedureMatchKeys = (
   procedure: { id?: unknown; rowNo?: unknown },
@@ -109,8 +110,16 @@ export const KioskProcedureListScreen: React.FC = () => {
   }, [location.search]);
   const userLookupId = queryUserIdFromSearch || userId || '';
   const numericUserLookupId = Number.isFinite(Number(userLookupId)) ? Number(userLookupId) : undefined;
-  const { data: userByNumericId, status: numericUserStatus } = useUser(numericUserLookupId);
-  const { data: users, status: usersStatus } = useUsersQuery({ selectMode: 'core' });
+  const {
+    data: userByNumericId,
+    status: numericUserStatus,
+    error: numericUserError,
+  } = useUser(numericUserLookupId);
+  const {
+    data: users,
+    status: usersStatus,
+    error: usersError,
+  } = useUsersQuery({ selectMode: 'core' });
   const userByCode = React.useMemo(() => {
     const lookup = String(userLookupId).trim();
     if (!lookup) return null;
@@ -124,6 +133,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   const isUserLoading = numericUserLookupId != null
     ? (numericUserStatus === 'loading' || numericUserStatus === 'idle')
     : (usersStatus === 'loading' || usersStatus === 'idle');
+  const isUserAuthRequired = React.useMemo(
+    () => isAuthRequiredError(numericUserError) || isAuthRequiredError(usersError),
+    [numericUserError, usersError],
+  );
   const procedureRepo = useProcedureData();
   const executionRepo = useExecutionData();
   
@@ -564,6 +577,37 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   if (isUserLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
+  }
+
+  if (!user && isUserAuthRequired) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Alert
+          severity="warning"
+          sx={{ mb: 3, textAlign: 'left' }}
+          data-testid="kiosk-auth-required-alert"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.sessionStorage.setItem('postLoginRedirect', `${location.pathname}${location.search}`);
+                }
+                navigate('/login');
+              }}
+            >
+              再ログイン
+            </Button>
+          }
+        >
+          Microsoft 365 の認証が必要です。再ログイン後にもう一度お試しください。
+        </Alert>
+        <IconButton onClick={() => navigate(appendKioskSearchParams('/kiosk/users', location.search))} sx={{ mt: 2 }}>
+          <ArrowBackIcon /> 戻る
+        </IconButton>
+      </Box>
+    );
   }
 
   if (!user) {
