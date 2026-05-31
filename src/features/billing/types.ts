@@ -10,4 +10,7 @@ export interface BillingOrder {
   sugar: string;
   milk: string;
   drinkPrice: number;
+  paymentStatus: string;
+  paidAt: string;
+  paidBy: string;
 }
