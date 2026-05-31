@@ -5,6 +5,7 @@ import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { useUser } from '@/features/users/useUsers';
 import { useExecutionStore } from '@/features/daily/stores/executionStore';
+import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
 
 // Mock the hooks
 vi.mock('@/features/daily/hooks/useExecutionData', () => ({
@@ -180,5 +181,43 @@ describe('useDailyProcedureFlowPreview', () => {
 
     expect(result.current.steps).toHaveLength(1);
     expect(result.current.steps[0].record).toBeUndefined();
+  });
+
+  it('uses seeded history records when daily record fetch returns empty', async () => {
+    const mockSlots = [
+      { id: 'base-1', rowNo: 1, time: '09:30', activity: 'Morning Assembly', block: 'morning' },
+    ];
+    const seedRecords: ExecutionRecord[] = [
+      {
+        id: 'R-seed',
+        date: '2026-05-22',
+        userId: '6',
+        scheduleItemId: 'procedure-1',
+        status: 'completed',
+        memo: 'History record memo',
+        recordedAt: '2026-05-22T09:35:00Z',
+        recordedBy: 'Staff Seed',
+        triggeredBipIds: [],
+      },
+    ];
+
+    mockGetByUser.mockReturnValue(mockSlots);
+    mockGetRecords.mockResolvedValue([]);
+    mockGetStoreRecords.mockReturnValue([]);
+
+    const { result } = renderHook(() => (
+      useDailyProcedureFlowPreview('6', '2026-05-22', seedRecords)
+    ));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.steps).toHaveLength(1);
+    expect(result.current.steps[0].record).toEqual(expect.objectContaining({
+      status: 'completed',
+      memo: 'History record memo',
+      recordedBy: 'Staff Seed',
+    }));
   });
 });
