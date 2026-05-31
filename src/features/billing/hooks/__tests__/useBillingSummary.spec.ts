@@ -18,6 +18,17 @@ vi.mock('@/features/staff/store', () => ({
   }),
 }));
 
+const mockAuthAccount: { name?: string; username?: string } = {
+  name: '請求 太郎',
+  username: 'billing@example.com',
+};
+
+vi.mock('@/auth/useAuth', () => ({
+  useAuth: () => ({
+    account: mockAuthAccount,
+  }),
+}));
+
 const mockOrders = [
   {
     id: 1,
@@ -146,6 +157,8 @@ vi.mock('../useBillingOrderRepository', () => ({
 describe('useBillingSummary', () => {
   beforeEach(() => {
     localStorage.clear();
+    mockAuthAccount.name = '請求 太郎';
+    mockAuthAccount.username = 'billing@example.com';
     vi.spyOn(window, 'alert').mockImplementation(() => {});
     mockBulkUpdatePaymentStatus.mockClear();
     mockInvalidateQueries.mockClear();
@@ -202,7 +215,7 @@ describe('useBillingSummary', () => {
       [1, 2],
       '精算済み',
       expect.any(String),
-      '管理担当者'
+      '請求 太郎'
     );
 
     // キャッシュクリアが呼ばれたこと
@@ -227,7 +240,51 @@ describe('useBillingSummary', () => {
       [3],
       '精算済み',
       expect.any(String),
-      '管理担当者'
+      '請求 太郎'
+    );
+  });
+
+  it('ログインユーザー名が無い場合はメールアドレスを PaidBy に使うこと', async () => {
+    mockAuthAccount.name = '';
+    mockAuthAccount.username = 'billing.operator@example.com';
+    mockIsPersistenceColumnsResolved.mockResolvedValue(true);
+    const { result } = renderHook(() => useBillingSummary('2026-05'));
+
+    await vi.waitFor(() => {
+      expect(result.current.isPersistenceMissing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.togglePaymentStatus('U-001');
+    });
+
+    expect(mockBulkUpdatePaymentStatus).toHaveBeenCalledWith(
+      [1, 2],
+      '精算済み',
+      expect.any(String),
+      'billing.operator@example.com'
+    );
+  });
+
+  it('ログインユーザー情報が取れない場合は PaidBy に unknown を使うこと', async () => {
+    mockAuthAccount.name = '';
+    mockAuthAccount.username = '';
+    mockIsPersistenceColumnsResolved.mockResolvedValue(true);
+    const { result } = renderHook(() => useBillingSummary('2026-05'));
+
+    await vi.waitFor(() => {
+      expect(result.current.isPersistenceMissing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.bulkSettle('職員');
+    });
+
+    expect(mockBulkUpdatePaymentStatus).toHaveBeenCalledWith(
+      [3],
+      '精算済み',
+      expect.any(String),
+      'unknown'
     );
   });
 
