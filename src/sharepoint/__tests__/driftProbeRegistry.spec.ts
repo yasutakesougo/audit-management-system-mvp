@@ -118,4 +118,17 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
       candidates: ['DrinkPrice', 'DRINK_PRICE'],
     });
   });
+
+  it('correctly registers ToiletRecords in drift probe registry', () => {
+    const targets = getDriftProbeTargets();
+    const toilet = targets.find(t => t.key === 'toilet_records');
+
+    expect(toilet).toBeDefined();
+    expect(toilet?.selectFields).toContain('Id');
+    expect(toilet?.selectFields).toContain('Title');
+    expect(toilet?.selectFields).toContain('UserId');
+    expect(toilet?.selectFields).toContain('RecordDate');
+    expect(toilet?.selectFields).toContain('ToiletType');
+    expect(toilet?.selectFields).toContain('IsDeleted');
+  });
 });

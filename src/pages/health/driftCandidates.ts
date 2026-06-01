@@ -39,6 +39,7 @@ import { MEETING_MINUTES_CANDIDATES } from "@/sharepoint/fields/meetingMinutesFi
 import { HANDOFF_CANDIDATES } from "@/sharepoint/fields/handoffFields";
 import { MEETING_SESSIONS_CANDIDATES } from "@/sharepoint/fields/meetingSessionFields";
 import { NURSE_OBS_CANDIDATES } from "@/sharepoint/fields/nurseObservationFields";
+import { TOILET_RECORD_CANDIDATES } from "@/sharepoint/fields/toiletRecordFields";
 import {
   BILLING_ORDERS_REGISTRY_KEY,
   shouldExcludeBillingOrdersFromDefaultSiteDrift,
@@ -301,6 +302,15 @@ export const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> =
   nurse_observations: (() => {
     const map: Record<string, string[]> = {};
     for (const cands of Object.values(NURSE_OBS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  toilet_records: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(TOILET_RECORD_CANDIDATES) as unknown as readonly string[][]) {
       const primary = cands[0];
       map[primary] = [...cands];
     }
