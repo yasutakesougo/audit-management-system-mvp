@@ -66,7 +66,7 @@ const mockOrders = [
     ordererCode: 'STF001',
     ordererName: 'テスト職員',
     orderCount: 1,
-    served: 'true',
+    served: true,
     item: 'カフェラテ',
     sugar: 'なし',
     milk: 'なし',
@@ -81,7 +81,7 @@ const mockOrders = [
     ordererCode: 'G-999',
     ordererName: 'ゲスト氏',
     orderCount: 1,
-    served: 'false', // 提供されていないため除外されるべき
+    served: false, // 提供されていないため除外されるべき
     item: 'コーヒー',
     sugar: 'なし',
     milk: 'なし',
@@ -195,6 +195,7 @@ describe('useBillingSummary', () => {
     // KPI 集計の検証
     expect(result.current.totalServedCount).toBe(5);
     expect(result.current.totalServedAmount).toBe(800);
+    expect(result.current.availableMonths).toEqual(['2026-05', '2026-04']);
   });
 
   it('個別の精算トグル状態が SharePoint の repository に送られ、query invalidation が走ること', async () => {

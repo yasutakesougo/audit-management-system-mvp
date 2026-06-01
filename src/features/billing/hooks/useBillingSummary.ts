@@ -18,6 +18,7 @@ export interface AggregatedBillingRecord {
 
 export interface BillingSummary {
   records: AggregatedBillingRecord[];
+  availableMonths: string[];
   totalServedCount: number;
   totalServedAmount: number;
   totalPaidCount: number;
@@ -30,6 +31,15 @@ export interface BillingSummary {
   bulkSettle: (category: '利用者' | '職員' | 'ゲスト' | 'すべて') => Promise<void>;
   exportCsv: (category: '利用者' | '職員' | 'ゲスト' | 'すべて') => void;
 }
+
+export const isServedOrder = (served: unknown): boolean => {
+  if (served === true) return true;
+  if (typeof served === 'number') return served === 1;
+  if (typeof served !== 'string') return false;
+
+  const normalized = served.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'served' || normalized === '提供済み';
+};
 
 export function useBillingSummary(selectedMonth: string): BillingSummary {
   const repository = useBillingOrderRepository();
@@ -51,6 +61,17 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     if (username) return username;
     return 'unknown';
   }, [account?.name, account?.username]);
+
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    rawOrders.forEach((order) => {
+      const month = order.orderDate?.slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(month)) {
+        months.add(month);
+      }
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [rawOrders]);
 
   // 1. スキーマ存在チェック
   useEffect(() => {
@@ -99,7 +120,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     // 1. 月フィルタ & 提供済みフィルタ
     const filtered = rawOrders.filter((order) => {
       const orderMonth = order.orderDate.slice(0, 7);
-      return orderMonth === selectedMonth && order.served === 'true';
+      return orderMonth === selectedMonth && isServedOrder(order.served);
     });
 
     // 2. 個人ごとに集計
@@ -313,6 +334,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
 
   return {
     records,
+    availableMonths,
     ...summary,
     isLoading,
     isError: !!ordersError,
