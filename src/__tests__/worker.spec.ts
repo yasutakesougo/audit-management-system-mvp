@@ -76,6 +76,55 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     expect(body.error).toBe('target_not_allowed');
   });
 
+  it('allows request targeting VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE if configured', async () => {
+    const targetResponse = new Response('{"d":[]}', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(targetResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const envWithBilling = {
+      ...defaultEnv,
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: '/sites/2',
+    };
+
+    const request = new Request('https://app.example/api/sp-proxy?url=https%3A%2F%2Fexample.sharepoint.com%2Fsites%2F2%2F_api%2Fweb%2Flists', {
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer valid-token',
+        Accept: 'application/json',
+      },
+    });
+
+    const response = await worker.fetch(request, envWithBilling);
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    expect(text).toBe('{"d":[]}');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const calledReq = fetchMock.mock.calls[0][0] as Request;
+    expect(calledReq.url).toBe('https://example.sharepoint.com/sites/2/_api/web/lists');
+  });
+
+  it('still rejects requests targeting other sites when billing site is configured', async () => {
+    const envWithBilling = {
+      ...defaultEnv,
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: '/sites/2',
+    };
+
+    const request = new Request('https://app.example/api/sp-proxy?url=https%3A%2F%2Fexample.sharepoint.com%2Fsites%2Fevil%2F_api%2Fweb%2Flists', {
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer valid-token',
+      },
+    });
+
+    const response = await worker.fetch(request, envWithBilling);
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe('target_not_allowed');
+  });
+
   it('forwards request to target and returns target response if allowed', async () => {
     const targetResponse = new Response('{"d":[]}', {
       status: 200,

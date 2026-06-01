@@ -407,13 +407,21 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
 
   const allowedOrigin = new URL(configuredResource).origin;
   const allowedApiPath = `${configuredSiteRelative}/_api/web`;
+  const billingSiteRelative = env.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE
+    ? normalizeSiteRelative(env.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE)
+    : '';
+  const billingApiPath = billingSiteRelative ? `${billingSiteRelative}/_api/web` : '';
   
   const allowedOriginLower = allowedOrigin.toLowerCase();
   const allowedApiPathLower = allowedApiPath.toLowerCase();
+  const billingApiPathLower = billingApiPath.toLowerCase();
   const targetOriginLower = target.origin.toLowerCase();
   const targetPathLower = target.pathname.toLowerCase();
 
-  if (targetOriginLower !== allowedOriginLower || !targetPathLower.startsWith(allowedApiPathLower)) {
+  const pathAllowed = targetPathLower.startsWith(allowedApiPathLower) ||
+    (billingApiPathLower !== '' && targetPathLower.startsWith(billingApiPathLower));
+
+  if (targetOriginLower !== allowedOriginLower || !pathAllowed) {
     return jsonResponse(403, { 
       error: 'target_not_allowed',
       details: {
