@@ -5,6 +5,7 @@ import { useISPComparisonEditor } from '../useISPComparisonEditor';
 describe('useISPComparisonEditor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-01T00:00:00Z'));
   });
   afterEach(() => {
     vi.useRealTimers();

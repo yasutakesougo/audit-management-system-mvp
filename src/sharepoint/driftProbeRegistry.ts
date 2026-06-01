@@ -6,14 +6,22 @@
  */
 import { SP_LIST_REGISTRY } from './spListRegistry';
 import { type DriftProbeTarget } from './contracts/driftProbeTargets';
+import { type EnvRecord } from '@/lib/env';
+import {
+  BILLING_ORDERS_REGISTRY_KEY,
+  shouldExcludeBillingOrdersFromDefaultSiteDrift,
+} from './crossSiteDrift';
 
 /**
  * Generates the list of probe targets based on the central SP_LIST_REGISTRY.
  * Filters out deprecated/experimental lists to ensure monitoring stability.
  */
-export function getDriftProbeTargets(): DriftProbeTarget[] {
+export function getDriftProbeTargets(envOverride?: EnvRecord): DriftProbeTarget[] {
+  const excludeBillingOrders = shouldExcludeBillingOrdersFromDefaultSiteDrift(envOverride);
+
   return SP_LIST_REGISTRY
     .filter(entry => entry.lifecycle === 'required' || entry.lifecycle === 'optional')
+    .filter(entry => !(excludeBillingOrders && entry.key === BILLING_ORDERS_REGISTRY_KEY))
     .map(entry => {
       // 1. Resolve actual list title (honoring environment variable overrides if any)
       const listTitle = entry.resolve();

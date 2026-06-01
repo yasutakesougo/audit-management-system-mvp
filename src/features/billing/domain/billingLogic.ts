@@ -1,5 +1,7 @@
 import type { BillingOrder } from '../types';
 
+export const BILLING_DEFAULT_DRINK_PRICE = 50;
+
 /**
  * 外部の未知の値を安全に文字列として解釈する
  * - string型ならそのまま
@@ -22,6 +24,15 @@ export const safeParseNumber = (v: unknown): number => {
 };
 
 /**
+ * コーヒー請求は現行運用では1杯50円固定。
+ * SharePoint List3 の DRINK_PRICE が未設定でも月次請求額を算出できるようにする。
+ */
+export const parseBillingDrinkPrice = (v: unknown): number => {
+  const parsed = safeParseNumber(v);
+  return parsed > 0 ? parsed : BILLING_DEFAULT_DRINK_PRICE;
+};
+
+/**
  * SharePointの生アイテム(辞書)をアプリケーション内部のBillingOrderモデルに安全に変換する
  * @param item SharePointの行データ（DTO）
  * @param mapping 解決された内部名のマッピング
@@ -41,7 +52,7 @@ export function mapToBillingOrder(
     item: safeParseString(item[F.item ?? 'Item'] ?? item['item'] ?? ''),
     sugar: safeParseString(item[F.sugar ?? 'Sugar'] ?? item['sugar'] ?? ''),
     milk: safeParseString(item[F.milk ?? 'Milk'] ?? item['milk'] ?? ''),
-    drinkPrice: safeParseNumber(item[F.drinkPrice ?? 'DrinkPrice'] ?? item['drinkPrice'] ?? 0),
+    drinkPrice: parseBillingDrinkPrice(item[F.drinkPrice ?? 'DrinkPrice'] ?? item['drinkPrice']),
     paymentStatus: safeParseString(item[F.paymentStatus ?? 'PaymentStatus'] ?? item['paymentStatus'] ?? ''),
     paidAt: safeParseString(item[F.paidAt ?? 'PaidAt'] ?? item['paidAt'] ?? ''),
     paidBy: safeParseString(item[F.paidBy ?? 'PaidBy'] ?? item['paidBy'] ?? ''),

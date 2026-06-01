@@ -1,4 +1,5 @@
 import { SP_LIST_REGISTRY } from "@/sharepoint/spListRegistry";
+import { type EnvRecord } from "@/lib/env";
 import { ListSpec, SpFieldSpec } from "../../features/diagnostics/health/types";
 import {
   DAILY_RECORD_CANONICAL_CANDIDATES,
@@ -38,6 +39,10 @@ import { MEETING_MINUTES_CANDIDATES } from "@/sharepoint/fields/meetingMinutesFi
 import { HANDOFF_CANDIDATES } from "@/sharepoint/fields/handoffFields";
 import { MEETING_SESSIONS_CANDIDATES } from "@/sharepoint/fields/meetingSessionFields";
 import { NURSE_OBS_CANDIDATES } from "@/sharepoint/fields/nurseObservationFields";
+import {
+  BILLING_ORDERS_REGISTRY_KEY,
+  shouldExcludeBillingOrdersFromDefaultSiteDrift,
+} from "@/sharepoint/crossSiteDrift";
 
 /**
  * リストキー → フィールド内部名 → drift 候補名[] のオーバーライドマップ
@@ -312,8 +317,12 @@ export const DRIFT_ESSENTIALS_BY_KEY: Record<string, readonly string[]> = {
   ),
 };
 
-export function buildListSpecs(): ListSpec[] {
-  return SP_LIST_REGISTRY.map((entry) => {
+export function buildListSpecs(envOverride?: EnvRecord): ListSpec[] {
+  const excludeBillingOrders = shouldExcludeBillingOrdersFromDefaultSiteDrift(envOverride);
+
+  return SP_LIST_REGISTRY
+    .filter((entry) => !(excludeBillingOrders && entry.key === BILLING_ORDERS_REGISTRY_KEY))
+    .map((entry) => {
     const effectiveEssentials = DRIFT_ESSENTIALS_BY_KEY[entry.key] ?? (entry.essentialFields || []);
     const essentialSet = new Set(DRIFT_ESSENTIALS_BY_KEY[entry.key] ?? (entry.essentialFields || []));
 

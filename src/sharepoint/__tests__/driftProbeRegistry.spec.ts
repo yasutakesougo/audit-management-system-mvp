@@ -48,6 +48,29 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     expect(keys.length).toBe(uniqueKeys.size);
   });
 
+  it('excludes cross-site BillingOrders from default-site drift probes', () => {
+    const activeRegistryCount = SP_LIST_REGISTRY.filter(
+      e => e.lifecycle === 'required' || e.lifecycle === 'optional'
+    ).length;
+
+    const targets = getDriftProbeTargets({
+      VITE_SP_SITE_RELATIVE: '/sites/welfare',
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: '/sites/2',
+    });
+
+    expect(targets.some(t => t.key === 'billing_orders')).toBe(false);
+    expect(targets.length).toBe(activeRegistryCount - 1);
+  });
+
+  it('keeps BillingOrders in drift probes when it uses the default site', () => {
+    const targets = getDriftProbeTargets({
+      VITE_SP_SITE_RELATIVE: '/sites/welfare',
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: '/sites/welfare/',
+    });
+
+    expect(targets.some(t => t.key === 'billing_orders')).toBe(true);
+  });
+
   it('does not mark drift_events_log Severity as essential', () => {
     // 診断契約と SharePointDriftEventRepository の実装契約を一致させるための回帰防止。
     // Severity は repository が任意扱い（fail-open）で、本リストは lifecycle: 'optional'。
