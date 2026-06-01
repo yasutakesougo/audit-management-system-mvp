@@ -136,6 +136,20 @@ describe('env.schema', () => {
     expect(parsed.VITE_MSAL_TENANT_ID).toBe('aad-tenant-id-001');
   });
 
+  it('accepts billing orders site-relative override', () => {
+    const parsed = parseEnv({
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: '/sites/2',
+    });
+
+    expect(parsed.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE).toBe('/sites/2');
+  });
+
+  it('rejects billing orders site-relative override without leading slash', () => {
+    expect(() => parseEnv({
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: 'sites/2',
+    })).toThrow();
+  });
+
   it('accepts single-element array values for MSAL keys', () => {
     setTestEnv({
       VITE_MSAL_CLIENT_ID: ['array-client-id-001'],

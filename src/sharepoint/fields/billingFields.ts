@@ -4,14 +4,14 @@
 import { readOptionalEnv } from '@/lib/env';
 
 /**
- * BillingOrders リストの GUID
+ * BillingOrders リストの識別子
  *
- * ⚠️ 環境変数 VITE_SP_LIST_BILLING_ORDERS に実際の GUID を設定してください。
- * 未設定の場合、プレースホルダー値が使用されます（本番では 404 エラー）。
+ * 環境変数 VITE_SP_LIST_BILLING_ORDERS に実際の GUID または Title を設定できます。
+ * 未設定の場合はコーヒー注文履歴の本番リスト Title である List3 を使用します。
  */
 export const BILLING_ORDERS_LIST_ID: string =
   readOptionalEnv('VITE_SP_LIST_BILLING_ORDERS') ||
-  '00000000-0000-0000-0000-000000000003';
+  'List3';
 
 export const FIELD_MAP_BILLING_ORDERS = {
   id: 'Id',

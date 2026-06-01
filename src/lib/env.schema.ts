@@ -40,6 +40,11 @@ const zOptionalUrl = z.preprocess((val) => {
   return val;
 }, z.string().url().optional());
 
+const zOptionalSiteRelative = z.preprocess((val) => {
+  if (val === '' || val === null || val === undefined) return undefined;
+  return val;
+}, z.string().startsWith('/').optional());
+
 /**
  * Environment variable schema for Audit Management System.
  * Enforces strict typing and presence of required infrastructure variables.
@@ -87,6 +92,7 @@ export const envSchema = z.object({
   VITE_SP_LIST_PROCEDURE_RECORD: z.string().optional().default('SupportProcedureRecord_Daily'),
   VITE_SP_LIST_ICEBERG_ANALYSIS: z.string().optional().default('Iceberg_Analysis'),
   VITE_SP_LIST_BILLING_ORDERS: z.string().optional(),
+  VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: zOptionalSiteRelative,
   VITE_SP_LIST_HOLIDAY_MASTER: z.string().optional().default('Holiday_Master'),
   VITE_SP_LIST_PDF_OUTPUT_LOG: z.string().optional().default('PdfOutput_Log'),
   VITE_SP_HANDOFF_LIST_ID: z.string().optional(),
