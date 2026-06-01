@@ -111,6 +111,7 @@ test.describe('Kiosk Home Smoke (memory provider for local kiosk flow checks)', 
       await expect(page.getByTestId('kiosk-nav-activity')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-procedures')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-toilet')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-billing')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-calllog')).toBeVisible({ timeout: 15000 });
       await expect(page.getByTestId('kiosk-nav-handoff')).toBeVisible({ timeout: 15000 });
     });
@@ -131,6 +132,19 @@ test.describe('Kiosk Home Smoke (memory provider for local kiosk flow checks)', 
     test('should navigate to records from navigation and maintain params', async ({ page }) => {
       await page.getByTestId('kiosk-nav-activity').click();
       await expect(page).toHaveURL(/\/daily\/table(\?.*provider=memory.*)?/);
+    });
+
+    test('should navigate to coffee billing from navigation and maintain params', async ({ page }) => {
+      await page.getByTestId('kiosk-nav-billing').click();
+      await expect(page).toHaveURL(/\/billing(\?.*provider=memory.*)?/);
+    });
+
+    test('should keep coffee billing navigation active on /billing route', async ({ page }) => {
+      await bootKiosk(page, { route: '/kiosk?kiosk=1' });
+      const billingNav = page.getByTestId('kiosk-nav-billing');
+      await billingNav.click();
+      await expect(page).toHaveURL(/\/billing/);
+      await expect(billingNav).toHaveAttribute('aria-current', 'page');
     });
 
     test('should navigate to toilet board and mark a target user recorded', async ({ page }) => {

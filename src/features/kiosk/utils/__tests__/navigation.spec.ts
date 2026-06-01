@@ -57,6 +57,16 @@ describe('kiosk navigation utilities', () => {
       expect(params.get('slotId')).toBe('123');
     });
 
+    it('does not clear state params for /billing path', () => {
+      const current = '?userId=active&slotId=123&kiosk=1';
+      const result = appendKioskSearchParams('/billing', current);
+
+      const params = new URLSearchParams(result.split('?')[1]);
+      expect(params.get('userId')).toBe('active');
+      expect(params.get('slotId')).toBe('123');
+      expect(params.get('kiosk')).toBe('1');
+    });
+
     it('handles empty or malformed search queries safely', () => {
       const resultEmpty = appendKioskSearchParams('/kiosk/users', '');
       expect(resultEmpty).toBe('/kiosk/users');
