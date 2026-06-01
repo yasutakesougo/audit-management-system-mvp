@@ -59,4 +59,40 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     expect(entry?.essentialFields).toEqual(['ListName', 'FieldName', 'DetectedAt', 'DriftType']);
     expect(entry?.essentialFields).not.toContain('Severity');
   });
+
+  it('registers BillingOrders fields used by coffee order billing and settlement', () => {
+    const entry = SP_LIST_REGISTRY.find(e => e.key === 'billing_orders');
+    const fields = entry?.provisioningFields ?? [];
+    const fieldMap = new Map(fields.map(field => [field.internalName, field]));
+
+    expect(entry).toBeDefined();
+    expect(Array.from(fieldMap.keys())).toEqual(expect.arrayContaining([
+      'Title',
+      'OrdererCode',
+      'OrdererName',
+      'OrderCount',
+      'Item',
+      'Served',
+      'Sugar',
+      'Milk',
+      'DrinkPrice',
+      'PaymentStatus',
+      'PaidAt',
+      'PaidBy',
+    ]));
+    expect(fieldMap.get('PaymentStatus')).toMatchObject({
+      type: 'Choice',
+      choices: ['未精算', '精算済み'],
+      default: '未精算',
+    });
+    expect(fieldMap.get('PaidAt')).toMatchObject({
+      type: 'DateTime',
+      dateTimeFormat: 'DateTime',
+    });
+    expect(fieldMap.get('PaidBy')).toMatchObject({ type: 'Text' });
+    expect(fieldMap.get('DrinkPrice')).toMatchObject({
+      type: 'Number',
+      candidates: ['DrinkPrice', 'DRINK_PRICE'],
+    });
+  });
 });
