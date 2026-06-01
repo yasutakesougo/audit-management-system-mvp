@@ -9,6 +9,8 @@ interface Env {
   };
   VITE_SP_RESOURCE?: string;
   VITE_SP_SITE_RELATIVE?: string;
+  VITE_SP_LIST_BILLING_ORDERS?: string;
+  VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE?: string;
   ALLOWED_TENANT_ID?: string;
   ORG_ID_OVERRIDE?: string;
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
@@ -72,6 +74,8 @@ const RUNTIME_ENV_ALLOWLIST = new Set([
   'VITE_SP_RESOURCE',
   'VITE_SP_SITE_RELATIVE',
   'VITE_SP_USE_PROXY',
+  'VITE_SP_LIST_BILLING_ORDERS',
+  'VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE',
 ]);
 
 const pickRuntimeEnvFromBindings = (env: Env): Record<string, string> => {
