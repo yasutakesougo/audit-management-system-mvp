@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Container,
@@ -40,13 +40,39 @@ import { useBillingSummary } from '@/features/billing/hooks/useBillingSummary';
 
 type ActiveTab = '利用者' | '職員' | 'ゲスト' | 'すべて';
 
+const toMonthKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+const addMonths = (monthKey: string, offset: number): string => {
+  const [year, month] = monthKey.split('-').map(Number);
+  return toMonthKey(new Date(year, month - 1 + offset, 1));
+};
+
+const buildMonthOptions = (availableMonths: string[], selectedMonth: string): string[] => {
+  const currentMonth = toMonthKey(new Date());
+  const months = new Set([selectedMonth, currentMonth, ...availableMonths]);
+
+  for (let offset = -24; offset <= 3; offset += 1) {
+    months.add(addMonths(currentMonth, offset));
+  }
+
+  return Array.from(months)
+    .filter((month) => /^\d{4}-\d{2}$/.test(month))
+    .sort((a, b) => b.localeCompare(a));
+};
+
 export default function BillingPage() {
-  const [selectedMonth, setSelectedMonth] = useState('2026-05');
+  const [selectedMonth, setSelectedMonth] = useState(() => toMonthKey(new Date()));
+  const [hasUserSelectedMonth, setHasUserSelectedMonth] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('利用者');
 
   // カスタムフックから集計データとコントロール関数を取得
   const {
     records,
+    availableMonths,
     totalServedCount,
     totalServedAmount,
     totalPaidCount,
@@ -59,6 +85,16 @@ export default function BillingPage() {
     bulkSettle,
     exportCsv,
   } = useBillingSummary(selectedMonth);
+
+  useEffect(() => {
+    if (!hasUserSelectedMonth && availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[0]);
+    }
+  }, [availableMonths, hasUserSelectedMonth, selectedMonth]);
+
+  const monthOptions = useMemo(() => {
+    return buildMonthOptions(availableMonths, selectedMonth);
+  }, [availableMonths, selectedMonth]);
 
   // 表示対象のレコードをタブでフィルタ
   const filteredRecords = React.useMemo(() => {
@@ -138,7 +174,10 @@ export default function BillingPage() {
                 labelId="month-select-label"
                 value={selectedMonth}
                 label="対象月"
-                onChange={(e) => setSelectedMonth(e.target.value)}
+                onChange={(e) => {
+                  setHasUserSelectedMonth(true);
+                  setSelectedMonth(e.target.value);
+                }}
                 sx={{
                   bgcolor: 'rgba(255, 255, 255, 0.8)',
                   borderRadius: 2,
@@ -151,9 +190,14 @@ export default function BillingPage() {
                   },
                 }}
               >
-                <MenuItem value="2026-06">2026年6月</MenuItem>
-                <MenuItem value="2026-05">2026年5月</MenuItem>
-                <MenuItem value="2026-04">2026年4月</MenuItem>
+                {monthOptions.map((month) => {
+                  const [year, monthNumber] = month.split('-');
+                  return (
+                    <MenuItem key={month} value={month}>
+                      {year}年{Number(monthNumber)}月
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
 
