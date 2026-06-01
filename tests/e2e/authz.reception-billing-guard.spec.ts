@@ -14,6 +14,7 @@ async function bootstrapRole(page: Page, role: TestRole, path = '/dashboard') {
       VITE_TEST_ROLE: opts.role,
       VITE_AAD_ADMIN_GROUP_ID: 'e2e-admin-group-id',
       VITE_AAD_RECEPTION_GROUP_ID: 'e2e-reception-group-id',
+      VITE_SKIP_SHAREPOINT: '1',
     };
 
     window.localStorage.setItem('skipLogin', '1');
