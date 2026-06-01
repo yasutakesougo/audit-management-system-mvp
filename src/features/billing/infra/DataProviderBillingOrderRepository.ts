@@ -15,6 +15,8 @@ import type { BillingOrderRepository } from '../repository';
 import type { BillingOrder } from '../types';
 import { mapToBillingOrder } from '../domain/billingLogic';
 
+export const BILLING_ORDERS_PAGE_SIZE = 5000;
+
 /**
  * DataProviderBillingOrderRepository
  * 
@@ -75,7 +77,7 @@ export class DataProviderBillingOrderRepository implements BillingOrderRepositor
       const selectFields = Object.values(mapping).filter((v): v is string => !!v);
 
       const items = await this.provider.listItems<Record<string, unknown>>(this.listId, {
-        top: 500,
+        top: BILLING_ORDERS_PAGE_SIZE,
         select: selectFields.length > 0 ? ['Id', 'Title', ...selectFields] : undefined,
       });
 
