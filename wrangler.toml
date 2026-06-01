@@ -11,6 +11,8 @@ main = "src/worker.ts"
 VITE_SP_RESOURCE = "https://isogokatudouhome.sharepoint.com"
 VITE_SP_SITE_RELATIVE = "/sites/welfare"
 VITE_SP_USE_PROXY = "1"
+VITE_SP_LIST_BILLING_ORDERS = "c4be5492-9803-4fc6-ac7e-82d10e95ff6d"
+VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE = "/sites/2"
 
 [assets]
 directory = "./dist"
