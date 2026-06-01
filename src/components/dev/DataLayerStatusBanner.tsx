@@ -6,9 +6,15 @@
  */
 import React from 'react';
 import { useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
+import { clearAllFieldsCache } from '@/lib/sp/helpers';
 
 export const DataLayerStatusBanner: React.FC = () => {
   const { resolutions, currentProvider } = useDataProviderObservabilityStore();
+
+  const handleReload = () => {
+    clearAllFieldsCache();
+    window.location.reload();
+  };
   
   const resList = Object.values(resolutions);
   const criticals = resList.filter(r => r.status === 'missing_required' || r.status === 'schema_mismatch');
@@ -61,7 +67,7 @@ export const DataLayerStatusBanner: React.FC = () => {
       </div>
       
       <button 
-        onClick={() => window.location.reload()}
+        onClick={handleReload}
         style={{ 
           border: '1px solid #d9d9d9', 
           background: '#fff', 

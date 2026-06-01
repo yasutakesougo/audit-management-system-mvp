@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FIELD_MAP_BILLING_ORDERS as F } from '@/sharepoint/fields';
-import { mapToBillingOrder, safeParseNumber, safeParseString } from '../billingLogic';
+import {
+  BILLING_DEFAULT_DRINK_PRICE,
+  mapToBillingOrder,
+  parseBillingDrinkPrice,
+  safeParseNumber,
+  safeParseString,
+} from '../billingLogic';
 
 describe('billingLogic', () => {
   // ─── safeParseString ──────────────────────────────────────
@@ -40,6 +46,22 @@ describe('billingLogic', () => {
     it('現状仕様の観測固定: 負数は 0 に丸められずそのまま維持されること', () => {
       expect(safeParseNumber(-150)).toBe(-150);
       expect(safeParseNumber('-1')).toBe(-1);
+    });
+  });
+
+  // ─── parseBillingDrinkPrice ───────────────────────────────
+  describe('parseBillingDrinkPrice', () => {
+    it('有効な価格はそのまま使うこと', () => {
+      expect(parseBillingDrinkPrice(100)).toBe(100);
+      expect(parseBillingDrinkPrice('150')).toBe(150);
+    });
+
+    it('List3 の DRINK_PRICE が未設定の場合は固定50円へフォールバックすること', () => {
+      expect(parseBillingDrinkPrice(null)).toBe(BILLING_DEFAULT_DRINK_PRICE);
+      expect(parseBillingDrinkPrice(undefined)).toBe(BILLING_DEFAULT_DRINK_PRICE);
+      expect(parseBillingDrinkPrice('')).toBe(BILLING_DEFAULT_DRINK_PRICE);
+      expect(parseBillingDrinkPrice('abc')).toBe(BILLING_DEFAULT_DRINK_PRICE);
+      expect(parseBillingDrinkPrice(0)).toBe(BILLING_DEFAULT_DRINK_PRICE);
     });
   });
 
@@ -92,11 +114,27 @@ describe('billingLogic', () => {
 
       expect(result.id).toBe(0);
       expect(result.orderCount).toBe(0);
-      expect(result.drinkPrice).toBe(0);
       expect(result.orderDate).toBe('');
       expect(result.ordererName).toBe('');
       expect(result.item).toBe('');
       expect(result.sugar).toBe('');
+      expect(result.drinkPrice).toBe(BILLING_DEFAULT_DRINK_PRICE);
+    });
+
+    it('DRINK_PRICE が null の実データでも固定50円としてマッピングすること', () => {
+      const mockItem = {
+        [F.id]: 124,
+        [F.orderDate]: '2025-08-01T03:41:06Z',
+        [F.ordererCode]: 'I015',
+        [F.ordererName]: '真田　　滋久',
+        [F.orderCount]: 1,
+        [F.served]: true,
+        [F.drinkPrice]: null,
+      };
+
+      const result = mapToBillingOrder(mockItem, {});
+
+      expect(result.drinkPrice).toBe(BILLING_DEFAULT_DRINK_PRICE);
     });
   });
 });
