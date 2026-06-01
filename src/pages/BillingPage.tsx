@@ -116,7 +116,7 @@ export default function BillingPage() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4, px: { xs: 2, md: 4 } }} className="billing-container">
+    <Container maxWidth="xl" sx={{ py: 4, px: { xs: 2, md: 4 } }} className="billing-container" data-testid="billing-root">
       {/* 印刷用ヘッダー (画面上は非表示) */}
       <Box
         className="print-only"
