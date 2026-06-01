@@ -11,6 +11,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import WcIcon from '@mui/icons-material/Wc';
+import CoffeeIcon from '@mui/icons-material/Coffee';
 import { appendKioskSearchParams } from '@/features/kiosk/utils/navigation';
 
 type KioskNavItem =
@@ -88,6 +89,14 @@ export const KioskNavigation: React.FC = () => {
       testId: 'kiosk-nav-toilet',
       kind: 'link',
       activeMatch: (pathname) => pathname.startsWith('/kiosk/toilet'),
+    },
+    {
+      label: 'コーヒー精算',
+      icon: <CoffeeIcon />,
+      path: '/billing',
+      testId: 'kiosk-nav-billing',
+      kind: 'link',
+      activeMatch: (pathname) => pathname.startsWith('/billing'),
     },
     {
       label: '受電ログ',
