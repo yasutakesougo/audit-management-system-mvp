@@ -4,6 +4,8 @@
 
 `/billing` is the Coffee Monthly Billing Data workflow. It aggregates coffee order history, tracks payment status, and exports monthly billing data.
 
+For the 1-week field acceptance sprint, use [billing-acceptance-sprint.md](./billing-acceptance-sprint.md). This document remains the technical live verification guide for SharePoint List3 and persistence wiring.
+
 This workflow intentionally uses a different SharePoint site from the main app:
 
 | Area | SharePoint site |
