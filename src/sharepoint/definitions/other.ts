@@ -136,9 +136,9 @@ export const otherListEntries: readonly SpListEntry[] = [
       { internalName: 'Sugar', type: 'Text', displayName: 'Sugar', governance: 'allow', isSilent: true, candidates: ['Sugar', 'SugarOption'] },
       { internalName: 'Milk', type: 'Text', displayName: 'Milk', governance: 'allow', isSilent: true, candidates: ['Milk', 'MilkOption'] },
       { internalName: 'DrinkPrice', type: 'Number', displayName: 'Drink Price', governance: 'allow', isSilent: true, candidates: ['DrinkPrice', 'DRINK_PRICE'] },
-      { internalName: 'PaymentStatus', type: 'Choice', displayName: 'Payment Status', choices: ['未精算', '精算済み'], default: '未精算', governance: 'allow', candidates: ['PaymentStatus', 'Payment_x0020_Status'] },
-      { internalName: 'PaidAt', type: 'DateTime', displayName: 'Paid At', dateTimeFormat: 'DateTime', governance: 'allow', isSilent: true, candidates: ['PaidAt', 'Paid_x0020_At', 'PaymentDate'] },
-      { internalName: 'PaidBy', type: 'Text', displayName: 'Paid By', governance: 'allow', isSilent: true, candidates: ['PaidBy', 'Paid_x0020_By', 'PaymentHandler'] },
+      { internalName: 'PaymentStatus', type: 'Choice', displayName: 'Payment Status', choices: ['未精算', '精算済み'], default: '未精算', governance: 'allow', forceCreate: true, candidates: ['PaymentStatus', 'Payment_x0020_Status'] },
+      { internalName: 'PaidAt', type: 'DateTime', displayName: 'Paid At', dateTimeFormat: 'DateTime', governance: 'allow', isSilent: true, forceCreate: true, candidates: ['PaidAt', 'Paid_x0020_At', 'PaymentDate'] },
+      { internalName: 'PaidBy', type: 'Text', displayName: 'Paid By', governance: 'allow', isSilent: true, forceCreate: true, candidates: ['PaidBy', 'Paid_x0020_By', 'PaymentHandler'] },
     ],
   },
   {
