@@ -68,9 +68,7 @@ export const recordRoutes: RouteObject[] = [
     element: (
       withHubAudienceGuard(
         'billing',
-        <HubLanding hubId="billing">
-          <SuspendedBillingPage />
-        </HubLanding>,
+        <SuspendedBillingPage />,
       )
     ),
   },
