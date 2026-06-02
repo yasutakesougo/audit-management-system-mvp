@@ -64,7 +64,7 @@
 ## 🛡️ データ整合性ステータス (`/admin/status`)
 
 *   `/admin/status` 画面において、ステータスが **FAIL** の項目が **0件** であることを確認してください。
-*   `Users_Master` / `ToiletRecords` の SharePoint 列名のゆらぎに起因する `drift WARN` については、#2092 の candidate マッピング補強により、既知 of 候補名として安全に処理され警告が整理されていることを確認済みです。
+*   `Users_Master` / `ToiletRecords` の SharePoint 列名のゆらぎに起因する `drift WARN` については、#2092 の candidate マッピング補強により、既知の候補名として安全に処理され警告が整理されていることを確認済みです。
 *   `BillingOrders` のクロスサイト（`/sites/2`）参照起因による不具合や FAIL が再発していないことを確認済みです。
 
 ---
