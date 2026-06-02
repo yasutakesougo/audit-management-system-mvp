@@ -35,7 +35,6 @@ import {
   AccountCircle as AccountCircleIcon,
   Check as CheckIcon,
 } from '@mui/icons-material';
-import { PageHeader } from '@/components/PageHeader';
 import { useBillingSummary } from '@/features/billing/hooks/useBillingSummary';
 
 type ActiveTab = '利用者' | '職員' | 'ゲスト' | 'すべて';
@@ -156,16 +155,11 @@ export default function BillingPage() {
       <Box sx={{ '@media print': { display: 'none' } }}>
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          justifyContent="space-between"
+          justifyContent="flex-end"
           alignItems={{ xs: 'stretch', md: 'center' }}
           spacing={2}
           sx={{ mb: 4 }}
         >
-          <PageHeader
-            title="請求管理ダッシュボード"
-            subtitle="コーヒー注文履歴から月次請求データを集計・精算管理します"
-          />
-
           {/* コントロールパネル */}
           <Stack direction="row" spacing={1.5} alignItems="center">
             <FormControl size="small" sx={{ minWidth: 140 }}>

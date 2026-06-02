@@ -75,7 +75,7 @@ describe('hubDefinitions', () => {
     const billingReception = resolveHubVisibleEntries('billing', 'reception');
     expect(billingReception.primary.map((entry) => entry.id)).toEqual(['billing-main']);
     expect(billingReception.secondary.map((entry) => entry.id)).toEqual(['billing-service-record']);
-    expect(billingReception.comingSoon.map((entry) => entry.id)).toEqual(['billing-reconciliation']);
+    expect(billingReception.comingSoon.map((entry) => entry.id)).toEqual([]);
 
     const billingViewer = resolveHubVisibleEntries('billing', 'viewer');
     expect(billingViewer.primary).toHaveLength(0);

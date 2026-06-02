@@ -458,16 +458,6 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
         kpiWeight: 82,
         usagePriority: 2,
       },
-      {
-        id: 'billing-reconciliation',
-        title: '精算ダッシュボード',
-        description: '請求後の精算状況を確認',
-        requiredRole: 'reception',
-        status: 'comingSoon',
-        badge: '準備中',
-        kpiWeight: 40,
-        usagePriority: 3,
-      },
     ],
   },
   master: {
