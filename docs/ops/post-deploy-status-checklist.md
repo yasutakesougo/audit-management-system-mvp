@@ -42,6 +42,17 @@ VITE_SP_LIST_BILLING_ORDERS=c4be5492-9803-4fc6-ac7e-82d10e95ff6d
 
 詳細は [billing-list3-live-verification.md](./billing-list3-live-verification.md) を参照する。
 
+## 既知 WARN 補足
+
+2026-06-02 時点で、以下の `/admin/status` WARN は既知 drift として扱う。候補名解決でアプリが読み書きできている場合は Ready 判定を妨げない。
+
+| 対象 | 既知 WARN | OK 条件 | NG 条件 |
+| --- | --- | --- | --- |
+| Users_Master | `RequiresToiletGuidance` の内部名 drift | `/kiosk/toilet` で誘導対象者が表示される | 対象者が欠落する、または利用者詳細でフラグが読めない |
+| ToiletRecords | 主要 6 列の内部名 drift | 当日記録の読み込み・保存ができる | 保存失敗、当日記録 0 件誤表示、または FAIL 化 |
+
+NG 条件に該当した場合のみ Issue #2102 に軽く追記し、小 PR の要否を判断する。
+
 ## 記録テンプレート
 
 ```text
