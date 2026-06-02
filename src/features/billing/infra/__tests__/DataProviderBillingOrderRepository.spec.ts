@@ -81,4 +81,33 @@ describe('DataProviderBillingOrderRepository', () => {
       })
     );
   });
+
+  describe('isPersistenceColumnsResolved', () => {
+    it('returns true when PaymentStatus field exists in data provider', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
+        'ID',
+        'OrderDateTime',
+        'RequesterCode',
+        'PaymentStatus',
+      ]));
+      const repository = new DataProviderBillingOrderRepository(provider, 'List3');
+
+      const isResolved = await repository.isPersistenceColumnsResolved();
+      expect(isResolved).toBe(true);
+    });
+
+    it('returns false when PaymentStatus field is missing in data provider', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
+        'ID',
+        'OrderDateTime',
+        'RequesterCode',
+      ]));
+      const repository = new DataProviderBillingOrderRepository(provider, 'List3');
+
+      const isResolved = await repository.isPersistenceColumnsResolved();
+      expect(isResolved).toBe(false);
+    });
+  });
 });
