@@ -49,17 +49,20 @@ describe('HubLanding', () => {
     expect(screen.queryByText('精算ダッシュボード')).not.toBeInTheDocument();
   });
 
-  it('shows dictionary-driven empty state when no entry is visible for role', () => {
+  it('shows billing primary entry for viewer', () => {
     render(
       <MemoryRouter initialEntries={['/billing']}>
         <HubLanding hubId="billing" />
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('hub-landing-empty-billing')).toBeInTheDocument();
-    expect(screen.getByText('請求関連の導線がありません')).toBeInTheDocument();
-    expect(screen.getByText('請求機能は受付または管理者ロールで利用できます。')).toBeInTheDocument();
-    expect(screen.getByTestId('hub-empty-cta-billing')).toBeInTheDocument();
+    const primary = screen.getByTestId('hub-landing-section-primary-billing');
+
+    expect(within(primary).getByText('請求処理')).toBeInTheDocument();
+    expect(within(primary).getByText('請求画面を開く')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-entry-card-billing-main')).toBeInTheDocument();
+    expect(screen.queryByTestId('hub-landing-empty-billing')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hub-landing-section-secondary-billing')).not.toBeInTheDocument();
   });
 
   it('hides cards in kiosk query mode for today hub', () => {
