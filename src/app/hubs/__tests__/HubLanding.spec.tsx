@@ -30,7 +30,7 @@ describe('HubLanding', () => {
     expect(screen.getByTestId('hub-landing-section-secondary-planning')).toBeInTheDocument();
   });
 
-  it('shows reception entries with primary/secondary/coming soon sections', () => {
+  it('shows reception entries with primary/secondary sections', () => {
     mockRole = 'reception';
 
     render(
@@ -41,14 +41,12 @@ describe('HubLanding', () => {
 
     const primary = screen.getByTestId('hub-landing-section-primary-billing');
     const secondary = screen.getByTestId('hub-landing-section-secondary-billing');
-    const comingSoon = screen.getByTestId('hub-landing-section-comingSoon-billing');
 
     expect(within(primary).getByText('請求処理')).toBeInTheDocument();
     expect(within(secondary).getByText('サービス提供実績記録')).toBeInTheDocument();
-    expect(within(comingSoon).getByText('精算ダッシュボード')).toBeInTheDocument();
     expect(within(primary).getByText('請求画面を開く')).toBeInTheDocument();
-    expect(screen.getByText('準備中')).toBeInTheDocument();
-    expect(within(comingSoon).getAllByText('Coming Soon').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('hub-landing-section-comingSoon-billing')).not.toBeInTheDocument();
+    expect(screen.queryByText('精算ダッシュボード')).not.toBeInTheDocument();
   });
 
   it('shows dictionary-driven empty state when no entry is visible for role', () => {
