@@ -2,7 +2,7 @@
 
 **対象ページ**: `/admin/status`（管理者専用）  
 **診断実装**: `src/features/diagnostics/health/checks.ts`  
-**最終更新**: 2026-04-11
+**最終更新**: 2026-06-02
 
 ---
 
@@ -106,6 +106,27 @@ Provision を実行してリストを作成する
 3. 削除後、`/admin/status` で PASS に変わったことを確認する
 
 > ⚠️ 列削除はデータ損失リスクがあります。削除前に列に値が入っていないことを確認してください。
+
+### 既知 WARN — Users_Master / ToiletRecords
+
+2026-06-02 時点で、以下は `/admin/status` の既知 WARN として扱います。いずれも候補名解決で吸収済みの場合はアプリ継続可です。
+
+| 対象 | WARN 例 | 実害判定 | 運用アクション |
+|------|---------|----------|----------------|
+| `Users_Master` | `RequiresToiletGuidance -> RequiresToiletGuidance0` など | `/kiosk/toilet` で誘導対象者が表示され、利用者詳細でトイレ誘導フラグが読めるなら実害なし | Issue #2102 への追記は不要。新規対象者が表示されない場合のみ追記 |
+| `ToiletRecords` | `UserId`, `RecordDate`, `OccurredAt`, `ToiletType`, `Amount`, `IsDeleted` の内部名 drift | `/kiosk/toilet` で当日記録の読み込み・保存ができるなら実害なし | 保存失敗、当日記録 0 件誤表示、または `schema.fields.toilet_records` が FAIL 化した場合のみ Issue #2102 に追記 |
+
+**根拠**:
+- `Users_Master` の `RequiresToiletGuidance` / `ToiletGuidanceNote` は候補名に `RequiresToiletGuidance0`, `cr013_requiresToiletGuidance`, SharePoint エンコード名を含みます。
+- `ToiletRecords` は SharePoint repository が実列名を取得し、`TOILET_RECORD_CANDIDATES` で読み書き用の物理名を解決します。
+- `ToiletRecords` は optional list です。ただし `/kiosk/toilet` 運用中は保存先として重要なため、保存失敗や当日表示不整合は軽微ではありません。
+
+**小 PR が必要な条件**:
+1. WARN が候補外の実列名を指しており、読み書きで fallback できない
+2. `/kiosk/toilet` の対象者表示、当日記録表示、保存のいずれかに失敗する
+3. `schema.fields.users_master` または `schema.fields.toilet_records` が FAIL に変わる
+
+上記に該当しない場合は、WARN を既知 drift として受け入れ、列削除や rename は急がないでください。
 
 ### WARN (optional missing) — オプション列の欠落
 
