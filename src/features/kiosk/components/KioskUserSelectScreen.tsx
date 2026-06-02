@@ -1,14 +1,16 @@
 import React from 'react';
-import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, CircularProgress, Chip } from '@mui/material';
+import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, CircularProgress, Chip, Alert, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 
 export const KioskUserSelectScreen: React.FC = () => {
   const location = useLocation();
-  const { data: users, status } = useUsersQuery({ selectMode: 'core' });
+  const { data: users, status, refresh } = useUsersQuery({ selectMode: 'core' });
   const isLoading = status === 'loading';
+  const hasLoadError = status === 'error';
 
   // キオスクモードでは「支援手順対象」または「強度行動障害支援対象」の利用者を表示。
   // IsActive が明示的に false の場合は除外する。
@@ -37,6 +39,23 @@ export const KioskUserSelectScreen: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexGrow: 1 }}>
           <CircularProgress size={48} />
         </Box>
+      ) : hasLoadError ? (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={() => void refresh()}>
+              再読み込み
+            </Button>
+          }
+          sx={{ borderRadius: 2, alignItems: 'center' }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            利用者の読み込みに失敗しました
+          </Typography>
+          <Typography variant="body2">
+            対象者なしではありません。通信状態または認証状態を確認して再読み込みしてください。
+          </Typography>
+        </Alert>
       ) : (
         <Grid container spacing={2}>
           {activeUsers.map((user) => (
