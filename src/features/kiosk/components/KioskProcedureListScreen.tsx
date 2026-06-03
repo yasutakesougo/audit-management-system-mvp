@@ -29,6 +29,7 @@ import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurr
 import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monitoringSchedule';
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 import { isAuthRequiredError } from '@/lib/errors';
+import { useKioskAttendance } from '../hooks/useKioskAttendance';
 
 const buildProcedureMatchKeys = (
   procedure: { id?: unknown; rowNo?: unknown },
@@ -265,6 +266,12 @@ export const KioskProcedureListScreen: React.FC = () => {
   const [isThrottleActive, setIsThrottleActive] = useState(() => isThrottleCircuitOpen());
   const [throttleRemaining, setThrottleRemaining] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+  const absenceState = useKioskAttendance(
+    queryUserId || undefined,
+    selectedDateIso || '',
+    executionUserIdCandidates,
+    retryCount
+  );
 
   // Monitor circuit breaker status and remaining cooldown seconds (read-only)
   useEffect(() => {
@@ -652,21 +659,48 @@ export const KioskProcedureListScreen: React.FC = () => {
         {/* 進捗サマリー */}
         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            実施状況: {recordedCount} / {totalCount}
+            {absenceState.isAbsent ? '実施状況: 欠席（記録対象外）' : `実施状況: ${recordedCount} / ${totalCount}`}
           </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{ height: 12, borderRadius: 6, mb: 1, bgcolor: 'action.hover' }}
-          />
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            <Chip icon={<CheckCircleIcon />} label={`${doneCount} 完了`} color="success" size="small" variant={doneCount > 0 ? "filled" : "outlined"} sx={{ fontWeight: 'bold' }} />
-          </Box>
+          {!absenceState.isAbsent && (
+            <>
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{ height: 12, borderRadius: 6, mb: 1, bgcolor: 'action.hover' }}
+              />
+              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                <Chip icon={<CheckCircleIcon />} label={`${doneCount} 完了`} color="success" size="small" variant={doneCount > 0 ? "filled" : "outlined"} sx={{ fontWeight: 'bold' }} />
+              </Box>
+            </>
+          )}
         </Box>
       </Box>
 
+      {/* 欠席バナー */}
+      {absenceState.isAbsent && (
+        <Alert
+          severity="info"
+          sx={{ mb: 3, borderRadius: 2 }}
+          data-testid="kiosk-absence-banner"
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            {recordedCount > 0
+              ? '本日は欠席として処理されていますが、本日の実施記録が存在します'
+              : '本日は欠席として処理されています'
+            }
+          </Typography>
+          <Typography variant="body2">
+            {recordedCount > 0
+              ? 'すでに登録済みの記録は維持されますが、未記録の手順は記録対象外となります。'
+              : 'この日は未実施ではなく、欠席／記録対象外として扱います。'
+            }
+            {absenceState.reason && `（理由: ${absenceState.reason}）`}
+          </Typography>
+        </Alert>
+      )}
+
       {/* サーキットブレーカー / エラー警告バナー */}
-      {(isThrottleActive || fetchFailed) && (
+      {(isThrottleActive || fetchFailed || absenceState.isError) && (
         <Alert
           severity={isThrottleActive ? "warning" : "error"}
           sx={{ mb: 3, borderRadius: 2 }}
@@ -698,6 +732,8 @@ export const KioskProcedureListScreen: React.FC = () => {
               <br />
               しばらくしてから再試行してください。
             </>
+          ) : absenceState.isError && !fetchFailed ? (
+            "出欠情報の取得に失敗しました。再試行ボタンを押してデータを読み込んでください。"
           ) : (
             "一時的な接続エラーが発生しました。再試行ボタンを押してデータを読み込んでください。"
           )}
@@ -709,13 +745,17 @@ export const KioskProcedureListScreen: React.FC = () => {
         {procedures.map((step, index) => {
           const recordedRecord = recordedRecordsByProcedure[index];
           const isRecorded = Boolean(recordedRecord);
-          const isLoadFailed = fetchFailed || isThrottleActive;
+          const isLoadFailed = fetchFailed || isThrottleActive || absenceState.isError;
 
-          let statusType: 'recorded' | 'unrecorded' | 'uncertain' | 'uncertain_local' = 'unrecorded';
-          if (isLoadFailed) {
-            statusType = isRecorded ? 'uncertain_local' : 'uncertain';
+          let statusType: 'recorded' | 'unrecorded' | 'uncertain' | 'uncertain_local' | 'absent' = 'unrecorded';
+          if (isRecorded) {
+            statusType = isLoadFailed ? 'uncertain_local' : 'recorded';
+          } else if (absenceState.isAbsent) {
+            statusType = 'absent';
+          } else if (isLoadFailed) {
+            statusType = 'uncertain';
           } else {
-            statusType = isRecorded ? 'recorded' : 'unrecorded';
+            statusType = 'unrecorded';
           }
 
           const borderLeftColor = (() => {
@@ -723,6 +763,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               case 'recorded': return 'success.main';
               case 'uncertain_local': return 'warning.light';
               case 'uncertain': return 'text.disabled';
+              case 'absent': return 'text.disabled';
               case 'unrecorded':
               default: return 'divider';
             }
@@ -733,6 +774,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               case 'recorded': return 'success.lighter';
               case 'uncertain_local': return 'warning.lighter';
               case 'uncertain': return 'action.hover';
+              case 'absent': return 'action.hover';
               case 'unrecorded':
               default: return 'background.paper';
             }
@@ -743,6 +785,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               case 'recorded': return 0.8;
               case 'uncertain_local': return 0.9;
               case 'uncertain': return 0.7;
+              case 'absent': return 0.6;
               case 'unrecorded':
               default: return 1;
             }
@@ -754,6 +797,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               case 'recorded': return 'success.dark';
               case 'uncertain_local': return 'warning.dark';
               case 'uncertain': return 'text.secondary';
+              case 'absent': return 'text.secondary';
               case 'unrecorded':
               default: return 'text.primary';
             }
@@ -868,6 +912,21 @@ export const KioskProcedureListScreen: React.FC = () => {
                                   borderStyle: 'dashed'
                                 }}
                                 data-testid={`kiosk-uncertain-chip-${index}`}
+                              />
+                            );
+                          case 'absent':
+                            return (
+                              <Chip
+                                label="欠席のため記録対象外"
+                                variant="outlined"
+                                color="default"
+                                sx={{
+                                  borderRadius: 2,
+                                  color: 'text.secondary',
+                                  borderColor: 'divider',
+                                  borderStyle: 'dashed'
+                                }}
+                                data-testid={`kiosk-absent-chip-${index}`}
                               />
                             );
                           case 'unrecorded':
