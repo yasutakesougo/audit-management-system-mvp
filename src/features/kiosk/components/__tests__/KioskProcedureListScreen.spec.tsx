@@ -418,7 +418,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       const firstCard = screen.getByTestId('kiosk-procedure-card-0');
-      expect(within(firstCard).getByText('記録済み')).toBeInTheDocument();
+      expect(within(firstCard).getByText('同期状態未確認')).toBeInTheDocument();
+      expect(within(firstCard).queryByText('記録済み')).toBeNull();
       expect(within(firstCard).queryByText('未実施')).toBeNull();
       expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
       expect(screen.getByText('記録の取得に失敗しました。再読み込みしてください。')).toBeInTheDocument();
@@ -1134,7 +1135,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       data: { FullName: '田中 太郎', UserID: 'U001' } as any,
       status: 'success',
     };
-    
+
     // Trigger rerender to simulate useUser state update
     rerender(
       <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
@@ -1229,6 +1230,72 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       vi.advanceTimersByTime(20000);
       await waitFor(() => {
         expect(screen.queryByTestId('kiosk-throttle-alert')).toBeNull();
+      });
+    });
+  });
+
+  describe('SharePoint load failure representation', () => {
+    it('shows "状態未確認" Chip and styling when SharePoint load fails and no local cache is available', async () => {
+      mockGetRecords.mockRejectedValue(new Error('SharePoint fetch failed'));
+      mockGetStoreRecords.mockReturnValue([]);
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-uncertain-chip-0')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-uncertain-chip-1')).toBeInTheDocument();
+        expect(screen.queryByText('未実施')).toBeNull();
+        expect(screen.queryByText('記録済み')).toBeNull();
+      });
+    });
+
+    it('shows "同期状態未確認" Chip for slots with local cache and "状態未確認" for others when SharePoint load fails', async () => {
+      mockGetRecords.mockRejectedValue(new Error('SharePoint fetch failed'));
+      mockGetStoreRecords.mockReturnValue([
+        { scheduleItemId: '1', status: 'completed', recordedAt: '2026-05-08T10:00:00Z' }
+      ]);
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-uncertain-local-chip-0')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-uncertain-chip-1')).toBeInTheDocument();
+        expect(screen.queryByText('未実施')).toBeNull();
+        expect(screen.queryByText('記録済み')).toBeNull();
+      });
+    });
+
+    it('robustly matches local cache records with ID/userId variations (prefixed, canonical, trailing match)', async () => {
+      // routeUserId is mockRouteUserId = 'U001' (buildExecutionUserIdCandidates creates U001, 1, U1, U-001, etc)
+      mockGetRecords.mockRejectedValue(new Error('SharePoint fetch failed'));
+
+      // Store record has U-001 as userId (variation) and procedure match keys are evaluated
+      mockGetStoreRecords.mockImplementation((_date, userId) => {
+        if (userId === 'U-001') {
+          return [
+            { scheduleItemId: 'procedure-1', status: 'completed', recordedAt: '2026-05-08T10:00:00Z' }
+          ];
+        }
+        return [];
+      });
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-uncertain-local-chip-0')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-uncertain-chip-1')).toBeInTheDocument();
       });
     });
   });
