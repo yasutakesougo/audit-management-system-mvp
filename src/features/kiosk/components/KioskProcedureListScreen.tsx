@@ -692,7 +692,7 @@ export const KioskProcedureListScreen: React.FC = () => {
           <Typography variant="body2">
             {recordedCount > 0
               ? 'すでに登録済みの記録は維持されますが、未記録の手順は記録対象外となります。'
-              : 'この日の支援手順は未実施ではなく、欠席／記録対象外として扱います。'
+              : 'この日は未実施ではなく、欠席／記録対象外として扱います。'
             }
             {absenceState.reason && `（理由: ${absenceState.reason}）`}
           </Typography>
