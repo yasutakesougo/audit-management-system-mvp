@@ -139,7 +139,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   );
   const procedureRepo = useProcedureData();
   const executionRepo = useExecutionData();
-  
+
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
   const selectedDateStr = formatDateJapanese(selectedDateIso);
   const deepLinkUserId = React.useMemo(() => {
@@ -255,7 +255,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     return Array.from(deduped.values());
   }, [executionUserIdCandidates, getStoreRecords, selectedDateIso]);
   const executionRepositoryKind = getCurrentExecutionRepositoryKind();
-  
+
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [hasFetchedRecords, setHasFetchedRecords] = useState(false);
   const [fetchFailed, setFetchFailed] = useState(false);
@@ -626,7 +626,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       {/* ヘッダーセクション */}
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton 
+          <IconButton
             component={RouterLink}
             to={appendKioskSearchParams('/kiosk/users', location.search)}
             sx={{ mr: 2, bgcolor: 'action.hover' }}
@@ -654,10 +654,10 @@ export const KioskProcedureListScreen: React.FC = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             実施状況: {recordedCount} / {totalCount}
           </Typography>
-          <LinearProgress 
-            variant="determinate" 
-            value={progress} 
-            sx={{ height: 12, borderRadius: 6, mb: 1, bgcolor: 'action.hover' }} 
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{ height: 12, borderRadius: 6, mb: 1, bgcolor: 'action.hover' }}
           />
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
             <Chip icon={<CheckCircleIcon />} label={`${doneCount} 完了`} color="success" size="small" variant={doneCount > 0 ? "filled" : "outlined"} sx={{ fontWeight: 'bold' }} />
@@ -709,17 +709,66 @@ export const KioskProcedureListScreen: React.FC = () => {
         {procedures.map((step, index) => {
           const recordedRecord = recordedRecordsByProcedure[index];
           const isRecorded = Boolean(recordedRecord);
-          
+          const isLoadFailed = fetchFailed || isThrottleActive;
+
+          let statusType: 'recorded' | 'unrecorded' | 'uncertain' | 'uncertain_local' = 'unrecorded';
+          if (isLoadFailed) {
+            statusType = isRecorded ? 'uncertain_local' : 'uncertain';
+          } else {
+            statusType = isRecorded ? 'recorded' : 'unrecorded';
+          }
+
+          const borderLeftColor = (() => {
+            switch (statusType) {
+              case 'recorded': return 'success.main';
+              case 'uncertain_local': return 'warning.light';
+              case 'uncertain': return 'text.disabled';
+              case 'unrecorded':
+              default: return 'divider';
+            }
+          })();
+
+          const bgcolor = (() => {
+            switch (statusType) {
+              case 'recorded': return 'success.lighter';
+              case 'uncertain_local': return 'warning.lighter';
+              case 'uncertain': return 'action.hover';
+              case 'unrecorded':
+              default: return 'background.paper';
+            }
+          })();
+
+          const opacity = (() => {
+            switch (statusType) {
+              case 'recorded': return 0.8;
+              case 'uncertain_local': return 0.9;
+              case 'uncertain': return 0.7;
+              case 'unrecorded':
+              default: return 1;
+            }
+          })();
+
+          const textDecoration = statusType === 'recorded' ? 'line-through' : 'none';
+          const titleColor = (() => {
+            switch (statusType) {
+              case 'recorded': return 'success.dark';
+              case 'uncertain_local': return 'warning.dark';
+              case 'uncertain': return 'text.secondary';
+              case 'unrecorded':
+              default: return 'text.primary';
+            }
+          })();
+
           return (
             <Grid key={index} size={12}>
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   borderRadius: 3,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                   borderLeft: '6px solid',
-                  borderLeftColor: 'divider',
-                  bgcolor: isRecorded ? 'success.lighter' : 'background.paper',
-                  opacity: isRecorded ? 0.8 : 1,
+                  borderLeftColor: borderLeftColor,
+                  bgcolor: bgcolor,
+                  opacity: opacity,
                   transition: 'all 0.2s',
                   '&:hover': {
                     transform: 'translateY(-2px)',
@@ -742,16 +791,23 @@ export const KioskProcedureListScreen: React.FC = () => {
                 >
                   <Grid container alignItems="center" spacing={2}>
                     <Grid size={2} sx={{ textAlign: 'center' }}>
-                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: isRecorded ? 'success.main' : 'text.secondary' }}>
+                      <Typography variant="h5" sx={{
+                        fontWeight: 'bold',
+                        color: statusType === 'recorded'
+                          ? 'success.main'
+                          : statusType === 'uncertain_local'
+                          ? 'warning.main'
+                          : 'text.secondary'
+                      }}>
                         {step.time}
                       </Typography>
                     </Grid>
                     <Grid size={7}>
-                      <Typography variant="h6" sx={{ 
-                        fontWeight: 'bold', 
+                      <Typography variant="h6" sx={{
+                        fontWeight: 'bold',
                         mb: 0.5,
-                        color: isRecorded ? 'success.dark' : 'text.primary',
-                        textDecoration: isRecorded ? 'line-through' : 'none'
+                        color: titleColor,
+                        textDecoration: textDecoration
                       }}>
                         {step.activity}
                       </Typography>
@@ -777,21 +833,55 @@ export const KioskProcedureListScreen: React.FC = () => {
                       >
                         この手順でABC記録
                       </Button>
-                      {isRecorded ? (
-                        <Chip 
-                          icon={<CheckCircleIcon />} 
-                          label="記録済み" 
-                          color="success"
-                          sx={{ borderRadius: 2, fontWeight: 'bold' }}
-                        />
-                      ) : (
-                        <Chip 
-                          icon={<AccessTimeIcon />} 
-                          label="未実施" 
-                          variant="outlined" 
-                          sx={{ borderRadius: 2, color: 'text.disabled', borderColor: 'divider' }}
-                        />
-                      )}
+                      {(() => {
+                        switch (statusType) {
+                          case 'recorded':
+                            return (
+                              <Chip
+                                icon={<CheckCircleIcon />}
+                                label="記録済み"
+                                color="success"
+                                sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                              />
+                            );
+                          case 'uncertain_local':
+                            return (
+                              <Chip
+                                icon={<CheckCircleIcon color="warning" />}
+                                label="同期状態未確認"
+                                color="warning"
+                                variant="outlined"
+                                sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                                data-testid={`kiosk-uncertain-local-chip-${index}`}
+                              />
+                            );
+                          case 'uncertain':
+                            return (
+                              <Chip
+                                label="状態未確認"
+                                variant="outlined"
+                                color="default"
+                                sx={{
+                                  borderRadius: 2,
+                                  color: 'text.secondary',
+                                  borderColor: 'divider',
+                                  borderStyle: 'dashed'
+                                }}
+                                data-testid={`kiosk-uncertain-chip-${index}`}
+                              />
+                            );
+                          case 'unrecorded':
+                          default:
+                            return (
+                              <Chip
+                                icon={<AccessTimeIcon />}
+                                label="未実施"
+                                variant="outlined"
+                                sx={{ borderRadius: 2, color: 'text.disabled', borderColor: 'divider' }}
+                              />
+                            );
+                        }
+                      })()}
                     </Grid>
                   </Grid>
                 </Box>
