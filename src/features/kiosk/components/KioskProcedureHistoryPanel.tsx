@@ -23,6 +23,7 @@ import { formatDateShort } from '@/lib/dateFormat';
 import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
 import { KioskDailyProcedureFlowPreview } from './KioskDailyProcedureFlowPreview';
 import { parseKioskProcedureMemo } from '../domain/kioskProcedureMemo';
+import { toLocalDateISO } from '@/utils/getNow';
 
 interface KioskProcedureHistoryPanelProps {
   userId: string;
@@ -47,7 +48,7 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [selectedFlowDate, setSelectedFlowDate] = useState<string | null>(null);
-  const { records, isLoading, error } = useHistoricalRecords(
+  const { records, isLoading, error, refresh, isCached, lastFetchedAt } = useHistoricalRecords(
     userId,
     scheduleItemId,
     fallbackScheduleItemIds,
@@ -71,15 +72,14 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
   const stats = useMemo(() => {
     if (!records.length) return null;
 
-    const getDaysAgo = (days: number) => {
-      const d = new Date();
-      d.setDate(d.getDate() - days);
-      return d;
-    };
-
     const filterByDays = (days: number) => {
-      const threshold = getDaysAgo(days);
-      return records.filter(r => new Date(r.date) >= threshold);
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - days);
+      const thresholdStr = toLocalDateISO(targetDate);
+      return records.filter(r => {
+        const recordDateStr = String(r.date ?? '').slice(0, 10);
+        return recordDateStr >= thresholdStr;
+      });
     };
 
     const calculateStats = (filteredRecords: ExecutionRecord[]) => {
@@ -117,10 +117,18 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
       );
     }
 
-    if (error) {
+    if (error && !records.length) {
       return (
         <Box sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="error">履歴の読み込みに失敗しました</Typography>
+          <Typography color="error" sx={{ mb: 2 }}>履歴の読み込みに失敗しました</Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => refresh({ force: true })}
+            sx={{ borderRadius: 2, fontWeight: 'bold' }}
+          >
+            再読み込み
+          </Button>
         </Box>
       );
     }
@@ -297,6 +305,39 @@ export const KioskProcedureHistoryPanel: React.FC<KioskProcedureHistoryPanelProp
           <ToggleButton value="3m">3ヶ月</ToggleButton>
         </ToggleButtonGroup>
       </Box>
+
+      {/* ステータスバナー (キャッシュ表示中、または取得エラー時のフォールバック表示) */}
+      {error && records.length > 0 && (
+        <Box sx={{ px: 2, py: 1, bgcolor: 'error.light', color: 'error.contrastText', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+            最新履歴の取得に失敗しました。前回取得分を表示しています。
+          </Typography>
+          <Button
+            size="small"
+            color="inherit"
+            onClick={() => refresh({ force: true })}
+            sx={{ py: 0, fontWeight: 'bold', textDecoration: 'underline' }}
+          >
+            再試行
+          </Button>
+        </Box>
+      )}
+
+      {!error && isCached && lastFetchedAt && (
+        <Box sx={{ px: 2, py: 0.75, bgcolor: 'action.hover', borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="caption" color="text.secondary">
+            前回取得分を表示中 ({new Date(lastFetchedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} 取得)
+          </Typography>
+          <Button
+            size="small"
+            color="primary"
+            onClick={() => refresh({ force: true })}
+            sx={{ py: 0, minWidth: 'auto', fontWeight: 'bold' }}
+          >
+            更新
+          </Button>
+        </Box>
+      )}
 
       {/* コンテンツエリア */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>

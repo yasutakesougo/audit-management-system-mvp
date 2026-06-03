@@ -1,7 +1,8 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { useHistoricalRecords } from '../useHistoricalRecords';
+import { useHistoricalRecords, _testCache } from '../useHistoricalRecords';
 import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
+
 
 const mockGetHistoricalRecords = vi.fn<(...args: unknown[]) => Promise<ExecutionRecord[]>>();
 const mockGetRecordsInRange = vi.fn<(...args: unknown[]) => Promise<ExecutionRecord[]>>();
@@ -31,6 +32,7 @@ describe('useHistoricalRecords', () => {
     mockGetHistoricalRecords.mockReset();
     mockGetRecordsInRange.mockReset();
     mockGetRecordsInRange.mockResolvedValue([]);
+    _testCache.clear();
   });
 
   it('merges results across schedule candidates instead of stopping at first hit', async () => {
@@ -233,5 +235,99 @@ describe('useHistoricalRecords', () => {
 
     // 再フェッチの無限ループに入らず、コール数が1回で止まっていること
     expect(mockGetHistoricalRecords.mock.calls.length).toBe(1);
+  });
+
+  it('serves records from cache within CACHE_DURATION and sets isCached=true', async () => {
+    mockGetHistoricalRecords.mockResolvedValue([record('r-1', '2026-05-13', '1')]);
+
+    const { result } = renderHook(() =>
+      useHistoricalRecords('U001', '1', [], []),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.records.map((r) => r.id)).toEqual(['r-1']);
+    expect(result.current.isCached).toBe(false);
+
+    const initialCalls = mockGetHistoricalRecords.mock.calls.length;
+
+    const { result: cachedResult } = renderHook(() =>
+      useHistoricalRecords('U001', '1', [], []),
+    );
+
+    await waitFor(() => {
+      expect(cachedResult.current.isLoading).toBe(false);
+    });
+    expect(cachedResult.current.records.map((r) => r.id)).toEqual(['r-1']);
+    expect(cachedResult.current.isCached).toBe(true);
+    expect(mockGetHistoricalRecords.mock.calls.length).toBe(initialCalls);
+  });
+
+  it('bypasses cache and updates on force refresh', async () => {
+    let fetchCount = 0;
+    mockGetHistoricalRecords.mockImplementation(async (userId) => {
+      if (userId === 'U001') {
+        fetchCount++;
+      }
+      if (fetchCount <= 1) {
+        return userId === 'U001' ? [record('r-1', '2026-05-13', '1')] : [];
+      }
+      return userId === 'U001' ? [record('r-2', '2026-05-13', '1')] : [];
+    });
+
+    const { result } = renderHook(() =>
+      useHistoricalRecords('U001', '1', [], []),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.records.map((r) => r.id)).toEqual(['r-1']);
+
+    await act(async () => {
+      await result.current.refresh({ force: true });
+    });
+
+    await waitFor(() => {
+      expect(result.current.records.map((r) => r.id)).toEqual(['r-2']);
+    });
+    expect(result.current.isCached).toBe(false);
+  });
+
+  it('keeps stale cache on refresh failure instead of clearing it', async () => {
+    let fetchCount = 0;
+    mockGetHistoricalRecords.mockImplementation(async (userId) => {
+      if (userId === 'U001') {
+        fetchCount++;
+      }
+      if (fetchCount <= 1) {
+        return userId === 'U001' ? [record('r-1', '2026-05-13', '1')] : [];
+      }
+      throw new Error('SharePoint Throttle');
+    });
+
+    const { result } = renderHook(() =>
+      useHistoricalRecords('U001', '1', [], []),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.records.map((r) => r.id)).toEqual(['r-1']);
+
+    await act(async () => {
+      try {
+        await result.current.refresh({ force: true });
+      } catch {
+        // ignore thrown error during refresh
+      }
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+    expect(result.current.records.map((r) => r.id)).toEqual(['r-1']);
+    expect(result.current.isCached).toBe(true);
   });
 });
