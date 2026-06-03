@@ -62,6 +62,12 @@ describe('KioskUserSelectScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '再読み込み' }));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
+
+    // 再読み込みによって開始されるローディング表示とその完了を待機し、テスト外での非同期状態更新（act警告）を防ぐ
+    await screen.findByRole('progressbar');
+    await waitFor(() => {
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
   });
 
   it('keeps the empty target-user state for a successful load with no target users', async () => {
