@@ -68,8 +68,9 @@ export const ToiletDailyBoard: React.FC = () => {
   const location = useLocation();
   const todayIso = toLocalDateISO(new Date());
   const { data: users, isLoading: isUsersLoading, status: usersStatus } = useUsers({ selectMode: 'core' });
-  const { records, create, isLoading: isRecordsLoading } = useToiletRecords(todayIso);
+  const { records, create, refresh: refreshRecords, isLoading: isRecordsLoading, error: recordsError } = useToiletRecords(todayIso);
   const isLoading = isUsersLoading || isRecordsLoading;
+  const hasRecordsError = Boolean(recordsError);
   const [selectedUser, setSelectedUser] = React.useState<IUserMaster | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
@@ -99,6 +100,7 @@ export const ToiletDailyBoard: React.FC = () => {
 
   const recordedCount = rows.filter((row) => row.recorded).length;
   const unrecordedCount = rows.length - recordedCount;
+  const summaryLabel = hasRecordsError ? '記録状態を確認できません' : `未記録 ${unrecordedCount}名 / 記録済み ${recordedCount}名`;
   const recordsByUserKey = React.useMemo(() => {
     const grouped = new Map<string, ToiletRecord[]>();
     records.forEach((record) => {
@@ -164,8 +166,8 @@ export const ToiletDailyBoard: React.FC = () => {
         </Box>
         <Chip
           data-testid="toilet-board-summary"
-          color={unrecordedCount > 0 ? 'warning' : 'success'}
-          label={`未記録 ${unrecordedCount}名 / 記録済み ${recordedCount}名`}
+          color={hasRecordsError ? 'error' : unrecordedCount > 0 ? 'warning' : 'success'}
+          label={summaryLabel}
           sx={{ height: 40, borderRadius: 2, fontWeight: 800, fontSize: '0.95rem' }}
         />
       </Stack>
@@ -203,7 +205,36 @@ export const ToiletDailyBoard: React.FC = () => {
               </Grid>
             )}
 
-            {usersStatus !== 'error' && rows.map(({ user, latestRecord, recorded }) => (
+            {usersStatus !== 'error' && hasRecordsError && (
+              <Grid size={12}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 3,
+                    borderRadius: 2,
+                    borderColor: 'error.light',
+                    bgcolor: 'rgba(211, 47, 47, 0.05)',
+                  }}
+                >
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                    <ErrorOutlineIcon color="error" sx={{ fontSize: 32 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 900, color: 'error.main' }}>
+                        トイレ記録の読み込みに失敗しました
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        記録済み/未記録の判定ができません。通信状態または ToiletRecords リストを確認して再読み込みしてください。
+                      </Typography>
+                    </Box>
+                    <Button variant="outlined" color="error" onClick={() => void refreshRecords()} sx={{ minHeight: 44, fontWeight: 900 }}>
+                      再読み込み
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Grid>
+            )}
+
+            {usersStatus !== 'error' && !hasRecordsError && rows.map(({ user, latestRecord, recorded }) => (
               <Grid key={user.Id} size={12}>
                 <Paper
                   data-testid={`toilet-user-row-${resolveUserKey(user)}`}
@@ -247,7 +278,7 @@ export const ToiletDailyBoard: React.FC = () => {
               </Grid>
             ))}
 
-            {usersStatus !== 'error' && rows.length === 0 && (
+            {usersStatus !== 'error' && !hasRecordsError && rows.length === 0 && (
               <Grid size={12}>
                 <Paper variant="outlined" sx={{ p: 5, textAlign: 'center', borderRadius: 2 }}>
                   <Typography color="text.secondary">トイレ誘導対象の利用者がいません</Typography>
@@ -256,65 +287,67 @@ export const ToiletDailyBoard: React.FC = () => {
             )}
           </Grid>
 
-          <Paper data-testid="toilet-record-history" variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, borderRadius: 2 }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-              <Typography variant="h6" component="h2" sx={{ fontWeight: 900 }}>
-                本日の全記録（個人別）
-              </Typography>
-              <Chip label={`${records.length}件`} size="small" sx={{ borderRadius: 1, fontWeight: 800 }} />
-            </Stack>
-            <Stack spacing={1.25}>
-              {targetUsers.map((user) => {
-                const userKey = resolveUserKey(user);
-                const userRecords = recordsByUserKey.get(userKey) ?? [];
+          {!hasRecordsError && (
+            <Paper data-testid="toilet-record-history" variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, borderRadius: 2 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                <Typography variant="h6" component="h2" sx={{ fontWeight: 900 }}>
+                  本日の全記録（個人別）
+                </Typography>
+                <Chip label={`${records.length}件`} size="small" sx={{ borderRadius: 1, fontWeight: 800 }} />
+              </Stack>
+              <Stack spacing={1.25}>
+                {targetUsers.map((user) => {
+                  const userKey = resolveUserKey(user);
+                  const userRecords = recordsByUserKey.get(userKey) ?? [];
 
-                return (
-                  <Box
-                    key={userKey}
-                    data-testid={`toilet-history-user-${userKey}`}
-                    sx={{
-                      p: 1.25,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1.5,
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: userRecords.length > 0 ? 1 : 0 }}>
-                      <Typography sx={{ fontWeight: 900 }}>{user.FullName}</Typography>
-                      <Chip label={`${userRecords.length}件`} size="small" variant="outlined" sx={{ borderRadius: 1, fontWeight: 800 }} />
-                    </Stack>
-
-                    {userRecords.length === 0 ? (
-                      <Typography color="text.secondary">記録なし</Typography>
-                    ) : (
-                      <Stack spacing={0.75}>
-                        {userRecords.map((record) => (
-                          <Box
-                            key={record.id}
-                            data-testid={`toilet-history-record-${record.id}`}
-                            sx={{
-                              display: 'grid',
-                              gridTemplateColumns: { xs: '1fr', sm: '96px 120px 120px 1fr' },
-                              gap: { xs: 0.5, sm: 1.5 },
-                              alignItems: 'center',
-                              p: 1,
-                              borderRadius: 1.25,
-                              bgcolor: 'action.hover',
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: 900 }}>{formatRecordTime(record.occurredAt)}</Typography>
-                            <Typography color="text.secondary">{TOILET_TYPE_LABELS[record.toiletType]}</Typography>
-                            <Typography color="text.secondary">{TOILET_AMOUNT_LABELS[record.amount]}</Typography>
-                            <Typography color="text.secondary">{record.memo || 'メモなし'}</Typography>
-                          </Box>
-                        ))}
+                  return (
+                    <Box
+                      key={userKey}
+                      data-testid={`toilet-history-user-${userKey}`}
+                      sx={{
+                        p: 1.25,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1.5,
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: userRecords.length > 0 ? 1 : 0 }}>
+                        <Typography sx={{ fontWeight: 900 }}>{user.FullName}</Typography>
+                        <Chip label={`${userRecords.length}件`} size="small" variant="outlined" sx={{ borderRadius: 1, fontWeight: 800 }} />
                       </Stack>
-                    )}
-                  </Box>
-                );
-              })}
-            </Stack>
-          </Paper>
+
+                      {userRecords.length === 0 ? (
+                        <Typography color="text.secondary">記録なし</Typography>
+                      ) : (
+                        <Stack spacing={0.75}>
+                          {userRecords.map((record) => (
+                            <Box
+                              key={record.id}
+                              data-testid={`toilet-history-record-${record.id}`}
+                              sx={{
+                                display: 'grid',
+                                gridTemplateColumns: { xs: '1fr', sm: '96px 120px 120px 1fr' },
+                                gap: { xs: 0.5, sm: 1.5 },
+                                alignItems: 'center',
+                                p: 1,
+                                borderRadius: 1.25,
+                                bgcolor: 'action.hover',
+                              }}
+                            >
+                              <Typography sx={{ fontWeight: 900 }}>{formatRecordTime(record.occurredAt)}</Typography>
+                              <Typography color="text.secondary">{TOILET_TYPE_LABELS[record.toiletType]}</Typography>
+                              <Typography color="text.secondary">{TOILET_AMOUNT_LABELS[record.amount]}</Typography>
+                              <Typography color="text.secondary">{record.memo || 'メモなし'}</Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Paper>
+          )}
         </Stack>
       )}
 

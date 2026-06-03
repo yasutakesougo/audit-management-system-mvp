@@ -140,7 +140,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   // isUserLoading 中は空文字を渡し、確定前の userId が saveRecord のクロージャに
   // 束縛されて Zustand に誤ったキーで保存されるのを防ぐ
   const resolvedUserId = isUserLoading ? '' : deepLinkUserId;
-  const { record, saveRecord, deleteRecord, isLoading } = useExecutionRecord(
+  const { record, saveRecord, deleteRecord, isLoading, error: recordLoadError, refresh: refreshRecord } = useExecutionRecord(
     selectedDateIso,
     resolvedUserId,
     scheduleItemId,
@@ -192,7 +192,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!userId || isUserLoading || !resolvedUserId) return;
+    if (!userId || isUserLoading || !resolvedUserId || recordLoadError) return;
     const finalMemo = serializeMemo();
     if (!finalMemo.trim()) {
       setShowValidationError(true);
@@ -214,6 +214,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleDelete = async () => {
+    if (recordLoadError) return;
     setIsDeleting(true);
     try {
       await deleteRecord();
@@ -270,6 +271,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const staffTask = procedure.instructionDetail || parts.slice(1).join('。') || '適宜見守り、必要に応じて声掛けを行います';
 
   const isCompleted = record?.status === 'completed';
+  const isRecordStatusUnknown = Boolean(recordLoadError);
 
   return (
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -321,6 +323,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           </Button>
           {isCompleted && (
             <Chip label="実施済み" color="success" icon={<CheckCircleOutlineIcon />} sx={{ fontWeight: 'bold' }} />
+          )}
+          {isRecordStatusUnknown && (
+            <Chip label="保存状態未確認" color="error" sx={{ fontWeight: 'bold' }} />
           )}
         </Stack>
       </Box>
@@ -376,6 +381,25 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {isRecordStatusUnknown && (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void refreshRecord()}>
+              再読み込み
+            </Button>
+          }
+          sx={{ mb: 4, borderRadius: 2, alignItems: 'center' }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            実施記録の読み込みに失敗しました
+          </Typography>
+          <Typography variant="body2">
+            保存済みかどうかを確認できません。再読み込みするまで記録の保存・取消はできません。
+          </Typography>
+        </Alert>
+      )}
 
       {/* 観察記録の入力パネル */}
       {showObservations && (
@@ -498,7 +522,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                   color="error"
                   onClick={() => setDeleteDialogOpen(true)}
                   sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem', mr: 'auto' }}
-                  disabled={isSaving || isDeleting}
+                  disabled={isSaving || isDeleting || isRecordStatusUnknown}
                   data-testid="kiosk-observation-revert"
                 >
                   記録を取り消す
@@ -518,7 +542,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 color="primary"
                 onClick={handleSave}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
-                disabled={isSaving || isDeleting}
+                disabled={isSaving || isDeleting || isRecordStatusUnknown}
                 data-testid="kiosk-observation-submit"
               >
                 記録を保存する

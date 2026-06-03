@@ -41,6 +41,8 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 }));
 
 const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
+const mockDeleteRecord = vi.fn().mockResolvedValue(undefined);
+const mockRefreshRecord = vi.fn();
 const mockUseExecutionRecord = vi.fn((
   _date?: string,
   _userId?: string,
@@ -50,7 +52,10 @@ const mockUseExecutionRecord = vi.fn((
 ) => ({
   record: null,
   saveRecord: mockSaveRecord,
+  deleteRecord: mockDeleteRecord,
   isLoading: false,
+  error: null,
+  refresh: mockRefreshRecord,
 }));
 vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
   useExecutionRecord: (
@@ -70,7 +75,10 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     mockUseExecutionRecord.mockReturnValue({
       record: null,
       saveRecord: mockSaveRecord,
+      deleteRecord: mockDeleteRecord,
       isLoading: false,
+      error: null,
+      refresh: mockRefreshRecord,
     });
   });
 
@@ -221,6 +229,32 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     await waitFor(() => {
       expect(screen.getByText('手順記録の内容を1つ以上入力してください。')).toBeInTheDocument();
     });
+    expect(mockSaveRecord).not.toHaveBeenCalled();
+  });
+
+  it('shows unknown saved-state feedback and blocks save when the execution record cannot be loaded', () => {
+    mockUseExecutionRecord.mockReturnValue({
+      record: null,
+      saveRecord: mockSaveRecord,
+      deleteRecord: mockDeleteRecord,
+      isLoading: false,
+      error: new Error('failed to load execution record'),
+      refresh: mockRefreshRecord,
+    });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
+    expect(screen.getByText('実施記録の読み込みに失敗しました')).toBeInTheDocument();
+    expect(screen.getByText(/保存済みかどうかを確認できません/)).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '再読み込み' }));
+    expect(mockRefreshRecord).toHaveBeenCalledTimes(1);
     expect(mockSaveRecord).not.toHaveBeenCalled();
   });
 
