@@ -62,9 +62,13 @@ export function useKioskAttendance(
         if (userDailyRecord) {
           const normalized = normalizeAttendanceStatus(userDailyRecord.Status);
           const isAbsent = isAbsentStatus(normalized);
+          const reasonParts = [
+            userDailyRecord.AbsentReason,
+            userDailyRecord.AbsentSupportContent || userDailyRecord.EveningNote
+          ].filter(Boolean);
           setState({
             isAbsent,
-            reason: userDailyRecord.AbsentReason || userDailyRecord.EveningNote || undefined,
+            reason: reasonParts.length > 0 ? reasonParts.join(' - ') : undefined,
             isLoading: false,
             isError: false,
           });
