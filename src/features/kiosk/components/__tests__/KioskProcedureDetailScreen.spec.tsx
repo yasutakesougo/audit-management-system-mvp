@@ -67,6 +67,16 @@ vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
   ) => mockUseExecutionRecord(date, userId, scheduleItemId, fallbackScheduleItemIds, fallbackUserIds),
 }));
 
+const mockUseKioskAttendance = vi.fn();
+vi.mock('../../hooks/useKioskAttendance', () => ({
+  useKioskAttendance: (
+    userId: string | undefined,
+    selectedDateIso: string,
+    userCandidates: string[],
+    refreshTrigger?: number,
+  ) => mockUseKioskAttendance(userId, selectedDateIso, userCandidates, refreshTrigger),
+}));
+
 describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,6 +89,12 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       isLoading: false,
       error: null,
       refresh: mockRefreshRecord,
+    });
+    mockUseKioskAttendance.mockReturnValue({
+      isAbsent: false,
+      reason: undefined,
+      isLoading: false,
+      isError: false,
     });
   });
 
@@ -328,6 +344,49 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
       // Case 3: query parameter override is present
       expect(resolveProcedureUserQueryCandidates({ UserID: 'U-006' } as any, '7', 'override-id')).toBe('override-id');
+    });
+  });
+
+  describe('when the user is absent', () => {
+    beforeEach(() => {
+      mockUseKioskAttendance.mockReturnValue({
+        isAbsent: true,
+        reason: '風邪のため',
+        isLoading: false,
+        isError: false,
+      });
+    });
+
+    it('renders the absence warning alert and disables save/delete/abc actions', () => {
+      mockUseExecutionRecord.mockReturnValue({
+        record: {
+          id: 'rec-1',
+          status: 'completed',
+          memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】テスト記録',
+        },
+        saveRecord: mockSaveRecord,
+        deleteRecord: mockDeleteRecord,
+        isLoading: false,
+        error: null,
+        refresh: mockRefreshRecord,
+      });
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // 1. 警告アラートが表示されているか
+      const alert = screen.getByTestId('kiosk-procedure-detail-absence-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('本日は欠席として処理されています。');
+      expect(alert).toHaveTextContent('欠席日のため、この手順の保存・取消・ABC記録はできません。');
+
+      // 2. ボタンが disabled か
+      expect(screen.getByTestId('kiosk-procedure-detail-abc-record')).toBeDisabled();
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
     });
   });
 });

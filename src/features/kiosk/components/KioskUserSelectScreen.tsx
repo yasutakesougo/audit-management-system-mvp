@@ -41,6 +41,11 @@ export const KioskUserSelectScreen: React.FC = () => {
   const [hasExistingRecords, setHasExistingRecords] = useState<boolean | null>(null);
   const [checkingRecords, setCheckingRecords] = useState(false);
 
+  // 欠席解除ダイアログ用
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
   // スナックバー用
   const [isSnackbarOpen, setIsSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -102,6 +107,66 @@ export const KioskUserSelectScreen: React.FC = () => {
       setHasExistingRecords(false);
     } finally {
       setCheckingRecords(false);
+    }
+  };
+
+  const handleOpenCancelDialog = async () => {
+    if (!menuUser) return;
+    const targetUser = menuUser;
+    handleCloseMenu();
+    setDialogUser(targetUser);
+    setCancelError(null);
+    setIsCancelDialogOpen(true);
+    setCheckingRecords(true);
+
+    try {
+      const userCode = targetUser.UserID || String(targetUser.Id);
+      const records = await executionRepo.getRecords(selectedDateIso, userCode);
+      setHasExistingRecords(records.length > 0);
+    } catch (err) {
+      console.error('[KioskUserSelectScreen] Failed to check existing records:', err);
+      setHasExistingRecords(false);
+    } finally {
+      setCheckingRecords(false);
+    }
+  };
+
+  const handleCancelAbsence = async () => {
+    if (!dialogUser || isCanceling) return;
+    setIsCanceling(true);
+    setCancelError(null);
+
+    const userCode = dialogUser.UserID || String(dialogUser.Id);
+    const key = `${userCode}|${selectedDateIso}`;
+
+    const dailyItem: AttendanceDailyItem = {
+      Key: key,
+      UserCode: userCode,
+      RecordDate: selectedDateIso,
+      Status: '未',
+      CntAttendIn: 0,
+      CntAttendOut: 0,
+      TransportTo: false,
+      TransportFrom: false,
+      ProvidedMinutes: 0,
+      IsEarlyLeave: false,
+      IsAbsenceAddonClaimable: false,
+      CheckInAt: null,
+      CheckOutAt: null,
+      UserConfirmedAt: null,
+    };
+
+    try {
+      await attendanceRepo.upsertDailyByKey(dailyItem);
+      setSnackbarMessage(`${dialogUser.FullName}様の本日欠席処理を解除しました`);
+      setIsSnackbarOpen(true);
+      setIsCancelDialogOpen(false);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err) {
+      console.error('[KioskUserSelectScreen] Failed to cancel daily absence:', err);
+      setCancelError('欠席処理の解除に失敗しました。しばらくしてから再試行してください。');
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -320,9 +385,15 @@ export const KioskUserSelectScreen: React.FC = () => {
         onClose={handleCloseMenu}
         data-testid="kiosk-user-option-menu"
       >
-        <MenuItem onClick={handleOpenDialog} data-testid="kiosk-user-menu-absent">
-          本日欠席として処理
-        </MenuItem>
+        {menuUser && getAbsenceState(menuUser) ? (
+          <MenuItem onClick={handleOpenCancelDialog} data-testid="kiosk-user-menu-cancel-absent">
+            欠席処理を解除する
+          </MenuItem>
+        ) : (
+          <MenuItem onClick={handleOpenDialog} data-testid="kiosk-user-menu-absent">
+            本日欠席として処理
+          </MenuItem>
+        )}
       </Menu>
 
       {/* 欠席登録ダイアログ */}
@@ -400,6 +471,60 @@ export const KioskUserSelectScreen: React.FC = () => {
             data-testid="kiosk-absent-dialog-submit"
           >
             {isSaving ? <CircularProgress size={20} color="inherit" /> : '欠席として処理する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 欠席解除確認ダイアログ */}
+      <Dialog
+        open={isCancelDialogOpen}
+        onClose={() => !isCanceling && setIsCancelDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        data-testid="kiosk-cancel-absent-dialog"
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          欠席処理を解除しますか？
+        </DialogTitle>
+        <DialogContent dividers>
+          {checkingRecords ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : hasExistingRecords ? (
+            <Alert severity="warning" sx={{ mb: 2 }} data-testid="kiosk-cancel-absent-dialog-warning">
+              本日の実施記録が存在します。欠席処理を解除すると、既存の実施記録が通常の記録として扱われます。解除してよろしいですか？
+            </Alert>
+          ) : null}
+
+          {cancelError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {cancelError}
+            </Alert>
+          )}
+
+          <Typography variant="body1">
+            {dialogUser?.FullName} 様の本日欠席処理を解除します。
+            解除すると、手順記録の登録や変更ができるようになります。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button
+            onClick={() => setIsCancelDialogOpen(false)}
+            disabled={isCanceling}
+            variant="outlined"
+            color="inherit"
+          >
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleCancelAbsence}
+            color="primary"
+            variant="contained"
+            disabled={isCanceling || checkingRecords}
+            data-testid="kiosk-cancel-absent-dialog-submit"
+          >
+            {isCanceling ? <CircularProgress size={20} color="inherit" /> : '解除する'}
           </Button>
         </DialogActions>
       </Dialog>
