@@ -28,6 +28,16 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+let mockKioskAttendance = {
+  isAbsent: false,
+  reason: undefined as string | undefined,
+  isLoading: false,
+  isError: false,
+};
+vi.mock('../../hooks/useKioskAttendance', () => ({
+  useKioskAttendance: () => mockKioskAttendance,
+}));
+
 const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎', ServiceStartDate: undefined as string | undefined } as unknown as Record<string, unknown>, status: 'success' }));
 const mockUseUsers = vi.fn(() => ({ data: [], status: 'success' as const }));
 vi.mock('@/features/users/useUsers', () => ({
@@ -123,6 +133,12 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     mockUseCurrentPlanningSheet.mockReturnValue({ currentSheet: null, allCurrentSheets: [], isLoading: false, error: null });
     mockGetRecords.mockResolvedValue([]);
     mockGetRecord.mockResolvedValue(undefined);
+    mockKioskAttendance = {
+      isAbsent: false,
+      reason: undefined,
+      isLoading: false,
+      isError: false,
+    };
   });
 
   afterEach(() => {
@@ -1296,6 +1312,95 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       await waitFor(() => {
         expect(screen.getByTestId('kiosk-uncertain-local-chip-0')).toBeInTheDocument();
         expect(screen.getByTestId('kiosk-uncertain-chip-1')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Daily absence read and display (PR1)', () => {
+    it('renders absence banner, "欠席のため記録対象外" chips, and hides progress bar when user is absent', async () => {
+      mockKioskAttendance = {
+        isAbsent: true,
+        reason: '体調不良のためお休みします',
+        isLoading: false,
+        isError: false,
+      };
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      // Verify banner
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-absence-banner')).toBeInTheDocument();
+        expect(screen.getByText('本日は欠席として処理されています')).toBeInTheDocument();
+        expect(screen.getByText(/体調不良のためお休みします/)).toBeInTheDocument();
+      });
+
+      // Verify unrecorded cards are absent
+      expect(screen.getByTestId('kiosk-absent-chip-0')).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-absent-chip-1')).toBeInTheDocument();
+      expect(screen.queryByText('未実施')).toBeNull();
+
+      // Verify progress summary
+      expect(screen.getByText('実施状況: 欠席（記録対象外）')).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+    });
+
+    it('displays warning banner and keeps "recorded" status for existing executions when absent', async () => {
+      mockKioskAttendance = {
+        isAbsent: true,
+        reason: '当日欠席',
+        isLoading: false,
+        isError: false,
+      };
+      // Mock one completed record
+      mockGetRecords.mockResolvedValue([
+        { scheduleItemId: '1', status: 'completed' },
+      ]);
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      // Verify banner warning
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-absence-banner')).toBeInTheDocument();
+        expect(screen.getByText('本日は欠席として処理されていますが、本日の実施記録が存在します')).toBeInTheDocument();
+      });
+
+      // Verify first card is recorded, second card is absent
+      expect(screen.getByText('記録済み')).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-absent-chip-1')).toBeInTheDocument();
+      expect(screen.queryByText('未実施')).toBeNull();
+
+      // Verify progress summary still indicates absence
+      expect(screen.getByText('実施状況: 欠席（記録対象外）')).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+    });
+
+    it('falls back to "出欠状態未確認" (uncertain) when attendance load fails', async () => {
+      mockKioskAttendance = {
+        isAbsent: false,
+        reason: undefined,
+        isLoading: false,
+        isError: true,
+      };
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureListScreen />
+        </MemoryRouter>
+      );
+
+      // Verify that error is integrated and unrecorded cards show "状態未確認" (uncertain) instead of "未実施"
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-uncertain-chip-0')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-uncertain-chip-1')).toBeInTheDocument();
+        expect(screen.queryByText('未実施')).toBeNull();
       });
     });
   });
