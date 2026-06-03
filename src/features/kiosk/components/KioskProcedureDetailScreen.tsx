@@ -20,6 +20,7 @@ import {
   serializeKioskProcedureMemo,
 } from '../domain/kioskProcedureMemo';
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
+import { useKioskAttendance } from '../hooks/useKioskAttendance';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
@@ -148,6 +149,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     fallbackUserIds,
   );
   
+  const { isAbsent } = useKioskAttendance(
+    resolvedUserId,
+    selectedDateIso,
+    historyUserIds
+  );
+
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -306,7 +313,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 },
               })
             }
-            disabled={!abcSlotId}
+            disabled={!abcSlotId || isAbsent}
             sx={{ fontWeight: 'bold', borderRadius: 3 }}
             data-testid="kiosk-procedure-detail-abc-record"
           >
@@ -329,6 +336,21 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           )}
         </Stack>
       </Box>
+
+      {isAbsent && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 4, borderRadius: 2 }}
+          data-testid="kiosk-procedure-detail-absence-alert"
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            本日は欠席として処理されています。
+          </Typography>
+          <Typography variant="body2">
+            欠席日のため、この手順の保存・取消・ABC記録はできません。欠席を解除する場合は、利用者選択画面から操作してください。
+          </Typography>
+        </Alert>
+      )}
 
       {/* メインコンテンツ */}
       <Grid container spacing={4} sx={{ flexGrow: 1, mb: 4 }}>
@@ -522,7 +544,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                   color="error"
                   onClick={() => setDeleteDialogOpen(true)}
                   sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem', mr: 'auto' }}
-                  disabled={isSaving || isDeleting || isRecordStatusUnknown}
+                  disabled={isSaving || isDeleting || isRecordStatusUnknown || isAbsent}
                   data-testid="kiosk-observation-revert"
                 >
                   記録を取り消す
@@ -542,7 +564,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 color="primary"
                 onClick={handleSave}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
-                disabled={isSaving || isDeleting || isRecordStatusUnknown}
+                disabled={isSaving || isDeleting || isRecordStatusUnknown || isAbsent}
                 data-testid="kiosk-observation-submit"
               >
                 記録を保存する

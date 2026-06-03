@@ -62,6 +62,12 @@ describe('KioskUserSelectScreen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '再読み込み' }));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
+
+    // 再読み込みによって開始されるローディング表示とその完了を待機し、テスト外での非同期状態更新（act警告）を防ぐ
+    await screen.findByRole('progressbar');
+    await waitFor(() => {
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
   });
 
   it('keeps the empty target-user state for a successful load with no target users', async () => {
@@ -201,5 +207,97 @@ describe('KioskUserSelectScreen', () => {
 
     const submitBtn = screen.getByTestId('kiosk-absent-dialog-submit');
     expect(submitBtn).toBeDisabled();
+  });
+
+  it('shows "cancel absence" menu for an absent user and releases absence successfully', async () => {
+    mockUseUsersQuery.mockReturnValue({
+      data: [
+        {
+          Id: 4,
+          UserID: 'user-4',
+          FullName: '解除 太郎',
+          IsActive: true,
+          IsSupportProcedureTarget: true,
+          IsHighIntensitySupportTarget: false,
+        } as unknown as IUserMaster,
+      ],
+      status: 'success',
+      refresh: mockRefresh,
+    });
+
+    mockGetDailyByDate.mockResolvedValue([
+      {
+        Key: 'user-4|2026-06-03',
+        UserCode: 'user-4',
+        RecordDate: '2026-06-03',
+        Status: '当日欠席',
+      },
+    ]);
+    mockGetRecords.mockResolvedValue([]); // 既存実績なし
+
+    renderScreen();
+
+    const trigger = await screen.findByTestId('kiosk-user-menu-trigger-4');
+    fireEvent.click(trigger);
+
+    const menuItem = await screen.findByTestId('kiosk-user-menu-cancel-absent');
+    expect(menuItem).toBeInTheDocument();
+    fireEvent.click(menuItem);
+
+    const dialogTitle = await screen.findByText(/欠席処理を解除しますか？/);
+    expect(dialogTitle).toBeInTheDocument();
+    expect(screen.queryByTestId('kiosk-cancel-absent-dialog-warning')).toBeNull();
+
+    const submitBtn = screen.getByTestId('kiosk-cancel-absent-dialog-submit');
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockUpsertDailyByKey).toHaveBeenCalledWith(expect.objectContaining({
+        UserCode: 'user-4',
+        Status: '未',
+      }));
+    });
+  });
+
+  it('shows warning alert in cancellation dialog when there are existing records', async () => {
+    mockUseUsersQuery.mockReturnValue({
+      data: [
+        {
+          Id: 5,
+          UserID: 'user-5',
+          FullName: '矛盾 次郎',
+          IsActive: true,
+          IsSupportProcedureTarget: true,
+          IsHighIntensitySupportTarget: false,
+        } as unknown as IUserMaster,
+      ],
+      status: 'success',
+      refresh: mockRefresh,
+    });
+
+    mockGetDailyByDate.mockResolvedValue([
+      {
+        Key: 'user-5|2026-06-03',
+        UserCode: 'user-5',
+        RecordDate: '2026-06-03',
+        Status: '当日欠席',
+      },
+    ]);
+    mockGetRecords.mockResolvedValue([{ id: 'rec-2', status: 'completed' }]); // 既存実績あり
+
+    renderScreen();
+
+    const trigger = await screen.findByTestId('kiosk-user-menu-trigger-5');
+    fireEvent.click(trigger);
+
+    const menuItem = await screen.findByTestId('kiosk-user-menu-cancel-absent');
+    fireEvent.click(menuItem);
+
+    const warningAlert = await screen.findByTestId('kiosk-cancel-absent-dialog-warning');
+    expect(warningAlert).toBeInTheDocument();
+    expect(warningAlert).toHaveTextContent(/本日の実施記録が存在します/);
+
+    const submitBtn = screen.getByTestId('kiosk-cancel-absent-dialog-submit');
+    expect(submitBtn).not.toBeDisabled(); // 解除は許可されるため、disabled にならない
   });
 });
