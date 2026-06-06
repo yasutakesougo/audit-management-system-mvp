@@ -1,5 +1,6 @@
 import { createTokuseiDemoResponses, mapSpRowToTokuseiResponse, type SpTokuseiRawRow, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
-import { isDemoModeEnabled } from '@/lib/env';
+import { isDemoModeEnabled, shouldSkipSharePoint } from '@/lib/env';
+import { getActiveProviderType } from '@/lib/data/createDataProvider';
 import type { UseSP } from '@/lib/spClient';
 import { useSP } from '@/lib/spClient';
 import { FIELD_MAP_SURVEY_TOKUSEI, LIST_CONFIG, ListKeys, SURVEY_TOKUSEI_SELECT_FIELDS } from '@/sharepoint/fields';
@@ -21,18 +22,20 @@ export function useTokuseiSurveyResponses() {
   const spRef = useRef(sp);
   spRef.current = sp;
   const demoMode = isDemoModeEnabled();
+  const skipSp = shouldSkipSharePoint();
   const [state, setState] = useState<HookState>({ data: [], status: 'idle', error: null });
 
   const load = useCallback(async (signal?: AbortSignal) => {
+    const activeType = getActiveProviderType();
+    if (demoMode || skipSp || activeType === 'memory') {
+      setState({ data: createTokuseiDemoResponses(), status: 'success', error: null });
+      return;
+    }
+
     setState((prev) => ({ ...prev, status: 'loading', error: null }));
 
     try {
       const currentSp = spRef.current;
-      
-      if (demoMode) {
-        setState({ data: createTokuseiDemoResponses(), status: 'success', error: null });
-        return;
-      }
 
       // ヘルパー: 指定されたリストから回答を読み込む
       const fetchFromList = async (listTitle: string): Promise<TokuseiSurveyResponse[]> => {
