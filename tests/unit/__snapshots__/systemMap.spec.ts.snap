@@ -1,0 +1,410 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`System Map Generator > should capture all routes with nested path resolution and match snapshot 1`] = `
+[
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "/",
+  },
+  {
+    "file": "src/features/nurse/routes/NurseRoutes.tsx",
+    "path": "/nurse",
+  },
+  {
+    "file": "src/features/nurse/routes/NurseRoutes.tsx",
+    "path": "/nurse/observation",
+  },
+  {
+    "file": "src/features/nurse/routes/NurseRoutes.tsx",
+    "path": "/nurse/observation/bulk",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "abc-record",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/compliance-dashboard",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/csv-import",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/dashboard",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/data-integrity",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/exception-center",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/individual-support/:userCode?",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/integrated-resource-calendar",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/mode-switch",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/navigation-diagnostics",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/regulatory-dashboard",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/staff-attendance",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/status",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/step-templates",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/telemetry",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "admin/templates",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "analysis",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "analysis/dashboard",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "analysis/iceberg",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "analysis/iceberg-pdca",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "analysis/iceberg-pdca/edit",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "analysis/intervention",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "assessment",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "audit",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "auth/callback",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "billing",
+  },
+  {
+    "file": "src/app/routes/callLogRoutes.tsx",
+    "path": "call-logs",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "checklist",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "compliance",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/activity",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/attendance",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/health",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/menu",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/support",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/support-checklist",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/table",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "daily/time-based",
+  },
+  {
+    "file": "src/app/routes/dailyRoutes.tsx",
+    "path": "dailysupport",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "dashboard",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "dashboard/briefing",
+  },
+  {
+    "file": "src/app/routes/safetyRoutes.tsx",
+    "path": "exceptions",
+  },
+  {
+    "file": "src/app/routes/safetyRoutes.tsx",
+    "path": "exceptions/audit",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "handoff-analysis",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "handoff-timeline",
+  },
+  {
+    "file": "src/app/routes/ibdRoutes.tsx",
+    "path": "ibd",
+  },
+  {
+    "file": "src/app/routes/safetyRoutes.tsx",
+    "path": "incidents",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "isp-editor",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "isp-editor/:userId",
+  },
+  {
+    "file": "src/app/routes/kioskRoutes.tsx",
+    "path": "kiosk",
+  },
+  {
+    "file": "src/app/routes/kioskRoutes.tsx",
+    "path": "kiosk/toilet",
+  },
+  {
+    "file": "src/app/routes/kioskRoutes.tsx",
+    "path": "kiosk/users",
+  },
+  {
+    "file": "src/app/routes/kioskRoutes.tsx",
+    "path": "kiosk/users/:userId/procedures",
+  },
+  {
+    "file": "src/app/routes/kioskRoutes.tsx",
+    "path": "kiosk/users/:userId/procedures/:slotKey",
+  },
+  {
+    "file": "src/app/routes/hubRoutes.tsx",
+    "path": "master",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "meeting-guide",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "meeting-minutes",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "meeting-minutes/:id",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "meeting-minutes/:id/edit",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "meeting-minutes/new",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "monitoring-meeting/:userId",
+  },
+  {
+    "file": "src/app/routes/hubRoutes.tsx",
+    "path": "operations",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "ops",
+  },
+  {
+    "file": "src/app/routes/hubRoutes.tsx",
+    "path": "planning",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "planning-sheet-list",
+  },
+  {
+    "file": "src/app/routes/hubRoutes.tsx",
+    "path": "platform",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "records",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "records/journal",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "records/journal/personal",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "records/monthly",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
+    "path": "records/service-provision",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "room-management",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedule",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedule-ops",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedule/*",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules/create",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules/day",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules/month",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules/timeline",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules/unified",
+  },
+  {
+    "file": "src/app/routes/scheduleRoutes.tsx",
+    "path": "schedules/week",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "settings/operation-flow",
+  },
+  {
+    "file": "src/app/routes/hubRoutes.tsx",
+    "path": "severe",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "staff",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "staff/attendance",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "support-plan-guide",
+  },
+  {
+    "file": "src/app/routes/supportPlanRoutes.tsx",
+    "path": "support-planning-sheet/:planningSheetId",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "support-review",
+  },
+  {
+    "file": "src/app/routes/analysisRoutes.tsx",
+    "path": "survey/tokusei",
+  },
+  {
+    "file": "src/app/routes/dashboardRoutes.tsx",
+    "path": "today",
+  },
+  {
+    "file": "src/app/routes/transportRoutes.tsx",
+    "path": "transport/assignments",
+  },
+  {
+    "file": "src/app/routes/transportRoutes.tsx",
+    "path": "transport/execution",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "users",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "users/:userId",
+  },
+  {
+    "file": "src/app/routes/adminRoutes.tsx",
+    "path": "users/hub/:userId",
+  },
+]
+`;
