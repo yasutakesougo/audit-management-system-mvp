@@ -12,7 +12,6 @@ runListIntegration({
   keyField: 'date',
   selectFields: [
     'Title',
-    'date',
     'targetType',
     'targetId',
     'kind',
