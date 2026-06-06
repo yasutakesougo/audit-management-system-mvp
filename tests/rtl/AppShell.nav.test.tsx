@@ -11,6 +11,7 @@ import { FeatureFlagsContext, type FeatureFlagSnapshot } from '@/config/featureF
 import { SettingsProvider } from '@/features/settings';
 import { ToastProvider } from '@/hooks/useToast';
 import { TESTIDS } from '@/testids';
+import { suppressActWarnings } from '../unit/_helpers/consoleSpyHelper';
 
 vi.mock('@/lib/spClient', async () => {
   const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
@@ -109,18 +110,14 @@ vi.mock('@mui/material/Tooltip', () => ({
 }));
 
 describe('AppShell navigation smoke test', () => {
-  const originalError = console.error;
+  let restoreActWarnings: () => void;
 
   beforeAll(() => {
-    console.error = (...args: unknown[]) => {
-      const msg = String(args[0] || '');
-      if (msg.includes('not wrapped in act')) return;
-      originalError.apply(console, args);
-    };
+    restoreActWarnings = suppressActWarnings();
   });
 
   afterAll(() => {
-    console.error = originalError;
+    restoreActWarnings();
   });
 
   afterEach(async () => {

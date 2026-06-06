@@ -1,5 +1,6 @@
 import type { EnvRecord } from '@/lib/env';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { suppressConsoleDuring } from './_helpers/consoleSpyHelper';
 
 const trackedEnvKeys = [
   'VITE_MSAL_SCOPES',
@@ -110,23 +111,15 @@ describe('scope sanitisation helpers', () => {
 
   it('filters login scopes down to identity set and warns on extras', async () => {
     const env = await importEnvModule();
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const scopes = env.getMsalLoginScopes({
-      VITE_LOGIN_SCOPES: ' profile custom ',
-      VITE_MSAL_LOGIN_SCOPES: 'OPENID openid profile user.read',
-    } as EnvRecord);
+    await suppressConsoleDuring('warn', () => {
+      const scopes = env.getMsalLoginScopes({
+        VITE_LOGIN_SCOPES: ' profile custom ',
+        VITE_MSAL_LOGIN_SCOPES: 'OPENID openid profile user.read',
+      } as EnvRecord);
 
-    expect(scopes).toEqual(['openid', 'profile']);
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[env] Ignoring non-identity login scope "custom". Only openid/profile are requested during login.'
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[env] Ignoring non-identity login scope "OPENID". Only openid/profile are requested during login.'
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[env] Ignoring non-identity login scope "user.read". Only openid/profile are requested during login.'
-    );
+      expect(scopes).toEqual(['openid', 'profile']);
+    }, /Ignoring non-identity login scope "custom".*Ignoring non-identity login scope "OPENID".*Ignoring non-identity login scope "user.read"/s);
   });
 });
 

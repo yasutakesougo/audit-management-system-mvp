@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { suppressConsoleDuring } from '../../../../tests/unit/_helpers/consoleSpyHelper';
 import { DailyRecordItemSchema, SharePointDailyRecordItemSchema } from '../schema';
 
 describe('Daily Module Zod Schemas', () => {
@@ -47,18 +48,20 @@ describe('Daily Module Zod Schemas', () => {
       }
     });
 
-    it('should handle invalid JSON in UserRowsJSON gracefully', () => {
+    it('should handle invalid JSON in UserRowsJSON gracefully', async () => {
       const raw = {
         Id: 103,
         Title: '2026-02-28',
         UserRowsJSON: '{invalid json}',
       };
 
-      const result = SharePointDailyRecordItemSchema.safeParse(raw);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.UserRowsJSON).toEqual([]);
-      }
+      await suppressConsoleDuring('warn', () => {
+        const result = SharePointDailyRecordItemSchema.safeParse(raw);
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.UserRowsJSON).toEqual([]);
+        }
+      }, /Failed to parse UserRowsJSON/);
     });
   });
 
