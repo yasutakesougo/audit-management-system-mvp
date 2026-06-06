@@ -1,10 +1,16 @@
 /* eslint-disable no-console */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Project, SyntaxKind } from 'ts-morph';
+import type { ArrayLiteralExpression, ObjectLiteralExpression, VariableDeclaration, FunctionDeclaration } from 'ts-morph';
 import { HYDRATION_FEATURES } from '../src/hydration/features';
 import type { HydrationFeatureEntry, HydrationFeatureTree } from '../src/hydration/features';
 import { resolveHydrationEntry } from '../src/hydration/routes';
 import { getFeatureFlags } from '../src/config/featureFlags';
+import { getStandaloneHubIds, getHubRootPath } from '../src/app/hubs/hubDefinitions';
+import { computeNavigationDiagnostics } from '../src/app/navigation/diagnostics/navigationDiagnostics';
+import { APP_ROUTE_PATHS } from '../src/app/routes/appRoutePaths';
+import { isDynamicPattern, matchDynamic, normalizePath, normalizeRouterPath, ORPHAN_ALLOWLIST, ORPHAN_ALLOWLIST_DETAILS } from '../src/app/navigation/diagnostics/pathUtils';
 
 type RouteEntry = {
   path: string;
@@ -71,7 +77,7 @@ function collectTopLevel(): TopLevelModule[] {
     .map((entry) => ({
       name: entry.name,
       relativePath: path.posix.join('src', entry.name),
-      kind: entry.isDirectory() ? 'dir' as const : 'file' as const,
+      kind: entry.isDirectory() ? ('dir' as const) : ('file' as const),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -165,42 +171,149 @@ function findRouterFile(): string | null {
   return null;
 }
 
-function extractRoutesFromSource(source: string, routerRelPath: string): RouteEntry[] {
-  const routes: RouteEntry[] = [];
+function parseInitializer(
+  node: any,
+  parentPath: string,
+  fileRelPath: string,
+  routeEntries: RouteEntry[]
+): void {
+  const kind = node.getKind();
 
-  const jsxRouteRegex = /<Route\s+[^>]*path\s*=\s*["'`]([^"'`]+)["'`][^>]*>/g;
-  const objRouteRegex = /path\s*:\s*["'`]([^"'`]+)["'`]/g;
-
-  const addRoute = (pathLiteral: string, raw: string) => {
-    if (!routes.some((route) => route.path === pathLiteral)) {
-      routes.push({
-        path: pathLiteral,
-        raw: raw.trim(),
-        file: routerRelPath,
-      });
+  if (kind === SyntaxKind.ArrayLiteralExpression) {
+    const array = node as ArrayLiteralExpression;
+    for (const elem of array.getElements()) {
+      parseInitializer(elem, parentPath, fileRelPath, routeEntries);
     }
-  };
+  } else if (kind === SyntaxKind.ObjectLiteralExpression) {
+    parseRouteObject(node as ObjectLiteralExpression, parentPath, fileRelPath, routeEntries);
+  } else if (kind === SyntaxKind.ArrowFunction || kind === SyntaxKind.FunctionExpression) {
+    const body = node.getBody();
+    if (body) {
+      if (body.getKind() === SyntaxKind.Block) {
+        const returns = body.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+        for (const ret of returns) {
+          const expr = ret.getExpression();
+          if (expr) {
+            parseInitializer(expr, parentPath, fileRelPath, routeEntries);
+          }
+        }
+      } else {
+        parseInitializer(body, parentPath, fileRelPath, routeEntries);
+      }
+    }
+  } else if (kind === SyntaxKind.ParenthesizedExpression) {
+    const expr = node.getExpression();
+    if (expr) {
+      parseInitializer(expr, parentPath, fileRelPath, routeEntries);
+    }
+  }
+}
 
-  let match: RegExpExecArray | null;
+function parseRouteObject(
+  obj: ObjectLiteralExpression,
+  parentPath: string,
+  fileRelPath: string,
+  routeEntries: RouteEntry[]
+): void {
+  const pathProp = obj.getProperty('path');
+  const indexProp = obj.getProperty('index');
+  const childrenProp = obj.getProperty('children');
 
-  while ((match = jsxRouteRegex.exec(source))) {
-    const full = match[0] ?? '';
-    const routePath = match[1];
-    if (routePath) {
-      addRoute(routePath, full);
+  let currentPathSegment = '';
+  if (pathProp) {
+    const init = pathProp.getKind() === SyntaxKind.PropertyAssignment 
+      ? (pathProp as any).getInitializer() 
+      : null;
+    if (init) {
+      currentPathSegment = init.getText().replace(/^['"`]|['"`]$/g, '');
     }
   }
 
-  while ((match = objRouteRegex.exec(source))) {
-    const full = match[0] ?? '';
-    const routePath = match[1];
-    if (routePath) {
-      addRoute(routePath, full);
+  let fullPath = parentPath;
+  if (currentPathSegment) {
+    if (fullPath) {
+      const parentEndsWithSlash = fullPath.endsWith('/');
+      const childStartsWithSlash = currentPathSegment.startsWith('/');
+      if (parentEndsWithSlash && childStartsWithSlash) {
+        fullPath = fullPath + currentPathSegment.slice(1);
+      } else if (!parentEndsWithSlash && !childStartsWithSlash) {
+        fullPath = fullPath + '/' + currentPathSegment;
+      } else {
+        fullPath = fullPath + currentPathSegment;
+      }
+    } else {
+      fullPath = currentPathSegment;
     }
   }
 
-  routes.sort((a, b) => a.path.localeCompare(b.path));
-  return routes;
+  let isRoute = false;
+  if (pathProp) {
+    isRoute = true;
+  } else if (indexProp) {
+    const init = indexProp.getKind() === SyntaxKind.PropertyAssignment 
+      ? (indexProp as any).getInitializer() 
+      : null;
+    if (init && init.getText() === 'true') {
+      isRoute = true;
+    }
+  }
+
+  if (isRoute) {
+    routeEntries.push({
+      path: fullPath || '/',
+      raw: obj.getText().replace(/\s+/g, ' ').slice(0, 100),
+      file: fileRelPath,
+    });
+  }
+
+  if (childrenProp) {
+    const init = childrenProp.getKind() === SyntaxKind.PropertyAssignment 
+      ? (childrenProp as any).getInitializer() 
+      : null;
+    if (init) {
+      parseInitializer(init, fullPath, fileRelPath, routeEntries);
+    }
+  }
+}
+
+// Shared Project instance configured for performance
+const project = new Project({
+  skipLoadingLibFiles: true,
+  skipAddingFilesFromTsConfig: true,
+});
+
+function extractRoutesFromAST(filePath: string): RouteEntry[] {
+  let sourceFile = project.getSourceFile(filePath);
+  if (!sourceFile) {
+    sourceFile = project.addSourceFileAtPath(filePath);
+  }
+  const routeEntries: RouteEntry[] = [];
+  const fileRelPath = path.relative(ROOT, filePath).split(path.sep).join(path.posix.sep);
+
+  const exportedDeclarations = sourceFile.getExportedDeclarations();
+  
+  for (const decls of exportedDeclarations.values()) {
+    for (const decl of decls) {
+      if (decl.getKind() === SyntaxKind.VariableDeclaration) {
+        const varDecl = decl as VariableDeclaration;
+        const initializer = varDecl.getInitializer();
+        if (initializer) {
+          parseInitializer(initializer, '', fileRelPath, routeEntries);
+        }
+      } else if (decl.getKind() === SyntaxKind.FunctionDeclaration) {
+        const funcDecl = decl as FunctionDeclaration;
+        const returns = funcDecl.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+        for (const ret of returns) {
+          const expr = ret.getExpression();
+          if (expr) {
+            parseInitializer(expr, '', fileRelPath, routeEntries);
+          }
+        }
+      }
+    }
+  }
+
+  return routeEntries;
 }
 
 function collectRouteSourceFiles(): string[] {
@@ -234,13 +347,27 @@ function collectRoutes(): RouteEntry[] {
     return [];
   }
 
-  const routes = routeSourceFiles.flatMap((routeSourcePath) => {
-    const source = fs.readFileSync(routeSourcePath, 'utf8');
-    const routeSourceRelPath = path.relative(ROOT, routeSourcePath).split(path.sep).join(path.posix.sep);
-    return extractRoutesFromSource(source, routeSourceRelPath);
+  const astRoutes = routeSourceFiles.flatMap((routeSourcePath) => {
+    // Router definition itself (router.tsx) is just for composition, skip it to avoid duplication.
+    if (routeSourcePath.endsWith('router.tsx') || routeSourcePath.endsWith('router.ts')) {
+      return [];
+    }
+    return extractRoutesFromAST(routeSourcePath);
   });
 
-  return routes
+  const hubRoutes = getStandaloneHubIds().map((hubId) => {
+    const rootPath = getHubRootPath(hubId);
+    const pathLiteral = rootPath.replace(/^\//, ''); // Strip leading slash
+    return {
+      path: pathLiteral,
+      raw: `createStandaloneHubLandingRoute('${hubId}')`,
+      file: 'src/app/routes/hubRoutes.tsx',
+    };
+  });
+
+  const allRoutes = [...astRoutes, ...hubRoutes];
+
+  return allRoutes
     .filter((route, index, entries) =>
       entries.findIndex((candidate) => candidate.path === route.path && candidate.file === route.file) === index)
     .sort((a, b) => a.path.localeCompare(b.path) || a.file.localeCompare(b.file));
@@ -415,6 +542,147 @@ function formatFeatureFlagsSection(): string {
   return lines.join('\n');
 }
 
+function formatDiagnosticsSection(routes: RouteRow[]): string {
+  // 1. Duplicate Routes (based on AST-extracted routes)
+  const duplicates = new Map<string, RouteRow[]>();
+  routes.forEach((route) => {
+    const norm = normalizeRouterPath(normalizePath(route.path));
+    if (!duplicates.has(norm)) {
+      duplicates.set(norm, []);
+    }
+    duplicates.get(norm)!.push(route);
+  });
+  const duplicateRows = [...duplicates.entries()]
+    .filter(([_, list]) => list.length > 1)
+    .map(([path, list]) => ({ path, list }));
+
+  // 2. Navigation Targets exposure (cross-reference based on APP_ROUTE_PATHS)
+  const routerPathSet = new Set(APP_ROUTE_PATHS.map(normalizeRouterPath));
+
+  const roles: ('admin' | 'reception' | 'viewer')[] = ['admin', 'reception', 'viewer'];
+  const activeNavHrefs = new Set<string>();
+
+  roles.forEach((role) => {
+    const result = computeNavigationDiagnostics({
+      role,
+      schedulesEnabled: true,
+      complianceFormEnabled: true,
+      icebergPdcaEnabled: true,
+      staffAttendanceEnabled: true,
+      todayOpsEnabled: true,
+    });
+    result.navItemsFlat.concat(result.footerItemsFlat).forEach((item) => {
+      if (item.visible) {
+        activeNavHrefs.add(normalizePath(item.href));
+      }
+    });
+  });
+
+  const matchesAnyRoute = (href: string): boolean => {
+    const normHref = normalizeRouterPath(normalizePath(href));
+    if (routerPathSet.has(normHref)) return true;
+    return [...routerPathSet].some((rp) => isDynamicPattern(rp) && matchDynamic(normHref, rp));
+  };
+
+  // Dead Links: Exposed in nav config, but not present in router (APP_ROUTE_PATHS)
+  const deadLinks: string[] = [];
+  for (const href of activeNavHrefs) {
+    if (href.startsWith('/nurse')) continue; // Skip nurse namespace nested targets
+    if (!matchesAnyRoute(href)) {
+      deadLinks.push(href);
+    }
+  }
+
+  // Orphan Routes: Present in router (APP_ROUTE_PATHS), but not exposed in nav
+  const orphanRoutes: string[] = [];
+  const allowlistedOrphans: string[] = [];
+
+  for (const routerPath of routerPathSet) {
+    let isExposed = activeNavHrefs.has(routerPath) || 
+      [...activeNavHrefs].some((href) => isDynamicPattern(routerPath) && matchDynamic(href, routerPath));
+
+    if (!isExposed) {
+      let isAllowlisted = ORPHAN_ALLOWLIST.has(routerPath) || 
+        [...ORPHAN_ALLOWLIST].some((p) => isDynamicPattern(p) && matchDynamic(routerPath, p));
+      
+      if (isAllowlisted) {
+        allowlistedOrphans.push(routerPath);
+      } else {
+        orphanRoutes.push(routerPath);
+      }
+    }
+  }
+
+  const lines: string[] = [];
+  lines.push('## 7. Routing Diagnostics & Consistency');
+  lines.push('');
+
+  // Duplicates
+  lines.push('### Duplicate Routes');
+  lines.push('');
+  if (duplicateRows.length === 0) {
+    lines.push('_No duplicate routes detected._');
+    lines.push('');
+  } else {
+    lines.push('| Path | Occurrences | Source Files |');
+    lines.push('| ---- | ----------- | ------------ |');
+    duplicateRows.forEach(({ path, list }) => {
+      const sources = list.map((r) => `\`${r.source}\``).join(', ');
+      lines.push(`| \`${path}\` | ${list.length} | ${sources} |`);
+    });
+    lines.push('');
+  }
+
+  // Dead Links
+  lines.push('### Exposed Navigation Hrefs Missing in Router (Dead Links)');
+  lines.push('');
+  if (deadLinks.length === 0) {
+    lines.push('_No dead links detected._');
+    lines.push('');
+  } else {
+    lines.push('| Exposed Nav Path | Status |');
+    lines.push('| ---------------- | ------ |');
+    deadLinks.forEach((link) => {
+      lines.push(`| \`${link}\` | ❌ Dead Link |`);
+    });
+    lines.push('');
+  }
+
+  // Orphan Routes
+  lines.push('### Orphan Routes (Active Router Paths not exposed in Navigation)');
+  lines.push('');
+  if (orphanRoutes.length === 0) {
+    lines.push('_No active orphan routes detected._');
+    lines.push('');
+  } else {
+    lines.push('| Path | Status |');
+    lines.push('| ---- | ------ |');
+    orphanRoutes.forEach((orphan) => {
+      lines.push(`| \`${orphan}\` | ⚠️ Orphaned |`);
+    });
+    lines.push('');
+  }
+
+  // Allowlisted Orphans
+  lines.push('### Allowlisted Orphans (Intentionally unexposed routes)');
+  lines.push('');
+  if (allowlistedOrphans.length === 0) {
+    lines.push('_No allowlisted orphans detected._');
+    lines.push('');
+  } else {
+    lines.push('| Path | Reason |');
+    lines.push('| ---- | ------ |');
+    allowlistedOrphans.forEach((orphan) => {
+      const details = ORPHAN_ALLOWLIST_DETAILS.find((d) => d.path === orphan);
+      const reason = details ? details.reason : 'No reason specified';
+      lines.push(`| \`${orphan}\` | ${reason} |`);
+    });
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
 function buildMarkdown(): string {
   const topLevel = collectTopLevel();
   const features = collectFeatures();
@@ -437,6 +705,7 @@ function buildMarkdown(): string {
   parts.push(formatRouteSection(routeRows));
   parts.push(formatFeatureSpanSection(featureSpanRows));
   parts.push(formatFeatureFlagsSection());
+  parts.push(formatDiagnosticsSection(routeRows));
 
   return parts.join('\n');
 }
@@ -464,10 +733,11 @@ export {
   collectRouteSourceFiles,
   collectRoutes,
   collectTopLevel,
-  extractRoutesFromSource,
+  extractRoutesFromAST,
   formatFeatureSection,
   formatFeatureFlagsSection,
   formatRouteSection,
   formatTopLevelSection,
+  formatDiagnosticsSection,
   main,
 };
