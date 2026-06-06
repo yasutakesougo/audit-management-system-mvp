@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ScheduleCreateDialog, createInitialScheduleFormState, toCreateScheduleInput, validateScheduleForm, type ScheduleFormState, type ScheduleUserOption } from '@/features/schedules';
 import { TESTIDS } from '@/testids';
+import { suppressActWarnings } from './_helpers/consoleSpyHelper';
 
 const mockUsers: ScheduleUserOption[] = [
   { id: 'user-1', name: '利用者 一郎', lookupId: '101' },
@@ -35,19 +36,15 @@ const buildForm = (overrides: Partial<ScheduleFormState> = {}): ScheduleFormStat
  *
  * Ref: https://github.com/mui/material-ui/issues/36552
  */
-const originalConsoleError = console.error;
+let restoreActWarnings: () => void;
 
 beforeEach(() => {
-  console.error = (...args: unknown[]) => {
-    const msg = typeof args[0] === 'string' ? args[0] : '';
-    if (msg.includes('not wrapped in act')) return;
-    originalConsoleError(...args);
-  };
+  restoreActWarnings = suppressActWarnings();
 });
 
 afterEach(() => {
   cleanup();
-  console.error = originalConsoleError;
+  restoreActWarnings();
 });
 
 /**

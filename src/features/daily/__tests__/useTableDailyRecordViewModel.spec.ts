@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { suppressConsoleDuring } from '../../../../tests/unit/_helpers/consoleSpyHelper';
 
 import { useTableDailyRecordViewModel } from '../table/useTableDailyRecordViewModel';
 
@@ -91,16 +92,18 @@ describe('useTableDailyRecordViewModel', () => {
     mockSave.mockRejectedValueOnce(new Error('Save failed'));
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
-    await expect(
-      act(async () => {
-        await result.current.onSave({
-          date: '2026-02-07',
-          reporter: { name: 'テスト担当者', role: '生活支援員' },
-          userRows: [],
-          userCount: 0,
-        });
-      }),
-    ).rejects.toThrow('Save failed');
+    await suppressConsoleDuring('error', async () => {
+      await expect(
+        act(async () => {
+          await result.current.onSave({
+            date: '2026-02-07',
+            reporter: { name: 'テスト担当者', role: '生活支援員' },
+            userRows: [],
+            userCount: 0,
+          });
+        }),
+      ).rejects.toThrow('Save failed');
+    }, /日報保存に失敗しました/);
 
     expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
       '保存に失敗しました。もう一度お試しください。',
