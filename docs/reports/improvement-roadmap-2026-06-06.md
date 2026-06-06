@@ -68,9 +68,9 @@ Priority: Medium
 
 Priority: Medium
 
-1. Extend bundle budgets to other stable vendor and page chunks after collecting history.
-2. Reduce intentional test console noise without hiding unexpected errors.
-3. Review budgets when dependencies or browser support targets change.
+- **Task 1: Extend bundle budgets to other stable vendor and page chunks**: Completed on 2026-06-06 (Issue #2116). Expanded coverage to React Core, MUI Framework, Firebase SDK, and three key page components with strict required budget targets.
+- **Task 2: Reduce intentional test console noise**: Open (Issue #2117).
+- **Task 3: Review budgets when dependencies or browser support targets change**: Continuous.
 
 ## Verification
 
