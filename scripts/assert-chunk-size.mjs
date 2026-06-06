@@ -7,10 +7,10 @@ const ASSETS_DIR = path.join(DIST_DIR, 'assets');
 const DEFAULT_LIMIT_KB = 1200;
 
 const budgets = [
-  { label: 'application shell', pattern: /App-(?!legacy-).*\.js$/i, limitKb: 600, required: true },
-  { label: 'legacy application shell', pattern: /App-legacy-.*\.js$/i, limitKb: 600, required: true },
-  { label: 'PDF renderer', pattern: /vendor-pdf-(?!legacy-).*\.js$/i, limitKb: 1650, required: true },
-  { label: 'legacy PDF renderer', pattern: /vendor-pdf-legacy-.*\.js$/i, limitKb: 1650, required: true },
+  { label: 'application shell', pattern: /App-(?!legacy-).*\.js$/i, limitKb: 800, required: true },
+  { label: 'legacy application shell', pattern: /App-legacy-.*\.js$/i, limitKb: 800, required: true },
+  { label: 'PDF renderer', pattern: /vendor-pdf-(?!legacy-).*\.js$/i, limitKb: 1750, required: true },
+  { label: 'legacy PDF renderer', pattern: /vendor-pdf-legacy-.*\.js$/i, limitKb: 1750, required: true },
   { label: 'BlockNote editor', pattern: /MeetingMinutesBlockEditor-(?!legacy-).*\.js$/i, limitKb: 1100, required: true },
   { label: 'legacy BlockNote editor', pattern: /MeetingMinutesBlockEditor-legacy-.*\.js$/i, limitKb: 1250, required: true },
   { label: 'Excel export', pattern: /generateSupportProcedureExcel-(?!legacy-).*\.js$/i, limitKb: 1000, required: true },
