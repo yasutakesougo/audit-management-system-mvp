@@ -25,7 +25,7 @@
     "build": "vite build",
     "bundle:check": "node scripts/check-bundle.mjs",
     "bundle:assert": "node scripts/assert-chunk-size.mjs",
-    "build:ci": "tsx scripts/verify-locales-shim.ts && vite build --profile && npm run bundle:check && npm run bundle:assert",
+    "build:ci": "tsx scripts/verify-locales-shim.ts && NODE_ENV=production vite build --profile && npm run bundle:check && npm run bundle:assert",
     "preview": "vite preview",
     "preview:e2e": "cross-env VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit npm run build && node scripts/write-e2e-runtime-env.mjs && cross-env VITE_SP_RESOURCE=https://contoso.sharepoint.com VITE_SP_SITE_RELATIVE=/sites/Audit vite preview --host 127.0.0.1 --port 5173 --strictPort",
     "preview:csp": "node scripts/preview-csp.mjs",
