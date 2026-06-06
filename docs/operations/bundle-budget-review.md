@@ -154,6 +154,23 @@ Once per quarter:
 The review should produce either a small budget-adjustment PR with evidence or
 a comment on the tracking issue stating that no changes are required.
 
+## Monitored Targets Baseline (2026-06-06)
+
+The following table records the current actual sizes and configured limits for all monitored modern and legacy chunks. Usage indicates the headroom ratio (`actual / limit`).
+
+| Chunk | Modern actual | Modern limit | Legacy actual | Legacy limit | Usage | Reason |
+|---|---:|---:|---:|---:|---:|---|
+| application shell | 539.9 kB | 800 kB | 525.3 kB | 800 kB | ~67% | Main application entry |
+| PDF renderer | 1540.2 kB | 1750 kB | 1517.5 kB | 1750 kB | ~88% | Heavy PDF generation runtime |
+| BlockNote editor | 992.7 kB | 1100 kB | 1195.7 kB | 1250 kB | ~96% | Rich text block editor |
+| Excel export | 917.2 kB | 1000 kB | 912.8 kB | 1000 kB | ~92% | Excel schema generation runtime |
+| React Core | 676.2 kB | 850 kB | 667.3 kB | 850 kB | ~80% | React core libraries |
+| MUI Framework | 555.5 kB | 700 kB | 544.9 kB | 700 kB | ~79% | Material UI and styles |
+| Firebase SDK | 379.4 kB | 480 kB | 559.1 kB | 700 kB | ~80% | Firebase client runtime |
+| SupportPlanningSheetPage | 260.5 kB | 330 kB | 259.5 kB | 330 kB | ~79% | Key creation screen |
+| MonthlyRecordPage | 40.6 kB | 60 kB | 40.4 kB | 60 kB | ~68% | Business journal screen |
+| SupportPlanGuidePage | 12.4 kB | 40 kB | 12.4 kB | 40 kB | ~31% | Support plan guide screen |
+
 ## References
 
 - `scripts/assert-chunk-size.mjs`

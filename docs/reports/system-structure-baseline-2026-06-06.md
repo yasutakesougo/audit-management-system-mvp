@@ -49,7 +49,7 @@ Date: 2026-06-06
 - Support procedure Excel generation is loaded only when export is requested and is isolated to an approximately 939 kB chunk.
 - `MonitoringMeetingRecordPage` is about 24.5 kB and has no static import of the PDF vendor chunk.
 - Monitoring-meeting PDF generation is isolated behind the export click into the approximately 1.58 MB PDF vendor chunk.
-- Required modern and legacy budgets now guard the application shell, PDF renderer, BlockNote editor, and Excel export chunks.
+- Required modern and legacy budgets now guard the application shell, PDF renderer, BlockNote editor, Excel export, React Core, MUI Framework, Firebase SDK, and three key page components (SupportPlanningSheetPage, SupportPlanGuidePage, MonthlyRecordPage).
 - BlockNote locales were optimized using a lightweight shim to prevent future dependency updates from bundling unused multi-language payload. PDF and Excel remain unchanged as verified best-practices.
 
 ## Known Follow-up Items
