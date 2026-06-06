@@ -1,10 +1,8 @@
 import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
-import { generateDailyReport, getScheduleKey, toBipOptions } from '@/features/daily';
+import { getScheduleKey } from '@/features/daily';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/pages/FullScreenDailyDialogPage';
 import { MonitoringCountdown } from '@/features/daily/components/sections/MonitoringCountdown';
-import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
-import { RecentRecordsDialog } from '@/features/daily/components/split-stream/RecentRecordsDialog';
 import { PlanSelectionStep } from '@/features/daily/components/wizard/PlanSelectionStep';
 import { RecordInputStep } from '@/features/daily/components/wizard/RecordInputStep';
 import { UserSelectionStep } from '@/features/daily/components/wizard/UserSelectionStep';
@@ -14,13 +12,11 @@ import { useExecutionData } from '@/features/daily/hooks/legacy/useExecutionData
 import { useExecutionStore } from '@/features/daily/hooks/legacy-stores/executionStore';
 import { useProcedureData } from '@/features/daily/hooks/legacy/useProcedureData';
 import { useSupportWizard } from '@/features/daily/hooks/legacy/useSupportWizard';
-import type { ProcedureItem } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import { useUsers } from '@/features/users/useUsers';
 import { useIbdPageGuard } from '@/features/daily/hooks/useIbdPageGuard';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { usePlanningSheetToProcedureBridge } from '@/features/planning-sheet/hooks/usePlanningSheetToProcedureBridge';
-import { generateSupportProcedureExcel } from '@/features/official-forms/generateSupportProcedureExcel';
 import { bridgePlanningSheetToDailyProcedures as bridgeToOfficial } from '@/features/planning-sheet/logic/dailyProcedureMapper';
 import { CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
@@ -31,7 +27,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
@@ -52,8 +48,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     planningSheetId: initialSearchParams.get('planningSheetId') ?? undefined,
   }).current;
 
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [recentRecordsOpen, setRecentRecordsOpen] = useState(false);
   const recordDate = useMemo(() => initialRecordDate, [initialRecordDate]);
   const targetDate = useMemo(() => recordDate.toISOString().slice(0, 10), [recordDate]);
 
@@ -98,7 +92,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     handleUserChange,
     schedule,
     filledStepIds,
-    recentObservations,
     setIsAcknowledged,
     selectedStepId: resolvedSelectedStepId,
     setSelectedStepId,
@@ -160,9 +153,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     [interventionStore, wizard.wizardUserId, targetUserId],
   );
 
-  const bipOptions = useMemo(() => toBipOptions(userInterventionPlans), [userInterventionPlans]);
-
-
   // Error display
   const rawError = submitError ?? behaviorError;
   const displayedError = useMemo(() => {
@@ -211,12 +201,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     [handleRecordSubmit, verifySaveConflict],
   );
 
-  const handleProcedureSave = useCallback((items: ProcedureItem[]) => {
-    const uid = wizard.wizardUserId || targetUserId;
-    if (!uid) return;
-    procedureRepo.save(uid, items);
-  }, [procedureRepo, wizard.wizardUserId, targetUserId]);
-
   const handleErrorClose = useCallback(() => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.removeItem('daily-support-submit-error');
@@ -224,31 +208,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     clearError();
     setSubmitError(null);
   }, [clearError, setSubmitError]);
-
-  const _handleCopyReport = useCallback(async () => {
-    const uid = wizard.wizardUserId || targetUserId;
-    if (!uid || !selectedUser) return;
-    const records = await executionStore.getRecords(targetDate, uid);
-    const report = generateDailyReport({
-      date: targetDate,
-      userName: selectedUser.FullName,
-      schedule,
-      records,
-      observations: (() => {
-        const m = new Map<string, string>();
-        recentObservations.forEach((o) => {
-          if (o.planSlotKey && o.actualObservation) m.set(o.planSlotKey, o.actualObservation);
-        });
-        return m;
-      })(),
-    });
-
-    try {
-      await navigator.clipboard.writeText(report);
-    } catch {
-      // Fallback handled by snackbar
-    }
-  }, [executionStore, schedule, selectedUser, targetDate, wizard.wizardUserId, targetUserId, recentObservations]);
 
   // ── Execution Record Sync (Hydration) ──
   useEffect(() => {
@@ -272,7 +231,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         userName: selectedUser?.FullName,
         recordDate: targetDate,
       });
-      
+
+      const { generateSupportProcedureExcel } = await import(
+        '@/features/official-forms/generateSupportProcedureExcel'
+      );
       const output = await generateSupportProcedureExcel(templateBuffer, doc);
       
       const blob = new Blob([output.bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -558,22 +520,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             />
           )}
         </Box>
-
-        {/* Dialogs */}
-        <RecentRecordsDialog
-          open={recentRecordsOpen}
-          onClose={() => setRecentRecordsOpen(false)}
-          observations={recentObservations}
-          userName={selectedUser?.FullName}
-        />
-
-        <ProcedureEditor
-          open={isEditOpen}
-          initialItems={schedule}
-          onClose={() => setIsEditOpen(false)}
-          onSave={handleProcedureSave}
-          availablePlans={bipOptions}
-        />
 
         <Snackbar
           open={snackbarOpen}

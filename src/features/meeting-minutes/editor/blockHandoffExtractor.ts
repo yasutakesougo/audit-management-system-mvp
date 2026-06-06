@@ -14,7 +14,7 @@
  */
 import type { MeetingMinuteBlock } from '../types';
 import { normalizeMeetingMinuteBlocks } from './blockNormalizer';
-import { MEETING_PREFIX } from './slashMenuItems';
+import { MEETING_PREFIX } from './meetingPrefixes';
 
 // ──────────────────────────────────────────────────────────────
 // 公開型

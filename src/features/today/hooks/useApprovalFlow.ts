@@ -9,7 +9,7 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
-import { useStaffStore } from '@/features/staff';
+import { useStaffStore } from '@/features/staff/store';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useCallback, useMemo, useState } from 'react';
 

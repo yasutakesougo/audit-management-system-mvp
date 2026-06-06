@@ -14,7 +14,7 @@ vi.mock('@/features/daily/repositories/repositoryFactory', () => ({
   useDailyRecordRepository: vi.fn(),
 }));
 
-vi.mock('@/features/staff', () => ({
+vi.mock('@/features/staff/store', () => ({
   useStaffStore: vi.fn(),
 }));
 
@@ -23,7 +23,7 @@ vi.mock('@/utils/getNow', () => ({
 }));
 
 import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
-import { useStaffStore } from '@/features/staff';
+import { useStaffStore } from '@/features/staff/store';
 
 const mockApprove = vi.fn();
 

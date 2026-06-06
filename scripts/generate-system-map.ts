@@ -203,17 +203,47 @@ function extractRoutesFromSource(source: string, routerRelPath: string): RouteEn
   return routes;
 }
 
-function collectRoutes(): RouteEntry[] {
+function collectRouteSourceFiles(): string[] {
+  const files = new Set<string>();
   const routerPath = findRouterFile();
-  if (!routerPath) {
-    console.warn('[generate-system-map] router.tsx not found; route section will be empty.');
+  if (routerPath) {
+    files.add(routerPath);
+  }
+
+  const routeRoots = [
+    path.join(SRC_ROOT, 'app', 'routes'),
+    path.join(SRC_ROOT, 'features', 'nurse', 'routes'),
+  ];
+
+  for (const routeRoot of routeRoots) {
+    for (const entry of listDir(routeRoot)) {
+      if (!entry.isFile() || !/Routes?\.(ts|tsx)$/.test(entry.name)) {
+        continue;
+      }
+      files.add(path.join(routeRoot, entry.name));
+    }
+  }
+
+  return [...files].sort();
+}
+
+function collectRoutes(): RouteEntry[] {
+  const routeSourceFiles = collectRouteSourceFiles();
+  if (!routeSourceFiles.length) {
+    console.warn('[generate-system-map] route source files not found; route section will be empty.');
     return [];
   }
 
-  const source = fs.readFileSync(routerPath, 'utf8');
-  const routerRelPath = path.posix.join('src', path.relative(SRC_ROOT, routerPath));
+  const routes = routeSourceFiles.flatMap((routeSourcePath) => {
+    const source = fs.readFileSync(routeSourcePath, 'utf8');
+    const routeSourceRelPath = path.relative(ROOT, routeSourcePath).split(path.sep).join(path.posix.sep);
+    return extractRoutesFromSource(source, routeSourceRelPath);
+  });
 
-  return extractRoutesFromSource(source, routerRelPath);
+  return routes
+    .filter((route, index, entries) =>
+      entries.findIndex((candidate) => candidate.path === route.path && candidate.file === route.file) === index)
+    .sort((a, b) => a.path.localeCompare(b.path) || a.file.localeCompare(b.file));
 }
 
 const isHydrationFeatureEntry = (value: unknown): value is HydrationFeatureEntry => {
@@ -431,6 +461,7 @@ export {
   buildRouteRows,
   collectFeatures,
   collectPages,
+  collectRouteSourceFiles,
   collectRoutes,
   collectTopLevel,
   extractRoutesFromSource,

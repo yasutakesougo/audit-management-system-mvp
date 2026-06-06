@@ -8,6 +8,7 @@
 import { isDebugFlag } from '@/lib/debugFlag';
 import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
+import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 
 import {
     FIELDS_CACHE_TTL_MS,
@@ -577,7 +578,6 @@ export async function ensureListExists(
     const indexedCount = indexedColumns.length;
 
     if (indexedCount > 15) {
-      const { reportSpHealthEvent } = await import('@/features/sp/health/spHealthSignalStore');
       reportSpHealthEvent({
         severity: indexedCount >= 20 ? 'critical' : 'warning',
         reasonCode: 'sp_index_pressure',

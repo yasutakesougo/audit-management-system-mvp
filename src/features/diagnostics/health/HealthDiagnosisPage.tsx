@@ -22,7 +22,10 @@ import { HealthContext, HealthReport } from "./types";
 import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
 import { HealthFilterBar, type HealthFilterState } from "./components/HealthFilterBar";
 import { useSpHealthSignal } from "@/features/sp/health/hooks/useSpHealthSignal";
-import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStore";
+import {
+  clearSpHealthSignal,
+  type SpHealthReasonCode,
+} from "@/features/sp/health/spHealthSignalStore";
 import { GovernanceAdvisePanel } from "../remediation/components/GovernanceAdvisePanel";
 import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 import { SpRemediationCard } from "@/features/sp/health/remediation/SpRemediationCard";
@@ -218,7 +221,7 @@ export function HealthDiagnosisPage(props: {
                     variant="outlined"
                     sx={{ color: 'inherit', borderColor: 'rgba(0,0,0,0.2)' }}
                     onClick={() => {
-                      import('@/features/sp/health/spHealthSignalStore').then(m => m.clearSpHealthSignal());
+                      clearSpHealthSignal();
                     }}
                   >
                     対応済みとしてクリア

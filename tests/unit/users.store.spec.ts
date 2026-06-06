@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 afterEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
-  vi.unmock('@/lib/env');
-  vi.unmock('@/features/users/useUsers');
-  vi.unmock('@/features/users/usersStoreDemo');
+  vi.doUnmock('@/lib/env');
+  vi.doUnmock('@/features/users/useUsers');
+  vi.doUnmock('@/features/users/usersStoreDemo');
 });
 
 const setupStore = async (options: {

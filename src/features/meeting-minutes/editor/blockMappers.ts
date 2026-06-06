@@ -9,7 +9,7 @@
  * 双方向マッパー。Repository 層およびフォーム初期化で使用される。
  */
 import type { MeetingMinuteBlock } from '../types';
-import { MEETING_PREFIX } from './slashMenuItems';
+import { MEETING_PREFIX } from './meetingPrefixes';
 
 // ──────────────────────────────────────────────────────────────
 // ID生成用ユーティリティ

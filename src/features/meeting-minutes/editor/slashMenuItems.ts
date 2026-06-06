@@ -17,6 +17,9 @@ import type { BlockNoteEditor } from '@blocknote/core';
 import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core/extensions';
 import type { DefaultReactSuggestionItem } from '@blocknote/react';
 import { meetingMinutesSchema } from './blockKinds';
+import { MEETING_PREFIX } from './meetingPrefixes';
+
+export { MEETING_PREFIX } from './meetingPrefixes';
 
 export type MeetingMinutesEditor = BlockNoteEditor<typeof meetingMinutesSchema.blockSchema>;
 
@@ -26,19 +29,6 @@ export type MeetingMinutesEditor = BlockNoteEditor<typeof meetingMinutesSchema.b
 
 const GROUP_PRIMARY = '議事録';
 const GROUP_SECONDARY = '補助';
-
-// ──────────────────────────────────────────────────────────────
-// Prefix 定数（将来の block 抽出で検索キーとして使用可能）
-// ──────────────────────────────────────────────────────────────
-
-export const MEETING_PREFIX = {
-  agenda: '■ 議題：',
-  report: '【報告】',
-  decision: '【決定事項】',
-  notice: '【連絡事項】',
-  pending: '【継続検討】',
-  nextSchedule: '【次回予定】',
-} as const;
 
 // ──────────────────────────────────────────────────────────────
 // ヘルパー: 見出しブロックを挿入し、直後に指定タイプの空ブロックを追加

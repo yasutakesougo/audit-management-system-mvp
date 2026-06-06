@@ -1,6 +1,8 @@
 import { getAppConfig } from '../../lib/env';
+import { useAuditSyncBatch } from './useAuditSyncBatch.core';
+
 export * from './useAuditSyncBatch.core';
-export { useAuditSyncBatch as default } from './useAuditSyncBatch.core';
+export { useAuditSyncBatch as default };
 
 // E2E テスト用の SyncResult 型（useAuditSyncBatch.core.ts の SyncResult と対応）
 interface E2ESyncResult {
@@ -30,7 +32,6 @@ if (typeof window !== 'undefined') {
       __E2E_INVOKE_SYNC_BATCH__?: (size?: number) => Promise<E2ESyncResult | { error: string }>
     }).__E2E_INVOKE_SYNC_BATCH__ = async (size?: number) => {
       try {
-        const { useAuditSyncBatch } = await import('./useAuditSyncBatch.core');
         const hook = useAuditSyncBatch();
         return await hook.syncAllBatch(size);
       } catch (error) {
