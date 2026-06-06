@@ -8,7 +8,7 @@ runListIntegration({
   siteUrl,
   listTitle: 'Users_Master',
   keyField: 'UserID',
-  selectFields: ['Title', 'UserID', 'FullName', 'IsActive', 'Modified'],
+  selectFields: ['Title', 'FullName', 'IsActive', 'Modified'],
   fixedKeyValue: 'E2E_INTEGRATION_USER_0001',
   makeUpsertPayload: (key) => ({
     UserID: key,

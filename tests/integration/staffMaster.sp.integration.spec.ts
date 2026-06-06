@@ -10,7 +10,6 @@ runListIntegration({
   keyField: 'StaffID',
   selectFields: [
     'Title',
-    'StaffID',
     'FullName',
     'Role',
     'IsActive',
