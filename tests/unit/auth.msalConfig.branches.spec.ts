@@ -5,7 +5,8 @@ const realWindow = globalThis.window;
 afterEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
-  vi.unmock('@/lib/env');
+  vi.doUnmock('@/lib/env');
+  vi.doUnmock('@/env/msalEnv');
   vi.unstubAllGlobals();
   if (realWindow) {
     globalThis.window = realWindow;

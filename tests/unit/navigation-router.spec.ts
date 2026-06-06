@@ -1,4 +1,4 @@
-import { router } from '@/app/appRouter';
+import { router } from '@/app/router';
 import { createNavItems } from '@/app/config/navigationConfig';
 import type { RouteObject } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';

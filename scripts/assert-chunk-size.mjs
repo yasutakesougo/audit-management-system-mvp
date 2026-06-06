@@ -4,9 +4,17 @@ import path from 'node:path';
 
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
 const ASSETS_DIR = path.join(DIST_DIR, 'assets');
-const DEFAULT_LIMIT_KB = 1200; // temporarily relaxed to accommodate current vendor bundle size
+const DEFAULT_LIMIT_KB = 1200;
 
 const budgets = [
+  { label: 'application shell', pattern: /App-(?!legacy-).*\.js$/i, limitKb: 800, required: true },
+  { label: 'legacy application shell', pattern: /App-legacy-.*\.js$/i, limitKb: 800, required: true },
+  { label: 'PDF renderer', pattern: /vendor-pdf-(?!legacy-).*\.js$/i, limitKb: 1750, required: true },
+  { label: 'legacy PDF renderer', pattern: /vendor-pdf-legacy-.*\.js$/i, limitKb: 1750, required: true },
+  { label: 'BlockNote editor', pattern: /MeetingMinutesBlockEditor-(?!legacy-).*\.js$/i, limitKb: 1100, required: true },
+  { label: 'legacy BlockNote editor', pattern: /MeetingMinutesBlockEditor-legacy-.*\.js$/i, limitKb: 1250, required: true },
+  { label: 'Excel export', pattern: /generateSupportProcedureExcel-(?!legacy-).*\.js$/i, limitKb: 1000, required: true },
+  { label: 'legacy Excel export', pattern: /generateSupportProcedureExcel-legacy-.*\.js$/i, limitKb: 1000, required: true },
   { pattern: /recharts-.*\.js$/i, limitKb: 500 },
   { pattern: /bpmn-.*\.js$/i, limitKb: 170 },
   { pattern: /mui-shell-.*\.js$/i, limitKb: 200 },
@@ -30,13 +38,8 @@ const budgets = [
   { pattern: /msal-react.*\.js$/i, limitKb: 70 },
   { pattern: /SupportPlanGuidePage-.*\.js$/i, limitKb: 80 },
   { pattern: /SupportPlanGuidePage\.Markdown-.*\.js$/i, limitKb: 90 },
-  // App chunk: slimmed down after manualChunks code-splitting
-  { pattern: /App-.*\.js$/i, limitKb: 1200 },
-  { pattern: /App-legacy-.*\.js$/i, limitKb: 1200 },
   // vendor-reports: xlsx + @react-pdf (lazy-loaded on export only)
   { pattern: /vendor-reports-.*\.js$/i, limitKb: 2000 },
-  // vendor-pdf: consolidated @react-pdf chunk (merged with pdfkit to avoid circular TDZ issues)
-  { pattern: /vendor-pdf-.*\.js$/i, limitKb: 2000 },
 ];
 
 const limitKb = Number.parseFloat(process.env.BUNDLE_MAX_CHUNK_KB ?? '') || DEFAULT_LIMIT_KB;
@@ -60,6 +63,17 @@ async function collectAssets() {
       throw new Error('No assets found in dist/assets. Did the build complete?');
     }
 
+    const missingBudgets = budgets.filter(
+      (budget) => budget.required && !assets.some((asset) => budget.pattern.test(asset.name)),
+    );
+    if (missingBudgets.length > 0) {
+      console.error('Chunk size assertion failed. Required budget targets were not found:');
+      missingBudgets.forEach((budget) => {
+        console.error(` - ${budget.label}: ${budget.pattern}`);
+      });
+      process.exit(1);
+    }
+
     const offenders = assets
       .map((asset) => {
         const budget = budgets.find((entry) => entry.pattern.test(asset.name));
@@ -68,7 +82,7 @@ async function collectAssets() {
           name: asset.name,
           size: asset.size,
           limitKb: limitForAssetKb,
-          budgetPattern: budget?.pattern ?? null,
+          budgetLabel: budget?.label ?? null,
         };
       })
       .filter((entry) => entry.size > entry.limitKb * 1024);
@@ -76,13 +90,19 @@ async function collectAssets() {
       console.error(`Chunk size assertion failed. Limit: ${limitKb} kB`);
       offenders.sort((a, b) => b.size - a.size).forEach((asset) => {
         const kb = (asset.size / 1024).toFixed(1);
-        const budgetInfo = asset.budgetPattern ? ` (${asset.budgetPattern} <= ${asset.limitKb} kB)` : ` (limit ${asset.limitKb} kB)`;
+        const budgetInfo = asset.budgetLabel
+          ? ` (${asset.budgetLabel} <= ${asset.limitKb} kB)`
+          : ` (limit ${asset.limitKb} kB)`;
         console.error(` - ${asset.name}: ${kb} kB${budgetInfo}`);
       });
       process.exit(1);
     }
     const maxSizeKb = (Math.max(...assets.map((a) => a.size)) / 1024).toFixed(1);
     console.log(`Chunk size assertion passed. Largest chunk: ${maxSizeKb} kB (default limit ${limitKb} kB)`);
+    budgets.filter((budget) => budget.required).forEach((budget) => {
+      const asset = assets.find((entry) => budget.pattern.test(entry.name));
+      console.log(` - ${budget.label}: ${(asset.size / 1024).toFixed(1)} kB / ${budget.limitKb} kB`);
+    });
   } catch (error) {
     console.error('Chunk size assertion failed:', error.message ?? error);
     process.exit(1);

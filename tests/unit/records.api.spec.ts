@@ -25,6 +25,9 @@ const mockFetch = vi.fn(async () => ({
   json: async () => boomPayload,
 }));
 
+vi.mock('cross-fetch', () => ({ default: mockFetch, fetch: mockFetch }));
+vi.mock('cross-fetch/polyfill', () => ({}));
+
 const DEFAULT_APP_CONFIG: AppConfig = {
   VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
   VITE_SP_SITE_RELATIVE: '/sites/wf',
@@ -53,9 +56,9 @@ const DEFAULT_APP_CONFIG: AppConfig = {
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  vi.stubEnv('VITE_SP_RESOURCE', DEFAULT_APP_CONFIG.VITE_SP_RESOURCE);
+  vi.stubEnv('VITE_SP_SITE_RELATIVE', DEFAULT_APP_CONFIG.VITE_SP_SITE_RELATIVE);
   vi.stubGlobal('fetch', mockFetch);
-  vi.mock('cross-fetch', () => ({ default: mockFetch, fetch: mockFetch }));
-  vi.mock('cross-fetch/polyfill', () => ({}));
 });
 
 afterEach(() => {

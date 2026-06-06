@@ -12,7 +12,7 @@ import { useAttendanceStore } from '@/features/attendance';
 import { useQuery } from '@tanstack/react-query';
 import { useDashboardSummary } from '@/features/dashboard';
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
-import { useStaffStore } from '@/features/staff';
+import { useStaffStore } from '@/features/staff/store';
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import { toLocalDateISO } from '@/utils/getNow';

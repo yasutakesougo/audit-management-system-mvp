@@ -147,6 +147,8 @@ export default defineConfig(({ mode }) => {
         '@fluentui/react': fluentStub,
         'node:fs': emptyShim,
         crypto: emptyShim,
+        '@blocknote/core/locales': resolve(srcDir, 'shims/blocknote-locales-shim.ts'),
+        '@blocknote/core/dist/locales.js': resolve(srcDir, 'shims/blocknote-locales-shim.ts'),
       },
     },
     build: {
@@ -244,15 +246,9 @@ export default defineConfig(({ mode }) => {
             if (normalized.includes('/@tanstack/')) {
               return 'tanstack';
             }
-            // ── Rich editor ──
-            if (
-              normalized.includes('/@blocknote/') ||
-              normalized.includes('/@mantine/') ||
-              normalized.includes('/prosemirror') ||
-              normalized.includes('/@tiptap/')
-            ) {
-              return 'vendor-blocknote';
-            }
+            // Rich editor dependencies follow the lazy meeting-minutes editor
+            // boundary. Forcing them into one chunk creates a React ↔ BlockNote
+            // circular chunk and makes the editor payload monolithic.
             // ── Catch-all: let Rollup tree-shake into importing chunks ──
             return undefined;
           },

@@ -73,8 +73,8 @@ const CsvImportPage = React.lazy(() => import('@/pages/admin/CsvImportPage'));
 const ModeSwitchPage = React.lazy(() => import('@/pages/admin/ModeSwitchPage'));
 const MonitoringMeetingRecordPage = React.lazy(() => import('@/pages/MonitoringMeetingRecordPage'));
 
-const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
-const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
+const StaffPanel = React.lazy(() => import('@/features/staff/StaffPanel'));
+const UsersPanel = React.lazy(() => import('@/features/users/UsersPanel'));
 
 // ── Dev harness ────────────────────────────────────────────────────────────
 

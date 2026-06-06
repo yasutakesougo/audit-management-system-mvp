@@ -11,7 +11,7 @@
 import type { MeetingMinutes, MeetingMinuteBlock } from '../types';
 import type { HandoffAudience } from '../editor/handoffTemplates';
 import { normalizeMeetingMinuteBlocks } from '../editor/blockNormalizer';
-import { MEETING_PREFIX } from '../editor/slashMenuItems';
+import { MEETING_PREFIX } from '../editor/meetingPrefixes';
 import {
   type MeetingMinutesExportModel,
   type MeetingMinutesExportSection,
