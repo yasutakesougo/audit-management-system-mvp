@@ -1,11 +1,12 @@
 import { isDebugFlag } from '@/lib/debugFlag';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, isDemoModeEnabled, shouldSkipSharePoint } from '@/lib/env';
 import { createSpClient } from '@/lib/spClient';
 import { FIELD_MAP_ICEBERG_ANALYSIS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
 import { z } from 'zod';
 import { icebergSnapshotSchema, type IcebergSnapshot } from './icebergTypes';
 import { ensureConfig } from '@/lib/sp/config';
 import { resolveListPath } from '@/lib/sp/helpers';
+import { getActiveProviderType } from '@/lib/data/createDataProvider';
 
 // ===== Error Classes =====
 
@@ -304,8 +305,42 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
 
 export type IcebergRepository = Awaited<ReturnType<typeof createIcebergRepository>>;
 
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/auth/useAuth';
+
+// ===== InMemory / Mock Implementation =====
+
+class InMemoryIcebergRepository implements IcebergRepository {
+  private snapshots = new Map<string, IcebergSnapshot>();
+
+  /** @internal - For testing only */
+  __clearForTesting(): void {
+    this.snapshots.clear();
+  }
+
+  async upsertSnapshot(params: {
+    entryHash: string;
+    snapshot: IcebergSnapshot;
+    etag?: string;
+  }): Promise<UpsertResult> {
+    const validated = icebergSnapshotSchema.parse(params.snapshot);
+    this.snapshots.set(params.entryHash, validated);
+    return { itemId: Math.floor(Math.random() * 1000) };
+  }
+
+  async getLatestByUser(userId: string): Promise<IcebergSnapshot | null> {
+    const userSnapshots = Array.from(this.snapshots.values())
+      .filter((s) => s.userId === userId)
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    return userSnapshots[0] || null;
+  }
+
+  async deleteByEntryHash(entryHash: string): Promise<void> {
+    this.snapshots.delete(entryHash);
+  }
+}
+
+const inMemoryIcebergRepositoryInstance = new InMemoryIcebergRepository();
 
 /**
  * React Hook: IcebergRepository を取得する
@@ -313,22 +348,33 @@ import { useAuth } from '@/auth/useAuth';
  */
 export function useIcebergRepository() {
   const { acquireToken } = useAuth();
-  const config = useMemo(() => ensureConfig(), []);
-  const spSiteUrl = config.baseUrl || '';
-
   const [repository, setRepository] = useState<IcebergRepository | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
-      const repo = await createIcebergRepository(acquireToken, spSiteUrl);
-      if (!cancelled) {
-        setRepository(repo);
+      const isMock = isDemoModeEnabled() || shouldSkipSharePoint() || getActiveProviderType() === 'memory';
+      if (isMock) {
+        if (!cancelled) {
+          setRepository(inMemoryIcebergRepositoryInstance);
+        }
+        return;
+      }
+
+      try {
+        const config = ensureConfig();
+        const spSiteUrl = config.baseUrl || '';
+        const repo = await createIcebergRepository(acquireToken, spSiteUrl);
+        if (!cancelled) {
+          setRepository(repo);
+        }
+      } catch (err) {
+        console.error('[useIcebergRepository] Failed to initialize SharePoint repository:', err);
       }
     };
     init();
     return () => { cancelled = true; };
-  }, [acquireToken, spSiteUrl]);
+  }, [acquireToken]);
 
   return repository;
 }

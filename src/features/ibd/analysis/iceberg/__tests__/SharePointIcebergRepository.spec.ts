@@ -2,13 +2,36 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createIcebergRepository } from '../SharePointIcebergRepository';
 import { type IcebergSnapshot } from '../icebergTypes';
 
-// Mock getAppConfig
-vi.mock('@/lib/env', () => ({
-  getAppConfig: () => ({
-    VITE_AUDIT_DEBUG: '0',
-    VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/wf',
-  }),
-}));
+const mockEnv = {
+  isDemoModeEnabled: false,
+  shouldSkipSharePoint: false,
+};
+
+const mockDataProvider = {
+  getActiveProviderType: 'sharepoint',
+};
+
+// Mock getAppConfig and mock functions
+vi.mock('@/lib/env', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
+  return {
+    ...actual,
+    getAppConfig: () => ({
+      VITE_AUDIT_DEBUG: '0',
+      VITE_SP_SITE_URL: 'https://contoso.sharepoint.com/sites/wf',
+    }),
+    isDemoModeEnabled: () => mockEnv.isDemoModeEnabled,
+    shouldSkipSharePoint: () => mockEnv.shouldSkipSharePoint,
+  };
+});
+
+vi.mock('@/lib/data/createDataProvider', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/data/createDataProvider')>('@/lib/data/createDataProvider');
+  return {
+    ...actual,
+    getActiveProviderType: () => mockDataProvider.getActiveProviderType,
+  };
+});
 
 // Mock spClient logic
 const mockSpFetch = vi.fn();
@@ -26,8 +49,18 @@ describe('SharePointIcebergRepository Logs Persistence', () => {
   const baseUrl = 'https://contoso.sharepoint.com/sites/wf';
   const acquireToken = async () => 'mock-token';
   
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    mockEnv.isDemoModeEnabled = false;
+    mockEnv.shouldSkipSharePoint = false;
+    mockDataProvider.getActiveProviderType = 'sharepoint';
+
+    try {
+      const { inMemoryIcebergRepositoryInstance } = await import('../SharePointIcebergRepository');
+      (inMemoryIcebergRepositoryInstance as any).__clearForTesting();
+    } catch {
+      // ignore
+    }
   });
 
   const validSnapshot: IcebergSnapshot = {
@@ -162,6 +195,60 @@ describe('SharePointIcebergRepository Logs Persistence', () => {
         entryHash: 'hash-abc',
         snapshot: validSnapshot,
       })).rejects.toThrow(); // We use the re-exported ConflictError
+    });
+  });
+
+  describe('useIcebergRepository Hook', () => {
+    it('returns InMemoryIcebergRepository if shouldSkipSharePoint is true', async () => {
+      mockEnv.shouldSkipSharePoint = true;
+      const { renderHook } = await import('@testing-library/react');
+      const { useIcebergRepository } = await import('../SharePointIcebergRepository');
+
+      const { result } = renderHook(() => useIcebergRepository());
+
+      await vi.waitFor(() => {
+        expect(result.current).not.toBeNull();
+      });
+
+      const repo = result.current;
+      expect(repo).toBeDefined();
+      expect(typeof repo?.upsertSnapshot).toBe('function');
+      expect(typeof repo?.getLatestByUser).toBe('function');
+
+      const testSnapshot: IcebergSnapshot = {
+        schemaVersion: 1,
+        sessionId: 'sess-mock',
+        userId: 'user-mock',
+        title: 'Mock Session',
+        updatedAt: '2026-04-08T16:00:00Z',
+        nodes: [],
+        links: [],
+        logs: [],
+        status: 'active',
+      };
+
+      await repo?.upsertSnapshot({
+        entryHash: 'hash-mock',
+        snapshot: testSnapshot,
+      });
+
+      const retrieved = await repo?.getLatestByUser('user-mock');
+      expect(retrieved?.sessionId).toBe('sess-mock');
+    });
+
+    it('returns InMemoryIcebergRepository if getActiveProviderType is memory', async () => {
+      mockDataProvider.getActiveProviderType = 'memory';
+      const { renderHook } = await import('@testing-library/react');
+      const { useIcebergRepository } = await import('../SharePointIcebergRepository');
+
+      const { result } = renderHook(() => useIcebergRepository());
+
+      await vi.waitFor(() => {
+        expect(result.current).not.toBeNull();
+      });
+
+      const repo = result.current;
+      expect(typeof repo?.upsertSnapshot).toBe('function');
     });
   });
 });
