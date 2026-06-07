@@ -112,3 +112,26 @@ SharePoint投影層は、ドメインモデルをSharePoint列名へ変換する
 各mapperは入力ドメインスキーマと出力投影スキーマの両方を検証する。`tenantId`、`supportCaseId`、保管ポリシー、監査ログ要件が欠落した値は、SharePoint Adapterへ到達する前に拒否する。
 
 この投影層にもSharePoint REST API、Graph client、実リスト作成、権限設定、UI、既存文書移行は含めない。
+
+## SharePoint Repository Adapter
+
+`SharePointSupportCaseRepository`は`SupportCaseRepository` Portを`IDataProvider`上で実装する。SharePoint列への変換は投影mapperへ委譲し、Adapter自身は検索、作成、更新、エラー境界を担当する。
+
+Adapterは次の安全条件を持つ。
+
+1. すべてのケース検索・更新を`tenantId + caseId`で絞り込む。
+2. 文書索引の追加前に、同一テナントの支援ケースが存在することを確認する。
+3. 個人情報文書は制限付き投影mapperだけを使用する。
+4. 個人情報文書の索引追加時に`SupportCaseEvents`へ監査イベントを記録する。
+5. 監査イベント保存に失敗した場合は、作成済み文書索引を削除する補償処理を行う。
+6. SharePointエラーを成功や空配列へ変換せず、`SupportCaseRepositoryError`として呼び出し元へ返す。
+7. `ensureListExists`を呼ばず、リスト作成・列追加・権限設定を行わない。
+
+このAdapterが保存するのはケースと文書参照メタデータであり、ドキュメントライブラリへのファイルアップロードは行わない。
+
+この段階にも次の処理は含めない。
+
+- 本番SharePointリスト・ライブラリの作成
+- 権限プロビジョニング
+- 既存フォルダ・文書の移行
+- UI接続

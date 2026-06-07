@@ -88,3 +88,12 @@ export {
   toSupportCaseListItem,
   toSupportCaseRecordListItem,
 } from './sharePointMapper';
+
+export {
+  SharePointSupportCaseRepository,
+  SupportCaseRepositoryError,
+} from './SharePointSupportCaseRepository';
+
+export type {
+  SharePointSupportCaseRepositoryOptions,
+} from './SharePointSupportCaseRepository';
