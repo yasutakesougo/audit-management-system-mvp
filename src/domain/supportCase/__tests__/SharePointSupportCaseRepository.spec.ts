@@ -78,7 +78,10 @@ describe('SharePointSupportCaseRepository', () => {
   });
 
   it('lists cases within the tenant boundary', async () => {
-    provider.listItems.mockResolvedValue([caseRow]);
+    provider.listItems.mockResolvedValue([
+      caseRow,
+      { ...caseRow, Id: 11, CaseId: 'case-2', TenantId: 'office-2' },
+    ]);
 
     const result = await repository.listCases('office-1');
 
@@ -154,7 +157,10 @@ describe('SharePointSupportCaseRepository', () => {
   it('maps document list rows back to domain references', async () => {
     provider.listItems
       .mockResolvedValueOnce([caseRow])
-      .mockResolvedValueOnce([documentRow]);
+      .mockResolvedValueOnce([
+        documentRow,
+        { ...documentRow, Id: 21, DocumentId: 'document-2', TenantId: 'office-2' },
+      ]);
 
     const documents = await repository.listDocumentReferences(
       'office-1',
@@ -264,6 +270,50 @@ describe('SharePointSupportCaseRepository', () => {
     expect(provider.deleteItem).toHaveBeenCalledWith(
       SUPPORT_CASE_DOCUMENTS_LIST_TITLE,
       24,
+    );
+  });
+
+  it('finds restricted metadata by tenant and document id when create omits Id', async () => {
+    provider.listItems
+      .mockResolvedValueOnce([caseRow])
+      .mockResolvedValueOnce([
+        {
+          Id: 25,
+          TenantId: 'office-1',
+          DocumentId: 'document-1',
+        },
+      ]);
+    provider.createItem
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('events list unavailable'));
+    provider.deleteItem.mockResolvedValue();
+
+    await expect(
+      repository.addRestrictedPersonalDocument({
+        tenantId: 'office-1',
+        supportCaseId: 'case-1',
+        caseRecordId: null,
+        fileName: 'certificate.pdf',
+        storageLocator: 'restricted-drive-item-id',
+        templateKey: null,
+        templateVersion: null,
+        createdBy: 'privacy-officer-1',
+      }),
+    ).rejects.toMatchObject({
+      operation: 'addRestrictedPersonalDocument',
+    });
+
+    expect(provider.listItems).toHaveBeenNthCalledWith(
+      2,
+      SUPPORT_CASE_DOCUMENTS_LIST_TITLE,
+      expect.objectContaining({
+        filter: expect.stringContaining("TenantId eq 'office-1'"),
+        top: 1,
+      }),
+    );
+    expect(provider.deleteItem).toHaveBeenCalledWith(
+      SUPPORT_CASE_DOCUMENTS_LIST_TITLE,
+      25,
     );
   });
 

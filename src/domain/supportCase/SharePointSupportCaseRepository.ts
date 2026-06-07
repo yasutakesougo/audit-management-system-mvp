@@ -91,7 +91,10 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
           orderby: 'OpenedOn desc',
         },
       );
-      return rows.map((row) => toSupportCaseSummary(this.mapCaseRow(row)));
+      return rows
+        .map((row) => this.mapCaseRow(row))
+        .filter((supportCase) => supportCase.tenantId === tenantId)
+        .map(toSupportCaseSummary);
     } catch (error) {
       throw new SupportCaseRepositoryError('listCases', error);
     }
@@ -110,7 +113,10 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
           top: 1,
         },
       );
-      return rows[0] ? this.mapCaseRow(rows[0]) : null;
+      const supportCase = rows[0] ? this.mapCaseRow(rows[0]) : null;
+      return supportCase?.tenantId === tenantId && supportCase.id === caseId
+        ? supportCase
+        : null;
     } catch (error) {
       throw new SupportCaseRepositoryError('getCase', error);
     }
@@ -184,7 +190,13 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
           orderby: 'CreatedAt desc',
         },
       );
-      return rows.map((row) => this.mapDocumentRow(row));
+      return rows
+        .map((row) => this.mapDocumentRow(row))
+        .filter(
+          (document) =>
+            document.tenantId === tenantId &&
+            document.supportCaseId === caseId,
+        );
     } catch (error) {
       throw new SupportCaseRepositoryError('listDocumentReferences', error);
     }
@@ -216,6 +228,7 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
     input: AddRestrictedPersonalDocumentInput,
   ): Promise<CaseDocument> {
     let createdItemId: string | number | null = null;
+    let createdDocument: CaseDocument | null = null;
 
     try {
       const supportCaseId = this.requireInputCaseId(input.supportCaseId);
@@ -230,6 +243,7 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
         auditLoggingRequired: true,
         createdAt: timestamp,
       });
+      createdDocument = document;
 
       const created = await this.provider.createItem<Record<string, unknown>>(
         this.documentsListTitle,
@@ -259,21 +273,27 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
       );
       return document;
     } catch (error) {
+      if (createdItemId === null && createdDocument !== null) {
+        try {
+          createdItemId = await this.findDocumentItemId(
+            createdDocument.tenantId,
+            createdDocument.id,
+          );
+        } catch (lookupError) {
+          throw new SupportCaseRepositoryError(
+            'addRestrictedPersonalDocument.rollbackLookup',
+            this.combineErrors(error, lookupError, 'Rollback lookup failed'),
+          );
+        }
+      }
+
       if (createdItemId !== null) {
         try {
           await this.provider.deleteItem(this.documentsListTitle, createdItemId);
         } catch (rollbackError) {
-          const originalMessage =
-            error instanceof Error ? error.message : String(error);
-          const rollbackMessage =
-            rollbackError instanceof Error
-              ? rollbackError.message
-              : String(rollbackError);
           throw new SupportCaseRepositoryError(
             'addRestrictedPersonalDocument.rollback',
-            new Error(
-              `Audit write failed: ${originalMessage}; rollback failed: ${rollbackMessage}`,
-            ),
+            this.combineErrors(error, rollbackError, 'Rollback failed'),
           );
         }
       }
@@ -296,7 +316,39 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
         top: 1,
       },
     );
-    return rows[0] ?? null;
+    return (
+      rows.find((row) => {
+        const parsed = supportCaseListItemSchema.safeParse(row);
+        return (
+          parsed.success &&
+          parsed.data.TenantId === tenantId &&
+          parsed.data.CaseId === caseId
+        );
+      }) ?? null
+    );
+  }
+
+  private async findDocumentItemId(
+    tenantId: string,
+    documentId: string,
+  ): Promise<string | number | null> {
+    const rows = await this.provider.listItems<Record<string, unknown>>(
+      this.documentsListTitle,
+      {
+        select: ['Id', 'TenantId', 'DocumentId'],
+        filter: joinAnd([
+          buildEq('TenantId', tenantId),
+          buildEq('DocumentId', documentId),
+        ]),
+        top: 1,
+      },
+    );
+    const row = rows.find(
+      (item) =>
+        item.TenantId === tenantId &&
+        item.DocumentId === documentId,
+    );
+    return row ? this.optionalSharePointId(row) : null;
   }
 
   private async requireCase(
@@ -370,5 +422,19 @@ export class SharePointSupportCaseRepository implements SupportCaseRepository {
   private optionalSharePointId(row: Record<string, unknown>): string | number | null {
     const id = row.Id ?? row.ID ?? row.id;
     return typeof id === 'string' || typeof id === 'number' ? id : null;
+  }
+
+  private combineErrors(
+    original: unknown,
+    secondary: unknown,
+    label: string,
+  ): Error {
+    const originalMessage =
+      original instanceof Error ? original.message : String(original);
+    const secondaryMessage =
+      secondary instanceof Error ? secondary.message : String(secondary);
+    return new Error(
+      `Original failure: ${originalMessage}; ${label}: ${secondaryMessage}`,
+    );
   }
 }
