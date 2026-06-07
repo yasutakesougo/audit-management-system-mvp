@@ -51,3 +51,40 @@ export type {
   InMemorySupportCaseRepositoryOptions,
   InMemorySupportCaseRepositorySeed,
 } from './InMemorySupportCaseRepository';
+
+export {
+  SUPPORT_CASE_DOCUMENTS_LIST_TITLE,
+  SUPPORT_CASE_EVENTS_LIST_TITLE,
+  SUPPORT_CASE_RECORDS_LIST_TITLE,
+  SUPPORT_CASES_LIST_TITLE,
+  documentLibraryTargetSchema,
+  documentLibraryTargetValues,
+  supportCaseAuditEventSchema,
+  supportCaseDocumentListItemSchema,
+  supportCaseEventActionSchema,
+  supportCaseEventActionValues,
+  supportCaseEventListItemSchema,
+  supportCaseEventTargetTypeSchema,
+  supportCaseEventTargetTypeValues,
+  supportCaseListItemSchema,
+  supportCaseRecordListItemSchema,
+} from './sharePointProjection';
+
+export type {
+  DocumentLibraryTarget,
+  SupportCaseAuditEvent,
+  SupportCaseDocumentListItem,
+  SupportCaseEventAction,
+  SupportCaseEventListItem,
+  SupportCaseEventTargetType,
+  SupportCaseListItem,
+  SupportCaseRecordListItem,
+} from './sharePointProjection';
+
+export {
+  toRestrictedDocumentListItem,
+  toStandardDocumentListItem,
+  toSupportCaseEventListItem,
+  toSupportCaseListItem,
+  toSupportCaseRecordListItem,
+} from './sharePointMapper';

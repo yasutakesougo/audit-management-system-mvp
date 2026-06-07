@@ -89,3 +89,26 @@ Repositoryの全操作は`tenantId`を境界に含める。別事業所の`caseI
 - 既存文書の移行
 - UIの追加
 - SharePoint権限の自動設定
+
+## SharePoint投影モデル
+
+SharePoint投影層は、ドメインモデルをSharePoint列名へ変換する純粋関数だけを持つ。通信、リスト存在確認、権限設定、ファイルアップロードは担当しない。
+
+| ドメイン入力 | 投影先 | Mapper |
+|---|---|---|
+| `SupportCase` | `SupportCases` | `toSupportCaseListItem` |
+| `CaseRecord` | `SupportCaseRecords` | `toSupportCaseRecordListItem` |
+| 通常`CaseDocument` | `SupportCaseDocuments`と通常ライブラリ | `toStandardDocumentListItem` |
+| 個人情報`CaseDocument` | `SupportCaseDocuments`と制限付きライブラリ | `toRestrictedDocumentListItem` |
+| `SupportCaseAuditEvent` | `SupportCaseEvents` | `toSupportCaseEventListItem` |
+
+通常文書と個人情報書類は、投影段階でも別経路とする。`personal_information`を`toStandardDocumentListItem`へ渡した場合は例外とし、制限付き投影では次の値を必須とする。
+
+- `StoragePolicy: restricted_library`
+- `LibraryTarget: restricted_personal_documents`
+- `Sensitivity: restricted`
+- `AuditLogRequired: true`
+
+各mapperは入力ドメインスキーマと出力投影スキーマの両方を検証する。`tenantId`、`supportCaseId`、保管ポリシー、監査ログ要件が欠落した値は、SharePoint Adapterへ到達する前に拒否する。
+
+この投影層にもSharePoint REST API、Graph client、実リスト作成、権限設定、UI、既存文書移行は含めない。
