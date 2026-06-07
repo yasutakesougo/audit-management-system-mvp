@@ -7,6 +7,7 @@ import { meetingListEntries } from './definitions/meeting';
 import { handoffListEntries } from './definitions/handoff';
 import { complianceListEntries } from './definitions/compliance';
 import { otherListEntries } from './definitions/other';
+import { supportCaseListEntries } from './definitions/supportCase';
 
 export {
   masterListEntries,
@@ -17,6 +18,7 @@ export {
   handoffListEntries,
   complianceListEntries,
   otherListEntries,
+  supportCaseListEntries,
 };
 
 /** 全リスト定義の統合（参照等価性を維持するため） */
@@ -29,4 +31,5 @@ export const listDefinitions: readonly SpListEntry[] = [
   ...handoffListEntries,
   ...complianceListEntries,
   ...otherListEntries,
+  ...supportCaseListEntries,
 ];
