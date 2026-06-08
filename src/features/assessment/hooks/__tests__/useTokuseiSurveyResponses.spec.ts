@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useTokuseiSurveyResponses } from '../useTokuseiSurveyResponses';
 
 const mockEnv = {
@@ -51,7 +51,7 @@ describe('useTokuseiSurveyResponses Hook', () => {
 
     const { result } = renderHook(() => useTokuseiSurveyResponses());
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.status).toBe('success');
     });
 
@@ -64,7 +64,7 @@ describe('useTokuseiSurveyResponses Hook', () => {
 
     const { result } = renderHook(() => useTokuseiSurveyResponses());
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.status).toBe('success');
     });
 
@@ -77,7 +77,7 @@ describe('useTokuseiSurveyResponses Hook', () => {
 
     const { result } = renderHook(() => useTokuseiSurveyResponses());
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(result.current.status).toBe('success');
     });
 
