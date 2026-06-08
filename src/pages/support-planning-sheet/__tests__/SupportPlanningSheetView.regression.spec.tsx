@@ -20,6 +20,10 @@ vi.mock('@/infra/abc/useAbcRecordRepository', () => ({
   useAbcRecordRepository: vi.fn().mockReturnValue(mockAbcRecordRepo),
 }));
 
+vi.mock('@/features/ibd/analysis/pdca/components/AbcEvidencePanel', () => ({
+  AbcEvidencePanel: () => 'まだ十分な分析データがありません',
+}));
+
 import { SupportPlanningSheetView } from '../SupportPlanningSheetView';
 import { SupportPlanningSheetViewModel, SupportPlanningSheetActionHandlers } from '../types';
 import { TESTIDS } from '@/testids';
@@ -142,8 +146,7 @@ describe('SupportPlanningSheetView Regression Tests', () => {
     expect(screen.getByText('追加: 自傷行為')).toBeInTheDocument();
     expect(screen.getByText('要検討: 騒音')).toBeInTheDocument();
 
-    // Wait for AbcEvidencePanel's async load to complete and flush state updates
-    await screen.findByText('まだ十分な分析データがありません');
+    expect(await screen.findByText('まだ十分な分析データがありません')).toBeInTheDocument();
   });
 
   it('差分がない場合、警告バーが表示されないこと', async () => {
@@ -156,7 +159,6 @@ describe('SupportPlanningSheetView Regression Tests', () => {
 
     expect(screen.queryByTestId(TESTIDS.DIFFERENCE_INSIGHT_BAR)).not.toBeInTheDocument();
 
-    // Wait for AbcEvidencePanel's async load to complete and flush state updates
-    await screen.findByText('まだ十分な分析データがありません');
+    expect(await screen.findByText('まだ十分な分析データがありません')).toBeInTheDocument();
   });
 });
