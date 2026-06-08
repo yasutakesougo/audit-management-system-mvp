@@ -314,6 +314,10 @@ describe('formatDateIso', () => {
     expect(formatDateIso(ts)).toBe('2025-12-31');
   });
 
+  it('keeps date-only strings valid when surrounded by whitespace', () => {
+    expect(formatDateIso(' 2025-01-15 ')).toBe('2025-01-15');
+  });
+
   it('returns empty string for null', () => {
     expect(formatDateIso(null)).toBe('');
   });
