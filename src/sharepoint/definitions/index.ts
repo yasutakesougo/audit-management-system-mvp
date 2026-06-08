@@ -6,3 +6,4 @@ export * from './meeting';
 export * from './handoff';
 export * from './compliance';
 export * from './other';
+export * from './supportCase';
