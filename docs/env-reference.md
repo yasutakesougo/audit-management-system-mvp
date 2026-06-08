@@ -54,6 +54,10 @@ present in that schema are included here.
 | `VITE_SP_LIST_MEETING_STEPS` | Title of the meeting steps list. | No | `"MeetingSteps"` | `env.schema.ts` | |
 | `VITE_SP_HANDOFF_LIST_TITLE` | Title of the handoff records list. | No | `"Handoff"` | `env.schema.ts` | |
 | `VITE_SP_HANDOFF_LIST_ID` | List GUID for the handoff list. | No | – | `env.schema.ts` | |
+| `VITE_SP_LIST_SUPPORT_CASES` | Title of the experimental SupportCase cases list. | No | `"SupportCases"` | `env.schema.ts` | Used only by opt-in diagnostics. |
+| `VITE_SP_LIST_SUPPORT_CASE_DOCUMENTS` | Title of the experimental SupportCase document index list. | No | `"SupportCaseDocuments"` | `env.schema.ts` | Used only by opt-in diagnostics. |
+| `VITE_SP_LIST_SUPPORT_CASE_EVENTS` | Title of the experimental SupportCase event list. | No | `"SupportCaseEvents"` | `env.schema.ts` | Used only by opt-in diagnostics. |
+| `VITE_SP_LIBRARY_SUPPORT_CASE_RESTRICTED_DOCUMENTS` | Title of the experimental restricted SupportCase document library. | No | `"SupportCaseRestrictedDocuments"` | `env.schema.ts` | Used only by opt-in diagnostics. |
 | `VITE_SCHEDULES_LIST_TITLE` | Title of the list used by the schedules module. | No | `"Schedules"` | `env.schema.ts` | |
 | `VITE_SP_RETRY_MAX` | Maximum number of retries when SharePoint calls fail. | No | `4` | `env.schema.ts` | Applies exponential backoff between attempts. |
 | `VITE_SP_RETRY_BASE_MS` | Base delay in milliseconds for SharePoint retry logic. | No | `400` | `env.schema.ts` | |
@@ -95,6 +99,7 @@ List names used in API calls are resolved by [`spListRegistry.ts`](../src/sharep
 | `VITE_FEATURE_COMPLIANCE_FORM` | Enable compliance and certification forms. | No | `false` | `featureFlags.ts` | |
 | `VITE_FEATURE_HYDRATION_HUD` | Show hydration HUD for staff. | No | `false` | `env.schema.ts` | |
 | `VITE_FEATURE_APPSHELL_VSCODE` | Use the experimental VS Code‑based app shell. | No | `false` | `env.schema.ts` | |
+| `VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS` | Include experimental SupportCase lists in read-only SharePoint diagnostics. | No | `false` | `driftProbeRegistry.ts` | Does not add them to default drift probes or create production lists. |
 | `VITE_MEETING_PERSISTENCE_ENABLED` | Persist meeting logs to storage. | No | `false` | `env.schema.ts` | |
 | `VITE_NURSE_SYNC_SP` | Enable synchronisation of nurse observations from SharePoint. | No | `false` | `env.schema.ts` | |
 | `VITE_HANDOFF_STORAGE` | Storage backend for handoff data. | No | `"local"` | `env.schema.ts` | Schema default is `local`. |

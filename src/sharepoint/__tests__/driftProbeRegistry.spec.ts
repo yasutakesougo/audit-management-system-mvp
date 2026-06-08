@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { getDriftProbeTargets } from '../driftProbeRegistry';
+import {
+  getDriftProbeTargets,
+  getSupportCaseExperimentalDriftProbeTargets,
+  SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS_FLAG,
+} from '../driftProbeRegistry';
 import { SP_LIST_REGISTRY } from '../spListRegistry';
+
+const supportCaseRegistryKeys = [
+  'support_cases',
+  'support_case_documents',
+  'support_case_events',
+  'support_case_restricted_documents',
+] as const;
 
 describe('DriftProbeRegistry / Dynamic Discovery', () => {
   it('discovers all required and optional lists from SP_LIST_REGISTRY', () => {
@@ -46,6 +57,29 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     const uniqueKeys = new Set(keys);
 
     expect(keys.length).toBe(uniqueKeys.size);
+  });
+
+  it('keeps experimental SupportCase resources out of default drift probes', () => {
+    const targetKeys = new Set(getDriftProbeTargets().map(target => target.key));
+
+    for (const key of supportCaseRegistryKeys) {
+      expect(targetKeys.has(key)).toBe(false);
+    }
+  });
+
+  it('includes experimental SupportCase resources only through diagnostics opt-in', () => {
+    expect(getSupportCaseExperimentalDriftProbeTargets()).toEqual([]);
+
+    const targets = getSupportCaseExperimentalDriftProbeTargets({
+      [SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS_FLAG]: 'true',
+    });
+
+    expect(targets.map(target => target.key)).toEqual([...supportCaseRegistryKeys]);
+    expect(targets.every(target => target.essentialFields?.includes('TenantId'))).toBe(true);
+    expect(
+      targets.find(target => target.key === 'support_case_restricted_documents')
+        ?.baseTemplate,
+    ).toBe(101);
   });
 
   it('excludes cross-site BillingOrders from default-site drift probes', () => {

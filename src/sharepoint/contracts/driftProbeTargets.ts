@@ -16,4 +16,8 @@ export interface DriftProbeTarget {
   selectFields: string[];
   /** Essential fields that MUST exist for basic list operation */
   essentialFields?: string[];
+  /** Expected SharePoint base template when the resource type matters */
+  baseTemplate?: number;
+  /** Candidate internal names accepted by diagnostics for drift-prone fields */
+  fieldCandidates?: Record<string, readonly string[]>;
 }
