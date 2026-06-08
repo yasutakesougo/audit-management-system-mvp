@@ -77,6 +77,25 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-06-08 — Codex初回小PR運用成功例 🏁
+
+**ワークフロー**: `Codex daily small PR`
+**対象**: `src/domain/supportCase/__tests__/sharePointMapper.spec.ts`
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | PR #2127 を Codex による初回小PR運用成功例として完了。`toRestrictedDocumentListItem` の restricted projection guard を、個人情報以外の文書が制限付き投影に入らない既存仕様としてテストで固定した。 |
+| ✅ 採用 | 実装コード、SharePoint列・field candidates、依存、環境設定を変更せず、差分を `sharePointMapper.spec.ts` のテスト追加のみに限定した。 |
+| ❌ 却下 | 既存未コミット差分 `.vscode/settings.json` / `nvidia-nim-probe/` の巻き込み、および `quality_extended` FAIL の別領域修正。 |
+| 💡 却下理由 | 小PR運用の初回実績として、対象仕様のテスト固定にスコープを絞るため。`quality_extended` FAIL は `src/features/assessment/hooks/__tests__/useTokuseiSurveyResponses.spec.ts` の act warning / Vitest worker unexpected exit 由来で、#2127差分とは無関係の既知CI不安定・別領域として扱った。 |
+
+**成果**: PR #2127 / target vitest・typecheck・lint・`git diff --check` PASS / main merge 完了
+**効果測定**: Codex が既存差分を巻き込まず、1ファイルのテスト追加PRを作成・検証・PR化・main同期まで完走できることを確認。
+**学び**: AI実装エージェントには、最初に `git status --short`、小スコープ選定、対象テスト、diff check、既存CI不安定の切り分けを明示すると、安全な小PR運用に乗せやすい。
+**所要時間**: 約 1 session
+
+#foundation #testing #codex #operations-log
+
 ### 2026-05-31 — docs(kiosk): record footer navigation safety design 🏁
 
 **ワークフロー**: `/docs`
