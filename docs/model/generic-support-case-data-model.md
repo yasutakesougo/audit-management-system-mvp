@@ -149,6 +149,8 @@ SharePoint Repository Adapterまでの実装完了後、実環境へ接続する
 
 各定義は`experimental`として登録する。既定状態ではdrift probeの対象外であり、通常のbootstrapで実リスト・ライブラリを作成しない。`VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS=true`を明示した場合だけ、読み取り専用のSharePoint diagnosticsで存在とessential fieldsを確認できる。
 
+app-testでの診断前確認は[SupportCase App-Test Diagnostics Runbook](../runbooks/support-case-app-test-diagnostics.md)に従う。このrunbookは手順・禁止事項・停止条件の文書化だけを扱い、app-testまたはproductionの実リスト・ライブラリ作成は行わない。
+
 field candidatesはcanonical internal nameを先頭にし、SharePointのencoded name、camelCase名、既存環境で想定される別名を後続候補として持つ。特に次の境界列はessential fieldとして診断可能にする。
 
 - `TenantId`
