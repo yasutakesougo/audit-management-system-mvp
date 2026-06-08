@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useSupportPlanningSheetOrchestrator } from '../useSupportPlanningSheetOrchestrator';
 import { MemoryRouter } from 'react-router-dom';
@@ -159,7 +159,9 @@ describe('useSupportPlanningSheetOrchestrator', () => {
     expect(result.current.handlers.onEdit).toBeDefined();
     expect(result.current.handlers.onSave).toBeDefined();
     
-    result.current.handlers.onEdit();
+    act(() => {
+      result.current.handlers.onEdit();
+    });
     expect(mockUiActions.setIsEditing).toHaveBeenCalledWith(true);
   });
 });
