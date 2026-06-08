@@ -15,6 +15,10 @@ vi.mock('@/infra/abc/useAbcRecordRepository', () => ({
   useAbcRecordRepository: vi.fn().mockReturnValue(mockAbcRecordRepo),
 }));
 
+vi.mock('@/features/ibd/analysis/pdca/components/AbcEvidencePanel', () => ({
+  AbcEvidencePanel: () => 'まだ十分な分析データがありません',
+}));
+
 import { SupportPlanningSheetView } from '../SupportPlanningSheetView';
 import { MemoryRouter } from 'react-router-dom';
 import { SupportPlanningSheetViewModel, SupportPlanningSheetActionHandlers } from '../types';
@@ -159,7 +163,7 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     
     expect(mockHandlers.onOpenReflectPreview).toHaveBeenCalled();
 
-    await screen.findByText('まだ十分な分析データがありません');
+    expect(await screen.findByText('まだ十分な分析データがありません')).toBeInTheDocument();
   });
 
   it('reflectPreviewOpen が true の場合、プレビューダイアログが表示されること', async () => {
@@ -183,7 +187,7 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     expect(screen.getByText('既存の行動')).toBeInTheDocument();
     expect(screen.getByText('新しい行動')).toBeInTheDocument();
 
-    await screen.findByText('まだ十分な分析データがありません');
+    expect(await screen.findByText('まだ十分な分析データがありません')).toBeInTheDocument();
   });
 
   it('ダイアログの「反映する」をクリックすると onConfirmReflect が呼ばれること', async () => {
@@ -206,6 +210,6 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     
     expect(mockHandlers.onConfirmReflect).toHaveBeenCalled();
 
-    await screen.findByText('まだ十分な分析データがありません');
+    expect(await screen.findByText('まだ十分な分析データがありません')).toBeInTheDocument();
   });
 });
