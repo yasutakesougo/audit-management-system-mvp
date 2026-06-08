@@ -139,6 +139,12 @@ describe('SharePoint document projection', () => {
     });
   });
 
+  it('prevents non-personal information from using the restricted projection', () => {
+    expect(() => toRestrictedDocumentListItem(standardDocument)).toThrow(
+      'personal information documents only',
+    );
+  });
+
   it.each([
     ['tenantId', { ...standardDocument, tenantId: '' }],
     ['caseId', { ...standardDocument, supportCaseId: null }],
