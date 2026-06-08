@@ -3,6 +3,12 @@
 > ⚠️ この runbook は **PR #76 以降の標準手順**です  
 > 数字が 0 でも **pendingChecks / failingChecks が空であること**を必ず確認してください
 
+## Daily small PR scope guard
+
+mixed worktree で daily-task の小PRを作る場合は、既存の未コミット差分を巻き込まないことを最優先にします。`git status --short` と対象ファイルの diff を確認し、stage は対象ファイルだけに限定してください。`git add .` や `git add -A` は使わず、PR 本文には `Scope` / `Verification` / `Out of scope` を必ず明記します。
+
+SharePoint list/field candidates や `src/sharepoint/contracts/driftProbeTargets.ts` の差分は daily-task ではなく別枠差分として扱い、由来確認や採用判断が終わるまで小PRには含めません。
+
 ## A. マージ前の条件確認
 
 ### 1) CI Status の可視化
