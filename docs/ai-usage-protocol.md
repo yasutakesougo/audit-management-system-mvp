@@ -39,6 +39,11 @@
 > 28 workflows ある CI 環境では PR 肥大化 → CI 不安定化に直結する。  
 > スキルチェーン単位で PR 粒度を制御すること。
 
+### 日次小PR運用
+
+日常的な軽微改善は、毎回プロンプトを作り直さず `.agents/daily-task.md` を入口にする。
+候補は docs-only または test-only を優先し、仕様変更・依存追加・SharePoint list / field candidates 変更を含めない。
+
 ---
 
 ## 3. スキル × フェーズ マトリクス
