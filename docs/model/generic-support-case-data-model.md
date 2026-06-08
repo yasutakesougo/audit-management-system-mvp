@@ -147,7 +147,7 @@ SharePoint Repository Adapterまでの実装完了後、実環境へ接続する
 | `support_case_events` | `SupportCaseEvents` | List | 監査イベント |
 | `support_case_restricted_documents` | `SupportCaseRestrictedDocuments` | Document Library | 個人情報書類の隔離保管候補 |
 
-各定義は`experimental`として登録する。既定状態ではdrift probeの対象外であり、通常のbootstrapで実リスト・ライブラリを作成しない。環境ごとの明示的なfeature flagを有効化した場合だけ、既存の診断・プロビジョニングCoordinatorが定義を参照できる。
+各定義は`experimental`として登録する。既定状態ではdrift probeの対象外であり、通常のbootstrapで実リスト・ライブラリを作成しない。`VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS=true`を明示した場合だけ、読み取り専用のSharePoint diagnosticsで存在とessential fieldsを確認できる。
 
 field candidatesはcanonical internal nameを先頭にし、SharePointのencoded name、camelCase名、既存環境で想定される別名を後続候補として持つ。特に次の境界列はessential fieldとして診断可能にする。
 
@@ -164,7 +164,7 @@ field candidatesはcanonical internal nameを先頭にし、SharePointのencoded
 
 制限付き個人情報書類ライブラリは`baseTemplate: 101`の独立定義とし、通常の`SupportCaseDocuments`リストと同一保存先として扱わない。定義上も`Category: personal_information`、`StoragePolicy: restricted_library`、`LibraryTarget: restricted_personal_documents`、`Sensitivity: restricted`、`AuditLogRequired: true`を既定候補とする。
 
-この段階ではメタデータと診断・プロビジョニング準備だけを扱い、次の処理は行わない。
+この段階ではメタデータとopt-in diagnostics準備だけを扱い、次の処理は行わない。
 
 - productionまたはapp-testへの実リスト・ライブラリ作成
 - SharePoint権限の設定・変更

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getDriftProbeTargets } from '@/sharepoint/driftProbeRegistry';
+import {
+  getDriftProbeTargets,
+  getSupportCaseExperimentalDriftProbeTargets,
+  SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS_FLAG,
+} from '@/sharepoint/driftProbeRegistry';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import {
   SUPPORT_CASE_DOCUMENTS_CANDIDATES,
@@ -31,6 +35,42 @@ describe('SupportCase SharePoint definitions', () => {
     for (const key of registryKeys) {
       expect(targetKeys.has(key)).toBe(false);
     }
+  });
+
+  it('keeps SupportCase diagnostics empty until the explicit flag is enabled', () => {
+    expect(getSupportCaseExperimentalDriftProbeTargets()).toEqual([]);
+    expect(
+      getSupportCaseExperimentalDriftProbeTargets({
+        [SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS_FLAG]: '0',
+      }),
+    ).toEqual([]);
+  });
+
+  it('builds opt-in diagnostic targets for experimental SupportCase resources', () => {
+    const targets = getSupportCaseExperimentalDriftProbeTargets({
+      [SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS_FLAG]: '1',
+    });
+    const targetKeys = targets.map((target) => target.key);
+
+    expect(targetKeys).toEqual([...registryKeys]);
+    expect(targets).toHaveLength(4);
+    expect(targets.every((target) => target.selectFields.includes('Id'))).toBe(true);
+    expect(targets.every((target) => target.selectFields.includes('Title'))).toBe(true);
+    expect(targets.find((target) => target.key === 'support_cases')?.selectFields).toEqual(
+      expect.arrayContaining(['CaseId', 'TenantId', 'UserId', 'Status']),
+    );
+    expect(
+      targets.find((target) => target.key === 'support_case_documents')
+        ?.fieldCandidates?.SupportCaseId,
+    ).toEqual(SUPPORT_CASE_DOCUMENTS_CANDIDATES.caseId);
+    expect(
+      targets.find((target) => target.key === 'support_case_events')
+        ?.fieldCandidates?.Action,
+    ).toEqual(SUPPORT_CASE_EVENTS_CANDIDATES.eventType);
+    expect(
+      targets.find((target) => target.key === 'support_case_restricted_documents')
+        ?.baseTemplate,
+    ).toBe(101);
   });
 
   it('defines the restricted personal document target as a separate library', () => {
