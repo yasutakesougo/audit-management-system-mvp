@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "nvidia-nim-apply-approved-dry-run/1.0",
+  "generatedAt": "2026-06-10T00:00:00.000Z",
+  "inputPath": "tmp/review/apply-plan.json",
+  "summary": {
+    "total": 1,
+    "approved": 0,
+    "failed": 1
+  },
+  "items": [
+    {
+      "artifactId": "art-003",
+      "path": "/support-plans/p3.json",
+      "suggestedTitle": "夜間加算",
+      "labels": ["risk"]
+    }
+  ],
+  "warnings": []
+}
