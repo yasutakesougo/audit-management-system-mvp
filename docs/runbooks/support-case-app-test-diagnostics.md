@@ -208,6 +208,28 @@ Next required human confirmation before any SharePoint diagnostics command:
 - Confirm `VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS=1` is intentional for the opt-in command.
 - Confirm the command remains read-only and does not create lists, libraries, permissions, folders, files, or items.
 
+### 2026-06-09 App-Test Target Confirmation
+
+Scope:
+
+- Human-provided target confirmation before any SharePoint diagnostics command.
+- No SharePoint diagnostics command was run in this step.
+- No app-test or production SharePoint resource was created, modified, or deleted.
+
+Confirmed target:
+
+- Tenant host: `isogokatudouhome.sharepoint.com`
+- Site path: `/sites/app-test`
+- Canonical diagnostics URL: `https://isogokatudouhome.sharepoint.com/sites/app-test`
+- Source URL query parameters were ignored for the confirmation record.
+
+Confirmation status:
+
+- Target includes the explicit `app-test` site path.
+- Target does not use a production site path.
+- Any future opt-in diagnostics command must set `VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS=1` explicitly.
+- Any future diagnostics command must remain read-only and must not create lists, libraries, permissions, folders, files, or items.
+
 ## Conditions For The Next Phase
 
 Proceed to app-test resource verification only after all conditions are true:
