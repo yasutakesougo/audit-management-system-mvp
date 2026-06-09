@@ -35,11 +35,13 @@ git checkout main
 git pull --ff-only
 git status --short
 npm run sp:audit
+npx vitest run src/sharepoint/__tests__/supportCaseDiagnosticsPreflight.spec.ts
 ```
 
 Confirm all of the following before running diagnostics:
 
 - `git status --short` is empty.
+- The SupportCase app-test diagnostics preflight passes.
 - The current SharePoint environment is app-test, not production.
 - `SHAREPOINT_SITE`, `VITE_SP_SITE_URL`, or the runtime site configuration does not point to a production site.
 - SupportCase diagnostics opt-in is explicit for this command only.
@@ -129,6 +131,7 @@ Do not perform any of the following in this runbook or the docs-only PR that int
 Stop immediately and report the finding if any of the following is true:
 
 - The target site may be production.
+- The preflight check fails.
 - `support_case_*` appears in diagnostics without explicit opt-in.
 - Restricted documents are treated as the same list/resource as standard document metadata.
 - Essential fields are missing.
