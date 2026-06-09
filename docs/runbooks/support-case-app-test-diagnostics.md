@@ -48,6 +48,21 @@ Confirm all of the following before running diagnostics:
 - The operator understands that `SupportCaseRestrictedDocuments` is a document library boundary for personal information candidates.
 - `npm run sp:audit` has no new `FAIL`. Existing unrelated warnings do not authorize proceeding if a new SupportCase drift risk appears.
 
+## Execution Checklist
+
+Before running any app-test diagnostics command, record the following checks in the work log or PR comment:
+
+- `main` and `origin/main` point to the same commit.
+- `git status --short` is empty.
+- The target URL has been confirmed as app-test.
+- The target URL has been confirmed not to be production.
+- `VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS=1` is explicit for the opt-in diagnostics command.
+- Without opt-in, `support_case_*` resources do not appear as diagnostic targets.
+- With opt-in, only then `support_case_*` resources appear as diagnostic targets.
+- `SupportCaseRestrictedDocuments` is treated as a document library.
+- The restricted library is not mixed with the standard `SupportCaseDocuments` metadata list.
+- No command in this checklist creates lists, libraries, permissions, folders, files, or items.
+
 ## Opt-In Diagnostics
 
 Default behavior must stay quiet. Without the opt-in flag, SupportCase diagnostics are skipped:
@@ -133,6 +148,7 @@ Stop immediately and report the finding if any of the following is true:
 - The target site may be production.
 - The preflight check fails.
 - `support_case_*` appears in diagnostics without explicit opt-in.
+- The restricted library is treated as a standard document metadata list.
 - Restricted documents are treated as the same list/resource as standard document metadata.
 - Essential fields are missing.
 - `npm run sp:audit` reports a new `FAIL`.
