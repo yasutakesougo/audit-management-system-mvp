@@ -202,6 +202,55 @@ describe('HandoffApi', () => {
       expect(records).toEqual([]);
     });
 
+    it('SharePoint 側に CarryOverDate がある場合、ローカル補完値より優先される', async () => {
+      CarryOverDateStore.set(99, '2026-03-01');
+
+      const spItem = createSpItem({
+        Id: 99,
+        Status: '明日へ持越',
+        CarryOverDate: '2026-03-31',
+      });
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [spItem] }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getHandoffRecords();
+
+      expect(records).toHaveLength(1);
+      expect(records[0].carryOverDate).toBe('2026-03-31');
+    });
+
+    it('SharePoint 側に CarryOverDate がない場合のみローカル補完値が使われる', async () => {
+      CarryOverDateStore.set(100, '2026-03-01');
+
+      const spItem = createSpItem({
+        Id: 100,
+        Status: '明日へ持越',
+      });
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [spItem] }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getHandoffRecords();
+
+      expect(records).toHaveLength(1);
+      expect(records[0].carryOverDate).toBe('2026-03-01');
+    });
+
+    it('完了ステータスには古いローカル補完値を再適用しない', async () => {
+      CarryOverDateStore.set(101, '2026-02-28');
+
+      const spItem = createSpItem({
+        Id: 101,
+        Status: '完了',
+      });
+      mockSP.spFetch.mockResolvedValue(mockResponse({ value: [spItem] }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getHandoffRecords();
+
+      expect(records).toHaveLength(1);
+      expect(records[0].carryOverDate).toBeUndefined();
+    });
+
     it('フィールド一覧取得が権限エラーでも fallback select で継続する', async () => {
       const items = [createSpItem({ Id: 99, Title: 'fallback' })];
       mockSP.getListFieldInternalNames.mockRejectedValueOnce(
