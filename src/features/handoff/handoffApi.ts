@@ -179,7 +179,7 @@ class HandoffApi {
 
       // v3: CarryOverDateStore からのローカル補完マージ
       const mergedRecords = records.map(record => {
-        if (!record.carryOverDate) {
+        if (!record.carryOverDate && !isTerminalStatus(record.status)) {
           const localDate = CarryOverDateStore.get(record.id);
           if (localDate) {
             return { ...record, carryOverDate: localDate };
@@ -282,7 +282,7 @@ class HandoffApi {
       const updatedRecord = fromSpHandoffItem(data);
 
       // v3: ローカル補完マージ
-      if (!updatedRecord.carryOverDate) {
+      if (!updatedRecord.carryOverDate && !isTerminalStatus(updatedRecord.status)) {
         const localDate = CarryOverDateStore.get(id);
         if (localDate) {
           updatedRecord.carryOverDate = localDate;
@@ -469,7 +469,7 @@ class HandoffApi {
 
       // CarryOverDateStore からのローカル補完
       const mergedRecords = records.map(record => {
-        if (!record.carryOverDate) {
+        if (!record.carryOverDate && !isTerminalStatus(record.status)) {
           const localDate = CarryOverDateStore.get(record.id);
           if (localDate) {
             return { ...record, carryOverDate: localDate };
