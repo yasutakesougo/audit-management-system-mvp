@@ -69,6 +69,8 @@ Support Operations OS is built on **10 design principles** that ensure human-in-
 > 📖 詳細: **[設計原則 10 箇条](docs/product/principles.md)** ｜ [UI 設計規約](docs/product/ui-conventions.md) ｜ [プロダクトロードマップ](docs/product/roadmap.md) ｜ **[OS Architecture](docs/product/support-operations-os-architecture.md)** ｜ [ISP-Driven Model](docs/model/isp-driven-operations-model.md) ｜ [ADR Index](docs/adr/README.md)
 >
 > 🧑‍💻 開発者: [Developer Onboarding](docs/dev/onboarding.md) ｜ [モジュール硬化テンプレート](docs/guides/module-hardening-template.md)
+>
+> 🤖 AI 連携: [AI Review Handoff Boundary (受け取り専用)](docs/runbooks/ai-review-handoff-boundary.md)
 
 ---
 
