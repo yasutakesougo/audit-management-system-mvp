@@ -117,6 +117,14 @@ stateDiagram-v2
 2. test-only: 終端状態/持越遷移の状態機械をテスト追加
 3. test-only / analysis-only: 制度系監査証跡のテスト追加
 
+## 8. Handoff 完了履歴
+
+- 2026-06-09
+  - `#2137` docs-only: Handoff 構造レポート追加
+  - `#2139` test-only: 状態遷移（`normal/evening/morning` / 終端 / `reopen`）の固定
+  - `#2141` test-only: 制度系監査証跡（`ResolvedBy` / `ResolvedAt` / `ResolutionNote`）検証追加
+  - `#2143` test + small behavior fix: CarryOverDate 補完の優先順位・終端ステータス時の再適用防止
+
 ---
 
 最終更新: 2026-06-09
