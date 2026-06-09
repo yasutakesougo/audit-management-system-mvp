@@ -8,6 +8,7 @@
 
 import type { IUserMaster } from '@/sharepoint/fields';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
     Alert,
     Box,
@@ -26,7 +27,8 @@ import {
 } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
-import type { HandoffCategory, HandoffSeverity } from './handoffTypes';
+import { getSeverityColor, getStatusColor } from './handoffConstants';
+import type { HandoffCategory, HandoffRecord, HandoffSeverity } from './handoffTypes';
 import { getTimeBandPlaceholder, useCurrentTimeBand } from './useCurrentTimeBand';
 import { useHandoffTimeline } from './useHandoffTimeline';
 
@@ -47,9 +49,31 @@ const SEVERITY_OPTIONS: HandoffSeverity[] = ['通常', '要注意', '重要'];
 /** 送信フィードバックの表示時間 (ms) */
 const SUCCESS_DISPLAY_MS = 3000;
 
+const RECENT_HANDOFF_LIMIT = 5;
+const MESSAGE_PREVIEW_LENGTH = 60;
+
+function toPlainPreview(message: string): string {
+  const normalized = message.trim();
+  const plainText = normalized.includes('<') && typeof DOMParser !== 'undefined'
+    ? new DOMParser().parseFromString(normalized, 'text/html').body.textContent ?? normalized
+    : normalized;
+  const compact = plainText.replace(/\s+/g, ' ').trim();
+
+  if (compact.length <= MESSAGE_PREVIEW_LENGTH) {
+    return compact;
+  }
+
+  return `${compact.substring(0, MESSAGE_PREVIEW_LENGTH)}…`;
+}
+
 export const HandoffQuickNoteCard: React.FC = () => {
   const timeBand = useCurrentTimeBand();
-  const { createHandoff } = useHandoffTimeline();
+  const {
+    createHandoff,
+    allHandoffs,
+    loading: handoffsLoading,
+    error: handoffsError,
+  } = useHandoffTimeline();
   const { data: users } = useUsersQuery();
 
   // UserRelation: O(1) ルックアップ
@@ -85,6 +109,11 @@ export const HandoffQuickNoteCard: React.FC = () => {
   }, []);
 
   const placeholder = useMemo(() => getTimeBandPlaceholder(timeBand), [timeBand]);
+  const recentHandoffs = useMemo<HandoffRecord[]>(() => {
+    return [...allHandoffs]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, RECENT_HANDOFF_LIMIT);
+  }, [allHandoffs]);
 
   const handleSubmit = async () => {
     if (!message.trim()) return;
@@ -255,6 +284,109 @@ export const HandoffQuickNoteCard: React.FC = () => {
             variant="outlined"
             helperText="改行・箇条書きもOKです。簡潔にポイントを記載してください。"
           />
+
+          <Divider />
+
+          <Box>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              gap={1}
+              sx={{ mb: 1 }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                最近の申し送り
+              </Typography>
+              <Button
+                href="/handoff-timeline"
+                size="small"
+                endIcon={<OpenInNewIcon fontSize="small" />}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                詳細を見る
+              </Button>
+            </Stack>
+
+            {handoffsLoading && (
+              <Typography variant="body2" color="text.secondary">
+                申し送りを読み込み中...
+              </Typography>
+            )}
+
+            {!handoffsLoading && handoffsError && (
+              <Alert severity="warning" sx={{ mb: 1 }}>
+                最近の申し送りを読み込めませんでした。
+              </Alert>
+            )}
+
+            {!handoffsLoading && !handoffsError && recentHandoffs.length === 0 && (
+              <Box
+                sx={{
+                  py: 2,
+                  px: 1.5,
+                  bgcolor: 'grey.50',
+                  border: '1px dashed',
+                  borderColor: 'grey.300',
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  まだ入力された申し送りはありません。
+                </Typography>
+              </Box>
+            )}
+
+            {!handoffsLoading && recentHandoffs.length > 0 && (
+              <Stack spacing={1}>
+                {recentHandoffs.map(item => (
+                  <Box
+                    key={item.id}
+                    sx={{
+                      p: 1.25,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Chip
+                          label={item.severity}
+                          size="small"
+                          color={getSeverityColor(item.severity)}
+                          variant={item.severity === '通常' ? 'outlined' : 'filled'}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {item.userDisplayName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          /
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {item.category}
+                        </Typography>
+                        <Chip
+                          label={item.status}
+                          size="small"
+                          color={getStatusColor(item.status)}
+                          variant="outlined"
+                        />
+                      </Stack>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ lineHeight: 1.6 }}
+                      >
+                        {toPlainPreview(item.message)}
+                      </Typography>
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Box>
         </Stack>
       </CardContent>
       <Divider />
