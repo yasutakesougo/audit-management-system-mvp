@@ -115,7 +115,6 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell" data-kiosk={isKioskMode || undefined}>
-          <KioskBackToToday />
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
@@ -123,11 +122,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={isKioskMode ? 0 : contentPaddingY}
-            contentPaddingBottom={isKioskMode ? 160 : undefined}
+            contentPaddingBottom={isKioskMode ? 240 : undefined}
+            viewportHeight="100%"
             viewportMode={viewportMode}
           >
             {/* Global Connection Readiness Linkage */}
             <ConnectionDegradedBanner />
+            <KioskBackToToday />
             {children}
           </AppShellV2>
 

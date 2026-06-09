@@ -22,7 +22,8 @@ export const DataLayerGuard: React.FC<{ children: React.ReactNode }> = ({ childr
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '100vh',
+          height: '100%',
+          minHeight: 0,
           bgcolor: 'background.default',
           color: 'text.secondary',
         }}
@@ -43,7 +44,7 @@ export const DataLayerGuard: React.FC<{ children: React.ReactNode }> = ({ childr
     <Box 
       id="app-main-container" 
       data-provider={currentProvider}
-      sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}
+      sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}
     >
       {children}
     </Box>
