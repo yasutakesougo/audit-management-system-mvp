@@ -170,6 +170,44 @@ For a future app-test resource creation phase, record cleanup data before making
 
 If deletion becomes necessary later, verify the app-test site URL and resource IDs before deleting anything. Never use production cleanup as part of this diagnostics runbook.
 
+## Preflight Result Log
+
+### 2026-06-09 Local Safety Preflight
+
+Scope:
+
+- Local-only preflight before app-test diagnostics.
+- No SharePoint diagnostics command was run because no app-test URL was provided for human confirmation.
+- No app-test or production SharePoint resource was created, modified, or deleted.
+
+Repository state:
+
+- `main` and `origin/main` were aligned before the checks.
+- Working tree was clean before the checks.
+
+Commands run:
+
+```bash
+npm run sp:audit
+npx vitest run src/sharepoint/__tests__/supportCaseDiagnosticsPreflight.spec.ts
+npx vitest run src/sharepoint/__tests__/driftProbeRegistry.spec.ts src/sharepoint/fields/__tests__/supportCaseFields.spec.ts
+```
+
+Results:
+
+- `npm run sp:audit`: passed with existing warnings for `AbcBehaviorRecords`, `List2`, and `ToiletRecords`.
+- SupportCase diagnostics preflight unit test: passed.
+- Drift registry and SupportCase field boundary tests: passed.
+- Default drift probe exclusion and explicit opt-in target selection remain covered by unit tests.
+- `SupportCaseRestrictedDocuments` document library separation remains covered by unit tests.
+
+Next required human confirmation before any SharePoint diagnostics command:
+
+- Confirm the exact app-test URL.
+- Confirm the URL is not production.
+- Confirm `VITE_FEATURE_SUPPORT_CASE_SHAREPOINT_DIAGNOSTICS=1` is intentional for the opt-in command.
+- Confirm the command remains read-only and does not create lists, libraries, permissions, folders, files, or items.
+
 ## Conditions For The Next Phase
 
 Proceed to app-test resource verification only after all conditions are true:
