@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **AI Review Handoff Boundary（受け取り限定）**
+  - `nvidia-nim` 受け取り境界の schema validator を追加（`schemaVersion`, `items`, `warnings`, `summary` の検証）。
+  - `parseApplyApprovedPlanJson` / `validateApplyApprovedPlan` を追加し、JSON 破損・未定義 `schemaVersion` を明示的に拒否。
+  - fixture ベースの受け取り検証テストを追加し、`tests/unit/domain/nvidiaNim.applyApprovedReceive.spec.ts` と `tests/fixtures/nvidia-nim/*` で境界を固定。
+  - docs/runbooks に受け取り境界手順を追加（実適用・SharePoint 反映は対象外）。
+
 - **シグナルガバナンスとライフサイクル管理 (ADR-016〜019)**
   - シグナルライフサイクル管理の実装: `open` → `acknowledged` (対応中) → `resolved` (手動解消)
   - `acknowledgedMap` および `resolvedMap` による「対応中/解消」状態の永続化 (localStorage v2)
