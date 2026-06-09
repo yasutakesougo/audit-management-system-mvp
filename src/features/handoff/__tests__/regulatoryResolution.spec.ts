@@ -154,3 +154,64 @@ describe('buildResolutionPayload', () => {
     expect(result.resolutionNote).toBe('');
   });
 });
+
+// ── 監査対象外ロジック ──
+
+describe('regulatory audit scope', () => {
+  it('regulatory-finding / severe-addon-finding のみ制度系として扱われる', () => {
+    expect(isRegulatoryHandoff(createRecord({ sourceType: 'regulatory-finding' }))).toBe(true);
+    expect(isRegulatoryHandoff(createRecord({ sourceType: 'severe-addon-finding' }))).toBe(true);
+    expect(isRegulatoryHandoff(createRecord({ sourceType: 'meeting-minutes' }))).toBe(false);
+    expect(isRegulatoryHandoff(createRecord({}))).toBe(false);
+  });
+
+  it('制度系完了レコードの証跡欠損は監査未完了として検知', () => {
+    expect(
+      getRegulatoryResolutionStatus(
+        createRecord({
+          sourceType: 'regulatory-finding',
+          status: '対応済',
+        }),
+      ),
+    ).toBe('closed_no_trail');
+    expect(
+      getRegulatoryResolutionStatus(
+        createRecord({
+          sourceType: 'severe-addon-finding',
+          status: '完了',
+          resolvedBy: '田中太郎',
+        }),
+      ),
+    ).toBe('closed_no_trail');
+  });
+
+  it('制度系完了レコードで証跡が揃うと resolved 扱いになる', () => {
+    expect(
+      getRegulatoryResolutionStatus(
+        createRecord({
+          sourceType: 'regulatory-finding',
+          status: '対応済',
+          resolvedBy: '田中太郎',
+          resolvedAt: '2026-03-14T08:00:00Z',
+          resolutionNote: '対応内容確認済み',
+        }),
+      ),
+    ).toBe('resolved');
+  });
+
+  it('通常申し送りは制度系監査ロジックの外側に置ける（対象外判定）', () => {
+    const manual = createRecord({
+      sourceType: undefined,
+      status: '完了',
+      resolvedBy: '田中太郎',
+      resolvedAt: '2026-03-14T08:00:00Z',
+      resolutionNote: '対応完了',
+    });
+
+    const isRegulatoryAuditRequired = isRegulatoryHandoff(manual)
+      && getRegulatoryResolutionStatus(manual) !== 'pending';
+
+    expect(isRegulatoryHandoff(manual)).toBe(false);
+    expect(isRegulatoryAuditRequired).toBe(false);
+  });
+});
