@@ -18,6 +18,14 @@
 👉 **[Unit Test Boundary Guide](./unit-test-boundary-guide.md)**
 （repositoryFactory 境界ルール、判定フロー、モックパターン、コンプライアンス一覧）
 
+## Test Coverage Gap Analysis
+
+テスト不足棚卸しと、次に切り出せる test-only 候補を集約します。
+
+👉 **[Coverage Gap Report](./coverage-gap-report.md)**
+👉 **[Missing Test Candidates](./missing-test-candidates.md)**
+👉 **[Recommended Test PRs](./recommended-test-prs.md)**
+
 ## Schedule / Calendar E2E Tests
 
 Schedule（Day / Week / Month / Status / Quick Dialog）を扱う E2E テストのガイドラインと共通ヘルパーは以下に集約されています。
