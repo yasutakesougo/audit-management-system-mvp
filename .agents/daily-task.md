@@ -45,3 +45,12 @@
 - リスク:
 - PRタイトル案:
 - PR本文案:
+
+## 安全運用ルール（小規模PR）
+- 作業開始時は必ず main に戻してから開始する。
+- git status --short で作業ツリーを確認し、クリーン状態を起点とする。
+- 作業入口は .agents/daily-task.md のテンプレートに従う。
+- 1 PRあたりの影響は原則3ファイル以内に抑える。
+- 過去に merged されたPRや古い Deploy Preview failure は、現行 main で再現しない限り修正対象にしない。
+- .env や SharePoint 周辺の既存差分は、daily-task 対象外の場合は触らない。
+
