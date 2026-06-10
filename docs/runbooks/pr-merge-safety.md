@@ -46,7 +46,25 @@ gh pr view <PR_NUMBER> --json statusCheckRollup \
 - ✅ **成功**: CI 全緑 → 次へ進む
 - ❌ **失敗**: まだ pending/failed が残っている → マージしない
 
-### 3) Review 承認確認
+### 3) BEHIND 状態の扱い
+
+```bash
+gh pr view <PR_NUMBER> --json mergeStateStatus -q '.mergeStateStatus'
+```
+
+`mergeStateStatus` が `BEHIND` の場合は、pending/failed がないことを確認したあと、マージ判断前に main を取り込む。
+ブランチの名前を確認し、必要に応じて本番 PR 側のブランチを最新化する。
+
+```bash
+git switch <BRANCH_NAME>
+git fetch origin
+git rebase origin/main
+git push --force-with-lease
+```
+
+main 追従後はチェックが再実行されるため、再度 failed / pending が 0 になるまで待つ。
+
+### 4) Review 承認確認
 
 ```bash
 gh pr view <PR_NUMBER> --json reviewDecision -q '.reviewDecision'
