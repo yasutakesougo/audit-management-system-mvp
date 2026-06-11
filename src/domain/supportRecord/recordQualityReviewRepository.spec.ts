@@ -104,7 +104,7 @@ const runRecordQualityReviewRepositoryContract = (
 
     it('keeps statuses limited to draft, accepted, revised, and discarded', async () => {
       const repository = factory();
-      const saved = await repository.saveReview(createDraft());
+      const saved = await repository.saveReview(createDraft('record-draft'));
 
       expect(saved.status).toBe('draft');
 
@@ -116,7 +116,8 @@ const runRecordQualityReviewRepositoryContract = (
         requiresHumanReview: true,
       });
 
-      const revised = reviseRecordQualityReviewDraft(accepted, {
+      const savedForRevision = await repository.saveReview(createDraft('record-revised'));
+      const revised = reviseRecordQualityReviewDraft(savedForRevision, {
         notes: ['確認観点を修正する'],
         updatedAt: '2026-06-11T02:00:00.000Z',
       });
@@ -127,8 +128,9 @@ const runRecordQualityReviewRepositoryContract = (
         requiresHumanReview: true,
       });
 
+      const savedForDiscard = await repository.saveReview(createDraft('record-discarded'));
       const discarded = discardRecordQualityReviewDraft(
-        revised,
+        savedForDiscard,
         '2026-06-11T03:00:00.000Z',
       );
       await expect(repository.updateReview(discarded)).resolves.toMatchObject({
@@ -176,18 +178,22 @@ const runRecordQualityReviewRepositoryContract = (
       const accepted = await repository.updateReview(
         acceptRecordQualityReviewDraft(saved, '2026-06-11T01:00:00.000Z'),
       );
+      const savedForRevision = await repository.saveReview(createDraft('record-2'));
       const revised = await repository.updateReview(
-        reviseRecordQualityReviewDraft(accepted, {
+        reviseRecordQualityReviewDraft(savedForRevision, {
           notes: ['本文ではなくレビュー観点だけを修正する'],
           updatedAt: '2026-06-11T02:00:00.000Z',
         }),
       );
+      const savedForDiscard = await repository.saveReview(createDraft('record-3'));
       const discarded = await repository.updateReview(
-        discardRecordQualityReviewDraft(revised, '2026-06-11T03:00:00.000Z'),
+        discardRecordQualityReviewDraft(savedForDiscard, '2026-06-11T03:00:00.000Z'),
       );
 
       expect(originalSupportRecord).toEqual(originalSnapshot);
-      expect(discarded.originalRecord).toEqual({ recordId: originalSupportRecord.id });
+      expect(accepted.originalRecord).toEqual({ recordId: originalSupportRecord.id });
+      expect(revised.originalRecord).toEqual({ recordId: 'record-2' });
+      expect(discarded.originalRecord).toEqual({ recordId: 'record-3' });
       expect('body' in discarded).toBe(false);
       expect('content' in discarded).toBe(false);
       expect(discarded.sourceOfTruth).toBe('original_record');
