@@ -37,6 +37,26 @@ const baseOrders = [
 const createBaseOrders = (): typeof baseOrders => baseOrders.map((row) => ({ ...row }));
 
 describe('InMemoryBillingOrderRepository', () => {
+  it('uses default mock data when no initial data is passed', async () => {
+    const repo = new InMemoryBillingOrderRepository();
+    const rows = await repo.list();
+    const ids = rows.map((row) => row.id);
+    const idSet = new Set(ids);
+
+    expect(rows.length).toBeGreaterThan(0);
+    expect(idSet.size).toBe(ids.length);
+    expect(ids).toContain(1);
+    expect(rows.every((row) => typeof row.id === 'number')).toBe(true);
+    expect(rows.every((row) => !!row.ordererCode)).toBe(true);
+    expect(rows.every((row) => !!row.orderDate)).toBe(true);
+  });
+
+  it('isPersistenceColumnsResolved は常に true を返す', async () => {
+    const repo = new InMemoryBillingOrderRepository(createBaseOrders());
+
+    await expect(repo.isPersistenceColumnsResolved()).resolves.toBe(true);
+  });
+
   it('returns a fresh array copy from list() and does not expose internal mutable state', async () => {
     const repo = new InMemoryBillingOrderRepository(createBaseOrders());
 
