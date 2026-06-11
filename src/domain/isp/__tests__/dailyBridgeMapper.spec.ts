@@ -112,4 +112,35 @@ describe('mapPlanningToDailyBridge', () => {
       latestUpdateAt: '2026-06-10T00:30:00.000Z',
     });
   });
+
+  it('focus が無く環境調整のみあるとき environmental のみを返す', () => {
+    const result = mapPlanningToDailyBridge(
+      {
+        ...baseSheet,
+        interpretationHypothesis: '',
+        environmentalAdjustments: '音楽を小さくして刺激を減らす',
+        planning: {
+          procedureSteps: [],
+          crisisThresholds: null,
+          environmentalAdjustments: '',
+        },
+      },
+      '2026-06-14',
+    );
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type: 'environmental',
+      provenance: {
+        sourceSection: 'environmentalAdjustments',
+      },
+      content: '音楽を小さくして刺激を減らす',
+    });
+    expect(result.summary).toMatchObject({
+      cautionCount: 0,
+      procedureCount: 0,
+      focusPointCount: 0,
+      latestUpdateAt: '2026-06-10T00:30:00.000Z',
+    });
+  });
 });
