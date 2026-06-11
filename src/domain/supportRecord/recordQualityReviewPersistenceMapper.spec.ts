@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   acceptRecordQualityReviewDraft,
   createRecordQualityReviewDraft,
+  discardRecordQualityReviewDraft,
+  reviseRecordQualityReviewDraft,
   type RecordQualityReviewDraft,
+  type RecordQualityReviewStatus,
 } from './recordQualityReview';
 import {
   fromRecordQualityReviewPersistenceItem,
@@ -106,6 +109,8 @@ describe('recordQualityReviewPersistenceMapper', () => {
 
     expect('originalText' in item).toBe(false);
     expect('originalRecordText' in item).toBe(false);
+    expect('body' in item).toBe(false);
+    expect('content' in item).toBe(false);
     expect(Object.keys(item)).toEqual([
       'recordId',
       'sourceRecordId',
@@ -118,6 +123,125 @@ describe('recordQualityReviewPersistenceMapper', () => {
       'createdAt',
       'updatedAt',
     ]);
+  });
+
+  it('keeps original support record body and content out of the persistence payload', () => {
+    const draftWithSupportRecordFields = {
+      ...createDraft(),
+      body: '元の支援記録本文',
+      content: '本人の反応などの本文',
+      originalSupportRecord: {
+        body: 'ネストされた本文',
+        content: 'ネストされた内容',
+      },
+    } as RecordQualityReviewDraft & {
+      body: string;
+      content: string;
+      originalSupportRecord: {
+        body: string;
+        content: string;
+      };
+    };
+
+    const item = toRecordQualityReviewPersistenceItem(draftWithSupportRecordFields);
+    const serialized = JSON.stringify(item);
+
+    expect(serialized).not.toContain('元の支援記録本文');
+    expect(serialized).not.toContain('本人の反応などの本文');
+    expect(serialized).not.toContain('ネストされた本文');
+    expect(serialized).not.toContain('ネストされた内容');
+    expect('body' in item).toBe(false);
+    expect('content' in item).toBe(false);
+    expect('originalSupportRecord' in item).toBe(false);
+  });
+
+  it.each([
+    ['draft', (draft: RecordQualityReviewDraft) => draft],
+    [
+      'accepted',
+      (draft: RecordQualityReviewDraft) =>
+        acceptRecordQualityReviewDraft(draft, '2026-06-11T01:00:00.000Z'),
+    ],
+    [
+      'revised',
+      (draft: RecordQualityReviewDraft) =>
+        reviseRecordQualityReviewDraft(draft, {
+          notes: ['レビュー観点を修正する'],
+          updatedAt: '2026-06-11T02:00:00.000Z',
+        }),
+    ],
+    [
+      'discarded',
+      (draft: RecordQualityReviewDraft) =>
+        discardRecordQualityReviewDraft(draft, '2026-06-11T03:00:00.000Z'),
+    ],
+  ] satisfies ReadonlyArray<
+    readonly [
+      RecordQualityReviewStatus,
+      (draft: RecordQualityReviewDraft) => RecordQualityReviewDraft,
+    ]
+  >)('round-trips %s reviews while preserving safety metadata', (_status, transition) => {
+    const review = transition(createDraft());
+
+    const restored = fromRecordQualityReviewPersistenceItem(
+      toRecordQualityReviewPersistenceItem(review),
+    );
+
+    expect(restored).toEqual(review);
+    expect(restored.sourceOfTruth).toBe('original_record');
+    expect(restored.outputKind).toBe('review_metadata');
+    expect(restored.requiresHumanReview).toBe(true);
+    expect(restored.prohibitedActions).toEqual([
+      'diagnose_users',
+      'judge_behavior',
+      'determine_support_policy',
+      'overwrite_original_record',
+    ]);
+  });
+
+  it('restores safety metadata from constants instead of persistence payload fields', () => {
+    const tamperedItem = {
+      ...toRecordQualityReviewPersistenceItem(createDraft()),
+      sourceOfTruth: 'generated_summary',
+      outputKind: 'support_record',
+      requiresHumanReview: false,
+      prohibitedActions: [],
+    } as RecordQualityReviewPersistenceItem & {
+      sourceOfTruth: string;
+      outputKind: string;
+      requiresHumanReview: boolean;
+      prohibitedActions: string[];
+    };
+
+    const restored = fromRecordQualityReviewPersistenceItem(tamperedItem);
+
+    expect(restored.sourceOfTruth).toBe('original_record');
+    expect(restored.outputKind).toBe('review_metadata');
+    expect(restored.requiresHumanReview).toBe(true);
+    expect(restored.prohibitedActions).toEqual([
+      'diagnose_users',
+      'judge_behavior',
+      'determine_support_policy',
+      'overwrite_original_record',
+    ]);
+  });
+
+  it('rejects malformed persistence JSON without returning partial review metadata', () => {
+    const item = toRecordQualityReviewPersistenceItem(createDraft());
+
+    expect(() =>
+      fromRecordQualityReviewPersistenceItem({
+        ...item,
+        missingInfoHintsJson: 'not-json',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      fromRecordQualityReviewPersistenceItem({
+        ...item,
+        reviewerNotesJson: '{"note":"not-array"}',
+      }),
+    ).toThrow('Record quality review persistence field must be an array');
   });
 
   it('preserves source record id separately from the persistence record id', () => {
