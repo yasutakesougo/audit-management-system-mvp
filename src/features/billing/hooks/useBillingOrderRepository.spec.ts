@@ -4,6 +4,8 @@ import type { BillingOrderRepository } from '../repository';
 
 const envState = {
   isTestMode: true,
+  shouldSkipSharePoint: false,
+  isDemoModeEnabled: false,
 };
 
 vi.mock('@/auth/useAuth', () => ({
@@ -11,14 +13,14 @@ vi.mock('@/auth/useAuth', () => ({
 }));
 
 vi.mock('@/lib/env', () => ({
-  isDemoModeEnabled: () => false,
+  isDemoModeEnabled: () => envState.isDemoModeEnabled,
   isForceDemoEnabled: () => false,
   isTestMode: () => envState.isTestMode,
   readBool: () => false,
   readEnv: () => '',
   isDevMode: () => false,
   shouldSkipLogin: () => false,
-  shouldSkipSharePoint: () => false,
+  shouldSkipSharePoint: () => envState.shouldSkipSharePoint,
   getAppConfig: () => ({ VITE_SP_RESOURCE: 'https://example.sharepoint.com/sites/test' }),
   readOptionalEnv: () => undefined,
 }));
@@ -39,6 +41,8 @@ describe('useBillingOrderRepository', () => {
   beforeEach(() => {
     resetBillingOrderRepository();
     envState.isTestMode = true;
+    envState.shouldSkipSharePoint = false;
+    envState.isDemoModeEnabled = false;
   });
 
   it('returns in-memory repository in test mode by default', () => {
@@ -65,6 +69,16 @@ describe('useBillingOrderRepository', () => {
     resetBillingOrderRepository();
     const { result: resetResult } = renderHook(() => useBillingOrderRepository());
     expect(resetResult.current).toBe(inMemoryBillingOrderRepository);
+    expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
+  });
+
+  it('uses in-memory repository when skipSharePoint is true even without test mode', () => {
+    envState.isTestMode = false;
+    envState.shouldSkipSharePoint = true;
+
+    const { result } = renderHook(() => useBillingOrderRepository());
+
+    expect(result.current).toBe(inMemoryBillingOrderRepository);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
   });
 });
