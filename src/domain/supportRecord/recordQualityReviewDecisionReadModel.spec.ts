@@ -8,6 +8,7 @@ import {
   type RecordQualityReviewDraft,
   type RecordQualityReviewStatus,
 } from './recordQualityReview';
+import { toRecordQualityReviewDecision } from './recordQualityReviewDecisionReadModel';
 
 type ReviewDecisionFixture = {
   readonly label: string;
@@ -87,25 +88,47 @@ describe('record quality review decision read model fixtures', () => {
   });
 
   it.each(decisionFixtures)('keeps %s metadata tied to the original record reference', fixture => {
-    expect(fixture.review.status).toBe(fixture.expectedStatus);
-    expect(fixture.review.recordId).toBe('support-record-1');
-    expect(fixture.review.originalRecord).toEqual({ recordId: 'support-record-1' });
-    expect(fixture.review.sourceOfTruth).toBe('original_record');
-    expect(fixture.review.outputKind).toBe('review_metadata');
-    expect(fixture.review.requiresHumanReview).toBe(true);
+    const decision = toRecordQualityReviewDecision(fixture.review);
+
+    expect(decision.status).toBe(fixture.expectedStatus);
+    expect(decision.recordId).toBe('support-record-1');
+    expect(decision.sourceRecordId).toBe('support-record-1');
+    expect(decision.label).toBe(fixture.label);
+    expect(decision.sourceOfTruth).toBe('original_record');
+    expect(decision.outputKind).toBe('review_metadata');
+    expect(decision.requiresHumanReview).toBe(true);
   });
 
   it.each(decisionFixtures)('does not expose original support record text for %s', fixture => {
-    expect('body' in fixture.review).toBe(false);
-    expect('content' in fixture.review).toBe(false);
-    expect('originalText' in fixture.review).toBe(false);
-    expect('originalRecordText' in fixture.review).toBe(false);
+    const decision = toRecordQualityReviewDecision(fixture.review);
+
+    expect('body' in decision).toBe(false);
+    expect('content' in decision).toBe(false);
+    expect('originalText' in decision).toBe(false);
+    expect('originalRecordText' in decision).toBe(false);
+  });
+
+  it('summarizes metadata counts without exposing review detail arrays', () => {
+    const decision = toRecordQualityReviewDecision(draftReview);
+
+    expect(decision.suggestedCategoryCount).toBe(1);
+    expect(decision.missingInformationHintCount).toBe(1);
+    expect(decision.noteCount).toBe(1);
+    expect('suggestedCategories' in decision).toBe(false);
+    expect('missingInformationHints' in decision).toBe(false);
+    expect('notes' in decision).toBe(false);
   });
 
   it('keeps accepted, revised, and discarded fixture timestamps monotonic', () => {
-    expect(draftReview.updatedAt).toBe(createdAt);
-    expect(acceptedReview.updatedAt).toBe('2026-06-11T01:00:00.000Z');
-    expect(revisedReview.updatedAt).toBe('2026-06-11T02:00:00.000Z');
-    expect(discardedReview.updatedAt).toBe('2026-06-11T03:00:00.000Z');
+    expect(toRecordQualityReviewDecision(draftReview).updatedAt).toBe(createdAt);
+    expect(toRecordQualityReviewDecision(acceptedReview).updatedAt).toBe(
+      '2026-06-11T01:00:00.000Z',
+    );
+    expect(toRecordQualityReviewDecision(revisedReview).updatedAt).toBe(
+      '2026-06-11T02:00:00.000Z',
+    );
+    expect(toRecordQualityReviewDecision(discardedReview).updatedAt).toBe(
+      '2026-06-11T03:00:00.000Z',
+    );
   });
 });
