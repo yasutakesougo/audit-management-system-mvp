@@ -2,6 +2,8 @@
 
 ## Progress update
 - `src/domain/isp/dailyBridgeMapper.ts` は完了済み（PR #2198, #2200, #2201 で境界ケース固定）。
+- `src/features/billing/hooks/useBillingOrderRepository.ts` の境界（skip-sharepoint）を PR #2205 で固定。
+  （H-2 は `billing` 配下のうち未検証枠が残り、引き続き `useBillingOrders` と `InMemoryBillingOrderRepository` を順次追加）
 
 ## 1. High Priority（優先）
 
