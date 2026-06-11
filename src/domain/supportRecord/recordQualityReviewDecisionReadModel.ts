@@ -35,6 +35,16 @@ export function toRecordQualityReviewDecision(
   };
 }
 
+export function buildRecordQualityHumanReviewQueue(
+  reviews: readonly RecordQualityReviewDraft[],
+): RecordQualityReviewDecision[] {
+  return reviews
+    .filter(review => review.requiresHumanReview)
+    .filter(review => review.status === 'draft' || review.status === 'revised')
+    .map(toRecordQualityReviewDecision)
+    .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+}
+
 function labelForStatus(status: RecordQualityReviewStatus): string {
   switch (status) {
     case 'draft':
