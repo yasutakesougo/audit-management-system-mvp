@@ -19,7 +19,6 @@
   - 同名テストでの直接照合で `-by-name` では不一致（現時点）
 
 ### H-2. Billing
-- `src/features/billing/hooks/useBillingOrderRepository.ts`
 - `src/features/billing/infra/InMemoryBillingOrderRepository.ts`
 - `src/features/billing/useBillingOrders.ts`
 - 根拠:
