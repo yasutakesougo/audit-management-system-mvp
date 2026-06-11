@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   acceptRecordQualityReviewDraft,
   createRecordQualityReviewDraft,
+  discardRecordQualityReviewDraft,
   reviseRecordQualityReviewDraft,
   type RecordQualityReviewDraft,
 } from './recordQualityReview';
@@ -102,14 +103,38 @@ const runRecordQualityReviewRepositoryContract = (
 
     it('keeps statuses limited to draft, accepted, revised, and discarded', async () => {
       const repository = factory();
-      await repository.saveReview(createDraft());
+      const saved = await repository.saveReview(createDraft());
 
-      const revised = reviseRecordQualityReviewDraft(createDraft(), {
+      expect(saved.status).toBe('draft');
+
+      const accepted = acceptRecordQualityReviewDraft(saved, '2026-06-11T01:00:00.000Z');
+      await expect(repository.updateReview(accepted)).resolves.toMatchObject({
+        status: 'accepted',
+        sourceOfTruth: 'original_record',
+        outputKind: 'review_metadata',
+        requiresHumanReview: true,
+      });
+
+      const revised = reviseRecordQualityReviewDraft(accepted, {
         notes: ['確認観点を修正する'],
         updatedAt: '2026-06-11T02:00:00.000Z',
       });
       await expect(repository.updateReview(revised)).resolves.toMatchObject({
         status: 'revised',
+        sourceOfTruth: 'original_record',
+        outputKind: 'review_metadata',
+        requiresHumanReview: true,
+      });
+
+      const discarded = discardRecordQualityReviewDraft(
+        revised,
+        '2026-06-11T03:00:00.000Z',
+      );
+      await expect(repository.updateReview(discarded)).resolves.toMatchObject({
+        status: 'discarded',
+        sourceOfTruth: 'original_record',
+        outputKind: 'review_metadata',
+        requiresHumanReview: true,
       });
 
       const invalid = {
@@ -134,6 +159,39 @@ const runRecordQualityReviewRepositoryContract = (
       await expect(repository.updateReview(createDraft('record-2'))).rejects.toThrow(
         'Record quality review not found',
       );
+    });
+
+    it('keeps accept, revise, and discard transitions separate from the original support record', async () => {
+      const repository = factory();
+      const originalSupportRecord = {
+        id: 'record-1',
+        body: '元の支援記録本文',
+        content: '水分補給を促し、本人の反応を観察した',
+        updatedAt: '2026-06-10T23:00:00.000Z',
+      };
+      const originalSnapshot = structuredClone(originalSupportRecord);
+
+      const saved = await repository.saveReview(createDraft(originalSupportRecord.id));
+      const accepted = await repository.updateReview(
+        acceptRecordQualityReviewDraft(saved, '2026-06-11T01:00:00.000Z'),
+      );
+      const revised = await repository.updateReview(
+        reviseRecordQualityReviewDraft(accepted, {
+          notes: ['本文ではなくレビュー観点だけを修正する'],
+          updatedAt: '2026-06-11T02:00:00.000Z',
+        }),
+      );
+      const discarded = await repository.updateReview(
+        discardRecordQualityReviewDraft(revised, '2026-06-11T03:00:00.000Z'),
+      );
+
+      expect(originalSupportRecord).toEqual(originalSnapshot);
+      expect(discarded.originalRecord).toEqual({ recordId: originalSupportRecord.id });
+      expect('body' in discarded).toBe(false);
+      expect('content' in discarded).toBe(false);
+      expect(discarded.sourceOfTruth).toBe('original_record');
+      expect(discarded.outputKind).toBe('review_metadata');
+      expect(discarded.requiresHumanReview).toBe(true);
     });
   });
 };
