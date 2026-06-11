@@ -1,5 +1,8 @@
 # Missing test candidates (SharePoint-aligned baseline)
 
+## Progress update
+- `src/domain/isp/dailyBridgeMapper.ts` は完了済み（PR #2198, #2200, #2201 で境界ケース固定）。
+
 ## 1. High Priority（優先）
 
 ### H-1. SharePoint Drift / Diagnostics domain
@@ -23,7 +26,6 @@
 
 ### H-3. Domain core with low discoverability
 - `src/domain/behavior/abc.ts`
-- `src/domain/isp/dailyBridgeMapper.ts`
 - `src/domain/isp/dailyBridge.ts`
 - 根拠:
   - 名前ベースのテスト照合で未検出になりやすい
