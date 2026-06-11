@@ -7,7 +7,7 @@ import {
   reviseRecordQualityReviewDraft,
   type RecordQualityReviewDraft,
 } from './recordQualityReview';
-import { buildRecordQualityHumanReviewQueue } from './recordQualityReviewDecisionReadModel';
+import { buildRecordQualityHumanReviewQueue } from './recordQualityHumanReviewQueue';
 
 function createReview(recordId: string, createdAt: string): RecordQualityReviewDraft {
   return createRecordQualityReviewDraft({
@@ -59,12 +59,14 @@ describe('record quality human review queue sorting and filters', () => {
       oldestDraft,
     ]);
 
-    expect(queue.map(item => item.recordId)).toEqual([
+    expect(queue.totalCount).toBe(3);
+    expect(queue.oldestUpdatedAt).toBe('2026-06-11T00:00:00.000Z');
+    expect(queue.items.map(item => item.recordId)).toEqual([
       'record-oldest-draft',
       'record-newer-draft',
       'record-revised',
     ]);
-    expect(queue.map(item => item.status)).toEqual(['draft', 'draft', 'revised']);
+    expect(queue.items.map(item => item.status)).toEqual(['draft', 'draft', 'revised']);
   });
 
   it('excludes accepted and discarded reviews from the pending queue', () => {
@@ -75,8 +77,8 @@ describe('record quality human review queue sorting and filters', () => {
       revised,
     ]);
 
-    expect(queue.map(item => item.recordId)).not.toContain('record-accepted');
-    expect(queue.map(item => item.recordId)).not.toContain('record-discarded');
+    expect(queue.items.map(item => item.recordId)).not.toContain('record-accepted');
+    expect(queue.items.map(item => item.recordId)).not.toContain('record-discarded');
   });
 
   it('keeps queue items limited to review metadata and source record references', () => {
@@ -91,7 +93,7 @@ describe('record quality human review queue sorting and filters', () => {
       originalText: string;
     };
 
-    const [item] = buildRecordQualityHumanReviewQueue([draftWithOriginalText]);
+    const [item] = buildRecordQualityHumanReviewQueue([draftWithOriginalText]).items;
 
     expect(item.sourceOfTruth).toBe('original_record');
     expect(item.outputKind).toBe('review_metadata');
@@ -100,5 +102,15 @@ describe('record quality human review queue sorting and filters', () => {
     expect('body' in item).toBe(false);
     expect('content' in item).toBe(false);
     expect('originalText' in item).toBe(false);
+  });
+
+  it('returns an empty queue model when no review requires action', () => {
+    const queue = buildRecordQualityHumanReviewQueue([accepted, discarded]);
+
+    expect(queue).toEqual({
+      items: [],
+      totalCount: 0,
+      oldestUpdatedAt: undefined,
+    });
   });
 });
