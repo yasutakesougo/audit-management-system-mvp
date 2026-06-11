@@ -18,10 +18,15 @@ vi.mock('@/lib/env', () => ({
   isTestMode: () => envState.isTestMode,
   readBool: () => false,
   readEnv: () => '',
+  isE2eMsalMockEnabled: () => false,
   isDevMode: () => false,
   shouldSkipLogin: () => false,
+  skipSharePoint: () => envState.shouldSkipSharePoint,
   shouldSkipSharePoint: () => envState.shouldSkipSharePoint,
-  getAppConfig: () => ({ VITE_SP_RESOURCE: 'https://example.sharepoint.com/sites/test' }),
+  getAppConfig: () => ({
+    VITE_SP_RESOURCE: 'https://example.sharepoint.com',
+    VITE_SP_SITE_RELATIVE: '/sites/test',
+  }),
   readOptionalEnv: () => undefined,
 }));
 
@@ -80,5 +85,16 @@ describe('useBillingOrderRepository', () => {
 
     expect(result.current).toBe(inMemoryBillingOrderRepository);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
+  });
+
+  it('uses real repository when sharepoint is allowed and test mode is disabled', () => {
+    envState.isTestMode = false;
+    envState.shouldSkipSharePoint = false;
+
+    const { result } = renderHook(() => useBillingOrderRepository());
+
+    expect(getCurrentBillingOrderRepositoryKind()).toBe('real');
+    expect(result.current).not.toBe(inMemoryBillingOrderRepository);
+    expect(typeof result.current).toBe('object');
   });
 });
