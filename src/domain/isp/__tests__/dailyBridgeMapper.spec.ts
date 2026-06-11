@@ -85,4 +85,31 @@ describe('mapPlanningToDailyBridge', () => {
       latestUpdateAt: '2026-06-10T00:30:00.000Z',
     });
   });
+
+  it('crisisThresholds の escalationLevel が空文字の場合は caution を生成しない', () => {
+    const result = mapPlanningToDailyBridge(
+      {
+        ...baseSheet,
+        interpretationHypothesis: '',
+        planning: {
+          procedureSteps: [],
+          crisisThresholds: {
+            escalationLevel: '',
+            deescalationSteps: [],
+            emergencyContacts: [],
+          },
+          environmentalAdjustments: '',
+        },
+      },
+      '2026-06-13',
+    );
+
+    expect(result.items).toHaveLength(0);
+    expect(result.summary).toEqual({
+      cautionCount: 0,
+      procedureCount: 0,
+      focusPointCount: 0,
+      latestUpdateAt: '2026-06-10T00:30:00.000Z',
+    });
+  });
 });
