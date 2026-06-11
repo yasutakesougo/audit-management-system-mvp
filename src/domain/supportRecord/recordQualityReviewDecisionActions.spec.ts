@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { buildRecordQualityHumanReviewQueue } from './recordQualityHumanReviewQueue';
 import {
-  acceptRecordQualityReviewDraft,
   createRecordQualityReviewDraft,
-  discardRecordQualityReviewDraft,
-  reviseRecordQualityReviewDraft,
   type RecordQualityReviewDraft,
 } from './recordQualityReview';
+import {
+  acceptRecordQualityReviewDecision,
+  discardRecordQualityReviewDecision,
+  reviseRecordQualityReviewDecision,
+} from './recordQualityReviewDecisionActions';
 import { InMemoryRecordQualityReviewRepository } from './recordQualityReviewRepository';
 
 const timestamp = '2026-06-11T00:00:00.000Z';
@@ -45,9 +47,11 @@ describe('record quality human review decision actions', () => {
     const originalSnapshot = structuredClone(originalSupportRecord);
     const saved = await repository.saveReview(createReview(originalSupportRecord.id));
 
-    const accepted = await repository.updateReview(
-      acceptRecordQualityReviewDraft(saved, '2026-06-11T01:00:00.000Z'),
-    );
+    const accepted = await acceptRecordQualityReviewDecision({
+      repository,
+      recordId: saved.recordId,
+      updatedAt: '2026-06-11T01:00:00.000Z',
+    });
     const queue = buildRecordQualityHumanReviewQueue(await repository.listReviews());
 
     expect(originalSupportRecord).toEqual(originalSnapshot);
@@ -70,12 +74,12 @@ describe('record quality human review decision actions', () => {
     const repository = new InMemoryRecordQualityReviewRepository();
     const saved = await repository.saveReview(createReview('record-revised'));
 
-    const revised = await repository.updateReview(
-      reviseRecordQualityReviewDraft(saved, {
-        notes: ['人間レビューで確認観点だけを修正する'],
-        updatedAt: '2026-06-11T02:00:00.000Z',
-      }),
-    );
+    const revised = await reviseRecordQualityReviewDecision({
+      repository,
+      recordId: saved.recordId,
+      notes: ['人間レビューで確認観点だけを修正する'],
+      updatedAt: '2026-06-11T02:00:00.000Z',
+    });
     const queue = buildRecordQualityHumanReviewQueue(await repository.listReviews());
 
     expect(revised).toMatchObject({
@@ -105,9 +109,11 @@ describe('record quality human review decision actions', () => {
     const repository = new InMemoryRecordQualityReviewRepository();
     const saved = await repository.saveReview(createReview('record-discarded'));
 
-    const discarded = await repository.updateReview(
-      discardRecordQualityReviewDraft(saved, '2026-06-11T03:00:00.000Z'),
-    );
+    const discarded = await discardRecordQualityReviewDecision({
+      repository,
+      recordId: saved.recordId,
+      updatedAt: '2026-06-11T03:00:00.000Z',
+    });
     const stored = await repository.getReview('record-discarded');
     const queue = buildRecordQualityHumanReviewQueue(await repository.listReviews());
 
@@ -128,5 +134,18 @@ describe('record quality human review decision actions', () => {
       'overwrite_original_record',
     ]);
     expect(queue.items.map(item => item.recordId)).not.toContain('record-discarded');
+  });
+
+  it('rejects actions for missing review metadata without creating a new review', async () => {
+    const repository = new InMemoryRecordQualityReviewRepository();
+
+    await expect(
+      acceptRecordQualityReviewDecision({
+        repository,
+        recordId: 'missing-record',
+        updatedAt: '2026-06-11T04:00:00.000Z',
+      }),
+    ).rejects.toThrow('Record quality review not found');
+    await expect(repository.listReviews()).resolves.toEqual([]);
   });
 });
