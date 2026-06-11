@@ -38,7 +38,7 @@ describe('mapPlanPatchToTodayActionSource', () => {
     });
   });
 
-  it('marks overdue patch title with deadline breach wording', () => {
+  it('maps overdue patch title with deadline breach wording', () => {
     const result = mapPlanPatchToTodayActionSource({
       patch: makePatch({ dueAt: '2026-04-01' }),
       userId: 'U001',
@@ -46,5 +46,16 @@ describe('mapPlanPatchToTodayActionSource', () => {
     });
 
     expect(result.title).toContain('期限超過');
+  });
+
+  it('maps confirmed status and trims fallback displayName for boundary cases', () => {
+    const result = mapPlanPatchToTodayActionSource({
+      patch: makePatch({ status: 'confirmed' }),
+      userId: 'U001',
+      userName: '   ',
+    });
+
+    expect(result.isCompleted).toBe(true);
+    expect(result.payload.userName).toBe('U001');
   });
 });
