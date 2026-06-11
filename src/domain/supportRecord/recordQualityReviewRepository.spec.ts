@@ -11,6 +11,7 @@ import {
   InMemoryRecordQualityReviewRepository,
   type RecordQualityReviewRepository,
 } from './recordQualityReviewRepository';
+import { buildRecordQualityHumanReviewQueue } from './recordQualityHumanReviewQueue';
 
 const timestamp = '2026-06-11T00:00:00.000Z';
 
@@ -192,6 +193,72 @@ const runRecordQualityReviewRepositoryContract = (
       expect(discarded.sourceOfTruth).toBe('original_record');
       expect(discarded.outputKind).toBe('review_metadata');
       expect(discarded.requiresHumanReview).toBe(true);
+    });
+
+    it('supports building an active human review queue from stored review metadata only', async () => {
+      const repository = factory();
+      const oldestDraft = await repository.saveReview(
+        createDraft('record-oldest-draft'),
+      );
+      const newerDraft = await repository.saveReview({
+        ...createDraft('record-newer-draft'),
+        createdAt: '2026-06-11T01:00:00.000Z',
+        updatedAt: '2026-06-11T01:00:00.000Z',
+      });
+      const accepted = await repository.saveReview({
+        ...createDraft('record-accepted'),
+        createdAt: '2026-06-11T02:00:00.000Z',
+        updatedAt: '2026-06-11T02:00:00.000Z',
+      });
+      const revised = await repository.saveReview({
+        ...createDraft('record-revised'),
+        createdAt: '2026-06-11T03:00:00.000Z',
+        updatedAt: '2026-06-11T03:00:00.000Z',
+      });
+      const discarded = await repository.saveReview({
+        ...createDraft('record-discarded'),
+        createdAt: '2026-06-11T04:00:00.000Z',
+        updatedAt: '2026-06-11T04:00:00.000Z',
+      });
+
+      await repository.updateReview(
+        acceptRecordQualityReviewDraft(accepted, '2026-06-11T05:00:00.000Z'),
+      );
+      await repository.updateReview(
+        reviseRecordQualityReviewDraft(revised, {
+          notes: ['人間レビューキューで再確認する'],
+          updatedAt: '2026-06-11T06:00:00.000Z',
+        }),
+      );
+      await repository.updateReview(
+        discardRecordQualityReviewDraft(discarded, '2026-06-11T07:00:00.000Z'),
+      );
+
+      const storedReviews = await repository.listReviews();
+      const queue = buildRecordQualityHumanReviewQueue(storedReviews);
+
+      expect(queue.totalCount).toBe(3);
+      expect(queue.oldestUpdatedAt).toBe(oldestDraft.updatedAt);
+      expect(queue.items.map(item => item.recordId)).toEqual([
+        oldestDraft.recordId,
+        newerDraft.recordId,
+        revised.recordId,
+      ]);
+      expect(queue.items.map(item => item.status)).toEqual(['draft', 'draft', 'revised']);
+      expect(queue.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sourceOfTruth: 'original_record',
+            outputKind: 'review_metadata',
+            requiresHumanReview: true,
+          }),
+        ]),
+      );
+      expect(queue.items.map(item => item.recordId)).not.toContain(accepted.recordId);
+      expect(queue.items.map(item => item.recordId)).not.toContain(discarded.recordId);
+      expect(queue.items.some(item => 'body' in item)).toBe(false);
+      expect(queue.items.some(item => 'content' in item)).toBe(false);
+      expect(queue.items.some(item => 'originalText' in item)).toBe(false);
     });
   });
 };
