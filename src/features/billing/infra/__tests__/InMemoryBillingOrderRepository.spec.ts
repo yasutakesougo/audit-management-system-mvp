@@ -51,6 +51,19 @@ describe('InMemoryBillingOrderRepository', () => {
     expect(rows.every((row) => !!row.orderDate)).toBe(true);
   });
 
+  it('falls back to default mock data when an explicit empty array is passed', async () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      const rows = await new InMemoryBillingOrderRepository([]).list();
+      const defaultRows = await new InMemoryBillingOrderRepository().list();
+
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows).toEqual(defaultRows);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
   it('isPersistenceColumnsResolved は常に true を返す', async () => {
     const repo = new InMemoryBillingOrderRepository(createBaseOrders());
 
