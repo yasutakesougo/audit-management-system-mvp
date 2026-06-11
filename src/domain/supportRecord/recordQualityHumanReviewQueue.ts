@@ -3,6 +3,7 @@ import {
   toRecordQualityReviewDecision,
   type RecordQualityReviewDecision,
 } from './recordQualityReviewDecisionReadModel';
+import type { RecordQualityReviewRepository } from './recordQualityReviewRepository';
 
 export type RecordQualityHumanReviewQueueItem = RecordQualityReviewDecision;
 
@@ -11,6 +12,22 @@ export type RecordQualityHumanReviewQueue = {
   readonly totalCount: number;
   readonly oldestUpdatedAt?: string;
 };
+
+export interface RecordQualityHumanReviewQueueRepository {
+  listActiveQueue(): Promise<RecordQualityHumanReviewQueue>;
+}
+
+export class InMemoryRecordQualityHumanReviewQueueRepository
+  implements RecordQualityHumanReviewQueueRepository
+{
+  constructor(
+    private readonly reviewRepository: Pick<RecordQualityReviewRepository, 'listReviews'>,
+  ) {}
+
+  async listActiveQueue(): Promise<RecordQualityHumanReviewQueue> {
+    return buildRecordQualityHumanReviewQueue(await this.reviewRepository.listReviews());
+  }
+}
 
 export function buildRecordQualityHumanReviewQueue(
   reviews: readonly RecordQualityReviewDraft[],
