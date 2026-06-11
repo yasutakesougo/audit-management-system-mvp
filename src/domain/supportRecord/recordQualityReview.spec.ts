@@ -157,4 +157,77 @@ describe('recordQualityReview draft model', () => {
       'overwrite_original_record',
     ]);
   });
+
+  it.each([
+    {
+      label: 'accept',
+      transition: (draft: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        acceptRecordQualityReviewDraft(draft, '2026-06-10T01:00:00.000Z'),
+      expectedStatus: 'accepted',
+    },
+    {
+      label: 'revise',
+      transition: (draft: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        reviseRecordQualityReviewDraft(draft, {
+          notes: ['人間レビューで確認観点だけを修正する'],
+          updatedAt: '2026-06-10T01:00:00.000Z',
+        }),
+      expectedStatus: 'revised',
+    },
+    {
+      label: 'discard',
+      transition: (draft: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        discardRecordQualityReviewDraft(draft, '2026-06-10T01:00:00.000Z'),
+      expectedStatus: 'discarded',
+    },
+  ])('allows draft -> $expectedStatus by $label action', ({ transition, expectedStatus }) => {
+    const draft = createRecordQualityReviewDraft({
+      recordId: 'record-1',
+      createdAt: '2026-06-10T00:00:00.000Z',
+    });
+
+    const decided = transition(draft);
+
+    expect(decided.status).toBe(expectedStatus);
+    expect(decided.updatedAt).toBe('2026-06-10T01:00:00.000Z');
+  });
+
+  it.each([
+    {
+      label: 'accepted -> accepted',
+      createCurrent: (draft: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        acceptRecordQualityReviewDraft(draft, '2026-06-10T01:00:00.000Z'),
+      transition: (current: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        acceptRecordQualityReviewDraft(current, '2026-06-10T02:00:00.000Z'),
+      expectedMessage: 'Cannot transition record quality review from accepted to accepted',
+    },
+    {
+      label: 'discarded -> accepted',
+      createCurrent: (draft: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        discardRecordQualityReviewDraft(draft, '2026-06-10T01:00:00.000Z'),
+      transition: (current: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        acceptRecordQualityReviewDraft(current, '2026-06-10T02:00:00.000Z'),
+      expectedMessage: 'Cannot transition record quality review from discarded to accepted',
+    },
+    {
+      label: 'accepted -> discarded',
+      createCurrent: (draft: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        acceptRecordQualityReviewDraft(draft, '2026-06-10T01:00:00.000Z'),
+      transition: (current: ReturnType<typeof createRecordQualityReviewDraft>) =>
+        discardRecordQualityReviewDraft(current, '2026-06-10T02:00:00.000Z'),
+      expectedMessage: 'Cannot transition record quality review from accepted to discarded',
+    },
+  ])('rejects invalid human review transition: $label', ({
+    createCurrent,
+    transition,
+    expectedMessage,
+  }) => {
+    const draft = createRecordQualityReviewDraft({
+      recordId: 'record-1',
+      createdAt: '2026-06-10T00:00:00.000Z',
+    });
+    const current = createCurrent(draft);
+
+    expect(() => transition(current)).toThrow(expectedMessage);
+  });
 });

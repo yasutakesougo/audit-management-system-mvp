@@ -122,6 +122,8 @@ function transitionRecordQualityReviewDraft(
   status: RecordQualityReviewStatus,
   input: ReviseRecordQualityReviewDraftInput,
 ): RecordQualityReviewDraft {
+  assertRecordQualityReviewTransitionAllowed(draft.status, status);
+
   return {
     ...draft,
     ...RECORD_QUALITY_REVIEW_SAFETY_METADATA,
@@ -134,4 +136,15 @@ function transitionRecordQualityReviewDraft(
     createdAt: draft.createdAt,
     updatedAt: input.updatedAt,
   };
+}
+
+function assertRecordQualityReviewTransitionAllowed(
+  currentStatus: RecordQualityReviewStatus,
+  nextStatus: RecordQualityReviewStatus,
+): void {
+  if (currentStatus === 'accepted' || currentStatus === 'discarded') {
+    throw new Error(
+      `Cannot transition record quality review from ${currentStatus} to ${nextStatus}`,
+    );
+  }
 }
