@@ -23,7 +23,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useUsers } from '@/features/users/useUsers';
 import type { IUserMaster } from '@/features/users/types';
@@ -66,9 +66,21 @@ const findLatestRecord = (records: ToiletRecord[], userId: string): ToiletRecord
 
 export const ToiletDailyBoard: React.FC = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
   const todayIso = toLocalDateISO(new Date());
+
+  const isValidDateOnly = (val: string | null | undefined): val is string => {
+    if (!val) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return false;
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  };
+
+  const selectedDateIso = isValidDateOnly(dateParam) ? dateParam : todayIso;
+
   const { data: users, isLoading: isUsersLoading, status: usersStatus } = useUsers({ selectMode: 'core' });
-  const { records, create, refresh: refreshRecords, isLoading: isRecordsLoading, error: recordsError } = useToiletRecords(todayIso);
+  const { records, create, refresh: refreshRecords, isLoading: isRecordsLoading, error: recordsError } = useToiletRecords(selectedDateIso);
   const isLoading = isUsersLoading || isRecordsLoading;
   const hasRecordsError = Boolean(recordsError);
   const [selectedUser, setSelectedUser] = React.useState<IUserMaster | null>(null);
@@ -110,12 +122,20 @@ export const ToiletDailyBoard: React.FC = () => {
     return grouped;
   }, [records]);
 
+  const getInitialOccurredAt = (dateIso: string): string => {
+    const now = new Date();
+    const [yyyy, mm, dd] = dateIso.split('-').map(Number);
+    const date = new Date(now);
+    date.setFullYear(yyyy, mm - 1, dd);
+    return toMinuteInputValue(date);
+  };
+
   const openForm = (user: IUserMaster) => {
     setSelectedUser(user);
     setSaveError(null);
     setIsSaving(false);
     setForm({
-      occurredAt: toMinuteInputValue(new Date()),
+      occurredAt: getInitialOccurredAt(selectedDateIso),
       toiletType: 'urination',
       amount: 'normal',
       memo: '',
@@ -161,7 +181,7 @@ export const ToiletDailyBoard: React.FC = () => {
             本日のトイレ確認
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {todayIso}
+            {selectedDateIso}
           </Typography>
         </Box>
         <Chip

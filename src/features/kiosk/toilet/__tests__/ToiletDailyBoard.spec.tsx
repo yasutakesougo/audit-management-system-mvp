@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IUserMaster } from '@/features/users/types';
+import { toLocalDateISO } from '@/utils/getNow';
 import { ToiletDailyBoard } from '../ToiletDailyBoard';
 
 const { mockUseUsers, mockUseToiletRecords, mockRefreshRecords, mockCreateRecord } = vi.hoisted(() => ({
@@ -98,4 +99,70 @@ describe('ToiletDailyBoard', () => {
     expect(screen.getByText('トイレ誘導対象の利用者がいません')).toBeInTheDocument();
     expect(screen.queryByText('トイレ記録の読み込みに失敗しました')).not.toBeInTheDocument();
   });
+
+  it("uses today's local date by default (without query parameter)", () => {
+    renderBoard();
+    const today = toLocalDateISO(new Date());
+    expect(mockUseToiletRecords).toHaveBeenCalledWith(today);
+  });
+
+  it('uses the specified date from date query parameter if it is a valid YYYY-MM-DD string', () => {
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+    expect(mockUseToiletRecords).toHaveBeenCalledWith('2026-06-12');
+  });
+
+  it("falls back to today's date if the date query parameter is invalid", () => {
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=invalid-date']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+    const today = toLocalDateISO(new Date());
+    expect(mockUseToiletRecords).toHaveBeenCalledWith(today);
+  });
+
+  it('creates new records with the selected date', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-12T12:00:00'));
+
+    try {
+      mockUseToiletRecords.mockReturnValue({
+        records: [],
+        create: mockCreateRecord,
+        refresh: mockRefreshRecords,
+        isLoading: false,
+        error: null,
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+          <ToiletDailyBoard />
+        </MemoryRouter>,
+      );
+
+      // Click on "記録する" button for the user
+      fireEvent.click(screen.getByTestId('toilet-record-button-user-1'));
+
+      // Check that the dialog is shown
+      expect(screen.getByText('支援 花子さんのトイレ記録')).toBeInTheDocument();
+
+      // Click save
+      fireEvent.click(screen.getByTestId('toilet-record-save'));
+
+      // Check that create was called with occurredAt containing the selected date
+      expect(mockCreateRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          occurredAt: expect.stringContaining('2026-06-12'),
+        })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
+
