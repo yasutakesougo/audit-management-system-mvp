@@ -23,6 +23,10 @@ import {
   PLAN_GOAL_LIST_TITLE,
   PLAN_GOAL_ENSURE_FIELDS,
 } from '@/sharepoint/fields/planGoalFields';
+import {
+  RECORD_QUALITY_REVIEW_LIST_TITLE,
+  RECORD_QUALITY_REVIEW_PROVISIONING_FIELDS,
+} from '@/sharepoint/fields/recordQualityReviewFields';
 import type { SpFieldDef } from '@/lib/sp/types';
 
 export interface ResourceDefinition {
@@ -80,5 +84,10 @@ export const DATA_OS_RESOURCE_REGISTRY: Record<string, ResourceDefinition> = {
     resourceName: 'PlanGoal',
     defaultListTitle: PLAN_GOAL_LIST_TITLE,
     fields: [...PLAN_GOAL_ENSURE_FIELDS] as unknown as SpFieldDef[],
+  },
+  RecordQualityReview: {
+    resourceName: 'RecordQualityReview',
+    defaultListTitle: RECORD_QUALITY_REVIEW_LIST_TITLE,
+    fields: [...RECORD_QUALITY_REVIEW_PROVISIONING_FIELDS] as SpFieldDef[],
   },
 };
