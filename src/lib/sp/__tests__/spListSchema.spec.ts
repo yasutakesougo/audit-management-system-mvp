@@ -104,4 +104,38 @@ describe('ensureListExists boundaries', () => {
       title: 'QAList',
     });
   });
+
+  it('必須ではないフィールドは既存フィールドのみ確認して追加を試行しない', async () => {
+    const spFetch = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        d: {
+          Id: '{44444444-4444-4444-4444-444444444444}',
+          Title: 'OptionalColumnList',
+        },
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        value: [{ InternalName: 'Title', TypeAsString: 'Text', Required: true }],
+      }));
+
+    const result = await ensureListExists(
+      spFetch,
+      'OptionalColumnList',
+      [{ internalName: 'OptionalColumn', typeAsString: 'Text', required: false }],
+    );
+
+    expect(spFetch).toHaveBeenCalledTimes(2);
+    expect(spFetch).toHaveBeenNthCalledWith(
+      1,
+      "/lists/getbytitle('OptionalColumnList')?$select=Id,Title",
+      { spOptions: undefined },
+    );
+    expect(spFetch).toHaveBeenNthCalledWith(
+      2,
+      "/lists/getbytitle('OptionalColumnList')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000",
+    );
+    expect(result).toEqual({
+      listId: '44444444-4444-4444-4444-444444444444',
+      title: 'OptionalColumnList',
+    });
+  });
 });
