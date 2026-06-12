@@ -140,6 +140,75 @@ describe('HumanReviewQueueSummary', () => {
     expect(screen.queryByRole('button', { name: /discard|破棄/i })).not.toBeInTheDocument();
   });
 
+  it('keeps summary totals independent from the visible item limit', async () => {
+    const reviewRepository = new InMemoryRecordQualityReviewRepository([
+      createReview('record-oldest-draft', '2026-06-11T00:00:00.000Z'),
+      createReview('record-newer-draft', '2026-06-11T01:00:00.000Z'),
+      reviseRecordQualityReviewDraft(
+        createReview('record-revised', '2026-06-11T02:00:00.000Z'),
+        {
+          notes: ['人間レビューで修正済みだが再確認する'],
+          updatedAt: '2026-06-11T03:00:00.000Z',
+        },
+      ),
+    ]);
+    const queueRepository = new InMemoryRecordQualityHumanReviewQueueRepository(
+      reviewRepository,
+    );
+
+    render(<HumanReviewQueueSummary repository={queueRepository} maxItems={1} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('record-quality-human-review-count')).toHaveTextContent(
+        '要確認 3件',
+      ),
+    );
+
+    expect(screen.getByText('record-oldest-draft')).toBeInTheDocument();
+    expect(screen.queryByText('record-newer-draft')).not.toBeInTheDocument();
+    expect(screen.queryByText('record-revised')).not.toBeInTheDocument();
+  });
+
+  it('renders safe draft and revised status labels without exposing source body text', async () => {
+    const draftWithOriginalText = {
+      ...createReview('record-draft', '2026-06-11T00:00:00.000Z'),
+      body: '元の支援記録本文',
+      content: '本文の詳細',
+      originalText: 'original body text',
+    } as RecordQualityReviewDraft & {
+      body: string;
+      content: string;
+      originalText: string;
+    };
+    const reviewRepository = new InMemoryRecordQualityReviewRepository([
+      draftWithOriginalText,
+      reviseRecordQualityReviewDraft(
+        createReview('record-revised', '2026-06-11T01:00:00.000Z'),
+        {
+          notes: ['revised note remains metadata only'],
+          updatedAt: '2026-06-11T02:00:00.000Z',
+        },
+      ),
+    ]);
+    const queueRepository = new InMemoryRecordQualityHumanReviewQueueRepository(
+      reviewRepository,
+    );
+
+    render(<HumanReviewQueueSummary repository={queueRepository} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('record-quality-human-review-count')).toHaveTextContent(
+        '要確認 2件',
+      ),
+    );
+
+    expect(screen.getByText('pending human review')).toBeInTheDocument();
+    expect(screen.getByText('revised by human reviewer')).toBeInTheDocument();
+    expect(screen.queryByText('元の支援記録本文')).not.toBeInTheDocument();
+    expect(screen.queryByText('本文の詳細')).not.toBeInTheDocument();
+    expect(screen.queryByText('original body text')).not.toBeInTheDocument();
+  });
+
   it('depends only on the injected queue repository boundary', async () => {
     const queueRepository = {
       listActiveQueue: vi.fn().mockResolvedValue(
