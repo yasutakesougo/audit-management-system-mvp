@@ -53,4 +53,25 @@ describe('useBillingOrders', () => {
     await expect(capturedQueryFn!()).resolves.toEqual(rows);
     expect(repo.list).toHaveBeenCalledTimes(1);
   });
+
+  it('queryFn propagates list() rejection', async () => {
+    const boom = new Error('list failed');
+    const repo = {
+      list: vi.fn().mockRejectedValue(boom),
+      isPersistenceColumnsResolved: vi.fn(),
+      updatePaymentStatus: vi.fn(),
+      bulkUpdatePaymentStatus: vi.fn(),
+    };
+
+    let capturedQueryFn: (() => Promise<unknown[]>) | null = null;
+    mockUseQuery.mockImplementation((options: { queryFn: () => Promise<unknown[]> }) => {
+      capturedQueryFn = options.queryFn;
+      return { data: [], isLoading: false };
+    });
+
+    useBillingOrders(repo);
+
+    expect(capturedQueryFn).not.toBeNull();
+    await expect(capturedQueryFn!()).rejects.toBe(boom);
+  });
 });
