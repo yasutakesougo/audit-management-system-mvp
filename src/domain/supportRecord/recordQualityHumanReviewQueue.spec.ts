@@ -9,6 +9,7 @@ import {
 } from './recordQualityReview';
 import {
   buildRecordQualityHumanReviewQueue,
+  emptyRecordQualityHumanReviewQueueSummary,
   InMemoryRecordQualityHumanReviewQueueRepository,
 } from './recordQualityHumanReviewQueue';
 import { InMemoryRecordQualityReviewRepository } from './recordQualityReviewRepository';
@@ -68,6 +69,14 @@ describe('record quality human review queue repository', () => {
       'record-revised',
     ]);
     expect(queue.items.map(item => item.status)).toEqual(['draft', 'revised']);
+    expect(queue.summary).toEqual({
+      draftCount: 1,
+      revisedCount: 1,
+      acceptedCount: 1,
+      discardedCount: 1,
+      pendingTotalCount: 2,
+      reviewedTotalCount: 2,
+    });
     expect(queue.items.every(item => item.requiresHumanReview)).toBe(true);
     expect(queue.items.some(item => 'body' in item)).toBe(false);
     expect(queue.items.some(item => 'content' in item)).toBe(false);
@@ -111,6 +120,14 @@ describe('record quality human review queue sorting and filters', () => {
       'record-revised',
     ]);
     expect(queue.items.map(item => item.status)).toEqual(['draft', 'draft', 'revised']);
+    expect(queue.summary).toEqual({
+      draftCount: 2,
+      revisedCount: 1,
+      acceptedCount: 1,
+      discardedCount: 1,
+      pendingTotalCount: 3,
+      reviewedTotalCount: 2,
+    });
   });
 
   it('excludes accepted and discarded reviews from the pending queue', () => {
@@ -155,6 +172,12 @@ describe('record quality human review queue sorting and filters', () => {
       items: [],
       totalCount: 0,
       oldestUpdatedAt: undefined,
+      summary: {
+        ...emptyRecordQualityHumanReviewQueueSummary,
+        acceptedCount: 1,
+        discardedCount: 1,
+        reviewedTotalCount: 2,
+      },
     });
   });
 });

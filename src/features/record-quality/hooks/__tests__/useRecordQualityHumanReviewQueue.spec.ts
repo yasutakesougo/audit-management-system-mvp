@@ -7,6 +7,7 @@ import {
   type RecordQualityReviewDraft,
 } from '@/domain/supportRecord/recordQualityReview';
 import {
+  emptyRecordQualityHumanReviewQueueSummary,
   InMemoryRecordQualityHumanReviewQueueRepository,
   type RecordQualityHumanReviewQueueRepository,
 } from '@/domain/supportRecord/recordQualityHumanReviewQueue';
@@ -71,6 +72,14 @@ describe('useRecordQualityHumanReviewQueue', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.queue.totalCount).toBe(2);
+    expect(result.current.queue.summary).toEqual({
+      draftCount: 1,
+      revisedCount: 1,
+      acceptedCount: 0,
+      discardedCount: 0,
+      pendingTotalCount: 2,
+      reviewedTotalCount: 0,
+    });
     expect(result.current.queue.items.map(item => item.recordId)).toEqual([
       'record-draft',
       'record-revised',
@@ -87,6 +96,7 @@ describe('useRecordQualityHumanReviewQueue', () => {
         items: [],
         totalCount: 0,
         oldestUpdatedAt: undefined,
+        summary: emptyRecordQualityHumanReviewQueueSummary,
       }),
     } satisfies RecordQualityHumanReviewQueueRepository;
 
@@ -100,6 +110,7 @@ describe('useRecordQualityHumanReviewQueue', () => {
       items: [],
       totalCount: 0,
       oldestUpdatedAt: undefined,
+      summary: emptyRecordQualityHumanReviewQueueSummary,
     });
     expect(result.current.error).toBeNull();
   });
@@ -119,6 +130,7 @@ describe('useRecordQualityHumanReviewQueue', () => {
       items: [],
       totalCount: 0,
       oldestUpdatedAt: undefined,
+      summary: emptyRecordQualityHumanReviewQueueSummary,
     });
     expect(result.current.error?.message).toBe('queue failed');
   });

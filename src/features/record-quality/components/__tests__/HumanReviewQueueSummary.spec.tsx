@@ -38,22 +38,6 @@ function createReview(recordId: string, createdAt: string): RecordQualityReviewD
   });
 }
 
-function buildExpectedReviewedSummary(reviews: readonly RecordQualityReviewDraft[]) {
-  const draftCount = reviews.filter(review => review.status === 'draft').length;
-  const revisedCount = reviews.filter(review => review.status === 'revised').length;
-  const acceptedCount = reviews.filter(review => review.status === 'accepted').length;
-  const discardedCount = reviews.filter(review => review.status === 'discarded').length;
-
-  return {
-    draftCount,
-    revisedCount,
-    acceptedCount,
-    discardedCount,
-    pendingTotalCount: draftCount + revisedCount,
-    reviewedTotalCount: acceptedCount + discardedCount,
-  };
-}
-
 describe('HumanReviewQueueSummary', () => {
   it('renders loading and then active queue summary without original record text', async () => {
     const draftWithOriginalText = {
@@ -98,6 +82,9 @@ describe('HumanReviewQueueSummary', () => {
     expect(screen.getByTestId('record-quality-human-review-revised-count')).toHaveTextContent(
       '修正済み 1件',
     );
+    expect(screen.getByTestId('record-quality-human-review-reviewed-count')).toHaveTextContent(
+      '判断済み 0件',
+    );
     expect(screen.getByText('最古更新 2026-06-11T00:00:00.000Z')).toBeInTheDocument();
     expect(screen.queryByText('元の支援記録本文')).not.toBeInTheDocument();
     expect(screen.queryByText('本人の反応などの本文')).not.toBeInTheDocument();
@@ -137,6 +124,15 @@ describe('HumanReviewQueueSummary', () => {
 
     expect(screen.getByText('record-draft')).toBeInTheDocument();
     expect(screen.getByText('record-revised')).toBeInTheDocument();
+    expect(screen.getByTestId('record-quality-human-review-reviewed-count')).toHaveTextContent(
+      '判断済み 2件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-accepted-count')).toHaveTextContent(
+      '採用済み 1件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-discarded-count')).toHaveTextContent(
+      '破棄 1件',
+    );
     expect(screen.queryByText('record-accepted')).not.toBeInTheDocument();
     expect(screen.queryByText('record-discarded')).not.toBeInTheDocument();
   });
@@ -237,7 +233,7 @@ describe('HumanReviewQueueSummary', () => {
     expect(screen.queryByText('original body text')).not.toBeInTheDocument();
   });
 
-  it('locks reviewed summary count expectations before rendering reviewed counts', async () => {
+  it('renders reviewed summary counts without exposing reviewed item rows or source body text', async () => {
     const draftWithOriginalText = {
       ...createReview('record-draft', '2026-06-11T00:00:00.000Z'),
       body: '元の支援記録本文',
@@ -279,19 +275,20 @@ describe('HumanReviewQueueSummary', () => {
       ),
     );
 
-    expect(buildExpectedReviewedSummary(reviews)).toEqual({
-      draftCount: 1,
-      revisedCount: 1,
-      acceptedCount: 1,
-      discardedCount: 1,
-      pendingTotalCount: 2,
-      reviewedTotalCount: 2,
-    });
     expect(screen.getByTestId('record-quality-human-review-draft-count')).toHaveTextContent(
       '未確認 1件',
     );
     expect(screen.getByTestId('record-quality-human-review-revised-count')).toHaveTextContent(
       '修正済み 1件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-reviewed-count')).toHaveTextContent(
+      '判断済み 2件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-accepted-count')).toHaveTextContent(
+      '採用済み 1件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-discarded-count')).toHaveTextContent(
+      '破棄 1件',
     );
     expect(screen.getByText('record-draft')).toBeInTheDocument();
     expect(screen.queryByText('record-revised')).not.toBeInTheDocument();

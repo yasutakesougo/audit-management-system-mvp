@@ -8,6 +8,7 @@ import {
   type RecordQualityReviewDraft,
 } from './recordQualityReview';
 import {
+  emptyRecordQualityHumanReviewQueueSummary,
   InMemoryRecordQualityHumanReviewQueueRepository,
   type RecordQualityHumanReviewQueueRepository,
 } from './recordQualityHumanReviewQueue';
@@ -71,6 +72,14 @@ describe('listRecordQualityHumanReviewQueue', () => {
       'record-revised',
     ]);
     expect(queue.items.map(item => item.status)).toEqual(['draft', 'revised']);
+    expect(queue.summary).toEqual({
+      draftCount: 1,
+      revisedCount: 1,
+      acceptedCount: 1,
+      discardedCount: 1,
+      pendingTotalCount: 2,
+      reviewedTotalCount: 2,
+    });
     expect(queue.items.every(item => item.requiresHumanReview)).toBe(true);
     expect(queue.items.some(item => 'body' in item)).toBe(false);
     expect(queue.items.some(item => 'content' in item)).toBe(false);
@@ -84,6 +93,7 @@ describe('listRecordQualityHumanReviewQueue', () => {
           items: [],
           totalCount: 0,
           oldestUpdatedAt: undefined,
+          summary: emptyRecordQualityHumanReviewQueueSummary,
         };
       },
     } satisfies RecordQualityHumanReviewQueueRepository;
@@ -94,6 +104,7 @@ describe('listRecordQualityHumanReviewQueue', () => {
       items: [],
       totalCount: 0,
       oldestUpdatedAt: undefined,
+      summary: emptyRecordQualityHumanReviewQueueSummary,
     });
   });
 });

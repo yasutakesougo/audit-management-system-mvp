@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type {
-  RecordQualityHumanReviewQueue,
-  RecordQualityHumanReviewQueueRepository,
+import {
+  emptyRecordQualityHumanReviewQueueSummary,
+  type RecordQualityHumanReviewQueue,
+  type RecordQualityHumanReviewQueueRepository,
 } from '@/domain/supportRecord/recordQualityHumanReviewQueue';
 import { listRecordQualityHumanReviewQueue } from '@/domain/supportRecord/recordQualityHumanReviewQueueUseCase';
 
@@ -10,6 +11,7 @@ const emptyQueue: RecordQualityHumanReviewQueue = {
   items: [],
   totalCount: 0,
   oldestUpdatedAt: undefined,
+  summary: emptyRecordQualityHumanReviewQueueSummary,
 };
 
 export type UseRecordQualityHumanReviewQueueResult = {
