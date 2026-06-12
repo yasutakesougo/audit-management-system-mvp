@@ -145,8 +145,8 @@ describe('AppShell navigation', () => {
     const hasComplianceLink = links.some(link => link.getAttribute('href')?.includes('/compliance'));
     expect(hasComplianceLink).toBe(false);
 
-    // AppShell footer is now enabled by default.
-    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    // AppShell footer is now hidden by default in normal mode.
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
 
   });
 

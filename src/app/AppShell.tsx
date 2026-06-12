@@ -111,14 +111,25 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     />
   ) : null;
 
+  const shouldShowFooterMenu = isKioskMode;
+
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
-        <div data-testid="app-shell" data-kiosk={isKioskMode || undefined}>
+        <div
+          data-testid="app-shell"
+          data-kiosk={isKioskMode || undefined}
+          style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}
+        >
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
-            footer={<FooterQuickActions onlyDialogs={isKioskMode} />}
+            footer={shouldShowFooterMenu ? <FooterQuickActions onlyDialogs={isKioskMode} /> : undefined}
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={isKioskMode ? 0 : contentPaddingY}
