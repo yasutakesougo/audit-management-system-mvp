@@ -22,8 +22,8 @@ export function HumanReviewQueueSummary({
 }: HumanReviewQueueSummaryProps) {
   const { queue, isLoading, error } = useRecordQualityHumanReviewQueue(repository);
   const visibleItems = queue.items.slice(0, maxItems);
-  const draftCount = queue.items.filter(item => item.status === 'draft').length;
-  const revisedCount = queue.items.filter(item => item.status === 'revised').length;
+  const { summary } = queue;
+  const hasSummaryCounts = queue.totalCount > 0 || summary.reviewedTotalCount > 0;
 
   return (
     <Card
@@ -60,26 +60,44 @@ export function HumanReviewQueueSummary({
             </Alert>
           )}
 
-          {!isLoading && !error && queue.totalCount > 0 && (
+          {!isLoading && !error && hasSummaryCounts && (
             <Stack spacing={1.5}>
               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                 <Chip
-                  label={`要確認 ${queue.totalCount}件`}
+                  label={`要確認 ${summary.pendingTotalCount}件`}
                   color="warning"
                   size="small"
                   data-testid="record-quality-human-review-count"
                 />
                 <Chip
-                  label={`未確認 ${draftCount}件`}
+                  label={`未確認 ${summary.draftCount}件`}
                   size="small"
                   variant="outlined"
                   data-testid="record-quality-human-review-draft-count"
                 />
                 <Chip
-                  label={`修正済み ${revisedCount}件`}
+                  label={`修正済み ${summary.revisedCount}件`}
                   size="small"
                   variant="outlined"
                   data-testid="record-quality-human-review-revised-count"
+                />
+                <Chip
+                  label={`判断済み ${summary.reviewedTotalCount}件`}
+                  size="small"
+                  variant="outlined"
+                  data-testid="record-quality-human-review-reviewed-count"
+                />
+                <Chip
+                  label={`採用済み ${summary.acceptedCount}件`}
+                  size="small"
+                  variant="outlined"
+                  data-testid="record-quality-human-review-accepted-count"
+                />
+                <Chip
+                  label={`破棄 ${summary.discardedCount}件`}
+                  size="small"
+                  variant="outlined"
+                  data-testid="record-quality-human-review-discarded-count"
                 />
                 {queue.oldestUpdatedAt && (
                   <Typography variant="caption" color="text.secondary">
@@ -88,29 +106,31 @@ export function HumanReviewQueueSummary({
                 )}
               </Stack>
 
-              <List dense disablePadding data-testid="record-quality-human-review-list">
-                {visibleItems.map(item => (
-                  <ListItem
-                    key={item.recordId}
-                    disableGutters
-                    divider
-                    data-testid={`record-quality-human-review-item-${item.recordId}`}
-                  >
-                    <Stack spacing={0.5} sx={{ width: '100%' }}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {item.sourceRecordId}
+              {queue.totalCount > 0 && (
+                <List dense disablePadding data-testid="record-quality-human-review-list">
+                  {visibleItems.map(item => (
+                    <ListItem
+                      key={item.recordId}
+                      disableGutters
+                      divider
+                      data-testid={`record-quality-human-review-item-${item.recordId}`}
+                    >
+                      <Stack spacing={0.5} sx={{ width: '100%' }}>
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {item.sourceRecordId}
+                          </Typography>
+                          <Chip label={item.label} size="small" variant="outlined" />
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          候補 {item.suggestedCategoryCount}件 / 不足情報{' '}
+                          {item.missingInformationHintCount}件 / ノート {item.noteCount}件
                         </Typography>
-                        <Chip label={item.label} size="small" variant="outlined" />
                       </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        候補 {item.suggestedCategoryCount}件 / 不足情報{' '}
-                        {item.missingInformationHintCount}件 / ノート {item.noteCount}件
-                      </Typography>
-                    </Stack>
-                  </ListItem>
-                ))}
-              </List>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
             </Stack>
           )}
         </Stack>
