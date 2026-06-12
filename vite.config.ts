@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: {
-      'process.env': {},
+      'process.env.NODE_ENV': JSON.stringify(mode),
     },
     plugins: [
       react(),
@@ -116,9 +116,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       hmr: {
-        host: 'localhost',
-        protocol: 'ws',
-        clientPort: 5173,
+        host: '127.0.0.1',
       },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
