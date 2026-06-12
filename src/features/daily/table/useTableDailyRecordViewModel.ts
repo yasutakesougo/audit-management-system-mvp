@@ -1,7 +1,17 @@
 import { useCancelToToday } from '@/lib/nav/useCancelToDashboard';
 import { TESTIDS } from '@/testids';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import {
+  DataProviderRecordQualityReviewPersistenceStore,
+} from '@/domain/supportRecord/dataProviderRecordQualityReviewPersistenceStore';
+import {
+  RecordQualityReviewPersistenceRepository,
+} from '@/domain/supportRecord/recordQualityReviewPersistenceRepository';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import {
+  saveDailyRecordWithQualityReview,
+} from '@/features/record-quality/application/saveDailyRecordWithQualityReview';
 import type { TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
 import { useDailyRecordRepository } from '../repositoryFactory';
 
@@ -20,6 +30,14 @@ type TableDailyRecordViewModel = {
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   const cancelToToday = useCancelToToday();
   const repository = useDailyRecordRepository();
+  const { provider } = useDataProvider();
+  const reviewRepository = useMemo(
+    () =>
+      new RecordQualityReviewPersistenceRepository(
+        new DataProviderRecordQualityReviewPersistenceStore({ provider }),
+      ),
+    [provider],
+  );
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {
@@ -29,15 +47,22 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
 
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
     try {
-      // Save to repository (SharePoint in production, InMemory in demo mode)
-      await repository.save(data);
+      await saveDailyRecordWithQualityReview({
+        dailyRepository: repository,
+        reviewRepository,
+        input: {
+          ...data,
+          userCount: data.userRows.length,
+        },
+        createdAt: new Date().toISOString(),
+      });
       navigateBackToMenu();
     } catch (error) {
       console.error('日報保存に失敗しました:', error);
       toast.error('保存に失敗しました。もう一度お試しください。', { duration: 5000 });
       throw error;
     }
-  }, [repository, navigateBackToMenu]);
+  }, [repository, reviewRepository, navigateBackToMenu]);
 
   return {
     open,
