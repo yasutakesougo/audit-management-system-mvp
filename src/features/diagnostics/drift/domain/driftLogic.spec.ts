@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { driftEventBus } from './DriftEventBus';
 import { emitDriftRecord, emitIndexRemediationRecord, getDriftEventDedupeKey } from './driftLogic';
+import { driftEventBus } from './DriftEventBus';
 
 describe('drift logic', () => {
   it('emits warn severity for action_required by default', () => {
@@ -15,6 +15,31 @@ describe('drift logic', () => {
       }),
     );
     expect(emitSpy.mock.calls[0]![0].detectedAt).toEqual(expect.stringContaining('T'));
+    emitSpy.mockRestore();
+  });
+
+  it('emits info severity for explicit silent override on emitDriftRecord', () => {
+    const emitSpy = vi.spyOn(driftEventBus, 'emit');
+
+    emitDriftRecord(
+      'SupportCase',
+      'BillingField',
+      'fuzzy_match',
+      'fallback',
+      'missing field fallback',
+      'silent',
+    );
+
+    expect(emitSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: 'silent',
+        resolutionType: 'fuzzy_match',
+        driftType: 'fallback',
+        resolved: false,
+        description: 'missing field fallback',
+      }),
+    );
+
     emitSpy.mockRestore();
   });
 
