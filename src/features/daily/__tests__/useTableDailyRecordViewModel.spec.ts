@@ -6,6 +6,31 @@ import { suppressConsoleDuring } from '../../../../tests/unit/_helpers/consoleSp
 import { useTableDailyRecordViewModel } from '../table/useTableDailyRecordViewModel';
 
 const navigateMock = vi.fn();
+const mocks = vi.hoisted(() => {
+  const dailySave = vi.fn().mockResolvedValue(undefined);
+  return {
+    dailyRepository: {
+      save: dailySave,
+    },
+    provider: {
+      listItems: vi.fn(),
+      getItemById: vi.fn(),
+      createItem: vi.fn(),
+      updateItem: vi.fn(),
+      deleteItem: vi.fn(),
+      getMetadata: vi.fn(),
+      getResourceNames: vi.fn(),
+      getFieldInternalNames: vi.fn(),
+      ensureListExists: vi.fn(),
+      seed: vi.fn(),
+    },
+    saveDailyRecordWithQualityReview: vi.fn().mockResolvedValue({
+      savedDailyRecord: true,
+      createdReviewCount: 1,
+      skippedReviewCount: 0,
+    }),
+  };
+});
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -20,12 +45,19 @@ vi.mock('@/lib/nav/useCancelToDashboard', () => ({
   useCancelToToday: () => () => navigateMock('/today', { replace: true }),
 }));
 
-// Mock repository
-const mockSave = vi.fn().mockResolvedValue(undefined);
 vi.mock('../repositoryFactory', () => ({
-  useDailyRecordRepository: () => ({
-    save: mockSave,
+  useDailyRecordRepository: () => mocks.dailyRepository,
+}));
+
+vi.mock('@/lib/data/useDataProvider', () => ({
+  useDataProvider: () => ({
+    provider: mocks.provider,
+    type: 'sharepoint',
   }),
+}));
+
+vi.mock('@/features/record-quality/application/saveDailyRecordWithQualityReview', () => ({
+  saveDailyRecordWithQualityReview: mocks.saveDailyRecordWithQualityReview,
 }));
 
 // Mock react-hot-toast
@@ -39,7 +71,13 @@ vi.mock('react-hot-toast', () => ({
 describe('useTableDailyRecordViewModel', () => {
   beforeEach(() => {
     navigateMock.mockClear();
-    mockSave.mockClear();
+    mocks.dailyRepository.save.mockClear();
+    mocks.saveDailyRecordWithQualityReview.mockClear();
+    mocks.saveDailyRecordWithQualityReview.mockResolvedValue({
+      savedDailyRecord: true,
+      createdReviewCount: 1,
+      skippedReviewCount: 0,
+    });
     vi.mocked(toast.error).mockClear();
   });
 
@@ -83,13 +121,20 @@ describe('useTableDailyRecordViewModel', () => {
       await result.current.onSave(payload);
     });
 
-    expect(mockSave).toHaveBeenCalledWith(payload);
+    expect(mocks.saveDailyRecordWithQualityReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dailyRepository: mocks.dailyRepository,
+        input: payload,
+        createdAt: expect.any(String),
+      }),
+    );
+    expect(mocks.dailyRepository.save).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/today', { replace: true });
     expect(result.current.open).toBe(false);
   });
 
   it('shows toast error on save failure', async () => {
-    mockSave.mockRejectedValueOnce(new Error('Save failed'));
+    mocks.saveDailyRecordWithQualityReview.mockRejectedValueOnce(new Error('Save failed'));
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
     await suppressConsoleDuring('error', async () => {
