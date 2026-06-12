@@ -23,6 +23,7 @@
 - [Corrective-Action Telemetry Review](./corrective-action-telemetry-review.md)
 - [ExceptionCenter Horizontal Rollout](./exception-center-horizontal-rollout.md)
 - [ExceptionCenter Priority Week-1 Review](./exception-center-priority-week1-review.md)
+- [Record Quality Review Observability](./record-quality-review-observability.md)
 - [Transport Assignment Page Spec (Phase 1)](./transport-assignment-page-spec.md)
 - [Transport Nightly Critical E2E](./transport-nightly-critical-e2e.md)
 - [TransportCourse Migration](./transport-course-migration.md)
