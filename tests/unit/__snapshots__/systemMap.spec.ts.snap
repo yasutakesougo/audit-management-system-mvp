@@ -304,6 +304,10 @@ exports[`System Map Generator > should capture all routes with nested path resol
   },
   {
     "file": "src/app/routes/recordRoutes.tsx",
+    "path": "records/quality-review",
+  },
+  {
+    "file": "src/app/routes/recordRoutes.tsx",
     "path": "records/service-provision",
   },
   {
