@@ -28,9 +28,13 @@ test.describe('Handoff Timeline quick note Dialog', () => {
     await expect(pageDialog).toBeHidden();
   });
 
-  test('footer button opens same dialog on /handoff-timeline', async ({ page }) => {
-    // Click the footer quick action
-    await page.getByTestId('handoff-footer-quicknote').click();
+  test('footer button opens same dialog in kiosk mode', async ({ page }) => {
+    // Navigate with kiosk parameter to show kiosk navigation
+    await page.goto('/handoff-timeline?kiosk=1');
+    await page.waitForLoadState('networkidle');
+
+    // Click the kiosk footer quick action
+    await page.getByTestId('kiosk-nav-handoff').click();
 
     // Same dialog should appear
     const dialog = page.getByTestId('handoff-quicknote-dialog');

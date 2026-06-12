@@ -93,11 +93,11 @@ test.describe('Schedule layout regression', () => {
     expect(Math.abs(geometry.gap ?? 999)).toBeLessThanOrEqual(3);
   });
 
-  test('dashboard shows footer quick action after shell refactor', async ({ page }) => {
+  test('dashboard hides footer quick action in normal mode', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByTestId(TESTIDS['handoff-footer-quicknote']).first()).toBeVisible();
+    await expect(page.getByTestId(TESTIDS['handoff-footer-quicknote']).first()).toBeHidden();
   });
 
   test('dashboard keeps main-only scroll responsibility', async ({ page }) => {
