@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapPlanningToDailyBridge } from '../dailyBridgeMapper';
+import { mapPlanningToDailyBridge, summarizePlanningForDaily } from '../dailyBridgeMapper';
 import { supportPlanningSheetSchema } from '../schema/ispPlanningSheetSchema';
 
 const baseSheet = supportPlanningSheetSchema.parse({
@@ -142,5 +142,41 @@ describe('mapPlanningToDailyBridge', () => {
       focusPointCount: 0,
       latestUpdateAt: '2026-06-10T00:30:00.000Z',
     });
+  });
+});
+
+describe('summarizePlanningForDaily', () => {
+  it('supportPolicy と procedureSteps がある場合、短縮要約を1行で返す', () => {
+    const result = summarizePlanningForDaily({
+      ...baseSheet,
+      supportPolicy: '行動計画を段階的に支援し、環境刺激を最小化する',
+      planning: {
+        procedureSteps: [
+          { order: 1, instruction: '服薬を確認して記録する', staff: 'A', timing: '朝' },
+          { order: 2, instruction: '午後も状態を再確認する', staff: 'A', timing: '午後' },
+        ],
+        crisisThresholds: null,
+        environmentalAdjustments: '',
+      },
+    });
+
+    expect(result).toContain('方針: 行動計画を段階的に支援し、環境刺激を最小');
+    expect(result).toContain('手順: 服薬を確認して記録する...');
+    expect(result).toContain('他1件');
+  });
+
+  it('supportPolicy も procedure もない場合は空文字を返す', () => {
+    const result = summarizePlanningForDaily({
+      ...baseSheet,
+      supportPolicy: '',
+      planning: {
+        procedureSteps: [],
+        crisisThresholds: null,
+        environmentalAdjustments: '',
+      },
+      interpretationHypothesis: '',
+    });
+
+    expect(result).toBe('');
   });
 });
