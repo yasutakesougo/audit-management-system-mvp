@@ -3,7 +3,7 @@
 ## Progress update
 - `src/domain/isp/dailyBridgeMapper.ts` は完了済み（PR #2198, #2200, #2201 で境界ケース固定）。
 - `src/features/billing/hooks/useBillingOrderRepository.ts` の境界（skip-sharepoint）を PR #2205 で固定。
-  （H-2 は `billing` 配下のうち未検証枠が残り、引き続き `useBillingOrders` と `InMemoryBillingOrderRepository` を順次追加）
+- `H-2`（Billing）は `useBillingOrderRepository` / `useBillingOrders` / `InMemoryBillingOrderRepository` がテスト追加され、完了扱い。
 
 ## 1. High Priority（優先）
 
@@ -13,16 +13,15 @@
 - `src/features/daily/repositories/sharepoint/activityDiary/SharePointActivityDiaryRepository.ts`
 - `src/features/daily/repositories/sharepoint/modules/RowAggregateAccess.ts`
 - `src/features/diagnostics/drift/domain/DriftEventBus.ts はテスト追加済み（#2220）`
-- `src/features/diagnostics/drift/domain/driftLogic.ts`
+- `src/features/diagnostics/drift/domain/driftLogic.ts` はテスト追加済み（#2224）
 - 根拠:
   - SharePoint 操作＋ドリフト監査の境界が厚い
   - 同名テストでの直接照合で `-by-name` では不一致（現時点）
 
 ### H-2. Billing
 - `src/features/billing/useBillingOrders.ts` はテスト追加済み（#2217）
-- 根拠:
-  - 既存テストが薄く、リポジトリ分岐と表示ロジックの連携を持つ
-  - フィールド階層が SharePoint 仕様変更に追従しやすい場所
+- `src/features/billing/infra/InMemoryBillingOrderRepository.ts` はテスト追加済み（#2226）
+- H-2 の billing 配下3件は test-only で境界補完済み（`useBillingOrderRepository`, `useBillingOrders`, `InMemoryBillingOrderRepository`）。
 
 ### H-3. Domain core with low discoverability
 - `src/domain/behavior/abc.ts`
