@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   DailyRecordRepository,
@@ -9,7 +9,19 @@ import {
   saveDailyRecordWithQualityReview,
 } from './saveDailyRecordWithQualityReview';
 
+const auditLogInfo = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/debugLogger', () => ({
+  auditLog: {
+    info: auditLogInfo,
+  },
+}));
+
 describe('saveDailyRecordWithQualityReview', () => {
+  beforeEach(() => {
+    auditLogInfo.mockClear();
+  });
+
   it('saves the daily record and creates review metadata for each support row', async () => {
     const dailyRepository = createDailyRepository();
     const reviewRepository = new InMemoryRecordQualityReviewRepository();
@@ -27,6 +39,16 @@ describe('saveDailyRecordWithQualityReview', () => {
       createdReviewCount: 2,
       skippedReviewCount: 0,
     });
+    expect(auditLogInfo).toHaveBeenCalledWith(
+      'record-quality:daily-save',
+      'Review metadata creation completed',
+      {
+        date: '2026-06-12',
+        userRowCount: 2,
+        createdReviewCount: 2,
+        skippedReviewCount: 0,
+      },
+    );
     await expect(
       reviewRepository.getReview('daily:2026-06-12:user-1'),
     ).resolves.toMatchObject({
@@ -62,6 +84,7 @@ describe('saveDailyRecordWithQualityReview', () => {
     expect(JSON.stringify(review)).not.toContain('元の支援記録本文');
     expect(review && 'originalText' in review).toBe(false);
     expect(review?.originalRecord).toEqual({ recordId: 'daily:2026-06-12:user-1' });
+    expect(JSON.stringify(auditLogInfo.mock.calls)).not.toContain('元の支援記録本文');
   });
 
   it('skips rows with no reviewable support text', async () => {

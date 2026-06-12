@@ -8,6 +8,7 @@ import type {
   SaveDailyRecordInput,
 } from '@/features/daily/domain/DailyRecordRepository';
 import type { DailyRecordUserRow } from '@/features/daily/domain/schema';
+import { auditLog } from '@/lib/debugLogger';
 
 export type SaveDailyRecordWithQualityReviewInput = {
   readonly dailyRepository: DailyRecordRepository;
@@ -53,6 +54,13 @@ export async function saveDailyRecordWithQualityReview(
     });
     createdReviewCount += 1;
   }
+
+  auditLog.info('record-quality:daily-save', 'Review metadata creation completed', {
+    date: input.input.date,
+    userRowCount: input.input.userRows.length,
+    createdReviewCount,
+    skippedReviewCount,
+  });
 
   return {
     savedDailyRecord: true,
