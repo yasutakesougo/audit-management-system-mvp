@@ -22,6 +22,8 @@ export function HumanReviewQueueSummary({
 }: HumanReviewQueueSummaryProps) {
   const { queue, isLoading, error } = useRecordQualityHumanReviewQueue(repository);
   const visibleItems = queue.items.slice(0, maxItems);
+  const draftCount = queue.items.filter(item => item.status === 'draft').length;
+  const revisedCount = queue.items.filter(item => item.status === 'revised').length;
 
   return (
     <Card
@@ -66,6 +68,18 @@ export function HumanReviewQueueSummary({
                   color="warning"
                   size="small"
                   data-testid="record-quality-human-review-count"
+                />
+                <Chip
+                  label={`未確認 ${draftCount}件`}
+                  size="small"
+                  variant="outlined"
+                  data-testid="record-quality-human-review-draft-count"
+                />
+                <Chip
+                  label={`修正済み ${revisedCount}件`}
+                  size="small"
+                  variant="outlined"
+                  data-testid="record-quality-human-review-revised-count"
                 />
                 {queue.oldestUpdatedAt && (
                   <Typography variant="caption" color="text.secondary">
