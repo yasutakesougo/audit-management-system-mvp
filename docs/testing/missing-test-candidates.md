@@ -12,7 +12,7 @@
 - `src/features/daily/repositories/sharepoint/activityDiary/modules/Saver.ts`
 - `src/features/daily/repositories/sharepoint/activityDiary/SharePointActivityDiaryRepository.ts`
 - `src/features/daily/repositories/sharepoint/modules/RowAggregateAccess.ts`
-- `src/features/diagnostics/drift/domain/DriftEventBus.ts`
+- `src/features/diagnostics/drift/domain/DriftEventBus.ts はテスト追加済み（#2220）`
 - `src/features/diagnostics/drift/domain/driftLogic.ts`
 - 根拠:
   - SharePoint 操作＋ドリフト監査の境界が厚い
