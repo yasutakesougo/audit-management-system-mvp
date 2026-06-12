@@ -151,4 +151,22 @@ describe('InMemoryBillingOrderRepository', () => {
       });
     });
   });
+
+  it('uses provided initial data as-is when initialData is non-empty', async () => {
+    const repo = new InMemoryBillingOrderRepository(createBaseOrders());
+
+    const rows = await repo.list();
+    expect(rows).toEqual([
+      expect.objectContaining({
+        id: 1,
+        ordererCode: 'U-001',
+        orderCount: 1,
+      }),
+      expect.objectContaining({
+        id: 2,
+        ordererCode: 'G-001',
+        orderCount: 2,
+      }),
+    ]);
+  });
 });
