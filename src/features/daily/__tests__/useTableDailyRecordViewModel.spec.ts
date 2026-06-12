@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => {
       savedDailyRecord: true,
       createdReviewCount: 1,
       skippedReviewCount: 0,
+      emptyTextSkippedReviewCount: 0,
+      existingReviewSkippedReviewCount: 0,
     }),
   };
 });
@@ -77,6 +79,8 @@ describe('useTableDailyRecordViewModel', () => {
       savedDailyRecord: true,
       createdReviewCount: 1,
       skippedReviewCount: 0,
+      emptyTextSkippedReviewCount: 0,
+      existingReviewSkippedReviewCount: 0,
     });
     vi.mocked(toast.error).mockClear();
   });

@@ -22,6 +22,8 @@ export type SaveDailyRecordWithQualityReviewResult = {
   readonly savedDailyRecord: true;
   readonly createdReviewCount: number;
   readonly skippedReviewCount: number;
+  readonly emptyTextSkippedReviewCount: number;
+  readonly existingReviewSkippedReviewCount: number;
 };
 
 export async function saveDailyRecordWithQualityReview(
@@ -30,19 +32,20 @@ export async function saveDailyRecordWithQualityReview(
   await input.dailyRepository.save(input.input, input.mutationParams);
 
   let createdReviewCount = 0;
-  let skippedReviewCount = 0;
+  let emptyTextSkippedReviewCount = 0;
+  let existingReviewSkippedReviewCount = 0;
 
   for (const row of input.input.userRows) {
     const recordId = buildDailyRecordQualityReviewId(input.input.date, row.userId);
     const text = buildReviewableSupportRecordText(row);
     if (!text) {
-      skippedReviewCount += 1;
+      emptyTextSkippedReviewCount += 1;
       continue;
     }
 
     const existing = await input.reviewRepository.getReview(recordId);
     if (existing) {
-      skippedReviewCount += 1;
+      existingReviewSkippedReviewCount += 1;
       continue;
     }
 
@@ -55,17 +58,23 @@ export async function saveDailyRecordWithQualityReview(
     createdReviewCount += 1;
   }
 
+  const skippedReviewCount = emptyTextSkippedReviewCount + existingReviewSkippedReviewCount;
+
   auditLog.info('record-quality:daily-save', 'Review metadata creation completed', {
     date: input.input.date,
     userRowCount: input.input.userRows.length,
     createdReviewCount,
     skippedReviewCount,
+    emptyTextSkippedReviewCount,
+    existingReviewSkippedReviewCount,
   });
 
   return {
     savedDailyRecord: true,
     createdReviewCount,
     skippedReviewCount,
+    emptyTextSkippedReviewCount,
+    existingReviewSkippedReviewCount,
   };
 }
 
