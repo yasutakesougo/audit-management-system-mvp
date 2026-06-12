@@ -111,10 +111,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     />
   ) : null;
 
-  const shouldShowFooterMenu =
-    (viewportMode as string) === 'kiosk' ||
-    (viewportMode as string) === 'mobile-kiosk' ||
-    isKioskMode;
+  const shouldShowFooterMenu = isKioskMode;
 
   return (
     <RouteHydrationListener>

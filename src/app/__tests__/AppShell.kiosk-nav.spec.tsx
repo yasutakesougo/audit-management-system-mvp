@@ -129,4 +129,24 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
     // Core staff functionality should remain
     expect(screen.getByText('日次記録')).toBeInTheDocument();
   });
+
+  it('renders kiosk-navigation and footer dialog registry in Kiosk mode', () => {
+    renderAppShell({ layoutMode: 'kiosk' });
+
+    // Kiosk navigation should be rendered
+    expect(screen.getByTestId('kiosk-navigation')).toBeInTheDocument();
+
+    // Footer (contentinfo) should be in the document (renders onlyDialogs)
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+  });
+
+  it('does not render kiosk-navigation or footer in Normal mode', () => {
+    renderAppShell({ layoutMode: 'normal' });
+
+    // Kiosk navigation should not be rendered
+    expect(screen.queryByTestId('kiosk-navigation')).not.toBeInTheDocument();
+
+    // Footer (contentinfo) should not be in the document
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+  });
 });
