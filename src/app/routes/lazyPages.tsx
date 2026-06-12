@@ -11,6 +11,7 @@ import { createSuspended } from '../createSuspended';
 // ── React.lazy imports ─────────────────────────────────────────────────────
 
 const RecordList = React.lazy(() => import('@/features/records/RecordList'));
+const RecordQualityHumanReviewPage = React.lazy(() => import('@/features/record-quality/routes/RecordQualityHumanReviewPage'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
@@ -126,6 +127,7 @@ export const SuspendedHealthObservationPage = createSuspended(HealthObservationP
 export const SuspendedStaffDashboardPage = createSuspended(StaffDashboardPage, 'ダッシュボードを読み込んでいます…');
 export const SuspendedAdminDashboardPage = createSuspended(AdminDashboardPage, '管理ダッシュボードを読み込んでいます…');
 export const SuspendedRecordList = createSuspended(RecordList, '記録ノートを読み込んでいます…');
+export const SuspendedRecordQualityHumanReviewPage = createSuspended(RecordQualityHumanReviewPage, '記録品質レビューを読み込んでいます…');
 export const SuspendedChecklistPage = createSuspended(ChecklistPage, '自己点検ページを読み込んでいます…');
 export const SuspendedAuditPanel = createSuspended(AuditPanel, '監査ログを読み込んでいます…');
 export const SuspendedSupportActivityMasterPage = createSuspended(SupportActivityMasterPage, '支援活動テンプレート管理を読み込んでいます…');
