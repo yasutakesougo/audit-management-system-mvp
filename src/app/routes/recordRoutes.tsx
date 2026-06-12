@@ -15,6 +15,7 @@ import {
     SuspendedHandoffTimelinePage,
     SuspendedMonthlyRecordPage,
     SuspendedPersonalJournalPage,
+    SuspendedRecordQualityHumanReviewPage,
     SuspendedRecordList,
     SuspendedServiceProvisionFormPage,
 } from './lazyPages';
@@ -60,6 +61,14 @@ export const recordRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="reception">
         <SuspendedServiceProvisionFormPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'records/quality-review',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedRecordQualityHumanReviewPage />
       </RequireAudience>
     ),
   },
