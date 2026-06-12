@@ -111,6 +111,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     />
   ) : null;
 
+  const shouldShowFooterMenu =
+    (viewportMode as string) === 'kiosk' ||
+    (viewportMode as string) === 'mobile-kiosk' ||
+    isKioskMode;
+
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
@@ -127,7 +132,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
-            footer={<FooterQuickActions onlyDialogs={isKioskMode} />}
+            footer={shouldShowFooterMenu ? <FooterQuickActions onlyDialogs={isKioskMode} /> : undefined}
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={isKioskMode ? 0 : contentPaddingY}
