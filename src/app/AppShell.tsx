@@ -114,7 +114,16 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
-        <div data-testid="app-shell" data-kiosk={isKioskMode || undefined}>
+        <div
+          data-testid="app-shell"
+          data-kiosk={isKioskMode || undefined}
+          style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}
+        >
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
