@@ -19,7 +19,7 @@
   - 同名テストでの直接照合で `-by-name` では不一致（現時点）
 
 ### H-2. Billing
-- `src/features/billing/useBillingOrders.ts`
+- `src/features/billing/useBillingOrders.ts` はテスト追加済み（#2217）
 - 根拠:
   - 既存テストが薄く、リポジトリ分岐と表示ロジックの連携を持つ
   - フィールド階層が SharePoint 仕様変更に追従しやすい場所
