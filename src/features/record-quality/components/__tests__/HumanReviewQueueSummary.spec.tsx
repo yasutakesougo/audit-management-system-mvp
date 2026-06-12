@@ -76,6 +76,12 @@ describe('HumanReviewQueueSummary', () => {
 
     expect(screen.getByText('record-draft')).toBeInTheDocument();
     expect(screen.getByText('record-revised')).toBeInTheDocument();
+    expect(screen.getByTestId('record-quality-human-review-draft-count')).toHaveTextContent(
+      '未確認 1件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-revised-count')).toHaveTextContent(
+      '修正済み 1件',
+    );
     expect(screen.getByText('最古更新 2026-06-11T00:00:00.000Z')).toBeInTheDocument();
     expect(screen.queryByText('元の支援記録本文')).not.toBeInTheDocument();
     expect(screen.queryByText('本人の反応などの本文')).not.toBeInTheDocument();
@@ -167,6 +173,12 @@ describe('HumanReviewQueueSummary', () => {
     expect(screen.getByText('record-oldest-draft')).toBeInTheDocument();
     expect(screen.queryByText('record-newer-draft')).not.toBeInTheDocument();
     expect(screen.queryByText('record-revised')).not.toBeInTheDocument();
+    expect(screen.getByTestId('record-quality-human-review-draft-count')).toHaveTextContent(
+      '未確認 2件',
+    );
+    expect(screen.getByTestId('record-quality-human-review-revised-count')).toHaveTextContent(
+      '修正済み 1件',
+    );
   });
 
   it('renders safe draft and revised status labels without exposing source body text', async () => {
