@@ -138,7 +138,8 @@ export function AppShellV2({
         sx={{
           gridArea: 'main',
           minHeight: 0,
-          overflow: 'auto',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
           backgroundColor: 'background.default',
