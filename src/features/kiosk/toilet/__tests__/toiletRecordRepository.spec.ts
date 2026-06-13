@@ -137,19 +137,51 @@ describe('ToiletRecord Repository & Factory Tests', () => {
         amount: 'large',
         memo: 'corrected memo',
       });
+      expect(updated.createdAt).toBe(created.createdAt);
+      expect(updated.recorderName).toBe('kiosk');
+      expect(updated.source).toBe('kiosk');
+      expect(updated.isDeleted).toBe(false);
       expect(updated.updatedAt).not.toBe(created.updatedAt);
 
       const originalDateRecords = await repo.listByDate('2026-05-26');
       expect(originalDateRecords).toHaveLength(1);
       expect(originalDateRecords[0]).toMatchObject({
         id: created.id,
+        userId: 'I005',
+        recordDate: '2026-05-26',
+        occurredAt: '2026-05-26T10:00:00.000Z',
         toiletType: 'bowel',
         amount: 'large',
         memo: 'corrected memo',
       });
+      expect(originalDateRecords[0].createdAt).toBe(created.createdAt);
+      expect(originalDateRecords[0].recorderName).toBe('kiosk');
 
       const movedDateRecords = await repo.listByDate('2026-05-27');
       expect(movedDateRecords).toHaveLength(0);
+    });
+
+    it('should reject correction for a missing record id without changing existing records', async () => {
+      const created = await repo.create({
+        userId: 'I005',
+        occurredAt: '2026-05-26T10:00:00.000Z',
+        toiletType: 'urination',
+        amount: 'normal',
+        memo: 'original memo',
+        recorderName: 'kiosk',
+      });
+
+      await expect(
+        repo.update('toilet-missing', {
+          toiletType: 'bowel',
+          amount: 'large',
+          memo: 'should not apply',
+        }),
+      ).rejects.toThrow('[ToiletRecordRepo] record not found: toilet-missing');
+
+      const records = await repo.listByDate('2026-05-26');
+      expect(records).toHaveLength(1);
+      expect(records[0]).toEqual(created);
     });
   });
 
@@ -493,6 +525,49 @@ describe('ToiletRecord Repository & Factory Tests', () => {
         amount: 'large',
         memo: 'corrected memo',
       });
+      expect(updated.createdAt).toBe('2026-05-26T10:01:00.000Z');
+      expect(updated.recorderName).toBe('kiosk');
+      expect(updated.source).toBe('kiosk');
+      expect(updated.isDeleted).toBe(false);
+    });
+
+    it('should reject a SharePoint correction when lookup finds no matching record and skip MERGE', async () => {
+      const mockSpFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ value: [] }),
+      });
+      const mockGetFields = vi.fn().mockResolvedValue(new Set([
+        'UserId',
+        'RecordDate',
+        'OccurredAt',
+        'ToiletType',
+        'Amount',
+        'Memo',
+        'RecorderName',
+        'Source',
+        'IsDeleted',
+      ]));
+
+      const repo = new SharePointToiletRecordRepository(mockSpFetch, mockGetFields);
+
+      await expect(
+        repo.update('toilet-missing', {
+          toiletType: 'bowel',
+          amount: 'large',
+          memo: 'should not apply',
+        }),
+      ).rejects.toThrow('[SharePointToiletRecordRepo] record not found: toilet-missing');
+
+      expect(mockSpFetch).toHaveBeenCalledTimes(1);
+      const [lookupUrl, lookupInit] = mockSpFetch.mock.calls[0];
+      expect(lookupInit).toBeUndefined();
+      expect(decodeURIComponent(String(lookupUrl))).toContain("Title eq 'toilet-missing'");
+      expect(mockSpFetch.mock.calls).not.toContainEqual([
+        expect.stringContaining('/items('),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'X-HTTP-Method': 'MERGE' }),
+        }),
+      ]);
     });
   });
 
