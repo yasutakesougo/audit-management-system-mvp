@@ -454,5 +454,7 @@ describe('ToiletDailyBoard', () => {
       expect(screen.getByText('訂正保存に失敗しました')).toBeInTheDocument();
     });
     expect(screen.getByText('支援 花子さんのトイレ記録を訂正')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '訂正を保存' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeEnabled();
   });
 });
