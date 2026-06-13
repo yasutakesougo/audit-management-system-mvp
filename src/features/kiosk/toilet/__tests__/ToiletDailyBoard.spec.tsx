@@ -240,6 +240,72 @@ describe('ToiletDailyBoard', () => {
     });
   });
 
+  it('saves corrected type and amount without changing readonly record fields', async () => {
+    mockCorrectRecord.mockResolvedValue({
+      id: 'toilet-1',
+      userId: 'user-1',
+      recordDate: '2026-06-12',
+      occurredAt: '2026-06-12T10:30:00.000+09:00',
+      toiletType: 'bowel',
+      amount: 'large',
+      memo: '記録メモ',
+      recorderName: 'kiosk',
+      source: 'kiosk',
+      isDeleted: false,
+      createdAt: '2026-06-12T10:30:00.000+09:00',
+      updatedAt: '2026-06-12T10:35:00.000+09:00',
+    });
+    mockUseToiletRecords.mockReturnValue({
+      records: [
+        {
+          id: 'toilet-1',
+          userId: 'user-1',
+          recordDate: '2026-06-12',
+          occurredAt: '2026-06-12T10:30:00.000+09:00',
+          toiletType: 'urination',
+          amount: 'normal',
+          memo: '記録メモ',
+          recorderName: 'kiosk',
+          source: 'kiosk',
+          isDeleted: false,
+          createdAt: '2026-06-12T10:30:00.000+09:00',
+          updatedAt: '2026-06-12T10:30:00.000+09:00',
+        },
+      ],
+      create: mockCreateRecord,
+      correct: mockCorrectRecord,
+      refresh: mockRefreshRecords,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('toilet-correction-button-toilet-1'));
+
+    expect(screen.getByLabelText('利用者')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('記録日')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('記録日時')).toHaveAttribute('readonly');
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '種類' }));
+    fireEvent.click(screen.getByRole('option', { name: '排便' }));
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: '量' }));
+    fireEvent.click(screen.getByRole('option', { name: '多量' }));
+    fireEvent.click(screen.getByTestId('toilet-correction-save'));
+
+    await waitFor(() => {
+      expect(mockCorrectRecord).toHaveBeenCalledWith('toilet-1', {
+        toiletType: 'bowel',
+        amount: 'large',
+        memo: '記録メモ',
+      });
+    });
+  });
+
   it('keeps the correction dialog open and shows an error when correction save fails', async () => {
     mockCorrectRecord.mockRejectedValue(new Error('訂正保存に失敗しました'));
     mockUseToiletRecords.mockReturnValue({
