@@ -22,6 +22,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EditIcon from '@mui/icons-material/Edit';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -80,14 +81,22 @@ export const ToiletDailyBoard: React.FC = () => {
   const selectedDateIso = isValidDateOnly(dateParam) ? dateParam : todayIso;
 
   const { data: users, isLoading: isUsersLoading, status: usersStatus } = useUsers({ selectMode: 'core' });
-  const { records, create, refresh: refreshRecords, isLoading: isRecordsLoading, error: recordsError } = useToiletRecords(selectedDateIso);
+  const { records, create, correct, refresh: refreshRecords, isLoading: isRecordsLoading, error: recordsError } = useToiletRecords(selectedDateIso);
   const isLoading = isUsersLoading || isRecordsLoading;
   const hasRecordsError = Boolean(recordsError);
   const [selectedUser, setSelectedUser] = React.useState<IUserMaster | null>(null);
+  const [correctionTarget, setCorrectionTarget] = React.useState<{ user: IUserMaster; record: ToiletRecord } | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isCorrecting, setIsCorrecting] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [correctionError, setCorrectionError] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<FormState>({
     occurredAt: toMinuteInputValue(new Date()),
+    toiletType: 'urination',
+    amount: 'normal',
+    memo: '',
+  });
+  const [correctionForm, setCorrectionForm] = React.useState<Pick<FormState, 'toiletType' | 'amount' | 'memo'>>({
     toiletType: 'urination',
     amount: 'normal',
     memo: '',
@@ -142,6 +151,17 @@ export const ToiletDailyBoard: React.FC = () => {
     });
   };
 
+  const openCorrectionDialog = (user: IUserMaster, record: ToiletRecord) => {
+    setCorrectionTarget({ user, record });
+    setCorrectionError(null);
+    setIsCorrecting(false);
+    setCorrectionForm({
+      toiletType: record.toiletType,
+      amount: record.amount,
+      memo: record.memo,
+    });
+  };
+
   const handleSave = async () => {
     if (!selectedUser) return;
     setIsSaving(true);
@@ -161,6 +181,25 @@ export const ToiletDailyBoard: React.FC = () => {
       setSaveError(err instanceof Error ? err.message : '記録の保存に失敗しました。');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCorrectionSave = async () => {
+    if (!correctionTarget) return;
+    setIsCorrecting(true);
+    setCorrectionError(null);
+    try {
+      await correct(correctionTarget.record.id, {
+        toiletType: correctionForm.toiletType,
+        amount: correctionForm.amount,
+        memo: correctionForm.memo,
+      });
+      setCorrectionTarget(null);
+    } catch (err) {
+      console.error('[ToiletDailyBoard] Failed to correct record:', err);
+      setCorrectionError(err instanceof Error ? err.message : '記録の訂正に失敗しました。');
+    } finally {
+      setIsCorrecting(false);
     }
   };
 
@@ -346,7 +385,7 @@ export const ToiletDailyBoard: React.FC = () => {
                               data-testid={`toilet-history-record-${record.id}`}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: { xs: '1fr', sm: '96px 120px 120px 1fr' },
+                                gridTemplateColumns: { xs: '1fr', sm: '96px 120px 120px minmax(0, 1fr) 96px' },
                                 gap: { xs: 0.5, sm: 1.5 },
                                 alignItems: 'center',
                                 p: 1,
@@ -358,6 +397,16 @@ export const ToiletDailyBoard: React.FC = () => {
                               <Typography color="text.secondary">{TOILET_TYPE_LABELS[record.toiletType]}</Typography>
                               <Typography color="text.secondary">{TOILET_AMOUNT_LABELS[record.amount]}</Typography>
                               <Typography color="text.secondary">{record.memo || 'メモなし'}</Typography>
+                              <Button
+                                data-testid={`toilet-correction-button-${record.id}`}
+                                size="small"
+                                variant="outlined"
+                                startIcon={<EditIcon />}
+                                onClick={() => openCorrectionDialog(user, record)}
+                                sx={{ minHeight: 40, borderRadius: 1.5, fontWeight: 900 }}
+                              >
+                                訂正
+                              </Button>
                             </Box>
                           ))}
                         </Stack>
@@ -443,6 +492,91 @@ export const ToiletDailyBoard: React.FC = () => {
             startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : null}
           >
             {isSaving ? '保存中...' : '保存'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(correctionTarget)}
+        onClose={() => !isCorrecting && setCorrectionTarget(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          {correctionTarget ? `${correctionTarget.user.FullName}さんのトイレ記録を訂正` : 'トイレ記録を訂正'}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {correctionError && (
+              <Box sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1, p: 1.5, borderRadius: 1.5, bgcolor: 'error.light', opacity: 0.9 }}>
+                <ErrorOutlineIcon />
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{correctionError}</Typography>
+              </Box>
+            )}
+            <TextField
+              label="利用者"
+              value={correctionTarget?.user.FullName ?? ''}
+              InputProps={{ readOnly: true }}
+              fullWidth
+            />
+            <TextField
+              label="記録日"
+              value={correctionTarget?.record.recordDate ?? selectedDateIso}
+              InputProps={{ readOnly: true }}
+              fullWidth
+            />
+            <TextField
+              label="記録日時"
+              value={correctionTarget ? formatRecordTime(correctionTarget.record.occurredAt) : ''}
+              InputProps={{ readOnly: true }}
+              fullWidth
+            />
+            <FormControl fullWidth>
+              <InputLabel id="toilet-correction-type-label">種類</InputLabel>
+              <Select
+                labelId="toilet-correction-type-label"
+                label="種類"
+                value={correctionForm.toiletType}
+                onChange={(event) => setCorrectionForm((prev) => ({ ...prev, toiletType: event.target.value as ToiletType }))}
+              >
+                {Object.entries(TOILET_TYPE_LABELS).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>{label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel id="toilet-correction-amount-label">量</InputLabel>
+              <Select
+                labelId="toilet-correction-amount-label"
+                label="量"
+                value={correctionForm.amount}
+                onChange={(event) => setCorrectionForm((prev) => ({ ...prev, amount: event.target.value as ToiletAmount }))}
+              >
+                {Object.entries(TOILET_AMOUNT_LABELS).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>{label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="メモ"
+              value={correctionForm.memo}
+              onChange={(event) => setCorrectionForm((prev) => ({ ...prev, memo: event.target.value }))}
+              multiline
+              minRows={3}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setCorrectionTarget(null)} disabled={isCorrecting}>キャンセル</Button>
+          <Button
+            data-testid="toilet-correction-save"
+            variant="contained"
+            onClick={handleCorrectionSave}
+            disabled={isCorrecting}
+            startIcon={isCorrecting ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {isCorrecting ? '保存中...' : '訂正を保存'}
           </Button>
         </DialogActions>
       </Dialog>

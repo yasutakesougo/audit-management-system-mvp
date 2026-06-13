@@ -1,16 +1,17 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IUserMaster } from '@/features/users/types';
 import { toLocalDateISO } from '@/utils/getNow';
 import { ToiletDailyBoard } from '../ToiletDailyBoard';
 
-const { mockUseUsers, mockUseToiletRecords, mockRefreshRecords, mockCreateRecord } = vi.hoisted(() => ({
+const { mockUseUsers, mockUseToiletRecords, mockRefreshRecords, mockCreateRecord, mockCorrectRecord } = vi.hoisted(() => ({
   mockUseUsers: vi.fn(),
   mockUseToiletRecords: vi.fn(),
   mockRefreshRecords: vi.fn(),
   mockCreateRecord: vi.fn(),
+  mockCorrectRecord: vi.fn(),
 }));
 
 vi.mock('@/features/users/useUsers', () => ({
@@ -42,6 +43,7 @@ describe('ToiletDailyBoard', () => {
     mockUseToiletRecords.mockReset();
     mockRefreshRecords.mockReset();
     mockCreateRecord.mockReset();
+    mockCorrectRecord.mockReset();
 
     mockUseUsers.mockReturnValue({
       data: [toiletTargetUser],
@@ -52,6 +54,7 @@ describe('ToiletDailyBoard', () => {
     mockUseToiletRecords.mockReturnValue({
       records: [],
       create: mockCreateRecord,
+      correct: mockCorrectRecord,
       refresh: mockRefreshRecords,
       isLoading: false,
       error: null,
@@ -62,6 +65,7 @@ describe('ToiletDailyBoard', () => {
     mockUseToiletRecords.mockReturnValue({
       records: [],
       create: mockCreateRecord,
+      correct: mockCorrectRecord,
       refresh: mockRefreshRecords,
       isLoading: false,
       error: new Error('failed to load ToiletRecords'),
@@ -133,6 +137,7 @@ describe('ToiletDailyBoard', () => {
       mockUseToiletRecords.mockReturnValue({
         records: [],
         create: mockCreateRecord,
+        correct: mockCorrectRecord,
         refresh: mockRefreshRecords,
         isLoading: false,
         error: null,
@@ -164,5 +169,115 @@ describe('ToiletDailyBoard', () => {
       vi.useRealTimers();
     }
   });
-});
 
+  it('opens a correction dialog from an existing record and saves via correct', async () => {
+    mockCorrectRecord.mockResolvedValue({
+      id: 'toilet-1',
+      userId: 'user-1',
+      recordDate: '2026-06-12',
+      occurredAt: '2026-06-12T10:30:00.000+09:00',
+      toiletType: 'bowel',
+      amount: 'large',
+      memo: '訂正メモ',
+      recorderName: 'kiosk',
+      source: 'kiosk',
+      isDeleted: false,
+      createdAt: '2026-06-12T10:30:00.000+09:00',
+      updatedAt: '2026-06-12T10:35:00.000+09:00',
+    });
+    mockUseToiletRecords.mockReturnValue({
+      records: [
+        {
+          id: 'toilet-1',
+          userId: 'user-1',
+          recordDate: '2026-06-12',
+          occurredAt: '2026-06-12T10:30:00.000+09:00',
+          toiletType: 'urination',
+          amount: 'normal',
+          memo: '記録メモ',
+          recorderName: 'kiosk',
+          source: 'kiosk',
+          isDeleted: false,
+          createdAt: '2026-06-12T10:30:00.000+09:00',
+          updatedAt: '2026-06-12T10:30:00.000+09:00',
+        },
+      ],
+      create: mockCreateRecord,
+      correct: mockCorrectRecord,
+      refresh: mockRefreshRecords,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('toilet-correction-button-toilet-1'));
+
+    expect(screen.getByText('支援 花子さんのトイレ記録を訂正')).toBeInTheDocument();
+    expect(screen.getByLabelText('利用者')).toHaveValue('支援 花子');
+    expect(screen.getByLabelText('記録日')).toHaveValue('2026-06-12');
+    expect(screen.getByLabelText('利用者')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('記録日')).toHaveAttribute('readonly');
+    expect(screen.getByLabelText('記録日時')).toHaveAttribute('readonly');
+    expect(screen.getByDisplayValue('記録メモ')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('メモ'), { target: { value: '訂正メモ' } });
+    fireEvent.click(screen.getByTestId('toilet-correction-save'));
+
+    await waitFor(() => {
+      expect(mockCorrectRecord).toHaveBeenCalledWith('toilet-1', {
+        toiletType: 'urination',
+        amount: 'normal',
+        memo: '訂正メモ',
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('支援 花子さんのトイレ記録を訂正')).not.toBeInTheDocument();
+    });
+  });
+
+  it('keeps the correction dialog open and shows an error when correction save fails', async () => {
+    mockCorrectRecord.mockRejectedValue(new Error('訂正保存に失敗しました'));
+    mockUseToiletRecords.mockReturnValue({
+      records: [
+        {
+          id: 'toilet-1',
+          userId: 'user-1',
+          recordDate: '2026-06-12',
+          occurredAt: '2026-06-12T10:30:00.000+09:00',
+          toiletType: 'urination',
+          amount: 'normal',
+          memo: '記録メモ',
+          recorderName: 'kiosk',
+          source: 'kiosk',
+          isDeleted: false,
+          createdAt: '2026-06-12T10:30:00.000+09:00',
+          updatedAt: '2026-06-12T10:30:00.000+09:00',
+        },
+      ],
+      create: mockCreateRecord,
+      correct: mockCorrectRecord,
+      refresh: mockRefreshRecords,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('toilet-correction-button-toilet-1'));
+    fireEvent.click(screen.getByTestId('toilet-correction-save'));
+
+    await waitFor(() => {
+      expect(screen.getByText('訂正保存に失敗しました')).toBeInTheDocument();
+    });
+    expect(screen.getByText('支援 花子さんのトイレ記録を訂正')).toBeInTheDocument();
+  });
+});
