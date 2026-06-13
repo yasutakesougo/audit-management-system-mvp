@@ -1,4 +1,9 @@
-import type { ToiletRecord, ToiletRecordInput, IToiletRecordRepository } from './types';
+import type {
+  ToiletRecord,
+  ToiletRecordCorrectionPatch,
+  ToiletRecordInput,
+  IToiletRecordRepository,
+} from './types';
 import { toLocalDateISO } from '@/utils/getNow';
 
 const STORAGE_KEY = 'kiosk.toiletRecords.v1';
@@ -29,6 +34,15 @@ const writeStorage = (shape: StorageShape): void => {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(shape));
 };
 
+const nextUpdatedAt = (currentUpdatedAt: string): string => {
+  const now = new Date();
+  const current = Date.parse(currentUpdatedAt);
+  if (!Number.isNaN(current) && now.getTime() <= current) {
+    return new Date(current + 1).toISOString();
+  }
+  return now.toISOString();
+};
+
 export class LocalStorageToiletRecordRepository implements IToiletRecordRepository {
   async listByDate(dateIso: string): Promise<ToiletRecord[]> {
     return readStorage().records
@@ -56,5 +70,28 @@ export class LocalStorageToiletRecordRepository implements IToiletRecordReposito
     const storage = readStorage();
     writeStorage({ version: 1, records: [record, ...storage.records] });
     return record;
+  }
+
+  async update(recordId: string, patch: ToiletRecordCorrectionPatch): Promise<ToiletRecord> {
+    const storage = readStorage();
+    const index = storage.records.findIndex((record) => record.id === recordId && !record.isDeleted);
+    if (index < 0) {
+      throw new Error(`[ToiletRecordRepo] record not found: ${recordId}`);
+    }
+
+    const current = storage.records[index];
+    const updated: ToiletRecord = {
+      ...current,
+      toiletType: patch.toiletType ?? current.toiletType,
+      amount: patch.amount ?? current.amount,
+      memo: patch.memo?.trim() ?? current.memo,
+      updatedAt: nextUpdatedAt(current.updatedAt),
+    };
+
+    writeStorage({
+      version: 1,
+      records: storage.records.map((record, recordIndex) => (recordIndex === index ? updated : record)),
+    });
+    return updated;
   }
 }
