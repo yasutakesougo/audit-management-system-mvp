@@ -306,6 +306,46 @@ describe('ToiletDailyBoard', () => {
     });
   });
 
+  it('closes the correction dialog on cancel without calling correct', () => {
+    mockUseToiletRecords.mockReturnValue({
+      records: [
+        {
+          id: 'toilet-1',
+          userId: 'user-1',
+          recordDate: '2026-06-12',
+          occurredAt: '2026-06-12T10:30:00.000+09:00',
+          toiletType: 'urination',
+          amount: 'normal',
+          memo: '記録メモ',
+          recorderName: 'kiosk',
+          source: 'kiosk',
+          isDeleted: false,
+          createdAt: '2026-06-12T10:30:00.000+09:00',
+          updatedAt: '2026-06-12T10:30:00.000+09:00',
+        },
+      ],
+      create: mockCreateRecord,
+      correct: mockCorrectRecord,
+      refresh: mockRefreshRecords,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('toilet-correction-button-toilet-1'));
+    expect(screen.getByText('支援 花子さんのトイレ記録を訂正')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+
+    expect(mockCorrectRecord).not.toHaveBeenCalled();
+    expect(screen.queryByText('支援 花子さんのトイレ記録を訂正')).not.toBeInTheDocument();
+  });
+
   it('keeps the correction dialog open and shows an error when correction save fails', async () => {
     mockCorrectRecord.mockRejectedValue(new Error('訂正保存に失敗しました'));
     mockUseToiletRecords.mockReturnValue({
