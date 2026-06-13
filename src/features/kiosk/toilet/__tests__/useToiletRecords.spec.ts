@@ -124,8 +124,9 @@ describe('useToiletRecords', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
+    let returnedRecord: unknown;
     await act(async () => {
-      await result.current.correct('toilet-1', {
+      returnedRecord = await result.current.correct('toilet-1', {
         toiletType: 'bowel',
         amount: 'large',
         memo: 'corrected memo',
@@ -149,7 +150,9 @@ describe('useToiletRecords', () => {
       expect.any(Function),
       expect.any(Function),
     );
+    expect(returnedRecord).toBe(correctedRecord);
     expect(result.current.records).toEqual([correctedRecord]);
+    expect(result.current.error).toBeNull();
   });
 
   it('sets error when correction fails', async () => {
