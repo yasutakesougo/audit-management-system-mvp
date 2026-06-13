@@ -1,10 +1,11 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IUserMaster } from '@/features/users/types';
 import { toLocalDateISO } from '@/utils/getNow';
 import { ToiletDailyBoard } from '../ToiletDailyBoard';
+import type { ToiletRecord } from '../types';
 
 const { mockUseUsers, mockUseToiletRecords, mockRefreshRecords, mockCreateRecord, mockCorrectRecord } = vi.hoisted(() => ({
   mockUseUsers: vi.fn(),
@@ -344,6 +345,74 @@ describe('ToiletDailyBoard', () => {
 
     expect(mockCorrectRecord).not.toHaveBeenCalled();
     expect(screen.queryByText('支援 花子さんのトイレ記録を訂正')).not.toBeInTheDocument();
+  });
+
+  it('disables correction actions while a correction save is in flight', async () => {
+    let resolveCorrection!: (value: ToiletRecord) => void;
+    const correctionPromise = new Promise<ToiletRecord>((resolve) => {
+      resolveCorrection = resolve;
+    });
+    mockCorrectRecord.mockReturnValue(correctionPromise);
+    mockUseToiletRecords.mockReturnValue({
+      records: [
+        {
+          id: 'toilet-1',
+          userId: 'user-1',
+          recordDate: '2026-06-12',
+          occurredAt: '2026-06-12T10:30:00.000+09:00',
+          toiletType: 'urination',
+          amount: 'normal',
+          memo: '記録メモ',
+          recorderName: 'kiosk',
+          source: 'kiosk',
+          isDeleted: false,
+          createdAt: '2026-06-12T10:30:00.000+09:00',
+          updatedAt: '2026-06-12T10:30:00.000+09:00',
+        },
+      ],
+      create: mockCreateRecord,
+      correct: mockCorrectRecord,
+      refresh: mockRefreshRecords,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('toilet-correction-button-toilet-1'));
+    fireEvent.click(screen.getByTestId('toilet-correction-save'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '保存中...' })).toBeDisabled();
+    });
+    expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDisabled();
+    expect(mockCorrectRecord).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveCorrection({
+        id: 'toilet-1',
+        userId: 'user-1',
+        recordDate: '2026-06-12',
+        occurredAt: '2026-06-12T10:30:00.000+09:00',
+        toiletType: 'urination',
+        amount: 'normal',
+        memo: '記録メモ',
+        recorderName: 'kiosk',
+        source: 'kiosk',
+        isDeleted: false,
+        createdAt: '2026-06-12T10:30:00.000+09:00',
+        updatedAt: '2026-06-12T10:35:00.000+09:00',
+      });
+      await correctionPromise;
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('支援 花子さんのトイレ記録を訂正')).not.toBeInTheDocument();
+    });
   });
 
   it('keeps the correction dialog open and shows an error when correction save fails', async () => {
