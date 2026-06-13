@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { getToiletRepository } from './toiletRepositoryFactory';
-import type { ToiletRecord, ToiletRecordInput } from './types';
+import type { ToiletRecord, ToiletRecordCorrectionPatch, ToiletRecordInput } from './types';
 import { useSP } from '@/lib/spClient';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 
@@ -70,5 +70,19 @@ export function useToiletRecords(dateIso: string) {
     }
   }, [refresh, repository]);
 
-  return { records, create, refresh, isLoading, error };
+  const correct = useCallback(async (recordId: string, patch: ToiletRecordCorrectionPatch) => {
+    try {
+      setError(null);
+      const record = await repository.update(recordId, patch);
+      await refresh();
+      return record;
+    } catch (err) {
+      const nextError = err instanceof Error ? err : new Error('Failed to correct toilet record');
+      setError(nextError);
+      console.error('[useToiletRecords] Failed to correct toilet record:', err);
+      throw nextError;
+    }
+  }, [refresh, repository]);
+
+  return { records, create, correct, refresh, isLoading, error };
 }
