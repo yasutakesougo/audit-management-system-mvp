@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { bridgePlanningSheetToDailyProcedures } from '../dailyProcedureMapper';
 import type { SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetSchema';
+import { makePlanningDesign, makeSupportPlanningSheet } from '@/domain/isp/__tests__/supportPlanningSheetTestFactory';
 import { SHIODA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/shiotaSevereSupportProcedure';
 import { KATSURAGAWA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/katsuragawaSevereSupportProcedure';
 import { NAKAMURA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/nakamuraSevereSupportProcedure';
@@ -8,8 +9,17 @@ import { ISHIWATA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/ishiwataSevereSup
 
 describe('dailyProcedureMapper', () => {
   const mockSheet: Partial<SupportPlanningSheet> = {
-    id: 'sheet-1',
-    userId: 'user-1',
+    ...makeSupportPlanningSheet({
+      id: 'sheet-1',
+      userId: 'user-1',
+      authoredByStaffId: 'staff-1',
+      planning: makePlanningDesign({
+        procedureSteps: [
+          { order: 1, timing: '09:30', instruction: 'Morning Prep', staff: 'Staff A' },
+          { order: 5, timing: '10:20', instruction: 'AM Activity Content', staff: 'Staff B' },
+        ],
+      }),
+    }),
     supportPolicy: 'Policy text',
     concreteApproaches: 'Approach text',
     environmentalAdjustments: 'Env text',
@@ -24,20 +34,6 @@ describe('dailyProcedureMapper', () => {
       consentScope: [],
       consentDate: null,
     },
-    planning: {
-      procedureSteps: [
-        { order: 1, timing: '09:30', instruction: 'Morning Prep', staff: 'Staff A' },
-        { order: 5, timing: '10:20', instruction: 'AM Activity Content', staff: 'Staff B' },
-      ],
-      supportPriorities: [],
-      antecedentStrategies: [],
-      teachingStrategies: [],
-      consequenceStrategies: [],
-      crisisThresholds: null,
-      restraintPolicy: 'prohibited_except_emergency',
-      reviewCycleDays: 180,
-    },
-    authoredByStaffId: 'staff-1',
   };
 
   it('should map structured steps to correct rows', () => {

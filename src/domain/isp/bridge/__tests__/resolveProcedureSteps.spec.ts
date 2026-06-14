@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import type { PlanningDesign } from '@/domain/isp/schema';
 import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 import type { ABCRecord } from '@/domain/behavior';
+import { makePlanningDesign } from '@/domain/isp/__tests__/supportPlanningSheetTestFactory';
 import {
   resolveProcedureSteps,
   type ProcedureResolutionInput,
@@ -23,21 +24,14 @@ import {
 function makeDesign(
   steps: Array<{ order: number; instruction: string; timing?: string }>,
 ): PlanningDesign {
-  return {
-    supportPriorities: [],
-    antecedentStrategies: [],
-    teachingStrategies: [],
-    consequenceStrategies: [],
+  return makePlanningDesign({
     procedureSteps: steps.map((s) => ({
       order: s.order,
       instruction: s.instruction,
       staff: '',
       timing: s.timing ?? '',
     })),
-    crisisThresholds: null,
-    restraintPolicy: 'prohibited_except_emergency',
-    reviewCycleDays: 180,
-  };
+  });
 }
 
 const baseSteps: ProcedureStep[] = [

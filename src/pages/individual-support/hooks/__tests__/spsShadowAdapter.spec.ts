@@ -1,23 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import { makePlanningDesign, makeSupportPlanningSheet } from '@/domain/isp/__tests__/supportPlanningSheetTestFactory';
 import { buildShadowSpsHistory, toShadowSps } from '../spsShadowAdapter';
 
 function makeSheet(overrides: Partial<SupportPlanningSheet>): SupportPlanningSheet {
-  return {
+  return makeSupportPlanningSheet({
     id: 'sp-1',
     createdAt: '2026-01-01T00:00:00.000Z',
     createdBy: 'system',
     updatedAt: '2026-01-10T00:00:00.000Z',
     updatedBy: 'system',
-    version: 1,
-    userId: 'U-001',
-    ispId: 'ISP-001',
-    title: '支援計画シート',
-    targetScene: '',
-    targetDomain: '',
     observationFacts: '行動観察1\n行動観察2',
-    collectedInformation: '',
     interpretationHypothesis: '背景仮説',
     supportIssues: '支援課題',
     supportPolicy: '方針',
@@ -26,55 +20,13 @@ function makeSheet(overrides: Partial<SupportPlanningSheet>): SupportPlanningShe
     appliedFrom: '2026-01-01',
     nextReviewAt: '2026-04-01',
     supportStartDate: '2026-01-01',
-    monitoringCycleDays: 90,
     authoredByStaffId: '100',
-    authoredByQualification: 'unknown',
-    authoredAt: null,
-    applicableServiceType: 'other',
-    applicableAddOnTypes: ['none'],
-    deliveredToUserAt: null,
-    reviewedAt: null,
-    hasMedicalCoordination: false,
-    hasEducationCoordination: false,
-    regulatoryBasisSnapshot: {
-      supportLevel: null,
-      behaviorScore: null,
-      serviceType: null,
-      eligibilityCheckedAt: null,
-    },
     status: 'active',
-    isCurrent: true,
-    intake: {
-      presentingProblem: '',
-      targetBehaviorsDraft: [],
-      behaviorItemsTotal: null,
-      incidentSummaryLast30d: '',
-      communicationModes: [],
-      sensoryTriggers: [],
-      medicalFlags: [],
-      consentScope: [],
-      consentDate: null,
-    },
-    assessment: {
-      targetBehaviors: [],
-      abcEvents: [],
-      hypotheses: [],
-      riskLevel: 'low',
-      healthFactors: [],
-      teamConsensusNote: '',
-    },
-    planning: {
+    planning: makePlanningDesign({
       supportPriorities: ['穏やかな環境'],
-      antecedentStrategies: [],
-      teachingStrategies: [],
-      consequenceStrategies: [],
-      procedureSteps: [],
-      crisisThresholds: null,
-      restraintPolicy: 'prohibited_except_emergency',
-      reviewCycleDays: 180,
-    },
+    }),
     ...overrides,
-  };
+  });
 }
 
 describe('spsShadowAdapter', () => {
