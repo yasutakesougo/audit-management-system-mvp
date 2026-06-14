@@ -68,6 +68,7 @@ const makeEmptyForm = (overrides: Partial<PlanningSheetFormValues> = {}): Planni
   hasEducationCoordination: false,
   monitoringCycleDays: 90,
   ...overrides,
+  monitoringEvidenceLinks: overrides.monitoringEvidenceLinks ?? [],
 });
 
 const makeEmptyIntake = (overrides: Partial<PlanningIntake> = {}): PlanningIntake => ({
@@ -369,4 +370,3 @@ describe('provenance tracking', () => {
     expect(result.provenance).toEqual([]);
   });
 });
-
