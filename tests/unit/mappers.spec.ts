@@ -32,7 +32,7 @@ describe('lib/mappers', () => {
       ContractDate: '2024-12-31T15:00:00Z',
       ServiceStartDate: '2025-01-01T09:00:00Z',
       ServiceEndDate: null,
-      SevereFlag: true,
+      severeFlag: true,
       IsActive: undefined,
       Modified: '2025-01-02T00:00:00Z',
       Created: '2025-01-01T00:00:00Z',
