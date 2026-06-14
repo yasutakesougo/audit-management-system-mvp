@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { DataProviderDailyRecordRepository } from '../DataProviderDailyRecordRepository';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import type { SaveDailyRecordInput } from '../domain/DailyRecordRepository';
+import type { SaveDailyRecordInput } from '../../domain/DailyRecordRepository';
 
 describe('DataProviderDailyRecordRepository (Contract Tests)', () => {
   const mockProvider = {

@@ -559,7 +559,7 @@ function formatDiagnosticsSection(routes: RouteRow[]): string {
   // 2. Navigation Targets exposure (cross-reference based on APP_ROUTE_PATHS)
   const routerPathSet = new Set(APP_ROUTE_PATHS.map(normalizeRouterPath));
 
-  const roles: ('admin' | 'reception' | 'viewer')[] = ['admin', 'reception', 'viewer'];
+  const roles: ('admin' | 'reception' | 'staff')[] = ['admin', 'reception', 'staff'];
   const activeNavHrefs = new Set<string>();
 
   roles.forEach((role) => {
