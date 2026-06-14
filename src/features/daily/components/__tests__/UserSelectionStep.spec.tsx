@@ -16,22 +16,24 @@ import { UserSelectionStep } from '../wizard/UserSelectionStep';
 describe('UserSelectionStep', () => {
   const dummyUsers: IUserMaster[] = [
     {
+      Id: 1,
       UserID: 'U001',
       FullName: '利用者 一郎',
       DisabilitySupportLevel: '区分3',
       IsHighIntensitySupportTarget: false,
       BehaviorScore: 5,
       ServiceStartDate: '2026-01-01',
-      Status: 'active',
+      UsageStatus: 'active',
     },
     {
+      Id: 2,
       UserID: 'U002',
       FullName: '利用者 二郎',
       DisabilitySupportLevel: '区分6',
       IsHighIntensitySupportTarget: true,
       BehaviorScore: 12,
       ServiceStartDate: '2026-01-01',
-      Status: 'active',
+      UsageStatus: 'active',
     },
   ];
 
