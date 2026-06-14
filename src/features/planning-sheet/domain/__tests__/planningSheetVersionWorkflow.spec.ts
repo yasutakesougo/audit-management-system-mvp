@@ -156,6 +156,14 @@ class InMemoryPlanningSheetRepository implements PlanningSheetRepository {
     this.sheets[index] = updated;
     return updated;
   }
+
+  async deleteItem(id: string): Promise<void> {
+    const index = this.sheets.findIndex((sheet) => sheet.id === id);
+    if (index < 0) {
+      throw new Error(`not found: ${id}`);
+    }
+    this.sheets.splice(index, 1);
+  }
 }
 
 describe('planningSheetVersionWorkflow', () => {

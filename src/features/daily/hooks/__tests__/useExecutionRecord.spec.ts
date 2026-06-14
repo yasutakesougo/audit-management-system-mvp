@@ -3,13 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionRecord } from '../../domain/executionRecordTypes';
 import { useExecutionRecord } from '../useExecutionRecord';
 
-const mockGetRecord = vi.fn<(...args: unknown[]) => Promise<ExecutionRecord | undefined>>();
-const mockUpsertRecord = vi.fn<(...args: unknown[]) => Promise<void>>();
-const mockDeleteRecord = vi.fn<(...args: unknown[]) => Promise<void>>();
+type GetRecordFn = (...args: unknown[]) => Promise<ExecutionRecord | undefined>;
+type WriteRecordFn = (...args: unknown[]) => Promise<void>;
 
-let getRecordRefChanger = mockGetRecord;
-let upsertRecordRefChanger = mockUpsertRecord;
-let deleteRecordRefChanger = mockDeleteRecord;
+const mockGetRecord = vi.fn<GetRecordFn>();
+const mockUpsertRecord = vi.fn<WriteRecordFn>();
+const mockDeleteRecord = vi.fn<WriteRecordFn>();
+
+let getRecordRefChanger: GetRecordFn = mockGetRecord;
+let upsertRecordRefChanger: WriteRecordFn = mockUpsertRecord;
+let deleteRecordRefChanger: WriteRecordFn = mockDeleteRecord;
 
 vi.mock('../useExecutionData', () => ({
   useExecutionData: () => ({

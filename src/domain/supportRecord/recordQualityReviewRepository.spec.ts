@@ -74,11 +74,23 @@ const runRecordQualityReviewRepositoryContract = (
     it('does not expose mutable internal state', async () => {
       const repository = factory();
       const saved = await repository.saveReview(createDraft());
-      saved.notes.push('tampered');
-      saved.suggestedCategories[0].matchedSignals.push('tampered');
+      const callerCopy = {
+        ...saved,
+        notes: [...saved.notes, 'tampered'],
+        suggestedCategories: saved.suggestedCategories.map((category, index) =>
+          index === 0
+            ? {
+                ...category,
+                matchedSignals: [...category.matchedSignals, 'tampered'],
+              }
+            : category,
+        ),
+      };
 
       const stored = await repository.getReview('record-1');
 
+      expect(callerCopy.notes).toContain('tampered');
+      expect(callerCopy.suggestedCategories[0].matchedSignals).toContain('tampered');
       expect(stored?.notes).toEqual(['人間レビューで確認する']);
       expect(stored?.suggestedCategories[0].matchedSignals).toEqual(['昼食', '水分']);
     });

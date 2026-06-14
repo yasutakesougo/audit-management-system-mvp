@@ -135,19 +135,20 @@ type RecordQualityReviewRow = {
 
 function makeProvider(seed: RecordQualityReviewRow[]): Mocked<IDataProvider> {
   let rows = seed.map(row => ({ ...row }));
-  const mockProvider: Mocked<IDataProvider> = {
-    listItems: vi.fn(async (_resourceName, options) => {
+  type MockProvider = Mocked<IDataProvider>;
+  const mockProvider: MockProvider = {
+    listItems: vi.fn(async <T,>(_resourceName: string, options?: Parameters<IDataProvider['listItems']>[1]) => {
       if (options?.filter?.includes('RecordId eq')) {
         const match = options.filter.match(/RecordId eq '([^']+)'/);
         const recordId = match?.[1];
-        return rows.filter(row => row.RecordId === recordId);
+        return rows.filter(row => row.RecordId === recordId) as T[];
       }
 
-      return rows;
-    }),
-    getItemById: vi.fn(),
-    createItem: vi.fn(),
-    updateItem: vi.fn(async (_resourceName, id, payload) => {
+      return rows as T[];
+    }) as MockProvider['listItems'],
+    getItemById: vi.fn(async <T,>() => ({} as T)) as MockProvider['getItemById'],
+    createItem: vi.fn(async <T,>() => ({} as T)) as MockProvider['createItem'],
+    updateItem: vi.fn(async <T,>(_resourceName: string, id: string | number, payload: Record<string, unknown>) => {
       rows = rows.map(row =>
         row.Id === id
           ? {
@@ -156,14 +157,14 @@ function makeProvider(seed: RecordQualityReviewRow[]): Mocked<IDataProvider> {
             }
           : row,
       );
-      return rows.find(row => row.Id === id) ?? {};
-    }),
-    deleteItem: vi.fn(),
-    getMetadata: vi.fn(),
-    getResourceNames: vi.fn(),
-    getFieldInternalNames: vi.fn(),
-    ensureListExists: vi.fn(),
-    seed: vi.fn(),
+      return (rows.find(row => row.Id === id) ?? {}) as T;
+    }) as MockProvider['updateItem'],
+    deleteItem: vi.fn(async () => undefined) as MockProvider['deleteItem'],
+    getMetadata: vi.fn(async () => ({})) as MockProvider['getMetadata'],
+    getResourceNames: vi.fn(async () => []) as MockProvider['getResourceNames'],
+    getFieldInternalNames: vi.fn(async () => new Set<string>()) as MockProvider['getFieldInternalNames'],
+    ensureListExists: vi.fn(async () => undefined) as MockProvider['ensureListExists'],
+    seed: vi.fn(async () => undefined) as NonNullable<MockProvider['seed']>,
   };
 
   return mockProvider;
