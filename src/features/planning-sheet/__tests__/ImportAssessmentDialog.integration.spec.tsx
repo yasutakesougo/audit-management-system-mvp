@@ -107,6 +107,7 @@ const makeEmptyForm = (): PlanningSheetFormValues => ({
   hasMedicalCoordination: false,
   hasEducationCoordination: false,
   monitoringCycleDays: 90,
+  monitoringEvidenceLinks: [],
 });
 
 const makeEmptyIntake = (): PlanningIntake => ({
