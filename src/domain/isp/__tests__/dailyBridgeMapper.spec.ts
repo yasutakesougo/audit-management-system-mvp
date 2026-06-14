@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mapPlanningToDailyBridge, summarizePlanningForDaily } from '../dailyBridgeMapper';
 import { supportPlanningSheetSchema } from '../schema/ispPlanningSheetSchema';
+import { makePlanningDesign } from './supportPlanningSheetTestFactory';
 
 const baseSheet = supportPlanningSheetSchema.parse({
   id: 'sheet-001',
@@ -36,15 +37,16 @@ describe('mapPlanningToDailyBridge', () => {
         ...baseSheet,
         environmentalAdjustments: '音環境を静かに',
         planning: {
-          procedureSteps: [
-            { order: 1, instruction: '服薬確認', staff: 'A', timing: '朝' },
-          ],
-          crisisThresholds: {
-            escalationLevel: 'level-3',
-            deescalationSteps: ['一時退室', '深呼吸'],
-            emergencyContacts: ['Aさん'],
-          },
-          environmentalAdjustments: '音環境を静かに',
+          ...makePlanningDesign({
+            procedureSteps: [
+              { order: 1, instruction: '服薬確認', staff: 'A', timing: '朝' },
+            ],
+            crisisThresholds: {
+              escalationLevel: 'level-3',
+              deescalationSteps: ['一時退室', '深呼吸'],
+              emergencyContacts: ['Aさん'],
+            },
+          }),
         },
       },
       '2026-06-11',
@@ -68,9 +70,7 @@ describe('mapPlanningToDailyBridge', () => {
         ...baseSheet,
         interpretationHypothesis: '行動の再評価を重視する',
         planning: {
-          procedureSteps: [],
-          crisisThresholds: null,
-          environmentalAdjustments: '',
+          ...makePlanningDesign(),
         },
       },
       '2026-06-12',
@@ -92,13 +92,13 @@ describe('mapPlanningToDailyBridge', () => {
         ...baseSheet,
         interpretationHypothesis: '',
         planning: {
-          procedureSteps: [],
-          crisisThresholds: {
-            escalationLevel: '',
-            deescalationSteps: [],
-            emergencyContacts: [],
-          },
-          environmentalAdjustments: '',
+          ...makePlanningDesign({
+            crisisThresholds: {
+              escalationLevel: '',
+              deescalationSteps: [],
+              emergencyContacts: [],
+            },
+          }),
         },
       },
       '2026-06-13',
@@ -120,9 +120,7 @@ describe('mapPlanningToDailyBridge', () => {
         interpretationHypothesis: '',
         environmentalAdjustments: '音楽を小さくして刺激を減らす',
         planning: {
-          procedureSteps: [],
-          crisisThresholds: null,
-          environmentalAdjustments: '',
+          ...makePlanningDesign(),
         },
       },
       '2026-06-14',
@@ -151,12 +149,12 @@ describe('summarizePlanningForDaily', () => {
       ...baseSheet,
       supportPolicy: '行動計画を段階的に支援し、環境刺激を最小化する',
       planning: {
-        procedureSteps: [
-          { order: 1, instruction: '服薬を確認して記録する', staff: 'A', timing: '朝' },
-          { order: 2, instruction: '午後も状態を再確認する', staff: 'A', timing: '午後' },
-        ],
-        crisisThresholds: null,
-        environmentalAdjustments: '',
+        ...makePlanningDesign({
+          procedureSteps: [
+            { order: 1, instruction: '服薬を確認して記録する', staff: 'A', timing: '朝' },
+            { order: 2, instruction: '午後も状態を再確認する', staff: 'A', timing: '午後' },
+          ],
+        }),
       },
     });
 
@@ -170,9 +168,7 @@ describe('summarizePlanningForDaily', () => {
       ...baseSheet,
       supportPolicy: '',
       planning: {
-        procedureSteps: [],
-        crisisThresholds: null,
-        environmentalAdjustments: '',
+        ...makePlanningDesign(),
       },
       interpretationHypothesis: '',
     });

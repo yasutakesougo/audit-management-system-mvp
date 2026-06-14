@@ -19,6 +19,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { PlanningDesign } from '@/domain/isp/schema';
+import { makePlanningDesign } from '@/domain/isp/__tests__/supportPlanningSheetTestFactory';
 import {
   extractActivityLabel,
   generateDefaultTime,
@@ -31,21 +32,14 @@ import {
 function makeDesign(
   steps: Array<{ order: number; instruction: string; staff?: string; timing?: string }>,
 ): PlanningDesign {
-  return {
-    supportPriorities: [],
-    antecedentStrategies: [],
-    teachingStrategies: [],
-    consequenceStrategies: [],
+  return makePlanningDesign({
     procedureSteps: steps.map((s) => ({
       order: s.order,
       instruction: s.instruction,
       staff: s.staff ?? '',
       timing: s.timing ?? '',
     })),
-    crisisThresholds: null,
-    restraintPolicy: 'prohibited_except_emergency',
-    reviewCycleDays: 180,
-  };
+  });
 }
 
 // =======================
