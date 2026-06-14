@@ -56,6 +56,6 @@ describe('mapPlanPatchToTodayActionSource', () => {
     });
 
     expect(result.isCompleted).toBe(true);
-    expect(result.payload.userName).toBe('U001');
+    expect((result.payload as { userName: string }).userName).toBe('U001');
   });
 });
