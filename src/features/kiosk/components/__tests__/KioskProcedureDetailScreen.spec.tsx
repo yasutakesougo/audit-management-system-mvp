@@ -4,10 +4,47 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
 import { resolveProcedureUserQueryCandidates } from '../../utils/resolveProcedureUserQuery';
+import type { IUserMaster } from '@/features/users/types';
+import type { ExecutionRecord, RecordStatus } from '@/features/daily/domain/executionRecordTypes';
 
 // Mock dependencies
 const mockNavigate = vi.fn();
 const mockUseLocation = vi.fn(() => ({ search: '?kiosk=1&provider=memory' }));
+
+type MockUser = Pick<IUserMaster, 'Id' | 'FullName'> & Partial<IUserMaster>;
+type MockUseUser = {
+  data: MockUser | null;
+  status: 'idle' | 'loading' | 'error' | 'success';
+  error?: unknown;
+};
+
+type MockExecutionRecordState = {
+  record: ExecutionRecord | undefined;
+  saveRecord: (status: RecordStatus, memo?: string, triggeredBipIds?: string[]) => Promise<void>;
+  deleteRecord: () => Promise<void>;
+  isLoading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
+};
+
+const asUser = (user: Partial<MockUser> & { FullName: string }): MockUser => ({
+  Id: user.Id ?? 1,
+  UserID: user.UserID ?? 'U001',
+  ...user,
+});
+
+const asExecutionRecord = (record: Partial<ExecutionRecord>): ExecutionRecord => ({
+  id: 'tmp-record-id',
+  date: '2026-01-01',
+  userId: 'U001',
+  scheduleItemId: 'procedure-1',
+  status: 'completed',
+  memo: '',
+  triggeredBipIds: [],
+  recordedBy: '',
+  recordedAt: '2026-01-01T00:00:00.000Z',
+  ...record,
+});
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -18,7 +55,11 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎' }, status: 'success' }));
+const mockUseUser = vi.fn<() => MockUseUser>(() => ({
+  data: asUser({ FullName: '田中 太郎' }),
+  status: 'success',
+  error: null,
+}));
 vi.mock('@/features/users/useUsers', () => ({
   useUser: () => mockUseUser(),
 }));
@@ -43,18 +84,24 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
 const mockDeleteRecord = vi.fn().mockResolvedValue(undefined);
 const mockRefreshRecord = vi.fn();
-const mockUseExecutionRecord = vi.fn((
+const mockUseExecutionRecord = vi.fn<(
+  _date?: string,
+  _userId?: string,
+  _scheduleItemId?: string,
+  _fallbackScheduleItemIds?: string[],
+  _fallbackUserIds?: string[],
+  ) => MockExecutionRecordState>((
   _date?: string,
   _userId?: string,
   _scheduleItemId?: string,
   _fallbackScheduleItemIds?: string[],
   _fallbackUserIds?: string[],
 ) => ({
-  record: null,
+  record: undefined,
   saveRecord: mockSaveRecord,
   deleteRecord: mockDeleteRecord,
   isLoading: false,
-  error: null,
+  error: null as Error | null,
   refresh: mockRefreshRecord,
 }));
 vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
@@ -81,9 +128,9 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
-    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
+    mockUseUser.mockReturnValue({ data: asUser({ FullName: '田中 太郎' }), status: 'success', error: null });
     mockUseExecutionRecord.mockReturnValue({
-      record: null,
+      record: undefined,
       saveRecord: mockSaveRecord,
       deleteRecord: mockDeleteRecord,
       isLoading: false,
@@ -250,7 +297,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
   it('shows unknown saved-state feedback and blocks save when the execution record cannot be loaded', () => {
     mockUseExecutionRecord.mockReturnValue({
-      record: null,
+      record: undefined,
       saveRecord: mockSaveRecord,
       deleteRecord: mockDeleteRecord,
       isLoading: false,
@@ -275,7 +322,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   });
 
   it('postpones form state initialization and populates form from saved record after user load transitions from loading to success', async () => {
-    mockUseUser.mockReturnValue({ data: undefined, status: 'loading' });
+    mockUseUser.mockReturnValue({ data: null, status: 'loading' });
 
     mockUseExecutionRecord.mockImplementation((
       _date,
@@ -284,17 +331,20 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       const isLoaded = userId === 'U001';
       return {
         record: isLoaded
-          ? {
+          ? asExecutionRecord({
               id: 'rec-1',
               date: '2026-05-28',
               userId: 'U001',
               scheduleItemId: 'P001',
               status: 'completed' as const,
               memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】問題なく実施完了',
-            }
+            })
           : undefined,
         saveRecord: mockSaveRecord,
+        deleteRecord: mockDeleteRecord,
         isLoading: !isLoaded,
+        error: null,
+        refresh: mockRefreshRecord,
       };
     });
 
@@ -308,7 +358,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('読み込み中...')).toBeInTheDocument();
 
     // Transition useUser status to success
-    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎', UserID: 'U001' }, status: 'success' });
+    mockUseUser.mockReturnValue({ data: asUser({ FullName: '田中 太郎', UserID: 'U001' }), status: 'success', error: null });
     rerender(
       <MemoryRouter>
         <KioskProcedureDetailScreen />
@@ -359,11 +409,11 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
     it('renders the absence warning alert and disables save/delete/abc actions', () => {
       mockUseExecutionRecord.mockReturnValue({
-        record: {
+        record: asExecutionRecord({
           id: 'rec-1',
           status: 'completed',
           memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】テスト記録',
-        },
+        }),
         saveRecord: mockSaveRecord,
         deleteRecord: mockDeleteRecord,
         isLoading: false,
