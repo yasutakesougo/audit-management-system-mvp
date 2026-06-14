@@ -67,6 +67,9 @@ const mockHandlers: SupportPlanningSheetActionHandlers = {
   onReflectCandidate: vi.fn(),
   onNavigateToExecution: vi.fn(),
   onNavigateToPdca: vi.fn(),
+  onOpenReflectPreview: vi.fn(),
+  onCloseReflectPreview: vi.fn(),
+  onConfirmReflect: vi.fn(),
   onRefresh: vi.fn(),
 };
 
