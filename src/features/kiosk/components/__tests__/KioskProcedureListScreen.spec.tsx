@@ -5,14 +5,67 @@ import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { openThrottleCircuit, __clearSharePointThrottleCircuitBreakerForTests } from '@/lib/sp';
 import { MemoryRouter } from 'react-router-dom';
 import type { SupportPlanningSheet, PlanningSheetListItem } from '@/domain/isp/schema';
+import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
+import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+import type { IUserMaster } from '@/features/users/types';
 import { AuthRequiredError } from '@/lib/errors';
 
-// Mock dependencies
+type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
+type MockUser = Pick<IUserMaster, 'FullName'> & Partial<IUserMaster>;
+
+type MockUseUser = {
+  data: MockUser | null;
+  status: AsyncStatus;
+  error?: unknown;
+};
+
+type MockUseUsers = {
+  data: MockUser[];
+  status: AsyncStatus;
+  error?: unknown;
+};
+
+type MockUsePlanningSheetData = {
+  data: SupportPlanningSheet | null;
+  isLoading: boolean;
+  error?: string | null;
+  refetch?: () => void;
+};
+
+type MockUseCurrentPlanningSheet = {
+  currentSheet: Partial<PlanningSheetListItem> | null;
+  allCurrentSheets: Array<Partial<PlanningSheetListItem>>;
+  isLoading: boolean;
+  error: string | null;
+};
+
+const asUser = (user: MockUser): MockUser => ({
+  ...user,
+  Id: user.Id ?? 1,
+  UserID: user.UserID ?? 'U001',
+});
+
+const makeProcedureStep = (data: Partial<ProcedureStep> = {}): ProcedureStep => ({
+  id: data.id ?? 'step-0',
+  time: data.time ?? '',
+  activity: data.activity ?? '',
+  instruction: data.instruction ?? '',
+  isKey: false,
+  planningSheetId: data.planningSheetId ?? 'S001',
+  ...data,
+});
+
 let mockRouteUserId = 'U001';
 let mockLocationSearch: string | null = null;
 let mockLocationKey: string | null = null;
+let mockKioskAttendance = {
+  isAbsent: false,
+  reason: undefined as string | undefined,
+  isLoading: false,
+  isError: false,
+};
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+    const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
     useNavigate: () => vi.fn(),
@@ -28,18 +81,20 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-let mockKioskAttendance = {
-  isAbsent: false,
-  reason: undefined as string | undefined,
-  isLoading: false,
-  isError: false,
-};
 vi.mock('../../hooks/useKioskAttendance', () => ({
   useKioskAttendance: () => mockKioskAttendance,
 }));
 
-const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎', ServiceStartDate: undefined as string | undefined } as unknown as Record<string, unknown>, status: 'success' }));
-const mockUseUsers = vi.fn(() => ({ data: [], status: 'success' as const }));
+const mockUseUser = vi.fn<() => MockUseUser>(() => ({
+  data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
+  status: 'success',
+  error: null,
+}));
+const mockUseUsers = vi.fn<() => MockUseUsers>(() => ({
+  data: [],
+  status: 'success',
+  error: null,
+}));
 vi.mock('@/features/users/useUsers', () => ({
   useUser: () => mockUseUser(),
   useUsers: () => mockUseUsers(),
@@ -54,21 +109,23 @@ vi.mock('@/features/users/hooks/useUsersQuery', () => ({
 }));
 
 const mockProcedures = [
-  { id: '1', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります', planningSheetId: 'S001' },
-  { id: 'P002', rowNo: 2, time: '12:00', activity: '昼食の介助', instruction: '見守りを行います', planningSheetId: 'S001' }
+  makeProcedureStep({ id: '1', rowNo: 1, time: '10:00', activity: '朝のバイタルチェック', instruction: '体温と血圧を測ります', planningSheetId: 'S001', isKey: true }),
+  makeProcedureStep({ id: 'P002', rowNo: 2, time: '12:00', activity: '昼食の介助', instruction: '見守りを行います', planningSheetId: 'S001', isKey: true }),
 ];
 
-const mockGetByUser = vi.fn(() => mockProcedures);
+const mockGetByUser = vi.fn<(userId: string) => Array<Partial<ProcedureStep>>>(() => mockProcedures);
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
   useProcedureData: () => ({
-    getByUser: (...args: unknown[]) => mockGetByUser(...args)
+    getByUser: mockGetByUser,
   }),
 }));
 
-const mockGetRecords = vi.fn();
-const mockGetRecord = vi.fn();
-const mockGetStoreRecords = vi.fn();
-const mockGetCurrentExecutionRepositoryKind = vi.fn(() => 'local' as 'local' | 'sharepoint');
+const mockGetRecords = vi.fn<(date: string, userId: string) => Promise<Array<Partial<ExecutionRecord>>>>();
+const mockGetRecord = vi.fn<
+  (date: string, userId: string, scheduleItemId: string) => Promise<Partial<ExecutionRecord> | undefined>
+>();
+const mockGetStoreRecords = vi.fn<(date: string, userId: string) => Array<Partial<ExecutionRecord>>>();
+const mockGetCurrentExecutionRepositoryKind = vi.fn<() => 'local' | 'sharepoint'>(() => 'local');
 
 vi.mock('@/features/daily/stores/executionStore', () => ({
   useExecutionStore: () => ({
@@ -87,12 +144,22 @@ vi.mock('@/features/daily/repositories/sharepoint/executionRepositoryFactory', (
   getCurrentExecutionRepositoryKind: () => mockGetCurrentExecutionRepositoryKind(),
 }));
 
-const mockUsePlanningSheetData = vi.fn(() => ({ data: null, isLoading: false }));
+const mockUsePlanningSheetData = vi.fn<() => MockUsePlanningSheetData>(() => ({
+  data: null,
+  isLoading: false,
+  error: null,
+  refetch: () => {},
+}));
 vi.mock('@/features/planning-sheet/hooks/usePlanningSheetData', () => ({
   usePlanningSheetData: () => mockUsePlanningSheetData(),
 }));
 
-const mockUseCurrentPlanningSheet = vi.fn(() => ({ currentSheet: null, allCurrentSheets: [], isLoading: false, error: null }));
+const mockUseCurrentPlanningSheet = vi.fn<() => MockUseCurrentPlanningSheet>(() => ({
+  currentSheet: null,
+  allCurrentSheets: [],
+  isLoading: false,
+  error: null,
+}));
 vi.mock('@/features/planning-sheet/hooks/useCurrentPlanningSheet', () => ({
   useCurrentPlanningSheet: () => mockUseCurrentPlanningSheet(),
 }));
@@ -124,12 +191,12 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     mockRouteUserId = 'U001';
     mockLocationSearch = null;
     mockLocationKey = null;
-    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success', error: null });
+    mockUseUser.mockReturnValue({ data: asUser({ FullName: '田中 太郎' }), status: 'success', error: null });
     mockUseUsers.mockReturnValue({ data: [], status: 'success', error: null });
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('local');
     mockGetStoreRecords.mockReturnValue([]);
     mockGetByUser.mockReturnValue(mockProcedures);
-    mockUsePlanningSheetData.mockReturnValue({ data: null, isLoading: false });
+    mockUsePlanningSheetData.mockReturnValue({ data: null, isLoading: false, error: null, refetch: vi.fn() });
     mockUseCurrentPlanningSheet.mockReturnValue({ currentSheet: null, allCurrentSheets: [], isLoading: false, error: null });
     mockGetRecords.mockResolvedValue([]);
     mockGetRecord.mockResolvedValue(undefined);
@@ -463,7 +530,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('includes legacy records with undefined status when input exists', async () => {
     mockGetRecords.mockResolvedValue([
-      { scheduleItemId: '1', status: undefined, note: '記録あり' } as unknown as { scheduleItemId: string; status: string },
+      { scheduleItemId: '1', status: undefined, note: '記録あり' } as Partial<ExecutionRecord>,
     ]);
 
     render(
@@ -482,7 +549,11 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('treats saved/recorded status with input as recorded and doneCount remains completed-only', async () => {
     mockGetRecords.mockResolvedValue([
-      { scheduleItemId: '1', status: 'saved', additionalInfo: '入力あり' } as unknown as { scheduleItemId: string; status: string },
+      {
+        scheduleItemId: '1',
+        status: 'saved' as unknown as ExecutionRecord['status'],
+        additionalInfo: '入力あり',
+      } as unknown as Partial<ExecutionRecord>,
       { scheduleItemId: 'P002', status: 'completed' },
     ]);
 
@@ -1123,7 +1194,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
   it('waits for user to load before fetching route and master user ID candidates', async () => {
     mockRouteUserId = '17';
     // Start as loading
-    let userState = { data: undefined as any, status: 'loading' };
+    let userState: MockUseUser = { data: undefined as unknown as MockUser | null, status: 'loading' };
     mockUseUser.mockImplementation(() => userState);
 
     // Track calls to mockGetRecords
