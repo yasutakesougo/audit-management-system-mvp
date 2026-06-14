@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ActivityDiarySaver } from './Saver';
 import { AD_FIELDS, type ADMapping } from '../constants';
 import { spWriteResilient } from '@/lib/spWrite';
+import type { SpFetchFn } from '@/lib/sp/spLists';
 
 vi.mock('@/lib/spWrite', () => ({
   spWriteResilient: vi.fn(),
@@ -37,19 +38,19 @@ describe('ActivityDiarySaver mapper boundaries', () => {
   it('maps mealMain "多め" to SharePoint lunch amount "8割"', async () => {
     vi.mocked(spWriteResilient).mockResolvedValue(createResponse());
 
-    const saver = new ActivityDiarySaver(vi.fn());
+    const saver = new ActivityDiarySaver(vi.fn<SpFetchFn>());
     await saver.save(
       {
-        userId: 'U001',
+        userId: 1,
         dateISO: '2026-06-10',
-        period: 'am',
-        category: '日常',
+        period: 'AM',
+        category: '請負',
         mealMain: '多め',
-        mealSide: null,
+        mealSide: undefined,
         behavior: { has: false, kinds: [] },
-        seizure: { has: false, at: null },
+        seizure: { has: false, at: undefined },
         goalIds: [],
-        notes: null,
+        notes: undefined,
       },
       'lists/ActivityDiary',
       'ActivityDiary',
@@ -65,19 +66,19 @@ describe('ActivityDiarySaver mapper boundaries', () => {
   it('maps behavior.has=false to false/null fields for problem behavior payload', async () => {
     vi.mocked(spWriteResilient).mockResolvedValue(createResponse());
 
-    const saver = new ActivityDiarySaver(vi.fn());
+    const saver = new ActivityDiarySaver(vi.fn<SpFetchFn>());
     await saver.save(
       {
-        userId: 'U001',
+        userId: 1,
         dateISO: '2026-06-10',
-        period: 'pm',
-        category: '日常',
-        mealMain: null,
-        mealSide: null,
+        period: 'PM',
+        category: '請負',
+        mealMain: undefined,
+        mealSide: undefined,
         behavior: { has: false, kinds: ['離席'] },
-        seizure: { has: false, at: null },
+        seizure: { has: false, at: undefined },
         goalIds: [],
-        notes: null,
+        notes: undefined,
       },
       'lists/ActivityDiary',
       'ActivityDiary',

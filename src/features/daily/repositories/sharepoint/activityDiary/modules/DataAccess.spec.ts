@@ -3,6 +3,12 @@ import { ActivityDiaryDataAccess } from './DataAccess';
 import type { ADMapping } from '../constants';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 
+const jsonResponse = (value: unknown): Response =>
+  new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 describe('ActivityDiaryDataAccess', () => {
   const defaultMapping: ADMapping = {
     userId: 'UserID',
@@ -28,7 +34,7 @@ describe('ActivityDiaryDataAccess', () => {
         { Id: 102, Title: 'entry-102' },
       ],
     };
-    const spFetch = vi.fn(async () => ({ ok: true, json: async () => response })) as SpFetchFn;
+    const spFetch = vi.fn<SpFetchFn>().mockResolvedValue(jsonResponse(response));
     const access = new ActivityDiaryDataAccess(spFetch);
 
     const result = await access.loadByDate(
@@ -52,7 +58,7 @@ describe('ActivityDiaryDataAccess', () => {
   });
 
   it('lists with date range and default top', async () => {
-    const spFetch = vi.fn(async () => ({ ok: true, json: async () => ({ value: [{ Id: 1 }, { Id: 2 }] }) })) as SpFetchFn;
+    const spFetch = vi.fn<SpFetchFn>().mockResolvedValue(jsonResponse({ value: [{ Id: 1 }, { Id: 2 }] }));
     const access = new ActivityDiaryDataAccess(spFetch);
 
     await access.list('2026-06-01', '2026-06-30', 'lists/ActivityDiary', defaultMapping);

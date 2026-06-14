@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ADMapping } from './constants';
 import { getADListTitle } from './constants';
 import { SharePointActivityDiaryRepository } from './SharePointActivityDiaryRepository';
+import type { SpFetchFn } from '@/lib/sp/spLists';
+import type { ActivityDiaryUpsert } from '@/features/daily/domain/activityDiaryTypes';
 
 const mockResolve = vi.fn();
 const mockLoadByDate = vi.fn();
@@ -33,21 +35,21 @@ vi.mock('./modules/Saver', () => ({
 
 describe('SharePointActivityDiaryRepository', () => {
   it('schema が解決できない場合は保存で例外を投げる', async () => {
-    const resolver = new SharePointActivityDiaryRepository({ spFetch: vi.fn() as never });
+    const resolver = new SharePointActivityDiaryRepository({ spFetch: vi.fn<SpFetchFn>() });
 
     mockResolve.mockResolvedValueOnce(null);
 
-    const input = {
-      userId: 'U-001',
+    const input: ActivityDiaryUpsert = {
+      userId: 1,
       dateISO: '2026-06-10',
       period: 'AM',
-      category: '日常',
-      mealMain: null,
-      mealSide: null,
+      category: '請負',
+      mealMain: undefined,
+      mealSide: undefined,
       behavior: { has: false, kinds: [] },
-      seizure: { has: false, at: null },
+      seizure: { has: false, at: undefined },
       goalIds: [],
-      notes: null,
+      notes: undefined,
     };
 
     await expect(
@@ -71,29 +73,29 @@ describe('SharePointActivityDiaryRepository', () => {
       {
         Id: '999',
         Shift: 'AM',
-        Category: '日常',
+        Category: '請負',
       },
     ]);
     mockSave.mockResolvedValueOnce({ id: 999 });
 
-    const repo = new SharePointActivityDiaryRepository({ spFetch: vi.fn() as never });
+    const repo = new SharePointActivityDiaryRepository({ spFetch: vi.fn<SpFetchFn>() });
 
-    const input = {
-      userId: 'U-001',
+    const input: ActivityDiaryUpsert = {
+      userId: 1,
       dateISO: '2026-06-10',
       period: 'AM',
-      category: '日常',
-      mealMain: null,
-      mealSide: null,
+      category: '請負',
+      mealMain: undefined,
+      mealSide: undefined,
       behavior: { has: true, kinds: ['離席'] },
-      seizure: { has: false, at: null },
-      goalIds: ['G-1'],
+      seizure: { has: false, at: undefined },
+      goalIds: [1],
       notes: 'ノート',
     };
 
     await repo.save(input);
 
-    expect(mockLoadByDate).toHaveBeenCalledWith('2026-06-10', 'U-001', '/lists/ActivityDiary', resolverValue.mapping, undefined);
+    expect(mockLoadByDate).toHaveBeenCalledWith('2026-06-10', 1, '/lists/ActivityDiary', resolverValue.mapping, undefined);
     expect(mockSave).toHaveBeenCalledWith(input, '/lists/ActivityDiary', getADListTitle(), resolverValue.mapping, 999);
   });
 });
