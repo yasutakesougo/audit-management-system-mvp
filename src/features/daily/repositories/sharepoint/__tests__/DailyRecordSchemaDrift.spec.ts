@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DailyRecordSchemaResolver } from '../modules/SchemaResolver';
 import { SharePointDailyRecordRepository } from '../SharePointDailyRecordRepository';
-import type { TableDailyRecord } from '../../../domain/types';
+import type { SaveDailyRecordInput } from '../../../domain/legacy/DailyRecordRepository';
 
 const jsonResponse = (value: unknown): Response =>
   new Response(JSON.stringify(value), {
@@ -34,7 +34,7 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
       return jsonResponse({ value: [] });
     });
 
-    const resolver = new DailyRecordSchemaResolver(spFetch);
+    const resolver = new DailyRecordSchemaResolver(spFetch, 'SupportRecord_Daily');
     const resolved = await resolver.resolveParentFields("lists/getbytitle('SupportRecord_Daily')");
 
     expect(resolved.recordDate).toBe('Date');
@@ -80,13 +80,11 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
       listTitle: 'SupportRecord_Daily',
     });
 
-    const record: TableDailyRecord = {
-      id: '2026-05-14',
+    const record: SaveDailyRecordInput = {
       date: '2026-05-14',
       reporter: { name: 'Test Reporter', role: 'Staff' },
       userRows: [],
       userCount: 0,
-      status: 'draft',
     };
 
     await repo.save(record);
@@ -160,7 +158,6 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
     });
 
     await repo.save({
-      id: '2026-05-15',
       date: '2026-05-15',
       reporter: { name: 'Reporter', role: 'Staff' },
       userRows: [
@@ -182,7 +179,6 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
         },
       ],
       userCount: 1,
-      status: 'draft',
     });
 
     expect(childBodies.length).toBeGreaterThan(0);

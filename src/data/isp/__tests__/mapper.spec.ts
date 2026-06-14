@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mapPlanningSheetRowToDomain, mapPlanningSheetRowToListItem, extractSpId } from '../mapper';
-import type { SpPlanningSheetRow } from '@/lib/sp/types';
+import type { SpPlanningSheetRow } from '@/sharepoint/fields/ispThreeLayerFields';
 
 describe('isp mapper parseDateOnly', () => {
   it('correctly maps various appliedFrom date formats to YYYY-MM-DD JST strings', () => {
@@ -60,4 +60,3 @@ describe('isp mapper ID normalization', () => {
     expect(extractSpId('invalid')).toBeNull();
   });
 });
-
