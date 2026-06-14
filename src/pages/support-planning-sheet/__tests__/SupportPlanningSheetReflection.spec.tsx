@@ -22,6 +22,10 @@ vi.mock('@/features/ibd/analysis/pdca/components/AbcEvidencePanel', () => ({
 import { SupportPlanningSheetView } from '../SupportPlanningSheetView';
 import { MemoryRouter } from 'react-router-dom';
 import { SupportPlanningSheetViewModel, SupportPlanningSheetActionHandlers } from '../types';
+import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import { createEmptyEvidenceLinkMap } from '@/domain/isp/evidenceLink';
+import type { ContextPanelData } from '@/features/context/domain/contextPanelLogic';
+import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 
 vi.mock('@/features/planning-sheet/hooks/orchestrators/usePlanningSheetOrchestrator', () => ({
   usePlanningSheetOrchestrator: () => ({
@@ -109,7 +113,7 @@ const mockViewModel: SupportPlanningSheetViewModel = {
   auditRecords: [],
   filteredAuditRecords: [],
   latestMonitoringRecord: null,
-  evidenceLinks: {},
+  evidenceLinks: createEmptyEvidenceLinkMap(),
   abcRecords: [],
   pdcaItems: [],
   strategyUsage: null,

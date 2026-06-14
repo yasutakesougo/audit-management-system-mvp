@@ -13,6 +13,7 @@ const mockHandlers: PlanningSheetListActionHandlers = {
   onOpenIceberg: vi.fn(),
   onCreateFromIceberg: vi.fn(),
   onReviseFromIceberg: vi.fn(),
+  onDeleteSheet: vi.fn(),
   onBackToIsp: vi.fn(),
 };
 
