@@ -20,6 +20,18 @@ function createMockRecord(overrides: Partial<ExecutionRecord>): ExecutionRecord 
 }
 
 describe('executeKioskMonthlyAggregation use case', () => {
+  const createMockRepository = (
+    recordsResult: Promise<ExecutionRecord[]> = Promise.resolve([]),
+  ): ExecutionRecordRepository => ({
+    getRecords: vi.fn(),
+    getRecord: vi.fn(),
+    upsertRecord: vi.fn(),
+    getCompletionRate: vi.fn(),
+    getHistoricalRecords: vi.fn(),
+    getRecordsInRange: vi.fn().mockReturnValue(recordsResult),
+    deleteRecord: vi.fn(),
+  });
+
   it('correctly calculates monthly bounds and calls getRecordsInRange with calculated bounds', async () => {
     const records: ExecutionRecord[] = [
       createMockRecord({ id: 'rec-1', date: '2026-05-01', status: 'completed' }),
@@ -27,14 +39,7 @@ describe('executeKioskMonthlyAggregation use case', () => {
       createMockRecord({ id: 'rec-3', date: '2026-05-31', status: 'triggered', memo: 'some incident' }),
     ];
 
-    const mockRepository = {
-      getRecords: vi.fn(),
-      getRecord: vi.fn(),
-      upsertRecord: vi.fn(),
-      getCompletionRate: vi.fn(),
-      getHistoricalRecords: vi.fn(),
-      getRecordsInRange: vi.fn().mockResolvedValue(records),
-    } satisfies ExecutionRecordRepository;
+    const mockRepository = createMockRepository(Promise.resolve(records));
 
     const result = await executeKioskMonthlyAggregation(mockRepository, {
       userId: 'I001',
@@ -88,14 +93,7 @@ describe('executeKioskMonthlyAggregation use case', () => {
   });
 
   it('computes correct bounds for 30-day months (e.g. November)', async () => {
-    const mockRepository = {
-      getRecords: vi.fn(),
-      getRecord: vi.fn(),
-      upsertRecord: vi.fn(),
-      getCompletionRate: vi.fn(),
-      getHistoricalRecords: vi.fn(),
-      getRecordsInRange: vi.fn().mockResolvedValue([]),
-    } satisfies ExecutionRecordRepository;
+    const mockRepository = createMockRepository();
 
     await executeKioskMonthlyAggregation(mockRepository, {
       userId: 'I001',
@@ -107,14 +105,7 @@ describe('executeKioskMonthlyAggregation use case', () => {
   });
 
   it('computes correct bounds for February in leap years and non-leap years', async () => {
-    const mockRepository = {
-      getRecords: vi.fn(),
-      getRecord: vi.fn(),
-      upsertRecord: vi.fn(),
-      getCompletionRate: vi.fn(),
-      getHistoricalRecords: vi.fn(),
-      getRecordsInRange: vi.fn().mockResolvedValue([]),
-    } satisfies ExecutionRecordRepository;
+    const mockRepository = createMockRepository();
 
     // 2024 is a leap year (29 days)
     await executeKioskMonthlyAggregation(mockRepository, {
@@ -134,14 +125,9 @@ describe('executeKioskMonthlyAggregation use case', () => {
   });
 
   it('handles database/repository exceptions gracefully', async () => {
-    const mockRepository = {
-      getRecords: vi.fn(),
-      getRecord: vi.fn(),
-      upsertRecord: vi.fn(),
-      getCompletionRate: vi.fn(),
-      getHistoricalRecords: vi.fn(),
-      getRecordsInRange: vi.fn().mockRejectedValue(new Error('Connection timeout to SharePoint')),
-    } satisfies ExecutionRecordRepository;
+    const mockRepository = createMockRepository(
+      Promise.reject(new Error('Connection timeout to SharePoint')),
+    );
 
     const result = await executeKioskMonthlyAggregation(mockRepository, {
       userId: 'I001',
@@ -159,14 +145,7 @@ describe('executeKioskMonthlyAggregation use case', () => {
   });
 
   it('applies contractWeekdays, holidays, and absences to limit plannedRows calculation', async () => {
-    const mockRepository = {
-      getRecords: vi.fn(),
-      getRecord: vi.fn(),
-      upsertRecord: vi.fn(),
-      getCompletionRate: vi.fn(),
-      getHistoricalRecords: vi.fn(),
-      getRecordsInRange: vi.fn().mockResolvedValue([]), // No records found
-    } satisfies ExecutionRecordRepository;
+    const mockRepository = createMockRepository(); // No records found
 
     // In May 2026:
     // contractWeekdays: [1, 3, 5] (Mon, Wed, Fri) -> Usually 13 days (1, 4, 6, 8, 11, 13, 15, 18, 20, 22, 25, 27, 29)
