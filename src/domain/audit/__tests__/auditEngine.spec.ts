@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { auditISP, auditProcess, runAudit, buildEvidenceLinks, generateRecommendations } from "../auditEngine";
-import { ISP, IcebergAnalysis } from "../types";
+import { AuditHistoryEntry, ISP, IcebergAnalysis } from "../types";
 
 describe("AuditEngine", () => {
   const validISP: ISP = {
@@ -265,7 +265,7 @@ describe("AuditEngine", () => {
 
   describe("Adaptive Loop (History & Learning)", () => {
     it("should mark results as isRecurring and add urgency prefix if streak > 0", () => {
-      const history: Record<string, unknown>[] = [
+      const history: AuditHistoryEntry[] = [
         { code: "ICEBERG_MISSING", streak: 2, lastSeen: "2024-04-10", riskTrend: "stable" }
       ];
 
@@ -294,7 +294,7 @@ describe("AuditEngine", () => {
     });
 
     it("should flag predictive risk for long streaks of process warnings", () => {
-      const history: Record<string, unknown>[] = [
+      const history: AuditHistoryEntry[] = [
         { code: "ICEBERG_MISSING", streak: 4, lastSeen: "2024-04-10", riskTrend: "rising" }
       ];
 
