@@ -35,7 +35,7 @@ test.describe('Dashboard smoke', () => {
       fallback: { status: 200, body: { value: [] } },
     });
 
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => undefined);
 
     const root = page.getByTestId(TESTIDS['dashboard-page']).or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
@@ -57,20 +57,16 @@ test.describe('Dashboard smoke', () => {
     await expect(page.getByRole('heading', { name: /申し送りタイムライン|今日の予定/i }).first()).toBeVisible();
   });
 
-  test('quick action navigates to daily activity records', async ({ page }) => {
+  test('dashboard daily record navigation opens the daily record menu', async ({ page }) => {
     const root = page.getByTestId(TESTIDS['dashboard-page']).or(page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT));
     await expect(root).toBeVisible({ timeout: 15_000 });
 
-    const quickAction = page
-      .getByTestId(TESTIDS.footer.dailyFooterActivity)
-      .or(page.getByRole('link', { name: /ケース記録入力|支援記録（ケース記録）入力/ }))
-      .or(page.locator('a[href="/daily/table"]'))
-      .or(page.locator('a[href="/daily/activity"]'))
-      .or(page.locator('a[href="/daily/activity/"]'));
+    const dailyNav = page.getByTestId(TESTIDS.nav.daily).first();
+    await expect(dailyNav).toBeVisible({ timeout: 15_000 });
+    await expect(dailyNav).toHaveAttribute('href', '/dailysupport');
+    await dailyNav.click();
 
-    await expect(quickAction.first()).toBeVisible({ timeout: 15_000 });
-    await quickAction.first().click();
-
-    await expect(page).toHaveURL(/\/(daily\/table|daily\/activity)/);
+    await expect(page).toHaveURL(/\/dailysupport/);
+    await expect(page.getByRole('heading', { level: 1, name: '日々の記録', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 });
