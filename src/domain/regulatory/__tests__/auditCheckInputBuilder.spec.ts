@@ -62,6 +62,8 @@ function makeSheet(overrides: Partial<PlanningSheetListItem> = {}): PlanningShee
     applicableServiceType: 'daily_life_care',
     applicableAddOnTypes: ['severe_disability_support'],
     authoredByQualification: 'practical_training',
+    supportStartDate: null,
+    appliedFrom: null,
     reviewedAt: null,
     ...overrides,
   };
