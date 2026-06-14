@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { DailyRecordIntegrityScanner } from './IntegrityScanner';
 
+const jsonResponse = (value: unknown): Response =>
+  new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 describe('DailyRecordIntegrityScanner', () => {
   const resolvedRowsFields = {
     parentId: 'Parent_x0020_ID',
@@ -14,7 +20,7 @@ describe('DailyRecordIntegrityScanner', () => {
   };
 
   it('returns empty result when dates are empty without querying', async () => {
-    const spFetch = vi.fn(async () => ({ ok: true, json: async () => ({ value: [] }) })) as SpFetchFn;
+    const spFetch = vi.fn<SpFetchFn>().mockResolvedValue(jsonResponse({ value: [] }));
     const scanner = new DailyRecordIntegrityScanner(spFetch);
 
     const result = await scanner.scan([], 'SupportRecord_Daily', 'DailyRecordRows', resolvedRowsFields);
@@ -24,45 +30,33 @@ describe('DailyRecordIntegrityScanner', () => {
   });
 
   it('classifies mismatch between parent latest version and child versions', async () => {
-    const spFetch = vi.fn(async (url: string) => {
+    const spFetch = vi.fn<SpFetchFn>(async (url) => {
       if (url.startsWith('SupportRecord_Daily/items?')) {
-        return {
-          ok: true,
-          json: async () => ({
-            value: [{ Id: 11, RecordDate: '2026-06-10T00:00:00Z', LatestVersion: 3 }],
-          }),
-        };
+        return jsonResponse({
+          value: [{ Id: 11, RecordDate: '2026-06-10T00:00:00Z', LatestVersion: 3 }],
+        });
       }
 
       if (url.includes('DailyRecordRows/items?$filter=')) {
-        return {
-          ok: true,
-          json: async () => ({
-            value: [
-              {
-                Parent_x0020_ID: 11,
-                User_x0020_ID: 'U001',
-                Version: 1,
-                Status: 'committed',
-                Recorded_x0020_At: '2026-06-10T00:00:00Z',
-              },
-            ],
-          }),
-        };
+        return jsonResponse({
+          value: [
+            {
+              Parent_x0020_ID: 11,
+              User_x0020_ID: 'U001',
+              Version: 1,
+              Status: 'committed',
+              Recorded_x0020_At: '2026-06-10T00:00:00Z',
+            },
+          ],
+        });
       }
 
       if (url.includes("lists/getbytitle('UserTransport_Settings')/items?$filter=")) {
-        return {
-          ok: true,
-          json: async () => ({ value: [] }),
-        };
+        return jsonResponse({ value: [] });
       }
 
-      return {
-        ok: true,
-        json: async () => ({ value: [] }),
-      };
-    }) as SpFetchFn;
+      return jsonResponse({ value: [] });
+    });
 
     const scanner = new DailyRecordIntegrityScanner(spFetch);
     const result = await scanner.scan(
@@ -78,39 +72,33 @@ describe('DailyRecordIntegrityScanner', () => {
   });
 
   it('continues when accessory probe fails and still reports orphan_parent', async () => {
-    const spFetch = vi.fn(async (url: string) => {
+    const spFetch = vi.fn<SpFetchFn>(async (url) => {
       if (url.startsWith('SupportRecord_Daily/items?')) {
-        return {
-          ok: true,
-          json: async () => ({
-            value: [{ Id: 11, RecordDate: '2026-06-10T00:00:00Z', LatestVersion: 2 }],
-          }),
-        };
+        return jsonResponse({
+          value: [{ Id: 11, RecordDate: '2026-06-10T00:00:00Z', LatestVersion: 2 }],
+        });
       }
 
       if (url.includes('DailyRecordRows/items?$filter=')) {
-        return {
-          ok: true,
-          json: async () => ({
-            value: [
-              {
-                Parent_x0020_ID: 11,
-                User_x0020_ID: 'U001',
-                Version: 1,
-                Status: 'committed',
-                Recorded_x0020_At: '2026-06-10T00:00:00Z',
-              },
-            ],
-          }),
-        };
+        return jsonResponse({
+          value: [
+            {
+              Parent_x0020_ID: 11,
+              User_x0020_ID: 'U001',
+              Version: 1,
+              Status: 'committed',
+              Recorded_x0020_At: '2026-06-10T00:00:00Z',
+            },
+          ],
+        });
       }
 
       if (url.includes("lists/getbytitle('UserTransport_Settings')/items?$filter=")) {
         throw new Error('transport fetch failed');
       }
 
-      return { ok: true, json: async () => ({ value: [] }) };
-    }) as SpFetchFn;
+      return jsonResponse({ value: [] });
+    });
 
     const scanner = new DailyRecordIntegrityScanner(spFetch);
     const result = await scanner.scan(

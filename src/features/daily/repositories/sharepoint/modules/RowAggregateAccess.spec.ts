@@ -3,6 +3,12 @@ import { RowAggregateAccess } from './RowAggregateAccess';
 import type { RowAggregateSource } from '../constants';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 
+const jsonResponse = (value: unknown): Response =>
+  new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 describe('RowAggregateAccess', () => {
   it('aggregates rows by date and merges duplicate users', async () => {
     const source: RowAggregateSource = {
@@ -12,62 +18,59 @@ describe('RowAggregateAccess', () => {
       selectFields: ['Id', 'cr013_personId', 'Title', 'cr013_date', 'cr013_payload', 'cr013_kind'],
     };
 
-    const spFetch = vi.fn(async (url: string) => {
+    const spFetch = vi.fn<SpFetchFn>(async (url) => {
       if (url.startsWith('lists/DailyRows/items?')) {
-        return {
-          ok: true,
-          json: async () => ({
-            value: [
-              {
-                Id: 1,
-                cr013_personId: 'U-001',
-                Title: 'Alice',
-                cr013_date: '2026-06-10',
-                cr013_kind: 'A',
-                cr013_payload: JSON.stringify({
-                  amActivities: ['walk'],
-                  pmActivities: ['study'],
-                  specialNotes: 'first',
-                }),
-              },
-              {
-                Id: 2,
-                cr013_personId: 'U-001',
-                Title: 'Alice',
-                cr013_date: '2026-06-10',
-                cr013_kind: 'A',
-                cr013_payload: JSON.stringify({
-                  pmActivities: ['rest'],
-                  specialNotes: 'second',
-                }),
-              },
-              {
-                Id: 3,
-                cr013_personId: 'U-002',
-                Title: 'Bob',
-                cr013_date: '2026-06-11',
-                cr013_kind: 'A',
-                cr013_payload: JSON.stringify({
-                  amActivities: ['meal'],
-                  specialNotes: 'single',
-                }),
-              },
-              {
-                Id: 4,
-                cr013_personId: 'U-003',
-                Title: 'Carol',
-                cr013_date: '2026-05-31',
-                cr013_kind: 'A',
-                cr013_payload: JSON.stringify({
-                  amActivities: ['skip'],
-                }),
-              },
-            ],
-          }),
-        };
+        return jsonResponse({
+          value: [
+            {
+              Id: 1,
+              cr013_personId: 'U-001',
+              Title: 'Alice',
+              cr013_date: '2026-06-10',
+              cr013_kind: 'A',
+              cr013_payload: JSON.stringify({
+                amActivities: ['walk'],
+                pmActivities: ['study'],
+                specialNotes: 'first',
+              }),
+            },
+            {
+              Id: 2,
+              cr013_personId: 'U-001',
+              Title: 'Alice',
+              cr013_date: '2026-06-10',
+              cr013_kind: 'A',
+              cr013_payload: JSON.stringify({
+                pmActivities: ['rest'],
+                specialNotes: 'second',
+              }),
+            },
+            {
+              Id: 3,
+              cr013_personId: 'U-002',
+              Title: 'Bob',
+              cr013_date: '2026-06-11',
+              cr013_kind: 'A',
+              cr013_payload: JSON.stringify({
+                amActivities: ['meal'],
+                specialNotes: 'single',
+              }),
+            },
+            {
+              Id: 4,
+              cr013_personId: 'U-003',
+              Title: 'Carol',
+              cr013_date: '2026-05-31',
+              cr013_kind: 'A',
+              cr013_payload: JSON.stringify({
+                amActivities: ['skip'],
+              }),
+            },
+          ],
+        });
       }
-      return { ok: true, json: async () => ({ value: [] }) };
-    }) as SpFetchFn;
+      return jsonResponse({ value: [] });
+    });
 
     const access = new RowAggregateAccess(spFetch);
     const result = await access.list(source, { range: { startDate: '2026-06-10', endDate: '2026-06-11' } });
@@ -91,10 +94,7 @@ describe('RowAggregateAccess', () => {
       selectFields: ['Id', 'cr013_personId', 'Title', 'cr013_date', 'cr013_payload', 'cr013_kind'],
     };
 
-    const spFetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ value: [] }),
-    })) as SpFetchFn;
+    const spFetch = vi.fn<SpFetchFn>().mockResolvedValue(jsonResponse({ value: [] }));
 
     const access = new RowAggregateAccess(spFetch);
     await access.list(source, { range: { startDate: '2026-01-01', endDate: '2026-01-31' }, limit: 2 });
