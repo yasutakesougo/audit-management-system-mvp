@@ -88,7 +88,7 @@ describe('Health Checks — Title Essential Toleration', () => {
 
     // EssentialField が見つからないが、Title は存在する（が必須ではない）
     vi.mocked(mockSp.getFields).mockResolvedValueOnce([
-      { internalName: 'Title' }
+      { internalName: 'Title', staticName: 'Title' }
     ]);
 
     const ctx = { ...baseCtx, listSpecs: () => [spec] };
