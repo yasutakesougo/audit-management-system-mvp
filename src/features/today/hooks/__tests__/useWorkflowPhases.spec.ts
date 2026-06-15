@@ -185,6 +185,8 @@ describe('toPlanningSheetSnapshot', () => {
       applicableAddOnTypes: ['severe_disability_support'],
       authoredByQualification: 'practical_training',
       reviewedAt: null,
+      supportStartDate: null,
+      appliedFrom: null,
     };
 
     const snapshot = toPlanningSheetSnapshot(item, 3);
@@ -210,6 +212,8 @@ describe('toPlanningSheetSnapshot', () => {
       applicableAddOnTypes: ['none'],
       authoredByQualification: 'unknown',
       reviewedAt: null,
+      supportStartDate: null,
+      appliedFrom: null,
     };
 
     const snapshot = toPlanningSheetSnapshot(item);
