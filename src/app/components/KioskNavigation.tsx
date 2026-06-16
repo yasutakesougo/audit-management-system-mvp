@@ -56,7 +56,7 @@ export const KioskNavigation: React.FC = () => {
       path: '/schedules/day',
       testId: 'kiosk-nav-schedule',
       kind: 'link',
-      activeMatch: (pathname) => pathname.startsWith('/schedules'),
+      activeMatch: (pathname) => pathname.startsWith('/schedules') || pathname.startsWith('/kiosk/schedules'),
     },
     {
       label: '通所',
@@ -96,7 +96,7 @@ export const KioskNavigation: React.FC = () => {
       path: '/billing',
       testId: 'kiosk-nav-billing',
       kind: 'link',
-      activeMatch: (pathname) => pathname.startsWith('/billing'),
+      activeMatch: (pathname) => pathname.startsWith('/billing') || pathname.startsWith('/kiosk/billing'),
     },
     {
       label: '受電ログ',

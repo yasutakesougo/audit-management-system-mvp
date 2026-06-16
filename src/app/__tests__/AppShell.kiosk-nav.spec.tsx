@@ -156,4 +156,16 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
     expect(screen.queryByTestId('kiosk-navigation')).not.toBeInTheDocument();
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
+
+  it('marks billing nav as active on kiosk-prefixed billing routes', () => {
+    renderAppShell({ layoutMode: 'kiosk' }, '/kiosk/billing?kiosk=1');
+
+    expect(screen.getByTestId('kiosk-nav-billing')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('marks schedule nav as active on kiosk-prefixed schedule routes', () => {
+    renderAppShell({ layoutMode: 'kiosk' }, '/kiosk/schedules/day?kiosk=1');
+
+    expect(screen.getByTestId('kiosk-nav-schedule')).toHaveAttribute('aria-current', 'page');
+  });
 });
