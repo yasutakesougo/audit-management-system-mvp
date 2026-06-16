@@ -52,6 +52,8 @@ function toListItem(sheet: SupportPlanningSheet): PlanningSheetListItem {
     applicableAddOnTypes: sheet.applicableAddOnTypes,
     authoredByQualification: sheet.authoredByQualification,
     reviewedAt: sheet.reviewedAt,
+    supportStartDate: sheet.supportStartDate,
+    appliedFrom: sheet.appliedFrom,
   };
 }
 
