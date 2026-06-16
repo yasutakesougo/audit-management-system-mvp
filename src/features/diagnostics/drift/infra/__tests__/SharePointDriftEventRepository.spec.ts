@@ -14,7 +14,10 @@ describe('SharePointDriftEventRepository', () => {
   });
 
   it('omits optional fields missing from schema when logging', async () => {
-    const createItem = vi.fn(async (_listTitle: string, _payload: Record<string, unknown>) => ({}));
+    const createItem = vi.fn(
+      async (_listTitle: string, _payload: Record<string, unknown>, _options?: { spOptions?: { quietStatuses?: number[]; silent?: boolean } }) =>
+        ({}),
+    );
     const repo = new SharePointDriftEventRepository({
       createItem,
       updateItemByTitle: vi.fn(async () => ({})),
@@ -192,7 +195,10 @@ describe('SharePointDriftEventRepository', () => {
   });
 
   it('writes duplicate required encoded/plain fields when both exist in list schema', async () => {
-    const createItem = vi.fn(async (_listTitle: string, _payload: Record<string, unknown>) => ({}));
+    const createItem = vi.fn(
+      async (_listTitle: string, _payload: Record<string, unknown>, _options?: { spOptions?: { quietStatuses?: number[]; silent?: boolean } }) =>
+        ({}),
+    );
     const repo = new SharePointDriftEventRepository({
       createItem,
       updateItemByTitle: vi.fn(async () => ({})),
@@ -631,7 +637,10 @@ describe('SharePointDriftEventRepository', () => {
   });
 
   it('does not include hidden system fields (e.g. _Level) in write payloads', async () => {
-    const createItem = vi.fn(async (_listTitle: string, _payload: Record<string, unknown>) => ({}));
+    const createItem = vi.fn(
+      async (_listTitle: string, _payload: Record<string, unknown>, _options?: { spOptions?: { quietStatuses?: number[]; silent?: boolean } }) =>
+        ({}),
+    );
 
     const repo = new SharePointDriftEventRepository({
       createItem,
