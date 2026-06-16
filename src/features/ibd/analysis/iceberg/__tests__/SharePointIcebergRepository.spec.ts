@@ -49,18 +49,11 @@ describe('SharePointIcebergRepository Logs Persistence', () => {
   const baseUrl = 'https://contoso.sharepoint.com/sites/wf';
   const acquireToken = async () => 'mock-token';
   
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     mockEnv.isDemoModeEnabled = false;
     mockEnv.shouldSkipSharePoint = false;
     mockDataProvider.getActiveProviderType = 'sharepoint';
-
-    try {
-      const { inMemoryIcebergRepositoryInstance } = await import('../SharePointIcebergRepository');
-      (inMemoryIcebergRepositoryInstance as any).__clearForTesting();
-    } catch {
-      // ignore
-    }
   });
 
   const validSnapshot: IcebergSnapshot = {
