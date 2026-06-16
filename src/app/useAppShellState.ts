@@ -95,16 +95,29 @@ export function useAppShellState() {
   }, [navigate, location.pathname]);
 
   useEffect(() => {
-    if (!location.pathname.startsWith('/today')) return;
+    const isKioskRoute = location.pathname.startsWith('/kiosk');
+    const isTodayRoute = location.pathname.startsWith('/today');
+    if (!isKioskRoute && !isTodayRoute) return;
+
     const params = new URLSearchParams(location.search);
     const kioskParam = params.get('kiosk');
 
-    if ((kioskParam === '1' || kioskParam === 'true') && settings.layoutMode !== 'kiosk') {
-      updateSettings({ layoutMode: 'kiosk' });
+    if ((kioskParam === '1' || kioskParam === 'true')) {
+      if (settings.layoutMode !== 'kiosk') {
+        updateSettings({ layoutMode: 'kiosk' });
+      }
       return;
     }
-    if ((kioskParam === '0' || kioskParam === 'false') && settings.layoutMode === 'kiosk') {
-      updateSettings({ layoutMode: 'normal' });
+
+    if ((kioskParam === '0' || kioskParam === 'false')) {
+      if (settings.layoutMode === 'kiosk') {
+        updateSettings({ layoutMode: 'normal' });
+      }
+      return;
+    }
+
+    if (isKioskRoute && settings.layoutMode !== 'kiosk') {
+      updateSettings({ layoutMode: 'kiosk' });
     }
   }, [location.pathname, location.search, settings.layoutMode, updateSettings]);
 
