@@ -59,7 +59,8 @@ export function useAppShellState() {
   const { settings, updateSettings } = useSettingsContext();
   const { isKioskMode } = useKioskDetection();
   const isFocusMode = settings.layoutMode === 'focus';
-  const isFullscreenMode = isFocusMode || isKioskMode;
+  const isKioskLayoutMode = settings.layoutMode === 'kiosk' || location.pathname.startsWith('/kiosk');
+  const isFullscreenMode = isFocusMode || isKioskLayoutMode;
   const hubRouteMeta = useMemo(
     () => resolveHubRouteMetadata(location.pathname),
     [location.pathname],
@@ -331,6 +332,7 @@ export function useAppShellState() {
     theme,
     isFocusMode,
     isKioskMode,
+    isKioskLayoutMode,
     isFullscreenMode,
     isDesktop,
     viewportMode,
@@ -359,6 +361,7 @@ export function useAppShellState() {
     todayLiteNavV2: Boolean(todayLiteNavV2),
     isAdmin,
     // Pruning Flags
+    layoutMode: settings.layoutMode,
     canSeeAdmin,
     canSeeDiagnostics,
     canUseBulkActions,

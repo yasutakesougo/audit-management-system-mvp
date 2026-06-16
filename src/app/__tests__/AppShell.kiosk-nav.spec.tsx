@@ -53,7 +53,7 @@ vi.mock('@/config/featureFlags', async (importOriginal) => {
   };
 });
 
-function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}) {
+function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}, path = '/today') {
   localStorage.setItem(
     SETTINGS_STORAGE_KEY,
     JSON.stringify({
@@ -64,7 +64,7 @@ function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}
 
   return render(
     <QueryClientProvider client={createTestQueryClient()}>
-      <MemoryRouter initialEntries={['/today']}>
+      <MemoryRouter initialEntries={[path]}>
         <ToastProvider>
           <SettingsProvider>
             <Routes>
@@ -147,6 +147,13 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
     expect(screen.queryByTestId('kiosk-navigation')).not.toBeInTheDocument();
 
     // Footer (contentinfo) should not be in the document
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+  });
+
+  it('does not render footer in normal mode even when kiosk query is present', () => {
+    renderAppShell({ layoutMode: 'normal' }, '/call-logs?kiosk=1');
+
+    expect(screen.queryByTestId('kiosk-navigation')).not.toBeInTheDocument();
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 });
