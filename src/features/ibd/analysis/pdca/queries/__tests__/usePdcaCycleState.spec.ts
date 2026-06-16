@@ -34,7 +34,7 @@ import {
 function makePlanningSheet(
   overrides: Partial<SupportPlanningSheet> = {},
 ): SupportPlanningSheet {
-  return {
+  const sheet: SupportPlanningSheet = {
     id: 'sp-1',
     createdAt: '2026-03-01T00:00:00.000Z',
     createdBy: 'staff-1',
@@ -57,6 +57,12 @@ function makePlanningSheet(
     nextReviewAt: null,
     supportStartDate: null,
     monitoringCycleDays: 90,
+    evaluationIndicator: '',
+    evaluationPeriod: '',
+    evaluationMethod: '',
+    improvementResult: '',
+    nextSupport: '',
+    monitoringEvidenceLinks: [],
     authoredByStaffId: '',
     authoredByQualification: 'unknown',
     authoredAt: null,
@@ -108,9 +114,27 @@ function makePlanningSheet(
       ],
       crisisThresholds: null,
       restraintPolicy: 'prohibited_except_emergency',
+      evaluationIndicator: '',
+      evaluationPeriod: '',
+      evaluationMethod: '',
+      improvementResult: '',
+      nextSupport: '',
+      monitoringEvidenceLinks: [],
       reviewCycleDays: 180,
     },
     ...overrides,
+  };
+
+  const planningOverrides = overrides.planning;
+
+  const mergedPlanning = planningOverrides
+    ? { ...sheet.planning, ...planningOverrides }
+    : sheet.planning;
+
+  return {
+    ...sheet,
+    ...overrides,
+    planning: mergedPlanning,
   };
 }
 
@@ -194,6 +218,8 @@ function createPlanningSheetRepository(
         applicableAddOnTypes: sheet.applicableAddOnTypes,
         authoredByQualification: sheet.authoredByQualification,
         reviewedAt: sheet.reviewedAt,
+        supportStartDate: sheet.supportStartDate,
+        appliedFrom: sheet.appliedFrom,
       },
     ]),
     listByIsp: vi.fn(async () => []),
@@ -201,6 +227,7 @@ function createPlanningSheetRepository(
     listBySeries: vi.fn(async () => []),
     create: vi.fn(async () => sheet),
     update: vi.fn(async () => sheet),
+    deleteItem: vi.fn(async () => {}),
   };
 }
 
@@ -269,6 +296,12 @@ describe('usePdcaCycleState helpers', () => {
           procedureSteps: [],
           crisisThresholds: null,
           restraintPolicy: 'prohibited_except_emergency',
+          evaluationIndicator: '',
+          evaluationPeriod: '',
+          evaluationMethod: '',
+          improvementResult: '',
+          nextSupport: '',
+          monitoringEvidenceLinks: [],
           reviewCycleDays: 180,
         },
       }),
