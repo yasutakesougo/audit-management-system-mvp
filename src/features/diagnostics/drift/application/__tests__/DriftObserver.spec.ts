@@ -13,6 +13,8 @@ describe('DriftObserver', () => {
       logEvent: vi.fn(async () => {
         throw new Error('write failed');
       }),
+      getEvents: vi.fn(async () => []),
+      markResolved: vi.fn(async () => undefined),
     };
 
     const observer = new DriftObserver(repository);

@@ -4,8 +4,51 @@ import { bridgePlanningSheetToDailyProcedures, type BridgeSource } from '../plan
 
 // ─── Mock Data Helpers ───
 
-function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanningSheet {
+type MakeSheetOverrides = Omit<Partial<SupportPlanningSheet>, 'planning'> & {
+  planning?: Partial<SupportPlanningSheet['planning']>;
+};
+
+function makePlanningDefaults(planningOverrides: Partial<SupportPlanningSheet['planning']> = {}): SupportPlanningSheet['planning'] {
   return {
+    supportPriorities: planningOverrides.supportPriorities ?? [],
+    antecedentStrategies: planningOverrides.antecedentStrategies ?? [],
+    teachingStrategies: planningOverrides.teachingStrategies ?? [],
+    consequenceStrategies: planningOverrides.consequenceStrategies ?? [],
+    procedureSteps: planningOverrides.procedureSteps ?? [],
+    crisisThresholds: planningOverrides.crisisThresholds ?? null,
+    restraintPolicy: planningOverrides.restraintPolicy ?? 'prohibited_except_emergency',
+    reviewCycleDays: planningOverrides.reviewCycleDays ?? 180,
+    evaluationIndicator: planningOverrides.evaluationIndicator ?? '',
+    evaluationPeriod: planningOverrides.evaluationPeriod ?? '',
+    evaluationMethod: planningOverrides.evaluationMethod ?? '',
+    improvementResult: planningOverrides.improvementResult ?? '',
+    nextSupport: planningOverrides.nextSupport ?? '',
+    monitoringEvidenceLinks: planningOverrides.monitoringEvidenceLinks ?? [],
+  };
+}
+
+function makeSheet(overrides: MakeSheetOverrides = {}): SupportPlanningSheet {
+  const {
+    planning: planningOverrides = {},
+    evaluationIndicator,
+    evaluationPeriod,
+    evaluationMethod,
+    improvementResult,
+    nextSupport,
+    monitoringEvidenceLinks,
+    authoredByStaffId,
+    authoredByQualification,
+    authoredAt,
+    applicableServiceType,
+    applicableAddOnTypes,
+    deliveredToUserAt,
+    reviewedAt,
+    hasMedicalCoordination,
+    hasEducationCoordination,
+    ...sheetOverrides
+  } = overrides;
+
+  const defaultSheet: SupportPlanningSheet = {
     id: 'sheet-001',
     userId: 'user-001',
     createdAt: '2024-01-01T00:00:00Z',
@@ -19,12 +62,17 @@ function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanni
     title: 'テスト計画書',
     targetScene: '',
     targetDomain: '',
+    collectedInformation: '',
     supportPolicy: '',
     concreteApproaches: '',
+    monitoringCycleDays: 90,
     environmentalAdjustments: '',
     observationFacts: '事実',
     interpretationHypothesis: '分析',
     supportIssues: '課題',
+    nextReviewAt: null,
+    appliedFrom: null,
+    supportStartDate: null,
     intake: {
       presentingProblem: '課題',
       medicalFlags: [],
@@ -44,18 +92,36 @@ function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanni
       healthFactors: [],
       teamConsensusNote: '',
     },
-    planning: {
-      supportPriorities: [],
-      antecedentStrategies: [],
-      teachingStrategies: [],
-      consequenceStrategies: [],
-      procedureSteps: [],
-      crisisThresholds: null,
-      restraintPolicy: 'prohibited_except_emergency',
-      reviewCycleDays: 180,
+    evaluationIndicator: evaluationIndicator ?? '',
+    evaluationPeriod: evaluationPeriod ?? '',
+    evaluationMethod: evaluationMethod ?? '',
+    improvementResult: improvementResult ?? '',
+    nextSupport: nextSupport ?? '',
+    monitoringEvidenceLinks: monitoringEvidenceLinks ?? [],
+    authoredByStaffId: authoredByStaffId ?? '',
+    authoredByQualification: authoredByQualification ?? 'unknown',
+    authoredAt: authoredAt ?? null,
+    applicableServiceType: applicableServiceType ?? 'other',
+    applicableAddOnTypes: applicableAddOnTypes ?? ['none'],
+    deliveredToUserAt: deliveredToUserAt ?? null,
+    reviewedAt: reviewedAt ?? null,
+    hasMedicalCoordination: hasMedicalCoordination ?? false,
+    hasEducationCoordination: hasEducationCoordination ?? false,
+    regulatoryBasisSnapshot: {
+      supportLevel: null,
+      behaviorScore: null,
+      serviceType: null,
+      eligibilityCheckedAt: null,
     },
-    ...overrides,
-  } as unknown as SupportPlanningSheet;
+    planning: makePlanningDefaults(planningOverrides),
+    ...sheetOverrides,
+  };
+
+  return {
+    ...defaultSheet,
+    ...sheetOverrides,
+    planning: makePlanningDefaults(planningOverrides),
+  };
 }
 
 // ─── Tests ───
@@ -69,7 +135,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
           { order: 1, instruction: '構造化手順1', timing: '09:30', staff: '' },
           { order: 5, instruction: '構造化手順2', timing: '10:20', staff: '' },
         ],
-      } as unknown,
+      },
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
@@ -90,7 +156,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       concreteApproaches: '笑顔で接する',
       planning: {
         procedureSteps: [],
-      } as unknown,
+      },
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
@@ -110,7 +176,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       concreteApproaches: '',
       planning: {
         procedureSteps: [],
-      } as unknown,
+      },
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
@@ -124,7 +190,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       environmentalAdjustments: '静かな環境を整える',
       planning: {
         procedureSteps: [],
-      } as unknown,
+      },
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
@@ -142,7 +208,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       id: 'structured-id',
       planning: {
         procedureSteps: [{ order: 1, instruction: 'A', timing: '', staff: '' }],
-      } as unknown,
+      },
     });
     const result1 = bridgePlanningSheetToDailyProcedures(structuredSheet);
     expect(result1.steps[0].planningSheetId).toBe('structured-id');
@@ -152,7 +218,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
     const fallbackSheet = makeSheet({
       id: 'fallback-id',
       supportPolicy: 'B',
-      planning: { procedureSteps: [] } as unknown,
+      planning: { procedureSteps: [] },
     });
     const result2 = bridgePlanningSheetToDailyProcedures(fallbackSheet);
     expect(result2.steps[0].planningSheetId).toBe('fallback-id');
