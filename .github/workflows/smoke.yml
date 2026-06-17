@@ -228,6 +228,13 @@ jobs:
       - name: Verify server is responding
         run: curl -I http://127.0.0.1:5173 | head -5
 
+      - name: Smoke runtime bootstrap guard (deps/assets/browser)
+        run: |
+          node scripts/ci/smoke-runtime-guard.mjs \
+            --base-url http://127.0.0.1:5173 \
+            --dist-dir dist \
+            --log-dir logs/runtime-guard
+
       - name: E2E router + nav smoke (chromium + smoke)
         id: smoke_core
         env:
