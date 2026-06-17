@@ -131,7 +131,7 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
   });
 
   it('renders kiosk-navigation and footer dialog registry in Kiosk mode', () => {
-    renderAppShell({ layoutMode: 'kiosk' });
+    renderAppShell({ layoutMode: 'kiosk' }, '/kiosk');
 
     // Kiosk navigation should be rendered
     expect(screen.getByTestId('kiosk-navigation')).toBeInTheDocument();
@@ -150,11 +150,11 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
-  it('does not render footer in normal mode even when kiosk query is present', () => {
+  it('renders kiosk-navigation and footer when kiosk query is explicitly enabled', () => {
     renderAppShell({ layoutMode: 'normal' }, '/call-logs?kiosk=1');
 
-    expect(screen.queryByTestId('kiosk-navigation')).not.toBeInTheDocument();
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-navigation')).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
   it('marks billing nav as active on kiosk-prefixed billing routes', () => {

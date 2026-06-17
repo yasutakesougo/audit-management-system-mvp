@@ -96,8 +96,6 @@ export function useAppShellState() {
 
   useEffect(() => {
     const isKioskRoute = location.pathname.startsWith('/kiosk');
-    const isTodayRoute = location.pathname.startsWith('/today');
-    if (!isKioskRoute && !isTodayRoute) return;
 
     const params = new URLSearchParams(location.search);
     const kioskParam = params.get('kiosk');
@@ -116,8 +114,15 @@ export function useAppShellState() {
       return;
     }
 
-    if (isKioskRoute && settings.layoutMode !== 'kiosk') {
-      updateSettings({ layoutMode: 'kiosk' });
+    if (isKioskRoute) {
+      if (settings.layoutMode !== 'kiosk') {
+        updateSettings({ layoutMode: 'kiosk' });
+      }
+      return;
+    }
+
+    if (settings.layoutMode === 'kiosk') {
+      updateSettings({ layoutMode: 'normal' });
     }
   }, [location.pathname, location.search, settings.layoutMode, updateSettings]);
 
