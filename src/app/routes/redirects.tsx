@@ -7,7 +7,7 @@ import { useFeatureFlag } from '@/config/featureFlags';
 import React from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 
-import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
 
 /**
  * Role-aware landing redirect.
@@ -22,15 +22,17 @@ export const DashboardRedirect: React.FC = () => {
   const location = useLocation();
   const { role } = useUserAuthz();
   const todayOpsEnabled = useFeatureFlag('todayOps');
-  const { isKioskMode } = useKioskDetection();
+  const { settings } = useSettingsContext();
 
   // admin は Decision Layer、現場スタッフは Execution Layer
   const isFieldStaff = role !== 'admin';
   
   let target = isFieldStaff && todayOpsEnabled ? '/today' : '/dashboard';
+  const isExplicitKioskLayout =
+    settings.layoutMode === 'kiosk' || location.pathname.startsWith('/kiosk');
 
   // キオスクモードなら最優先で /kiosk
-  if (isKioskMode) {
+  if (isExplicitKioskLayout) {
     target = '/kiosk';
   }
 
