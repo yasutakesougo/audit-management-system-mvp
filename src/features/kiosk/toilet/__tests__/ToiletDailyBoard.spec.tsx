@@ -232,44 +232,52 @@ describe('ToiletDailyBoard', () => {
   });
 
   it('creates new records with the selected date', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-12T12:00:00'));
+    mockCreateRecord.mockResolvedValue({
+      id: 'toilet-1',
+      userId: 'user-1',
+      recordDate: '2026-06-12',
+      occurredAt: '2026-06-12T12:00:00.000+09:00',
+      toiletType: 'urination',
+      amount: 'normal',
+      memo: '',
+      recorderName: 'kiosk',
+      source: 'kiosk',
+      isDeleted: false,
+      createdAt: '2026-06-12T12:00:00.000+09:00',
+      updatedAt: '2026-06-12T12:00:00.000+09:00',
+    });
+    mockUseToiletRecords.mockReturnValue({
+      records: [],
+      create: mockCreateRecord,
+      correct: mockCorrectRecord,
+      refresh: mockRefreshRecords,
+      isLoading: false,
+      error: null,
+    });
 
-    try {
-      mockUseToiletRecords.mockReturnValue({
-        records: [],
-        create: mockCreateRecord,
-        correct: mockCorrectRecord,
-        refresh: mockRefreshRecords,
-        isLoading: false,
-        error: null,
-      });
+    render(
+      <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
+        <ToiletDailyBoard />
+      </MemoryRouter>,
+    );
 
-      render(
-        <MemoryRouter initialEntries={['/kiosk/toilet?date=2026-06-12']}>
-          <ToiletDailyBoard />
-        </MemoryRouter>,
-      );
+    fireEvent.click(screen.getByTestId('toilet-record-button-user-1'));
 
-      // Click on "記録する" button for the user
-      fireEvent.click(screen.getByTestId('toilet-record-button-user-1'));
+    expect(screen.getByText('支援 花子さんのトイレ記録')).toBeInTheDocument();
 
-      // Check that the dialog is shown
-      expect(screen.getByText('支援 花子さんのトイレ記録')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('toilet-record-save'));
 
-      // Click save
-      fireEvent.click(screen.getByTestId('toilet-record-save'));
-
-      // Check that create was called with occurredAt containing the selected date
+    await waitFor(() => {
       expect(mockCreateRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'user-1',
           occurredAt: expect.stringContaining('2026-06-12'),
-        })
+        }),
       );
-    } finally {
-      vi.useRealTimers();
-    }
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('支援 花子さんのトイレ記録')).not.toBeInTheDocument();
+    });
   });
 
   it('opens a correction dialog from an existing record and saves via correct', async () => {
