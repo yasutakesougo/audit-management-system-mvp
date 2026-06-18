@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "nvidia-nim-apply-approved-preview/1.0",
+  "generatedAt": "2026-06-10T12:00:00.000Z",
+  "inputPath": "tmp/review/apply-approved-plan.json",
+  "summary": {
+    "total": 1,
+    "approved": 1,
+    "warnings": 0
+  },
+  "items": [
+    {
+      "artifactId": "art-004",
+      "path": "/support-plans/p4.json",
+      "suggestedTitle": "夜間加算",
+      "labels": ["risk"],
+      "reason": "partial handoff"
+    }
+  ],
+  "warnings": [],
+  "preflight": {
+    "passed": true,
+    "failures": []
+  }
+}
