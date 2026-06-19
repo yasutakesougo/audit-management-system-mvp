@@ -3,6 +3,10 @@ import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { SharePointAbcRecordRepository } from '../SharePointAbcRecordRepository';
 import type { AbcRecordCreateInput } from '@/domain/abc/abcRecord';
 
+type UnsafeAbcRecordUpdateInput = Partial<AbcRecordCreateInput> & {
+  createdAt?: string;
+};
+
 describe('SharePointAbcRecordRepository', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockDataProvider: Record<string, any>;
@@ -113,7 +117,7 @@ describe('SharePointAbcRecordRepository', () => {
 
   describe('update', () => {
     it('不変フィールドの上書きを禁止し、更新日時と安全な項目のみをPATCH送信すること', async () => {
-      const inputUpdate: Partial<AbcRecordCreateInput> = {
+      const inputUpdate: UnsafeAbcRecordUpdateInput = {
         setting: '食堂',
         behavior: '大声で泣く',
         // 不変フィールド (これらは送信されないはず)
