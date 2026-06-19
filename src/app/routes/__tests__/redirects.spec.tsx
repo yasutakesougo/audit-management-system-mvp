@@ -11,11 +11,13 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Role } from '@/auth/roles';
+import type { UserSettings } from '@/features/settings/settingsModel';
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
 let mockRole: Role = 'viewer';
 let mockReady = true;
+let mockSettings: UserSettings;
 
 vi.mock('@/auth/useUserAuthz', () => ({
   useUserAuthz: () => ({ role: mockRole, ready: mockReady }),
@@ -36,8 +38,10 @@ vi.mock('@/config/featureFlags', async (importOriginal) => {
   };
 });
 
-vi.mock('@/features/settings/hooks/useKioskDetection', () => ({
-  useKioskDetection: () => ({ isKioskMode: false }),
+vi.mock('@/features/settings/SettingsContext', () => ({
+  useSettingsContext: () => ({
+    settings: mockSettings,
+  }),
 }));
 
 // ── Import after mocks ──────────────────────────────────────────────────
@@ -70,6 +74,18 @@ describe('DashboardRedirect', () => {
     mockRole = 'viewer';
     mockReady = true;
     mockTodayOpsFlag = true;
+    mockSettings = {
+      colorMode: 'system',
+      density: 'comfortable',
+      fontSize: 'medium',
+      colorPreset: 'default',
+      layoutMode: 'normal',
+      hiddenNavGroups: [],
+      navGroupVisibilityPrefs: {},
+      hiddenNavItems: [],
+      navPolicyVersion: 1,
+      lastModified: 1,
+    };
   });
 
   it('admin + flag ON → /dashboard', () => {
@@ -94,6 +110,46 @@ describe('DashboardRedirect', () => {
 
     const pathname = renderRedirect();
     expect(pathname).toBe('/today');
+  });
+
+  it('normal mode + stale ?kiosk=1 at root remains /today', () => {
+    mockRole = 'viewer';
+    mockTodayOpsFlag = true;
+    mockSettings.layoutMode = 'normal';
+
+    const routes = [
+      { index: true, element: <DashboardRedirect /> },
+      { path: '/dashboard', element: <div>Dashboard</div> },
+      { path: '/today', element: <div>Today</div> },
+      { path: '/kiosk', element: <div>Kiosk</div> },
+    ];
+
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/?kiosk=1'],
+    });
+    render(<RouterProvider router={router} />);
+
+    expect(router.state.location.pathname).toBe('/today');
+  });
+
+  it('kiosk layout mode still redirects to /kiosk', () => {
+    mockRole = 'viewer';
+    mockTodayOpsFlag = true;
+    mockSettings.layoutMode = 'kiosk';
+
+    const routes = [
+      { index: true, element: <DashboardRedirect /> },
+      { path: '/dashboard', element: <div>Dashboard</div> },
+      { path: '/today', element: <div>Today</div> },
+      { path: '/kiosk', element: <div>Kiosk</div> },
+    ];
+
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/'],
+    });
+    render(<RouterProvider router={router} />);
+
+    expect(router.state.location.pathname).toBe('/kiosk');
   });
 
   it('viewer + flag OFF → /dashboard', () => {

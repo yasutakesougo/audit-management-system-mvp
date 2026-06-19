@@ -18,7 +18,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettingsContext } from './SettingsContext';
 import { ColorPresetControl, DensityControl, FontSizeControl, NavGroupVisibilityControl } from './components';
 
@@ -34,6 +34,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, n
   const { mode, toggle } = useContext(ColorModeContext);
   const { settings, updateSettings } = useSettingsContext();
   const location = useLocation();
+  const navigate = useNavigate();
+  const isKioskPath = location.pathname.startsWith('/kiosk');
+  const isKioskQuery = new URLSearchParams(location.search).has('kiosk');
 
   const handleDensityChange = useCallback((newDensity: 'compact' | 'comfortable' | 'spacious') => {
     updateSettings({ density: newDensity });
@@ -182,9 +185,27 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, n
               control={
                 <Switch
                   checked={settings.layoutMode === 'kiosk'}
-                  onChange={(_, checked) =>
-                    updateSettings({ layoutMode: checked ? 'kiosk' : 'normal' })
-                  }
+                  onChange={(_, checked) => {
+                    const nextParams = new URLSearchParams(location.search);
+                    nextParams.delete('kiosk');
+                    const nextSearch = nextParams.toString();
+                    const nextPath = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`;
+
+                    if (checked) {
+                      if (isKioskQuery) {
+                        navigate(nextPath, { replace: true });
+                      }
+                      updateSettings({ layoutMode: 'kiosk' });
+                      return;
+                    }
+
+                    if (isKioskPath) {
+                      navigate('/dashboard', { replace: true });
+                    } else if (isKioskQuery) {
+                      navigate(nextPath, { replace: true });
+                    }
+                    updateSettings({ layoutMode: 'normal' });
+                  }}
                   inputProps={{ 'aria-label': 'キオスクモード（タブレット端末用）' }}
                 />
               }
