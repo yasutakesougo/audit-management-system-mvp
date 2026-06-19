@@ -76,6 +76,19 @@ describe("Navigation Configuration", () => {
     expect(labels).not.toContain('職員勤怠');
   });
 
+  it('通常ナビに /assessment だけを planning グループで復活させる', () => {
+    const items = createNavItems(baseConfig);
+
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        to: '/assessment',
+        group: 'planning',
+      }),
+    );
+    expect(items.some((item) => item.to === '/analysis')).toBe(false);
+    expect(items.some((item) => item.to === '/survey/tokusei')).toBe(false);
+  });
+
   it('reception audience では record/勤怠導線を表示し、個別支援計画更新は表示しない', () => {
     const items = createNavItems({
       ...baseConfig,
