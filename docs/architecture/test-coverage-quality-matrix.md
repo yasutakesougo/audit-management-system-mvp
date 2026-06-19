@@ -22,61 +22,80 @@
 
 ## 3. 主要ドメイン別テストカバレッジ
 
-主要な7領域と周辺コアコンポーネントにおけるテストのカバー状況を、テストファイル数および防御力ランク（A〜E）としてマッピングします。
+主要なドメインと周辺コアコンポーネントにおけるテストのカバー状況を、テスト防御力マップおよび防御力ランク（A〜E）としてマッピングします。
 
-| 領域 | テストファイル数 | 判定ランク | テスト層のカバー範囲 | 特徴・現在の防御状況 | 補強候補 / 優先課題 |
-| :--- | :---: | :---: | :--- | :--- | :--- |
-| **Kiosk** | 23 | **A** | Hook, Component, E2E | キオスク専用モードの打刻、手順一覧、手順詳細が Playwright および Vitest で重層的に保護されている。 | Playwright E2E の実行安定性向上。 |
-| **Daily / Record Quality** | 101 | **B** | Unit, Hook, Integration | 支援記録（Daily Records）および品質レビュー（Record Quality）のコアロジックは厚い。UI表示と更新連携テストが一部限定的。 | 保存完了後のデータ再取得・画面反映のコンポーネントテスト追加。 |
-| **Record Quality** | 6 | **B** | Unit, Hook, Integration | コアレビュー・検知ルール、警告表示判定などのロジックにテストが存在する。UI導線のE2Eはなし。 | Action Engine と連携したUI導線テストの作成。 |
-| **Users** | 45 | **B** | Unit, Component, Hook, Integration | ユーザーマスタ、所属変更、権限管理の基本フローが Vitest と一部 Playwright でカバーされている。 | マスタデータ更新系フロー（書き込み失敗やコンフリクト）のテスト強化。 |
-| **Attendance** | 20 | **B/C** | Unit, Hook, Integration | 職員出退勤やサービス提供実績記録の計算ロジック、保存境界はテストがあるが、SharePoint 接続境界のテストが一部。 | SharePoint リスト境界のモック・ fixture テストの充実化。 |
-| **Checklist (Compliance)** | 2 | **C** | Unit | 制度監査準拠のチェックリスト API およびカスタムフック単体のテスト。UI表示やRepository境界のテストが不足。 | Repository境界の実装およびUI結合テストの作成。 |
-| **Navigation / AppShell** | 18 | **A/B** | Unit, Component, Integration, E2E | ルーティング、サイドバー、通常/キオスクモード切り替えの整合性。`nav-router-consistency` テストによる静的ガードが強力。 | 各画面ロール（一般職員、管理者、サビ管）ごとのメニューアクセス制御テスト。 |
-| **SharePoint Repository** | 94 | **B** | Unit, Integration, Drift Probe | `spClient` のリトライ・バッチ処理、OData変換、`driftProbeRegistry`、SSOT契約テストなどが手厚い。 | 本番環境スキーマ変更（drift）時の挙動を検知するテストの拡充。 |
-| **Exceptions** | 22 | **B** | Unit, Hook, Integration | 例外処理やエラー境界、リトライ機能、フォールバックの動作検証。 | 503エラーやオフライン状態からの回復処理のテスト。 |
+### ドメイン別テスト防御力マップ
+
+| 領域 | Unit | Component | Hook | Integration | E2E/Smoke | Typecheck | 判定 | 補強候補 |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Kiosk** (23件) | あり | あり | あり | 一部 | あり | あり | **A/B** | smoke安定性整理 |
+| **Daily** (101件) | あり | 一部 | あり | あり | 一部 | あり | **B** | 保存後再取得テスト |
+| **Record Quality** (6件) | あり | 一部 | あり | あり | 要確認 | あり | **B** | UI導線テスト |
+| **Users** (45件) | あり | あり | あり | あり | 要確認 | あり | **B** | master更新系 |
+| **Attendance** (20件) | あり | 要確認 | あり | 一部 | 要確認 | あり | **B/C** | SharePoint境界 |
+| **Checklist / Exceptions** (24件) | 少なめ | 要確認 | 要確認 | 要確認 | 要確認 | 要確認 | **C** | repository境界化後 |
+| **Navigation / AppShell** (18件) | あり | あり | - | あり | あり | あり | **A/B** | 通常/キオスク分岐 |
+| **SharePoint Repository** (94件) | あり | 一部 | - | あり | なし | あり | **B** | スキーマ変更検知 |
+
+* ※ファイル件数は、テストファイル名（`*.test.ts`, `*.spec.ts` 等）の検索およびドメイン分類基準に基づく直近の集計値です。
 
 ### 判定ランクの定義
 * **A (十分な防衛)**: 主要フローが unit/component/hook/integration/E2E の複数層で守られている。
 * **B (概ね堅牢)**: 主要ロジックは守られているが、E2Eまたは永続化境界のテストが一部不足。
 * **C (一部不足)**: テストはあるが、UIまたは永続化境界の重要パスが不足。
-* **D (脆弱)**: テストが断片的で、回帰検知が弱い。
+* **D (脆弱)**: テストが断片的にしか存在せず、デグレード検知力が弱い。
 * **E (要再調査)**: テスト状態が不明、または旧実装と新実装が混在して再構成が必要。
 
 ---
 
-## 4. CI Workflow / Required Checks の整理
+## 4. CI Workflow / Quality Gate の整理
 
 GitHub Actions 上で設定されている主要なワークフローファイルのトリガーと実行内容を整理します。
 
-### 1. CI Preflight (`ci-preflight.yml`)
+### CI / Quality Gate 分類
+
+| Check | 種別 | 重さ | PR判定での扱い | 備考 |
+| :--- | :--- | :--- | :--- | :--- |
+| **lint** | static | 軽量 | requiredとして観測される check | docsのみのPRでも走る |
+| **typecheck** | static | 中量 | requiredとして観測される check | unrelated drift（関係のない型乖離）に注意 |
+| **Core API Contracts** | contract | 中量 | requiredとして観測される check | 主要APIの契約整合 |
+| **links** | docs | 軽量 | required/qualityとして観測される check | docs PRでリンク破損を防ぐために重要 |
+| **smoke** | E2E | 重量 | required/準requiredとして観測される check | flaky（実行ごとの不安定さ）の切り分けが必要 |
+| **Deep Tests (Chromium)** | E2E | 重量 | optional/統合観測として扱われる check | 差分非起因の failure に注意 |
+| **quality_extended** | extended | 重量 | optional/既知不安定として扱われる check | 既知の不安定テスト（Flaky）の分類用 |
+
+* ※「重さ」は直近PRでの実行時間・負荷に基づく観測ベースの分類（軽量 / 中量 / 重量）です。
+
+### ワークフロー詳細
+
+#### 1. CI Preflight (`ci-preflight.yml`)
 * **トリガー**: PR作成/更新、`main` への push
 * **実行ジョブ**:
-  * `test-ids-guard`: E2Eテスト用のデータ属性（`data-testid`）のドリフトを検出 (`guard:testids`)。
-  * `typecheck`: `npm run typecheck` による型エラーチェック。
-  * `lint`: `npm run lint` による静的検証。
-  * `preflight-unit`: 必須ユニットテストスイート (`test:ci:required`) のシャード実行 (VITE_FEATURE_SCHEDULES_GRAPH の 0/1 マトリクス)。
-  * `schedule-unit`: TZマトリクス環境下（Asia/Tokyo, America/Los_Angeles）でのスケジュール単体テスト。
-  * `e2e`: Playwright E2E。PR に `e2e` ラベルが付与されている場合のみのオプトイン実行。
+  * `test-ids-guard` (軽量): E2Eテスト用のデータ属性（`data-testid`）のドリフトを検出。
+  * `typecheck` (中量): `npm run typecheck` による型エラーチェック。
+  * `lint` (中量): `npm run lint` による静的検証。
+  * `preflight-unit` (中量): 必須ユニットテストスイート (`test:ci:required`) のシャード実行 (VITE_FEATURE_SCHEDULES_GRAPH マトリクス)。
+  * `schedule-unit` (中量): タイムゾーン環境（Asia/Tokyo, America/Los_Angeles）ごとのスケジュール単体テスト。
+  * `e2e` (重量): Playwright E2E。PR に `e2e` ラベルが付与されている場合のみのオプトイン実行。
 
-### 2. Main CI (`ci.yml`)
+#### 2. Main CI (`ci.yml`)
 * **トリガー**: PR作成/更新、`main` / `develop` への push
 * **実行ジョブ**:
-  * `contracts`: `spClient` と `navigationConfig` のコア API 契約テスト。
-  * `registry-*`: 静的レジストリ監査、SSOT契約テスト、レジストリ統合、およびスキーマドリフト検証。
-  * `typecheck`: ESLint（アーキテクチャガード）、インデックス監査（Schema Driftの防止）、および TypeScript のコンパイル確認。
-  * `unit-test-shard`: Vitest ユニットテストを 1/3, 2/3, 3/3 の3つに分割実行。PR時は必須部分（`test:ci:required`）を実行し、マージ時は全テスト（`test:ci`）を実行。テストでの `act()` 警告を検知した場合は自動で GitHub Issue を起票。
-  * `typecheck-and-test` (Aggregator): 上記ジョブがすべてパスすることを確認するマージ必須ゲート。
+  * `contracts` (軽量): `spClient` と `navigationConfig` のコア API 契約テスト。
+  * `registry-*` (軽量〜中量): 静的レジストリ監査、SSOT契約テスト、レジストリ統合、およびスキーマドリフト検証。
+  * `typecheck` (中量): ESLint（アーキテクチャガード）、インデックス監査（Schema Driftの防止）、および TypeScript のコンパイル確認。
+  * `unit-test-shard` (中量〜重量): Vitest ユニットテストを 1/3, 2/3, 3/3 の3つに分割実行。PR時は必須部分（`test:ci:required`）を実行し、マージ時は全テスト（`test:ci`）を実行。テストでの `act()` 警告を検知した場合は自動で GitHub Issue を起票。
+  * `typecheck-and-test` (Aggregator): 上記ジョブがすべてパスすることを確認する aggregator。
 
-### 3. Smoke Tests (Fast) (`smoke.yml`)
+#### 3. Smoke Tests (Fast) (`smoke.yml`)
 * **トリガー**: PR作成/更新、`workflow_dispatch`
 * **実行ジョブ**:
-  * `nav-integrity`: ルーター・ナビゲーションの整合性を検証する `nav-router-consistency.spec.ts` などの実行。
-  * `e2e-smoke`: Chromium 環境での Playwright スモークテスト。`E2E_SAVE_MODE=mock` でモック化された SharePoint 境界を保証。
+  * `nav-integrity` (軽量): ルーター・ナビゲーションの整合性を検証する `nav-router-consistency.spec.ts` などの実行。
+  * `e2e-smoke` (重量): Playwright スモークテスト。`E2E_SAVE_MODE=mock` でモック化された SharePoint 境界を保証。
 
-### 4. Fast Lane (`fast-lane.yml`)
+#### 4. Fast Lane (`fast-lane.yml`)
 * **トリガー**: `port/flags`, `main` への push、`main` への PR
-* **実行ジョブ**: 変更に即応するための高速ビルドと、主要コンポーネント（Users detail, Nurse BP sync, Prefetch 等）の限定的 E2E テスト。
+* **実行ジョブ** (中量〜重量): 変更に即応するための高速ビルドと、主要コンポーネント（Users detail, Nurse BP sync, Prefetch 等）の限定的 E2E テスト。
 
 ---
 
