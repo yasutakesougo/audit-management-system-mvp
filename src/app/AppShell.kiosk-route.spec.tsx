@@ -79,6 +79,24 @@ describe('AppShell kiosk query routing', () => {
     expect(stored.layoutMode).toBe('kiosk');
   });
 
+  it('keeps manually enabled kiosk mode on /today without kiosk query', async () => {
+    renderAppShell('/today');
+
+    const settingsButton = screen.getByRole('button', { name: '表示設定' });
+    fireEvent.click(settingsButton);
+
+    fireEvent.click(screen.getByRole('switch', { name: 'キオスクモード（タブレット端末用）' }));
+
+    const appShell = screen.getByTestId('app-shell');
+    await waitFor(() => {
+      expect(appShell).toHaveAttribute('data-kiosk', 'true');
+      expect(screen.getByRole('switch', { name: 'キオスクモード（タブレット端末用）' })).toBeChecked();
+    });
+
+    const stored = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '{}');
+    expect(stored.layoutMode).toBe('kiosk');
+  });
+
   it('disables kiosk mode when /today?kiosk=0 is opened', async () => {
     localStorage.setItem(
       SETTINGS_STORAGE_KEY,
