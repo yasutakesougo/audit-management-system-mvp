@@ -1,6 +1,6 @@
 # PR Merge Safety Runbook
 
-> ⚠️ この runbook は **PR #76 以降の標準手順**です  
+> ⚠️ この runbook は **現在の標準手順**です
 > 数字が 0 でも **pendingChecks / failingChecks が空であること**を必ず確認してください
 
 ## Daily small PR scope guard
@@ -15,7 +15,7 @@ SharePoint list/field candidates や `src/sharepoint/contracts/driftProbeTargets
 
 ```bash
 # failed / pending のカウントと、実際のチェック名を可視化
-gh pr view 76 --json statusCheckRollup -q '
+gh pr view <PR_NUMBER> --json statusCheckRollup -q '
 {
   failed: ([.statusCheckRollup[]|select(.conclusion=="FAILURE")]|length),
   pending: ([.statusCheckRollup[]|select(.status=="IN_PROGRESS")]|length),
@@ -38,7 +38,7 @@ gh pr view 76 --json statusCheckRollup -q '
 
 ```bash
 # failed/pending が 0 でなければ exit 1 → マージ不可
-gh pr view 76 --json statusCheckRollup \
+gh pr view <PR_NUMBER> --json statusCheckRollup \
   -q '([.statusCheckRollup[]|select(.conclusion=="FAILURE" or .status=="IN_PROGRESS")]|length)' \
 | grep -qx 0
 ```
@@ -46,10 +46,28 @@ gh pr view 76 --json statusCheckRollup \
 - ✅ **成功**: CI 全緑 → 次へ進む
 - ❌ **失敗**: まだ pending/failed が残っている → マージしない
 
-### 3) Review 承認確認
+### 3) BEHIND 状態の扱い
 
 ```bash
-gh pr view 76 --json reviewDecision -q '.reviewDecision'
+gh pr view <PR_NUMBER> --json mergeStateStatus -q '.mergeStateStatus'
+```
+
+`mergeStateStatus` が `BEHIND` の場合は、pending/failed がないことを確認したあと、マージ判断前に main を取り込む。
+ブランチの名前を確認し、必要に応じて本番 PR 側のブランチを最新化する。
+
+```bash
+git switch <BRANCH_NAME>
+git fetch origin
+git rebase origin/main
+git push --force-with-lease
+```
+
+main 追従後はチェックが再実行されるため、再度 failed / pending が 0 になるまで待つ。
+
+### 4) Review 承認確認
+
+```bash
+gh pr view <PR_NUMBER> --json reviewDecision -q '.reviewDecision'
 # 期待値: APPROVED
 ```
 
@@ -57,7 +75,7 @@ gh pr view 76 --json reviewDecision -q '.reviewDecision'
 
 ```bash
 # Squash merge + ブランチ削除
-gh pr merge 76 --squash --delete-branch
+gh pr merge <PR_NUMBER> --squash --delete-branch
 ```
 
 ## C. main の同期と確認
@@ -101,7 +119,7 @@ gh run download "$RUN_ID"
 
 ```bash
 # マージ済みブランチの削除
-git branch -d copilot/update-org-filter-e2e-test
+git branch -d <BRANCH_NAME>
 
 # リモート追跡ブランチの削除（既に --delete-branch で削除済み）
 git fetch --prune
@@ -211,7 +229,7 @@ test.describe('Org Filter: URL Contract', () => {
 
 ```bash
 # 進行中のチェックを確認
-gh pr view 76 --json statusCheckRollup \
+gh pr view <PR_NUMBER> --json statusCheckRollup \
   -q '.statusCheckRollup[]|select(.status=="IN_PROGRESS")|.name'
 ```
 

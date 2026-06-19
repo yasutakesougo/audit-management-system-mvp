@@ -22,6 +22,7 @@ type Props = {
   contentPaddingX?: number; // default 16
   contentPaddingY?: number; // default 16
   contentPaddingBottom?: number;
+  viewportHeight?: string;
   viewportMode?: ShellViewportMode;
 };
 
@@ -37,6 +38,7 @@ export function AppShellV2({
   contentPaddingX = 16,
   contentPaddingY = 16,
   contentPaddingBottom,
+  viewportHeight = '100dvh',
   viewportMode = 'fixed',
   mainId = 'app-main-content',
 }: Props) {
@@ -61,7 +63,7 @@ export function AppShellV2({
     <Box
       sx={{
         '--bottom-nav-height': '88px', // CSS variable for LandscapeFab positioning
-        ...(viewportMode === 'fixed' ? { height: '100dvh' } : { minHeight: '100dvh' }),
+        ...(viewportMode === 'fixed' ? { height: viewportHeight } : { minHeight: viewportHeight }),
         overflow: 'hidden',
         display: 'grid',
         gridTemplateAreas: `
@@ -136,7 +138,8 @@ export function AppShellV2({
         sx={{
           gridArea: 'main',
           minHeight: 0,
-          overflow: 'auto',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
           backgroundColor: 'background.default',

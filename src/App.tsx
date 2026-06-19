@@ -21,6 +21,7 @@ import { RemediationAuditMonitor } from '@/features/sp/health/remediation/Remedi
 import { DemoProcedureSeeder } from '@/features/demo/DemoProcedureSeeder';
 
 import { isSharePointThrottleError } from '@/lib/sp';
+import Box from '@mui/material/Box';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 const queryClient = new QueryClient({
@@ -77,18 +78,24 @@ function App() {
         <SettingsProvider>
           <ThemeRoot>
             <CssBaseline />
-            <DataLayerStatusBanner />
-            <WriteDisabledBanner />
-            <ToastProvider>
-              {!isKiosk && <DriftMonitor />}
-              {!isKiosk && <RemediationAuditMonitor />}
-              <SpInitBridge />
-              <DemoProcedureSeeder />
-              <ToastNotifierBridge />
-              <DataLayerGuard>
-                <RouterProvider router={router} future={routerFutureFlags} />
-              </DataLayerGuard>
-            </ToastProvider>
+            <Box sx={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <Box sx={{ flexShrink: 0 }}>
+                <DataLayerStatusBanner />
+                <WriteDisabledBanner />
+              </Box>
+              <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <ToastProvider>
+                  {!isKiosk && <DriftMonitor />}
+                  {!isKiosk && <RemediationAuditMonitor />}
+                  <SpInitBridge />
+                  <DemoProcedureSeeder />
+                  <ToastNotifierBridge />
+                  <DataLayerGuard>
+                    <RouterProvider router={router} future={routerFutureFlags} />
+                  </DataLayerGuard>
+                </ToastProvider>
+              </Box>
+            </Box>
             {hydrationHudEnabled && <HydrationHud />}
           </ThemeRoot>
         </SettingsProvider>

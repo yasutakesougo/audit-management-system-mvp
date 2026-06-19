@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SupportPlanningSheet, ProcedureStep } from '@/domain/isp/schema';
+import { makePlanningDesign, makeSupportPlanningSheet } from './supportPlanningSheetTestFactory';
 import {
   applyPlanPatch,
   detectPlanNeedsUpdate,
@@ -11,77 +12,25 @@ import {
 } from '../planPatch';
 
 function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanningSheet {
-  return {
+  return makeSupportPlanningSheet({
     id: 'sheet-1',
     version: 1,
     userId: 'U001',
     ispId: 'ISP001',
-    title: '支援計画シート',
-    targetScene: '',
-    targetDomain: '',
     observationFacts: '観察',
-    collectedInformation: '',
     interpretationHypothesis: '仮説',
     supportIssues: '既存課題',
     supportPolicy: '既存方針',
-    environmentalAdjustments: '',
     concreteApproaches: '既存具体策',
-    appliedFrom: null,
     nextReviewAt: '2026-06-01',
-    supportStartDate: null,
-    monitoringCycleDays: 90,
-    authoredByStaffId: '',
-    authoredByQualification: 'unknown',
-    authoredAt: null,
-    applicableServiceType: 'other',
-    applicableAddOnTypes: ['none'],
-    deliveredToUserAt: null,
-    reviewedAt: null,
-    hasMedicalCoordination: false,
-    hasEducationCoordination: false,
-    regulatoryBasisSnapshot: {
-      supportLevel: null,
-      behaviorScore: null,
-      serviceType: null,
-      eligibilityCheckedAt: null,
-    },
     status: 'active',
-    isCurrent: true,
-    intake: {
-      presentingProblem: '',
-      targetBehaviorsDraft: [],
-      behaviorItemsTotal: null,
-      incidentSummaryLast30d: '',
-      communicationModes: [],
-      sensoryTriggers: [],
-      medicalFlags: [],
-      consentScope: [],
-      consentDate: null,
-    },
-    assessment: {
-      targetBehaviors: [],
-      abcEvents: [],
-      hypotheses: [],
-      riskLevel: 'low',
-      healthFactors: [],
-      teamConsensusNote: '',
-    },
-    planning: {
-      supportPriorities: [],
-      antecedentStrategies: [],
-      teachingStrategies: [],
-      consequenceStrategies: [],
-      procedureSteps: [],
-      crisisThresholds: null,
-      restraintPolicy: 'prohibited_except_emergency',
-      reviewCycleDays: 180,
-    },
+    planning: makePlanningDesign(),
     createdAt: '2026-04-01T00:00:00.000Z',
     updatedAt: '2026-04-01T00:00:00.000Z',
     createdBy: 'tester',
     updatedBy: 'tester',
     ...overrides,
-  };
+  });
 }
 
 function makeDecision(overrides: Partial<MeetingDecision> = {}): MeetingDecision {

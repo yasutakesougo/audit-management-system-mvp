@@ -8,6 +8,7 @@ import { handoffListEntries } from './definitions/handoff';
 import { complianceListEntries } from './definitions/compliance';
 import { otherListEntries } from './definitions/other';
 import { supportCaseListEntries } from './definitions/supportCase';
+import { recordQualityListEntries } from './definitions/recordQuality';
 
 export {
   masterListEntries,
@@ -19,6 +20,7 @@ export {
   complianceListEntries,
   otherListEntries,
   supportCaseListEntries,
+  recordQualityListEntries,
 };
 
 /** 全リスト定義の統合（参照等価性を維持するため） */
@@ -32,4 +34,5 @@ export const listDefinitions: readonly SpListEntry[] = [
   ...complianceListEntries,
   ...otherListEntries,
   ...supportCaseListEntries,
+  ...recordQualityListEntries,
 ];

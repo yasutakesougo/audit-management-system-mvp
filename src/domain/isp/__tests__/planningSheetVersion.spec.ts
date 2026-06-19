@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SupportPlanningSheet } from '../schema';
+import { makePlanningDesign, makeSupportPlanningSheet } from './supportPlanningSheetTestFactory';
 
 import {
   computeDaysOverdue,
@@ -28,20 +29,10 @@ import {
 function makeSheet(
   overrides: Partial<SupportPlanningSheet> = {},
 ): SupportPlanningSheet {
-  return {
+  return makeSupportPlanningSheet({
     id: 'ps-001',
     userId: 'U001',
-    ispId: 'ISP-001',
     title: '支援計画シート v1',
-    targetScene: '',
-    targetDomain: '',
-    observationFacts: '行動観察データ',
-    collectedInformation: '',
-    interpretationHypothesis: '仮説',
-    supportIssues: '課題',
-    supportPolicy: '方針',
-    environmentalAdjustments: '',
-    concreteApproaches: '具体策',
     appliedFrom: '2026-01-01',
     nextReviewAt: '2026-06-30',
     authoredByStaffId: 'S001',
@@ -49,12 +40,6 @@ function makeSheet(
     authoredAt: '2026-01-01T00:00:00Z',
     applicableServiceType: 'daily_life_care',
     applicableAddOnTypes: ['severe_disability_support'],
-    deliveredToUserAt: null,
-    reviewedAt: null,
-    hasMedicalCoordination: false,
-    hasEducationCoordination: false,
-    supportStartDate: null,
-    monitoringCycleDays: 90,
     regulatoryBasisSnapshot: {
       supportLevel: 6,
       behaviorScore: 18,
@@ -62,43 +47,13 @@ function makeSheet(
       eligibilityCheckedAt: '2026-01-01',
     },
     status: 'active',
-    isCurrent: true,
-    intake: {
-      presentingProblem: '',
-      targetBehaviorsDraft: [],
-      behaviorItemsTotal: null,
-      incidentSummaryLast30d: '',
-      communicationModes: [],
-      sensoryTriggers: [],
-      medicalFlags: [],
-      consentScope: [],
-      consentDate: null,
-    },
-    assessment: {
-      targetBehaviors: [],
-      abcEvents: [],
-      hypotheses: [],
-      riskLevel: 'low',
-      healthFactors: [],
-      teamConsensusNote: '',
-    },
-    planning: {
-      supportPriorities: [],
-      antecedentStrategies: [],
-      teachingStrategies: [],
-      consequenceStrategies: [],
-      procedureSteps: [],
-      crisisThresholds: null,
-      restraintPolicy: 'prohibited_except_emergency',
-      reviewCycleDays: 180,
-    },
     createdAt: '2026-01-01T00:00:00Z',
     createdBy: 'S001',
     updatedAt: '2026-01-01T00:00:00Z',
     updatedBy: 'S001',
-    version: 1,
+    planning: makePlanningDesign(),
     ...overrides,
-  };
+  });
 }
 
 // =========================================================================

@@ -1,4 +1,9 @@
-import type { ToiletRecord, ToiletRecordInput, IToiletRecordRepository } from './types';
+import type {
+  ToiletRecord,
+  ToiletRecordCorrectionPatch,
+  ToiletRecordInput,
+  IToiletRecordRepository,
+} from './types';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import { TOILET_RECORD_CANDIDATES } from '@/sharepoint/fields/toiletRecordFields';
@@ -77,6 +82,10 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
       }
     }
     return activePayload;
+  }
+
+  private escapeODataString(value: string): string {
+    return value.replace(/'/g, "''");
   }
 
   async listByDate(dateIso: string): Promise<ToiletRecord[]> {
@@ -184,6 +193,68 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
 
     const result = await response.json();
     return this.mapToDomain(result.d || result);
+  }
+
+  async update(recordId: string, patch: ToiletRecordCorrectionPatch): Promise<ToiletRecord> {
+    const listTitle = this.resolveListTitle();
+    await this.initFields(listTitle);
+
+    const select = [
+      'Id',
+      'Title',
+      'Created',
+      'Modified',
+      this.rfFallback('userId'),
+      this.rfFallback('recordDate'),
+      this.rfFallback('occurredAt'),
+      this.rfFallback('toiletType'),
+      this.rfFallback('amount'),
+      this.rfFallback('memo'),
+      this.rfFallback('recorderName'),
+      this.rfFallback('source'),
+      this.rfFallback('isDeleted'),
+    ];
+    const filter = `Title eq '${this.escapeODataString(recordId)}'`;
+    const lookupUrl = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$filter=${encodeURIComponent(filter)}&$select=${select.join(',')}&$top=1`;
+    const lookupResponse = await this.spFetch(lookupUrl);
+    if (!lookupResponse.ok) {
+      throw new Error(`[SharePointToiletRecordRepo] update lookup failed: ${lookupResponse.statusText}`);
+    }
+
+    const lookupData = await lookupResponse.json();
+    const item = ((lookupData.value || lookupData.d?.results || []) as JsonRecord[])[0];
+    if (!item) {
+      throw new Error(`[SharePointToiletRecordRepo] record not found: ${recordId}`);
+    }
+
+    const rawPayload: Record<string, unknown> = {};
+    if (patch.toiletType !== undefined) rawPayload[this.rfFallback('toiletType')] = patch.toiletType;
+    if (patch.amount !== undefined) rawPayload[this.rfFallback('amount')] = patch.amount;
+    if (patch.memo !== undefined) rawPayload[this.rfFallback('memo')] = patch.memo.trim();
+
+    const body = this.filterPayload(rawPayload);
+    const itemId = item.Id;
+    const updateUrl = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items(${itemId})`;
+    const updateResponse = await this.spFetch(updateUrl, {
+      method: 'POST',
+      headers: {
+        'X-HTTP-Method': 'MERGE',
+        'If-Match': '*',
+        'Content-Type': 'application/json;odata=nometadata',
+        'Accept': 'application/json;odata=nometadata',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!updateResponse.ok) {
+      throw new Error(`[SharePointToiletRecordRepo] update failed: ${updateResponse.statusText}`);
+    }
+
+    const result = await updateResponse.json().catch(() => ({}));
+    return this.mapToDomain({
+      ...item,
+      ...body,
+      ...(result.d || result),
+    });
   }
 
   private mapToDomain(item: JsonRecord): ToiletRecord {

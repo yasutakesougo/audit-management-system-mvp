@@ -9,6 +9,7 @@ import type {
   PlanningSheetListItem,
   SupportPlanningSheet,
 } from '@/domain/isp/schema';
+import { makePlanningDesign, makeSupportPlanningSheet } from '@/domain/isp/__tests__/supportPlanningSheetTestFactory';
 import {
   activatePlanningSheetVersionInRepository,
   archivePlanningSheetVersionInRepository,
@@ -17,77 +18,24 @@ import {
 } from '../planningSheetVersionWorkflow';
 
 function makeSheet(overrides: Partial<SupportPlanningSheet>): SupportPlanningSheet {
-  return {
+  return makeSupportPlanningSheet({
     id: 'sp-1',
     createdAt: '2026-01-01T00:00:00.000Z',
     createdBy: 'system',
     updatedAt: '2026-01-01T00:00:00.000Z',
     updatedBy: 'system',
-    version: 1,
-    userId: 'U-001',
-    ispId: 'ISP-001',
-    title: '支援計画シート',
-    targetScene: '',
-    targetDomain: '',
     observationFacts: 'obs',
-    collectedInformation: '',
     interpretationHypothesis: 'hyp',
     supportIssues: 'issues',
     supportPolicy: 'policy',
-    environmentalAdjustments: '',
     concreteApproaches: 'approaches',
     appliedFrom: '2026-01-01',
     nextReviewAt: '2026-04-01',
     supportStartDate: '2026-01-01',
-    monitoringCycleDays: 90,
-    authoredByStaffId: '',
-    authoredByQualification: 'unknown',
-    authoredAt: null,
-    applicableServiceType: 'other',
-    applicableAddOnTypes: ['none'],
-    deliveredToUserAt: null,
-    reviewedAt: null,
-    hasMedicalCoordination: false,
-    hasEducationCoordination: false,
-    regulatoryBasisSnapshot: {
-      supportLevel: null,
-      behaviorScore: null,
-      serviceType: null,
-      eligibilityCheckedAt: null,
-    },
     status: 'active',
-    isCurrent: true,
-    intake: {
-      presentingProblem: '',
-      targetBehaviorsDraft: [],
-      behaviorItemsTotal: null,
-      incidentSummaryLast30d: '',
-      communicationModes: [],
-      sensoryTriggers: [],
-      medicalFlags: [],
-      consentScope: [],
-      consentDate: null,
-    },
-    assessment: {
-      targetBehaviors: [],
-      abcEvents: [],
-      hypotheses: [],
-      riskLevel: 'low',
-      healthFactors: [],
-      teamConsensusNote: '',
-    },
-    planning: {
-      supportPriorities: [],
-      antecedentStrategies: [],
-      teachingStrategies: [],
-      consequenceStrategies: [],
-      procedureSteps: [],
-      crisisThresholds: null,
-      restraintPolicy: 'prohibited_except_emergency',
-      reviewCycleDays: 180,
-    },
+    planning: makePlanningDesign(),
     ...overrides,
-  };
+  });
 }
 
 function toListItem(sheet: SupportPlanningSheet): PlanningSheetListItem {
@@ -104,6 +52,8 @@ function toListItem(sheet: SupportPlanningSheet): PlanningSheetListItem {
     applicableAddOnTypes: sheet.applicableAddOnTypes,
     authoredByQualification: sheet.authoredByQualification,
     reviewedAt: sheet.reviewedAt,
+    supportStartDate: sheet.supportStartDate,
+    appliedFrom: sheet.appliedFrom,
   };
 }
 
@@ -207,6 +157,14 @@ class InMemoryPlanningSheetRepository implements PlanningSheetRepository {
     });
     this.sheets[index] = updated;
     return updated;
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    const index = this.sheets.findIndex((sheet) => sheet.id === id);
+    if (index < 0) {
+      throw new Error(`not found: ${id}`);
+    }
+    this.sheets.splice(index, 1);
   }
 }
 

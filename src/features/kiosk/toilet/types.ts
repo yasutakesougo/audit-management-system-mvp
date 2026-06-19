@@ -25,6 +25,12 @@ export type ToiletRecordInput = {
   recorderName?: string;
 };
 
+export type ToiletRecordCorrectionPatch = {
+  toiletType?: ToiletType;
+  amount?: ToiletAmount;
+  memo?: string;
+};
+
 export const TOILET_TYPE_LABELS: Record<ToiletType, string> = {
   urination: '排尿',
   bowel: '排便',
@@ -42,4 +48,5 @@ export const TOILET_AMOUNT_LABELS: Record<ToiletAmount, string> = {
 export interface IToiletRecordRepository {
   listByDate(dateIso: string): Promise<ToiletRecord[]>;
   create(input: ToiletRecordInput): Promise<ToiletRecord>;
+  update(recordId: string, patch: ToiletRecordCorrectionPatch): Promise<ToiletRecord>;
 }

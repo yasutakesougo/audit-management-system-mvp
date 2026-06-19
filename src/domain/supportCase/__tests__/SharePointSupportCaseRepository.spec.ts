@@ -49,17 +49,19 @@ const documentRow = {
   CreatedByKey: 'staff-1',
 };
 
-const makeProvider = (): Mocked<IDataProvider> => ({
-  listItems: vi.fn(),
-  getItemById: vi.fn(),
-  createItem: vi.fn(),
-  updateItem: vi.fn(),
-  deleteItem: vi.fn(),
-  getMetadata: vi.fn(),
-  getResourceNames: vi.fn(),
-  getFieldInternalNames: vi.fn(),
-  ensureListExists: vi.fn(),
-  seed: vi.fn(),
+type MockProvider = Mocked<IDataProvider>;
+
+const makeProvider = (): MockProvider => ({
+  listItems: vi.fn(async <T>() => [] as T[]) as MockProvider['listItems'],
+  getItemById: vi.fn(async <T>() => ({} as T)) as MockProvider['getItemById'],
+  createItem: vi.fn(async <T>() => ({} as T)) as MockProvider['createItem'],
+  updateItem: vi.fn(async <T>() => ({} as T)) as MockProvider['updateItem'],
+  deleteItem: vi.fn(async () => undefined) as MockProvider['deleteItem'],
+  getMetadata: vi.fn(async () => ({})) as MockProvider['getMetadata'],
+  getResourceNames: vi.fn(async () => []) as MockProvider['getResourceNames'],
+  getFieldInternalNames: vi.fn(async () => new Set<string>()) as MockProvider['getFieldInternalNames'],
+  ensureListExists: vi.fn(async () => undefined) as MockProvider['ensureListExists'],
+  seed: vi.fn(async () => undefined) as NonNullable<MockProvider['seed']>,
 });
 
 describe('SharePointSupportCaseRepository', () => {

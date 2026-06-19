@@ -53,7 +53,7 @@ vi.mock('@/config/featureFlags', async (importOriginal) => {
   };
 });
 
-function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}) {
+function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}, path = '/today') {
   localStorage.setItem(
     SETTINGS_STORAGE_KEY,
     JSON.stringify({
@@ -64,7 +64,7 @@ function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}
 
   return render(
     <QueryClientProvider client={createTestQueryClient()}>
-      <MemoryRouter initialEntries={['/today']}>
+      <MemoryRouter initialEntries={[path]}>
         <ToastProvider>
           <SettingsProvider>
             <Routes>
@@ -128,5 +128,44 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
     
     // Core staff functionality should remain
     expect(screen.getByText('日次記録')).toBeInTheDocument();
+  });
+
+  it('renders kiosk-navigation and footer dialog registry in Kiosk mode', () => {
+    renderAppShell({ layoutMode: 'kiosk' }, '/kiosk');
+
+    // Kiosk navigation should be rendered
+    expect(screen.getByTestId('kiosk-navigation')).toBeInTheDocument();
+
+    // Footer (contentinfo) should be in the document (renders onlyDialogs)
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+  });
+
+  it('does not render kiosk-navigation or footer in Normal mode', () => {
+    renderAppShell({ layoutMode: 'normal' });
+
+    // Kiosk navigation should not be rendered
+    expect(screen.queryByTestId('kiosk-navigation')).not.toBeInTheDocument();
+
+    // Footer (contentinfo) should not be in the document
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+  });
+
+  it('renders kiosk-navigation and footer when kiosk query is explicitly enabled', () => {
+    renderAppShell({ layoutMode: 'normal' }, '/call-logs?kiosk=1');
+
+    expect(screen.getByTestId('kiosk-navigation')).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+  });
+
+  it('marks billing nav as active on kiosk-prefixed billing routes', () => {
+    renderAppShell({ layoutMode: 'kiosk' }, '/kiosk/billing?kiosk=1');
+
+    expect(screen.getByTestId('kiosk-nav-billing')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('marks schedule nav as active on kiosk-prefixed schedule routes', () => {
+    renderAppShell({ layoutMode: 'kiosk' }, '/kiosk/schedules/day?kiosk=1');
+
+    expect(screen.getByTestId('kiosk-nav-schedule')).toHaveAttribute('aria-current', 'page');
   });
 });

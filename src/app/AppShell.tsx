@@ -7,7 +7,7 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import Fab from '@mui/material/Fab';
 import React, { useContext, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { KioskBackToToday } from './components/KioskBackToToday';
 import { KioskExitFab } from './components/KioskExitFab';
 import { KioskNavigation } from './components/KioskNavigation';
@@ -26,11 +26,11 @@ import { FooterQuickActions } from './components/FooterQuickActions';
 const SKIP_LOGIN = shouldSkipLogin();
 
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const location = useLocation();
   const navigate = useNavigate();
   const { mode, toggle } = useContext(ColorModeContext);
   
   const {
+    location,
     dashboardPath,
     hubRouteMeta,
     isFocusMode,
@@ -52,6 +52,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     drawerWidth,
     currentDrawerWidth,
     showDesktopSidebar,
+    layoutMode,
     navItems,
     filteredNavItems,
     groupedNavItems,
@@ -111,23 +112,40 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     />
   ) : null;
 
+  const isExplicitKioskLayout = layoutMode === 'kiosk' || location.pathname.startsWith('/kiosk');
+  const shouldShowFooterMenu = isKioskMode && isExplicitKioskLayout;
+
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
-        <div data-testid="app-shell" data-kiosk={isKioskMode || undefined}>
-          <KioskBackToToday />
+        <div
+          data-testid="app-shell"
+          data-kiosk={isExplicitKioskLayout || undefined}
+          style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}
+        >
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
-            footer={<FooterQuickActions onlyDialogs={isKioskMode} />}
+            footer={
+              shouldShowFooterMenu
+                ? <FooterQuickActions onlyDialogs={isExplicitKioskLayout} />
+                : undefined
+            }
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
-            contentPaddingY={isKioskMode ? 0 : contentPaddingY}
-            contentPaddingBottom={isKioskMode ? 160 : undefined}
+            contentPaddingY={isExplicitKioskLayout ? 0 : contentPaddingY}
+            contentPaddingBottom={isExplicitKioskLayout ? 240 : undefined}
+            viewportHeight="100%"
             viewportMode={viewportMode}
           >
             {/* Global Connection Readiness Linkage */}
             <ConnectionDegradedBanner />
+            <KioskBackToToday />
             {children}
           </AppShellV2>
 
@@ -179,7 +197,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
           <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
-          {isKioskMode && (
+          {isExplicitKioskLayout && (
             <>
               <KioskNavigation />
               <KioskExitFab onExit={handleExitKioskMode} />

@@ -69,6 +69,7 @@ describe('supportPlanningSheetViewModelMapper', () => {
     source: null,
     diffSummary: null,
     latestIcebergSnapshot: null,
+    reflectPreviewOpen: false,
   };
 
   it('ViewModel が正しくマッピングされること', () => {

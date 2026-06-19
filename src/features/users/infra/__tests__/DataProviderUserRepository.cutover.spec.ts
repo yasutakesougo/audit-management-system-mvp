@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { DataProviderUserRepository } from '../DataProviderUserRepository';
 import { InMemoryDataProvider } from '@/lib/data/inMemoryDataProvider';
+import type { IUserMasterCreateDto } from '../../types';
 
 describe('DataProviderUserRepository Cutover Transitions', () => {
   let provider: InMemoryDataProvider;
@@ -17,7 +18,7 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
     });
 
     it('create() writes to legacy columns in benefit list', async () => {
-      const payload = {
+      const payload: IUserMasterCreateDto = {
         UserID: 'U-PRE',
         FullName: 'Pre User',
         GrantMunicipality: 'City-Legacy'
@@ -26,11 +27,12 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
       await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '' }]);
       await provider.seed('UserBenefit_Profile', [{ UserID: 'INIT', Grant_x0020_Municipality: '' }]);
 
-      await repo.create(payload as unknown as Record<string, unknown>);
+      await repo.create(payload);
 
       const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
       const created = benefit.find(b => b.UserID === 'U-PRE');
-      expect(created).toBeDefined(); 
+      expect(created).toBeDefined();
+      if (!created) throw new Error('Expected cutover benefit profile to be created');
       // PRE_MIGRATION writes to legacy name
       expect(created.Grant_x0020_Municipality).toBe('City-Legacy');
       expect(created.GrantMunicipality).toBeUndefined();
@@ -43,7 +45,7 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
     });
 
     it('create() writes only to canonical columns', async () => {
-      const payload = {
+      const payload: IUserMasterCreateDto = {
         UserID: 'U-CUT',
         FullName: 'Cut User',
         GrantMunicipality: 'City-Cut'
@@ -52,11 +54,12 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
       await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '' }]);
       await provider.seed('UserBenefit_Profile', [{ UserID: 'INIT', GrantMunicipality: '' }]);
 
-      await repo.create(payload as unknown as Record<string, unknown>);
+      await repo.create(payload);
 
       const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
       const created = benefit.find(b => b.UserID === 'U-CUT');
       expect(created).toBeDefined();
+      if (!created) throw new Error('Expected cutover benefit profile to be created');
       expect(created.GrantMunicipality).toBe('City-Cut');
       expect(created.Grant_x0020_Municipality).toBeUndefined();
     });

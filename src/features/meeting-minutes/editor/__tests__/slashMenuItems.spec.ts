@@ -18,11 +18,15 @@ import {
   PRIMARY_MENU_ITEM_TITLES,
   SECONDARY_MENU_ITEM_TITLES,
   MEETING_PREFIX,
+  type MeetingMinutesEditor,
 } from '../slashMenuItems';
 import { BlockNoteEditor } from '@blocknote/core';
+import { meetingMinutesSchema } from '../blockKinds';
 
 describe('slashMenuItems', () => {
-  const editor = BlockNoteEditor.create();
+  const editor: MeetingMinutesEditor = BlockNoteEditor.create({
+    schema: meetingMinutesSchema,
+  });
 
   // ── 全体構造 ──────────────────────────────────────────────────
 

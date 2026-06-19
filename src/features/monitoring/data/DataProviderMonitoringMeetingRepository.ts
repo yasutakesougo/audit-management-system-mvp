@@ -13,6 +13,11 @@ import type {
   MeetingStatus,
 } from '@/domain/isp/monitoringMeeting';
 import {
+  meetingStatusValues,
+  meetingTypeValues,
+  planChangeDecisionValues,
+} from '@/domain/isp/monitoringMeeting';
+import {
   MONITORING_MEETING_CANDIDATES,
   MONITORING_MEETING_ENSURE_FIELDS,
   safeJsonParse,
@@ -23,6 +28,30 @@ import {
 import { buildSummaryText } from '@/features/meeting-minutes/editor/blockMappers';
 import type { MeetingMinuteBlock } from '@/features/meeting-minutes/types';
 import { MonitoringMeetingSchemaResolver } from './modules/MonitoringMeetingSchemaResolver';
+
+type QualificationCheckStatus = NonNullable<MonitoringMeetingRecord['qualificationCheckStatus']>;
+
+const qualificationCheckStatusValues = ['ok', 'warning', 'invalid'] as const satisfies readonly QualificationCheckStatus[];
+
+function readString(row: SpMonitoringMeetingRow, fieldName: string, fallback = ''): string {
+  const value = row[fieldName];
+  return value === undefined || value === null ? fallback : String(value);
+}
+
+function readOptionalString(row: SpMonitoringMeetingRow, fieldName: string): string | undefined {
+  const value = readString(row, fieldName);
+  return value || undefined;
+}
+
+function readEnum<T extends string>(
+  row: SpMonitoringMeetingRow,
+  fieldName: string,
+  values: readonly T[],
+  fallback: T,
+): T {
+  const value = readString(row, fieldName);
+  return values.includes(value as T) ? (value as T) : fallback;
+}
 
 /**
  * DataProviderMonitoringMeetingRepository
@@ -172,45 +201,55 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
 
   private mapSpRowToRecord(row: SpMonitoringMeetingRow, mapping: MonitoringMeetingFieldMapping): MonitoringMeetingRecord {
     return {
-      id: String(row[this.mf(mapping, 'recordId')] ?? ''),
-      userId: String(row[this.mf(mapping, 'userId')] ?? ''),
-      userName: (row[this.mf(mapping, 'userName')] as string | undefined) || undefined,
-      ispId: String(row[this.mf(mapping, 'ispId')] ?? ''),
-      planningSheetId: (row[this.mf(mapping, 'planningSheetId')] as string | undefined) || undefined,
-      planningSheetTitle: (row[this.mf(mapping, 'planningSheetTitle')] as string | undefined) || undefined,
-      meetingType: ((row[this.mf(mapping, 'meetingType')] as string | undefined) || 'regular') as MeetingType,
-      meetingDate: (row[this.mf(mapping, 'meetingDate')] as string | undefined) || '',
-      venue: (row[this.mf(mapping, 'venue')] as string | undefined) || '',
+      id: readString(row, this.mf(mapping, 'recordId')),
+      userId: readString(row, this.mf(mapping, 'userId')),
+      userName: readOptionalString(row, this.mf(mapping, 'userName')),
+      ispId: readString(row, this.mf(mapping, 'ispId')),
+      planningSheetId: readOptionalString(row, this.mf(mapping, 'planningSheetId')),
+      planningSheetTitle: readOptionalString(row, this.mf(mapping, 'planningSheetTitle')),
+      meetingType: readEnum<MeetingType>(row, this.mf(mapping, 'meetingType'), meetingTypeValues, 'regular'),
+      meetingDate: readString(row, this.mf(mapping, 'meetingDate')),
+      venue: readString(row, this.mf(mapping, 'venue')),
       attendees: safeJsonParse<MeetingAttendee[]>(row[this.mf(mapping, 'attendeesJson')], []),
       goalEvaluations: safeJsonParse<GoalEvaluation[]>(row[this.mf(mapping, 'goalEvaluationsJson')], []),
-      overallAssessment: (row[this.mf(mapping, 'overallAssessment')] as string | undefined) || '',
-      userFeedback: (row[this.mf(mapping, 'userFeedback')] as string | undefined) || '',
-      familyFeedback: (row[this.mf(mapping, 'familyFeedback')] as string | undefined) || '',
-      planChangeDecision: ((row[this.mf(mapping, 'planChangeDecision')] as string | undefined) || 'no_change') as PlanChangeDecision,
-      changeReason: (row[this.mf(mapping, 'changeReason')] as string | undefined) || '',
+      overallAssessment: readString(row, this.mf(mapping, 'overallAssessment')),
+      userFeedback: readString(row, this.mf(mapping, 'userFeedback')),
+      familyFeedback: readString(row, this.mf(mapping, 'familyFeedback')),
+      planChangeDecision: readEnum<PlanChangeDecision>(
+        row,
+        this.mf(mapping, 'planChangeDecision'),
+        planChangeDecisionValues,
+        'no_change',
+      ),
+      changeReason: readString(row, this.mf(mapping, 'changeReason')),
       decisions: safeJsonParse<string[]>(row[this.mf(mapping, 'decisionsJson')], []),
-      nextMonitoringDate: (row[this.mf(mapping, 'nextMonitoringDate')] as string | undefined) || '',
-      recordedBy: (row[this.mf(mapping, 'recordedBy')] as string | undefined) || '',
-      recordedAt: (row[this.mf(mapping, 'recordedAt')] as string | undefined) || '',
+      nextMonitoringDate: readString(row, this.mf(mapping, 'nextMonitoringDate')),
+      recordedBy: readString(row, this.mf(mapping, 'recordedBy')),
+      recordedAt: readString(row, this.mf(mapping, 'recordedAt')),
 
       // 強度行動障害支援
-      implementationSummary: (row[this.mf(mapping, 'implementationSummary')] as string | undefined) || '',
-      behaviorChangeSummary: (row[this.mf(mapping, 'behaviorChangeSummary')] as string | undefined) || '',
-      effectiveSupportSummary: (row[this.mf(mapping, 'effectiveSupportSummary')] as string | undefined) || '',
-      issueSummary: (row[this.mf(mapping, 'issueSummary')] as string | undefined) || '',
-      discussionSummary: (row[this.mf(mapping, 'discussionSummary')] as string | undefined) || '',
+      implementationSummary: readString(row, this.mf(mapping, 'implementationSummary')),
+      behaviorChangeSummary: readString(row, this.mf(mapping, 'behaviorChangeSummary')),
+      effectiveSupportSummary: readString(row, this.mf(mapping, 'effectiveSupportSummary')),
+      issueSummary: readString(row, this.mf(mapping, 'issueSummary')),
+      discussionSummary: readString(row, this.mf(mapping, 'discussionSummary')),
       requiresPlanSheetUpdate: Boolean(row[this.mf(mapping, 'requiresPlanSheetUpdate')]),
       requiresIspUpdate: Boolean(row[this.mf(mapping, 'requiresIspUpdate')]),
       nextActions: safeJsonParse<string[]>(row[this.mf(mapping, 'nextActions')], []),
       hasBasicTrainedMember: Boolean(row[this.mf(mapping, 'hasBasicTrainedMember')]),
       hasPracticalTrainedMember: Boolean(row[this.mf(mapping, 'hasPracticalTrainedMember')]),
-      qualificationCheckStatus: (row[this.mf(mapping, 'qualificationCheckStatus')] as 'ok' | 'warning' | 'invalid' | undefined) || 'ok',
+      qualificationCheckStatus: readEnum<QualificationCheckStatus>(
+        row,
+        this.mf(mapping, 'qualificationCheckStatus'),
+        qualificationCheckStatusValues,
+        'ok',
+      ),
 
       // 監査ステータス
-      status: (row[this.mf(mapping, 'status')] as MeetingStatus) || 'draft',
-      finalizedAt: (row[this.mf(mapping, 'finalizedAt')] as string | undefined) || undefined,
-      finalizedBy: (row[this.mf(mapping, 'finalizedBy')] as string | undefined) || undefined,
-      previousMeetingId: (row[this.mf(mapping, 'previousMeetingId')] as string | undefined) || undefined,
+      status: readEnum<MeetingStatus>(row, this.mf(mapping, 'status'), meetingStatusValues, 'draft'),
+      finalizedAt: readOptionalString(row, this.mf(mapping, 'finalizedAt')),
+      finalizedBy: readOptionalString(row, this.mf(mapping, 'finalizedBy')),
+      previousMeetingId: readOptionalString(row, this.mf(mapping, 'previousMeetingId')),
       discussionSummaryBlocks: safeJsonParse<MeetingMinuteBlock[] | undefined>(row[this.mf(mapping, 'discussionSummaryBlocksJson')], undefined),
     };
   }
@@ -265,7 +304,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
 
     // Synchronize plain text for compatibility
     if (record.discussionSummaryBlocks) {
-      const summaryText = buildSummaryText(record.discussionSummaryBlocks as MeetingMinuteBlock[]);
+      const summaryText = buildSummaryText(record.discussionSummaryBlocks);
       if (summaryText) {
         body[this.mf(mapping, 'discussionSummary')] = summaryText;
       }

@@ -4,6 +4,7 @@ import { useToiletRecords } from '../useToiletRecords';
 
 const mockListByDate = vi.fn();
 const mockCreate = vi.fn();
+const mockUpdate = vi.fn();
 
 let currentSpFetch = vi.fn();
 let currentGetListFieldInternalNames = vi.fn();
@@ -19,6 +20,7 @@ vi.mock('../toiletRepositoryFactory', () => ({
   getToiletRepository: (spFetch: any, getListFieldInternalNames: any) => ({
     listByDate: (dateIso: string) => mockListByDate(dateIso, spFetch, getListFieldInternalNames),
     create: (input: any) => mockCreate(input),
+    update: (recordId: string, patch: any) => mockUpdate(recordId, patch),
   }),
 }));
 
@@ -29,6 +31,7 @@ describe('useToiletRecords', () => {
     currentGetListFieldInternalNames = vi.fn().mockResolvedValue(new Set());
     mockListByDate.mockReset();
     mockCreate.mockReset();
+    mockUpdate.mockReset();
   });
 
   it('does not trigger re-fetch loop even if useSP returns new function instances on every render', async () => {
@@ -92,6 +95,7 @@ describe('useToiletRecords', () => {
 
     const initialRefresh = result.current.refresh;
     const initialCreate = result.current.create;
+    const initialCorrect = result.current.correct;
 
     // Change spFetch instance and trigger rerender
     currentSpFetch = vi.fn().mockResolvedValue({ ok: true });
@@ -99,6 +103,75 @@ describe('useToiletRecords', () => {
 
     expect(result.current.refresh).toBe(initialRefresh);
     expect(result.current.create).toBe(initialCreate);
+    expect(result.current.correct).toBe(initialCorrect);
+  });
+
+  it('calls repository update and refreshes records for the selected date after correction', async () => {
+    const correctedRecord = {
+      id: 'toilet-1',
+      toiletType: 'bowel',
+      amount: 'large',
+      memo: 'corrected memo',
+    };
+    mockListByDate
+      .mockResolvedValueOnce([{ id: 'toilet-1', toiletType: 'urination' }])
+      .mockResolvedValueOnce([correctedRecord]);
+    mockUpdate.mockResolvedValue(correctedRecord);
+
+    const { result } = renderHook(() => useToiletRecords('2026-05-28'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let returnedRecord: unknown;
+    await act(async () => {
+      returnedRecord = await result.current.correct('toilet-1', {
+        toiletType: 'bowel',
+        amount: 'large',
+        memo: 'corrected memo',
+      });
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith('toilet-1', {
+      toiletType: 'bowel',
+      amount: 'large',
+      memo: 'corrected memo',
+    });
+    expect(mockListByDate).toHaveBeenNthCalledWith(
+      1,
+      '2026-05-28',
+      expect.any(Function),
+      expect.any(Function),
+    );
+    expect(mockListByDate).toHaveBeenNthCalledWith(
+      2,
+      '2026-05-28',
+      expect.any(Function),
+      expect.any(Function),
+    );
+    expect(returnedRecord).toBe(correctedRecord);
+    expect(result.current.records).toEqual([correctedRecord]);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('sets error when correction fails', async () => {
+    const updateError = new Error('update failed');
+    mockListByDate.mockResolvedValue([]);
+    mockUpdate.mockRejectedValue(updateError);
+
+    const { result } = renderHook(() => useToiletRecords('2026-05-28'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.correct('toilet-1', { memo: 'corrected memo' })).rejects.toBe(updateError);
+    });
+
+    expect(result.current.error).toBe(updateError);
+    expect(mockListByDate).toHaveBeenCalledTimes(1);
   });
 
   it('sets error and sets isLoading to false when listByDate rejects, without infinite looping', async () => {

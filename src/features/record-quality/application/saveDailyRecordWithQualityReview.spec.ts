@@ -1,0 +1,313 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type {
+  DailyRecordRepository,
+  SaveDailyRecordInput,
+} from '@/features/daily/domain/DailyRecordRepository';
+import { InMemoryRecordQualityReviewRepository } from '@/domain/supportRecord/recordQualityReviewRepository';
+import {
+  saveDailyRecordWithQualityReview,
+} from './saveDailyRecordWithQualityReview';
+
+const auditLogInfo = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/debugLogger', () => ({
+  auditLog: {
+    info: auditLogInfo,
+  },
+}));
+
+describe('saveDailyRecordWithQualityReview', () => {
+  beforeEach(() => {
+    auditLogInfo.mockClear();
+  });
+
+  it('saves the daily record and creates review metadata for each support row', async () => {
+    const dailyRepository = createDailyRepository();
+    const reviewRepository = new InMemoryRecordQualityReviewRepository();
+
+    const result = await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input: createDailyRecordInput(),
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+
+    expect(dailyRepository.save).toHaveBeenCalledWith(createDailyRecordInput(), undefined);
+    expect(result).toEqual({
+      savedDailyRecord: true,
+      createdReviewCount: 2,
+      skippedReviewCount: 0,
+      emptyTextSkippedReviewCount: 0,
+      existingReviewSkippedReviewCount: 0,
+    });
+    expect(auditLogInfo).toHaveBeenCalledWith(
+      'record-quality:daily-save',
+      'Review metadata creation completed',
+      {
+        date: '2026-06-12',
+        userRowCount: 2,
+        createdReviewCount: 2,
+        skippedReviewCount: 0,
+        emptyTextSkippedReviewCount: 0,
+        existingReviewSkippedReviewCount: 0,
+      },
+    );
+    await expect(
+      reviewRepository.getReview('daily:2026-06-12:user-1'),
+    ).resolves.toMatchObject({
+      recordId: 'daily:2026-06-12:user-1',
+      originalRecord: { recordId: 'daily:2026-06-12:user-1' },
+      status: 'draft',
+      outputKind: 'review_metadata',
+      requiresHumanReview: true,
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+    await expect(
+      reviewRepository.getReview('daily:2026-06-12:user-2'),
+    ).resolves.toMatchObject({
+      recordId: 'daily:2026-06-12:user-2',
+      originalRecord: { recordId: 'daily:2026-06-12:user-2' },
+    });
+  });
+
+  it('does not persist original support row text in the review metadata', async () => {
+    const dailyRepository = createDailyRepository();
+    const reviewRepository = new InMemoryRecordQualityReviewRepository();
+
+    await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input: createDailyRecordInput({
+        specialNotes: '元の支援記録本文。職員が声かけを行った。',
+      }),
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+
+    const review = await reviewRepository.getReview('daily:2026-06-12:user-1');
+    expect(JSON.stringify(review)).not.toContain('元の支援記録本文');
+    expect(review && 'originalText' in review).toBe(false);
+    expect(review?.originalRecord).toEqual({ recordId: 'daily:2026-06-12:user-1' });
+    expect(JSON.stringify(auditLogInfo.mock.calls)).not.toContain('元の支援記録本文');
+  });
+
+  it('skips rows with no reviewable support text', async () => {
+    const dailyRepository = createDailyRepository();
+    const reviewRepository = new InMemoryRecordQualityReviewRepository();
+
+    const result = await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input: {
+        ...createDailyRecordInput(),
+        userRows: [
+          {
+            userId: 'empty-user',
+            userName: '空欄 利用者',
+            amActivity: '',
+            pmActivity: '',
+            lunchAmount: '',
+            specialNotes: '',
+            problemBehavior: {
+              selfHarm: false,
+              otherInjury: false,
+              loudVoice: false,
+              pica: false,
+              other: false,
+            },
+            behaviorTags: [],
+          },
+        ],
+        userCount: 1,
+      },
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+
+    expect(result.createdReviewCount).toBe(0);
+    expect(result.skippedReviewCount).toBe(1);
+    expect(result.emptyTextSkippedReviewCount).toBe(1);
+    expect(result.existingReviewSkippedReviewCount).toBe(0);
+    expect(result.skippedReviewCount).toBe(
+      result.emptyTextSkippedReviewCount + result.existingReviewSkippedReviewCount,
+    );
+    await expect(
+      reviewRepository.getReview('daily:2026-06-12:empty-user'),
+    ).resolves.toBeNull();
+  });
+
+  it('skips existing review metadata without failing the daily save', async () => {
+    const dailyRepository = createDailyRepository();
+    const reviewRepository = new InMemoryRecordQualityReviewRepository();
+    const input = createDailyRecordInput();
+
+    await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input,
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+
+    const result = await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input,
+      createdAt: '2026-06-12T10:00:00.000Z',
+    });
+
+    expect(dailyRepository.save).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      savedDailyRecord: true,
+      createdReviewCount: 0,
+      skippedReviewCount: 2,
+      emptyTextSkippedReviewCount: 0,
+      existingReviewSkippedReviewCount: 2,
+    });
+  });
+
+  it('splits empty text and existing review skips without storing original body text', async () => {
+    const dailyRepository = createDailyRepository();
+    const reviewRepository = new InMemoryRecordQualityReviewRepository();
+    const sensitiveBody = '本文をログや戻り値に含めない。';
+    const input = {
+      ...createDailyRecordInput({ specialNotes: sensitiveBody }),
+      userRows: [
+        createDailyRecordInput({ specialNotes: sensitiveBody }).userRows[0],
+        {
+          userId: 'empty-user',
+          userName: '空欄 利用者',
+          amActivity: '',
+          pmActivity: '',
+          lunchAmount: '',
+          specialNotes: '',
+          problemBehavior: {
+            selfHarm: false,
+            otherInjury: false,
+            loudVoice: false,
+            pica: false,
+            other: false,
+          },
+          behaviorTags: [],
+        },
+      ],
+      userCount: 2,
+    };
+
+    await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input,
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+
+    const result = await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input,
+      createdAt: '2026-06-12T10:00:00.000Z',
+    });
+
+    expect(dailyRepository.save).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      savedDailyRecord: true,
+      createdReviewCount: 0,
+      skippedReviewCount: 2,
+      emptyTextSkippedReviewCount: 1,
+      existingReviewSkippedReviewCount: 1,
+    });
+    expect(result.skippedReviewCount).toBe(
+      result.emptyTextSkippedReviewCount + result.existingReviewSkippedReviewCount,
+    );
+    expect(auditLogInfo).toHaveBeenLastCalledWith(
+      'record-quality:daily-save',
+      'Review metadata creation completed',
+      {
+        date: '2026-06-12',
+        userRowCount: 2,
+        createdReviewCount: 0,
+        skippedReviewCount: 2,
+        emptyTextSkippedReviewCount: 1,
+        existingReviewSkippedReviewCount: 1,
+      },
+    );
+    const review = await reviewRepository.getReview('daily:2026-06-12:user-1');
+    expect(JSON.stringify(review)).not.toContain(sensitiveBody);
+    expect(JSON.stringify(result)).not.toContain(sensitiveBody);
+    expect(JSON.stringify(auditLogInfo.mock.calls)).not.toContain(sensitiveBody);
+  });
+
+  it('passes mutation params to the daily repository save boundary', async () => {
+    const dailyRepository = createDailyRepository();
+    const reviewRepository = new InMemoryRecordQualityReviewRepository();
+    const abortController = new AbortController();
+
+    await saveDailyRecordWithQualityReview({
+      dailyRepository,
+      reviewRepository,
+      input: createDailyRecordInput(),
+      mutationParams: { signal: abortController.signal },
+      createdAt: '2026-06-12T09:00:00.000Z',
+    });
+
+    expect(dailyRepository.save).toHaveBeenCalledWith(
+      createDailyRecordInput(),
+      { signal: abortController.signal },
+    );
+  });
+});
+
+function createDailyRepository(): DailyRecordRepository {
+  return {
+    save: vi.fn(async () => undefined),
+    load: vi.fn(),
+    list: vi.fn(),
+    approve: vi.fn(),
+    scanIntegrity: vi.fn(),
+  };
+}
+
+function createDailyRecordInput(
+  overrides: { readonly specialNotes?: string } = {},
+): SaveDailyRecordInput {
+  return {
+    date: '2026-06-12',
+    reporter: {
+      name: '記録者',
+      role: '生活支援員',
+    },
+    userRows: [
+      {
+        userId: 'user-1',
+        userName: '利用者 一',
+        amActivity: '午前は作業室で軽作業に参加した。',
+        pmActivity: '午後は職員が声かけを行い、休憩を提案した。',
+        lunchAmount: '昼食は8割、水分はコップ半分程度。',
+        specialNotes: overrides.specialNotes ?? '',
+        problemBehavior: {
+          selfHarm: false,
+          otherInjury: false,
+          loudVoice: false,
+          pica: false,
+          other: false,
+        },
+        behaviorTags: [],
+      },
+      {
+        userId: 'user-2',
+        userName: '利用者 二',
+        amActivity: '午前は音楽活動に参加した。',
+        pmActivity: '',
+        lunchAmount: '昼食は完食。',
+        specialNotes: '次回も活動前に予定確認を行う。',
+        problemBehavior: {
+          selfHarm: false,
+          otherInjury: false,
+          loudVoice: false,
+          pica: false,
+          other: false,
+        },
+        behaviorTags: [],
+      },
+    ],
+    userCount: 2,
+  };
+}

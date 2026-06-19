@@ -135,6 +135,14 @@ export {
     SUPPORT_CASE_RESTRICTED_DOCUMENTS_PROVISIONING_FIELDS,
 } from './supportCaseFields';
 
+// ── RecordQualityReview ──
+export {
+    RECORD_QUALITY_REVIEW_CANDIDATES,
+    RECORD_QUALITY_REVIEW_ESSENTIAL_FIELDS,
+    RECORD_QUALITY_REVIEW_LIST_TITLE,
+    RECORD_QUALITY_REVIEW_PROVISIONING_FIELDS,
+} from './recordQualityReviewFields';
+
 // ── Iceberg ──
 export {
     buildIcebergPdcaSelectFields, FIELD_MAP_ICEBERG_ANALYSIS,
