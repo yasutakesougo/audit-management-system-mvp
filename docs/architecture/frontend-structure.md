@@ -15,7 +15,7 @@ Vite でビルドされる本アプリケーションの起動から画面描画
 graph TD
     A[index.html] --> B[src/main.tsx]
     B --> C[src/App.tsx]
-    
+
     subgraph Providers & Global Bridges [グローバル・プロバイダー層]
         C --> D[MsalProvider]
         D --> E[QueryClientProvider]
@@ -88,7 +88,7 @@ src/
 graph TD
     Paths[appRoutePaths: URL Route Registry] --> Router[router.tsx: Router Orchestrator]
     NavConfig[navigationConfig: Dynamic Menu Filter] --> Router
-    
+
     Router --> Sidebar[Sidebar Menu: AppShellSidebar]
     Paths --> Direct[Direct URL Access]
 ```
