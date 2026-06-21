@@ -24,7 +24,7 @@ describe('ensureListExists boundaries', () => {
     const result = await ensureListExists(
       spFetch,
       'SupportOrders',
-      [{ internalName: 'NewColumn', typeAsString: 'Text', required: true }],
+      [{ internalName: 'NewColumn', type: 'Text', required: true }],
       { preventPhysicalCreation: true },
     );
 
@@ -84,7 +84,7 @@ describe('ensureListExists boundaries', () => {
     const result = await ensureListExists(
       spFetch,
       'QAList',
-      [{ internalName: 'NewColumn', typeAsString: 'Text', required: true }],
+      [{ internalName: 'NewColumn', type: 'Text', required: true }],
       { preventPhysicalCreation: true },
     );
 
@@ -120,7 +120,7 @@ describe('ensureListExists boundaries', () => {
     const result = await ensureListExists(
       spFetch,
       'OptionalColumnList',
-      [{ internalName: 'OptionalColumn', typeAsString: 'Text', required: false }],
+      [{ internalName: 'OptionalColumn', type: 'Text', required: false }],
     );
 
     expect(spFetch).toHaveBeenCalledTimes(2);
