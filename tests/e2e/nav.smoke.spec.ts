@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from './_helpers/smoke';
+import {
+  expectLocatorVisibleBestEffort,
+  expectSmokePageReady,
+  expectTestIdVisibleBestEffort,
+} from './_helpers/smoke';
 
 async function openNavIfDrawerExists(page: Page) {
   const open = page.getByTestId('nav-open');
@@ -51,7 +55,7 @@ test.describe('nav smoke (UI navigation)', () => {
     // Smoke: verify navigation succeeds and minimal UI is visible
     await expect(page).toHaveURL(/\/checklist/);
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });
+    await expectSmokePageReady(page);
     
     // checklist-root is optional (depends on admin authz)
     const root = page.getByTestId('checklist-root');

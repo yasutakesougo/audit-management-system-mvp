@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { expectSmokePageReady } from './_helpers/smoke';
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173';
 
@@ -87,7 +88,7 @@ test.describe('router smoke (URL direct, testid based)', () => {
       await expect(checklistRoot).toBeVisible();
     } else {
       // Fallback: checklist-root may not exist; use minimal UI
-      await expect(page.getByRole('heading').first()).toBeVisible();
+      await expectSmokePageReady(page);
     }
   });
 });

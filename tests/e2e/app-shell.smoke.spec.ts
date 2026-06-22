@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
 import {
   clickBestEffort,
   expectLocatorVisibleBestEffort,
+  expectSmokePageReady,
   expectTestIdVisibleBestEffort,
 } from './_helpers/smoke';
 
@@ -10,7 +11,7 @@ test.describe('app shell smoke (appRender recovery)', () => {
     await page.goto('/');
 
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });
+    await expectSmokePageReady(page);
 
     await expectTestIdVisibleBestEffort(page, 'app-shell');
 

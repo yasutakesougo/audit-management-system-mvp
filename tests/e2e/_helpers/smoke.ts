@@ -5,6 +5,25 @@ type BestEffortOptions = {
   note?: string;
 };
 
+type SmokeReadyOptions = {
+  timeout?: number;
+};
+
+export async function expectSmokePageReady(
+  page: Page,
+  options: SmokeReadyOptions = {}
+): Promise<void> {
+  const timeout = options.timeout ?? 15_000;
+
+  await expect(async () => {
+    const hasHeading = await page.getByRole('heading').first().isVisible().catch(() => false);
+    const hasAppShell = await page.getByTestId('app-shell').isVisible().catch(() => false);
+    const hasMain = await page.locator('main').first().isVisible().catch(() => false);
+
+    expect(hasHeading || hasAppShell || hasMain).toBe(true);
+  }).toPass({ timeout });
+}
+
 export async function expectLocatorVisibleBestEffort(
   locator: Locator,
   note: string,
