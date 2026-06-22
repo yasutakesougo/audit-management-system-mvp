@@ -50,6 +50,7 @@
     "test:schedule:jst": "VITE_SCHEDULES_TZ=Asia/Tokyo vitest run tests/unit/schedule --reporter=verbose --no-file-parallelism",
     "test:schedule:la": "VITE_SCHEDULES_TZ=America/Los_Angeles vitest run tests/unit/schedule --reporter=verbose --no-file-parallelism",
     "test:ui": "vitest",
+    "test:snapshot": "vitest run tests/unit/ui.snapshot.spec.tsx tests/unit/systemMap.spec.ts --reporter=verbose --no-file-parallelism",
     "test:coverage": "vitest run --coverage",
     "test:prefetch": "vitest run tests/unit/prefetch.*.spec.ts* --run",
     "test:e2e": "playwright test",
