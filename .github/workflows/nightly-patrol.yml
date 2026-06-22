@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   issues: write
 
 concurrency:
@@ -395,20 +395,34 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit report if changed
+      - name: Report generated changes
         if: ${{ always() }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           if [ -z "$(git status --porcelain -- docs/nightly-patrol src/sharepoint/latest-decision.json)" ]; then
             echo "No report changes"
             exit 0
           fi
 
-          git add -A docs/nightly-patrol src/sharepoint/latest-decision.json
-          git commit -m "chore(ops): nightly patrol report"
-          git push
+          {
+            echo "## Nightly report changes"
+            echo "Generated report files changed during this run."
+            echo ""
+            echo '```'
+            git status --short -- docs/nightly-patrol src/sharepoint/latest-decision.json
+            echo '```'
+            echo ""
+            echo "Nightly Patrol is report-only in CI; review the uploaded artifacts instead of pushing directly to main."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload generated patrol reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-patrol-reports-${{ github.run_number }}
+          path: |
+            docs/nightly-patrol/**
+            src/sharepoint/latest-decision.json
+          if-no-files-found: ignore
 
       - name: Final Fail Gate
         if: ${{ always() && steps.decision.outputs.exit_code != '0' }}
