@@ -40,7 +40,7 @@ function logToAudit(entry) {
     const which = execSync('which m365', { encoding: 'utf8' }).trim();
     if (which) m365 = which;
   } catch {
-    m365 = 'npx -y @pnp/cli-microsoft365';
+    m365 = 'npx -y --package @pnp/cli-microsoft365 m365';
   }
 
   const fields = [
