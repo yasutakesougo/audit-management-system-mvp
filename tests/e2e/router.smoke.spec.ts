@@ -93,8 +93,7 @@ test.describe('router smoke (URL direct, testid based)', () => {
       await expectSmokePageReady(page);
       await expectLocatorVisibleBestEffort(
         page.getByRole('heading').first(),
-        'heading not found: heading (allowed for smoke)',
-        15_000
+        'heading not found: heading (allowed for smoke)'
       );
     }
   });
