@@ -4,10 +4,12 @@ import {
   expectLocatorVisibleBestEffort,
   expectSmokePageReady,
   expectTestIdVisibleBestEffort,
+  prepareSmokePage,
 } from './_helpers/smoke';
 
 test.describe('app shell smoke (appRender recovery)', () => {
   test('renders app shell and exposes navigation', async ({ page }) => {
+    await prepareSmokePage(page);
     await page.goto('/');
 
     await page.waitForLoadState('domcontentloaded');

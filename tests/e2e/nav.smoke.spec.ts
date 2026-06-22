@@ -3,6 +3,7 @@ import {
   expectLocatorVisibleBestEffort,
   expectSmokePageReady,
   expectTestIdVisibleBestEffort,
+  prepareSmokePage,
 } from './_helpers/smoke';
 
 async function openNavIfDrawerExists(page: Page) {
@@ -37,6 +38,7 @@ test.describe('nav smoke (UI navigation)', () => {
   });
 
   test('nav → audit renders audit-root', async ({ page }) => {
+    await prepareSmokePage(page);
     await page.goto('/');
 
     await openNavIfDrawerExists(page);
@@ -47,6 +49,7 @@ test.describe('nav smoke (UI navigation)', () => {
   });
 
   test('nav → checklist renders checklist-root', async ({ page }) => {
+    await prepareSmokePage(page);
     await page.goto('/');
 
     await openNavIfDrawerExists(page);

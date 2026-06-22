@@ -9,6 +9,28 @@ type SmokeReadyOptions = {
   timeout?: number;
 };
 
+const smokeRuntimeEnv = {
+  VITE_DEMO_MODE: '1',
+  VITE_E2E: '1',
+  VITE_E2E_MSAL_MOCK: '1',
+  VITE_SKIP_LOGIN: '1',
+  VITE_SKIP_SHAREPOINT: '1',
+  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+  VITE_SP_SITE_RELATIVE: '/sites/Audit',
+  VITE_MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
+  VITE_MSAL_TENANT_ID: '00000000-0000-0000-0000-000000000000',
+  __ALLOW_RUNTIME_FLAG_OVERRIDES__: '1',
+} as const;
+
+export async function prepareSmokePage(page: Page): Promise<void> {
+  await page.addInitScript((env) => {
+    window.__ENV__ = { ...(window.__ENV__ ?? {}), ...env };
+    for (const [key, value] of Object.entries(env)) {
+      window.localStorage.setItem(key, String(value));
+    }
+  }, smokeRuntimeEnv);
+}
+
 export async function expectSmokePageReady(
   page: Page,
   options: SmokeReadyOptions = {}
