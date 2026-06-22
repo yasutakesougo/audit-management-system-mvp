@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type ConsoleMessage, type Locator, type Page } from '@playwright/test';
 
 type BestEffortOptions = {
   timeout?: number;
@@ -22,11 +22,147 @@ const smokeRuntimeEnv = {
   __ALLOW_RUNTIME_FLAG_OVERRIDES__: '1',
 } as const;
 
+const smokeRuntimeFlagKeys = Object.keys(smokeRuntimeEnv);
+
+type SmokeDiagnostics = {
+  consoleMessages: string[];
+  consoleErrors: string[];
+  initScriptInstalled: boolean;
+  listenersInstalled: boolean;
+  pageErrors: string[];
+};
+
+const diagnosticsByPage = new WeakMap<Page, SmokeDiagnostics>();
+
+function getSmokeDiagnostics(page: Page): SmokeDiagnostics {
+  const existing = diagnosticsByPage.get(page);
+  if (existing) return existing;
+
+  const diagnostics: SmokeDiagnostics = {
+    consoleMessages: [],
+    consoleErrors: [],
+    initScriptInstalled: false,
+    listenersInstalled: false,
+    pageErrors: [],
+  };
+  diagnosticsByPage.set(page, diagnostics);
+  return diagnostics;
+}
+
+function pushLimited(values: string[], value: string, limit: number): void {
+  values.push(value);
+  if (values.length > limit) {
+    values.splice(0, values.length - limit);
+  }
+}
+
+function formatConsoleMessage(message: ConsoleMessage): string {
+  return `[${message.type()}] ${message.text()}`;
+}
+
+function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+  return String(error);
+}
+
+function installSmokeDiagnostics(page: Page): void {
+  const diagnostics = getSmokeDiagnostics(page);
+  if (diagnostics.listenersInstalled) return;
+
+  diagnostics.listenersInstalled = true;
+
+  page.on('console', (message) => {
+    const formatted = formatConsoleMessage(message);
+    pushLimited(diagnostics.consoleMessages, formatted, 100);
+    if (message.type() === 'error' || message.type() === 'warning') {
+      pushLimited(diagnostics.consoleErrors, formatted, 50);
+    }
+  });
+
+  page.on('pageerror', (error) => {
+    pushLimited(diagnostics.pageErrors, formatUnknownError(error), 25);
+  });
+}
+
+async function collectSmokePageSnapshot(page: Page): Promise<Record<string, unknown>> {
+  const fallback = {
+    pageUrl: page.url(),
+  };
+
+  try {
+    const snapshot = await page.evaluate((keys) => {
+      const windowWithEnv = window as Window & { __ENV__?: Record<string, unknown> };
+      const localStorageFlags: Record<string, string | null> = {};
+
+      for (const key of keys) {
+        try {
+          localStorageFlags[key] = window.localStorage.getItem(key);
+        } catch {
+          localStorageFlags[key] = '<localStorage unavailable>';
+        }
+      }
+
+      return {
+        bodyInnerHTML: document.body?.innerHTML?.slice(0, 2000) ?? '',
+        bodyInnerText: document.body?.innerText?.slice(0, 1000) ?? '',
+        documentTitle: document.title,
+        localStorageFlags,
+        readyState: document.readyState,
+        url: window.location.href,
+        windowEnv: windowWithEnv.__ENV__ ?? null,
+      };
+    }, smokeRuntimeFlagKeys);
+
+    return {
+      ...fallback,
+      ...snapshot,
+    };
+  } catch (error) {
+    return {
+      ...fallback,
+      evaluateError: formatUnknownError(error),
+    };
+  }
+}
+
+async function attachSmokePageDiagnostics(page: Page, cause: unknown): Promise<void> {
+  const diagnostics = getSmokeDiagnostics(page);
+  const snapshot = await collectSmokePageSnapshot(page);
+  const payload = {
+    cause: formatUnknownError(cause),
+    consoleErrors: diagnostics.consoleErrors,
+    consoleMessages: diagnostics.consoleMessages,
+    pageErrors: diagnostics.pageErrors,
+    snapshot,
+  };
+  const serialized = JSON.stringify(payload, null, 2);
+
+  await test.info().attach('smoke-page-diagnostics.json', {
+    body: serialized,
+    contentType: 'application/json',
+  });
+
+  console.error('[smoke diagnostics]', serialized);
+}
+
 export async function prepareSmokePage(page: Page): Promise<void> {
+  const diagnostics = getSmokeDiagnostics(page);
+  installSmokeDiagnostics(page);
+
+  if (diagnostics.initScriptInstalled) return;
+  diagnostics.initScriptInstalled = true;
+
   await page.addInitScript((env) => {
-    window.__ENV__ = { ...(window.__ENV__ ?? {}), ...env };
+    const windowWithEnv = window as Window & { __ENV__?: Record<string, unknown> };
+    windowWithEnv.__ENV__ = { ...(windowWithEnv.__ENV__ ?? {}), ...env };
     for (const [key, value] of Object.entries(env)) {
-      window.localStorage.setItem(key, String(value));
+      try {
+        window.localStorage.setItem(key, String(value));
+      } catch {
+        // localStorage can be unavailable in restricted contexts; window.__ENV__ remains primary.
+      }
     }
   }, smokeRuntimeEnv);
 }
@@ -37,13 +173,18 @@ export async function expectSmokePageReady(
 ): Promise<void> {
   const timeout = options.timeout ?? 15_000;
 
-  await expect(async () => {
-    const hasHeading = await page.getByRole('heading').first().isVisible().catch(() => false);
-    const hasAppShell = await page.getByTestId('app-shell').isVisible().catch(() => false);
-    const hasMain = await page.locator('main').first().isVisible().catch(() => false);
+  try {
+    await expect(async () => {
+      const hasHeading = await page.getByRole('heading').first().isVisible().catch(() => false);
+      const hasAppShell = await page.getByTestId('app-shell').isVisible().catch(() => false);
+      const hasMain = await page.locator('main').first().isVisible().catch(() => false);
 
-    expect(hasHeading || hasAppShell || hasMain).toBe(true);
-  }).toPass({ timeout });
+      expect(hasHeading || hasAppShell || hasMain).toBe(true);
+    }).toPass({ timeout });
+  } catch (error) {
+    await attachSmokePageDiagnostics(page, error);
+    throw error;
+  }
 }
 
 export async function expectLocatorVisibleBestEffort(
