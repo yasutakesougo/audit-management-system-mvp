@@ -59,7 +59,8 @@ export function useAppShellState() {
   const { settings, updateSettings } = useSettingsContext();
   const { isKioskMode } = useKioskDetection();
   const isFocusMode = settings.layoutMode === 'focus';
-  const isFullscreenMode = isFocusMode || isKioskMode;
+  const isKioskLayoutMode = settings.layoutMode === 'kiosk' || location.pathname.startsWith('/kiosk');
+  const isFullscreenMode = isFocusMode || isKioskLayoutMode;
   const hubRouteMeta = useMemo(
     () => resolveHubRouteMetadata(location.pathname),
     [location.pathname],
@@ -94,17 +95,34 @@ export function useAppShellState() {
   }, [navigate, location.pathname]);
 
   useEffect(() => {
-    if (!location.pathname.startsWith('/today')) return;
+    const isKioskRoute = location.pathname.startsWith('/kiosk');
+
     const params = new URLSearchParams(location.search);
     const kioskParam = params.get('kiosk');
 
-    if ((kioskParam === '1' || kioskParam === 'true') && settings.layoutMode !== 'kiosk') {
-      updateSettings({ layoutMode: 'kiosk' });
+    if ((kioskParam === '1' || kioskParam === 'true')) {
+      if (settings.layoutMode !== 'kiosk') {
+        updateSettings({ layoutMode: 'kiosk' });
+      }
       return;
     }
-    if ((kioskParam === '0' || kioskParam === 'false') && settings.layoutMode === 'kiosk') {
-      updateSettings({ layoutMode: 'normal' });
+
+    if ((kioskParam === '0' || kioskParam === 'false')) {
+      if (settings.layoutMode === 'kiosk') {
+        updateSettings({ layoutMode: 'normal' });
+      }
+      return;
     }
+
+    if (isKioskRoute) {
+      if (settings.layoutMode !== 'kiosk') {
+        updateSettings({ layoutMode: 'kiosk' });
+      }
+      return;
+    }
+
+    // NOTE: keep explicitly persisted settings as-is.
+    // Manual kiosk selection should remain effective on non-kiosk routes.
   }, [location.pathname, location.search, settings.layoutMode, updateSettings]);
 
   useEffect(() => {
@@ -331,6 +349,7 @@ export function useAppShellState() {
     theme,
     isFocusMode,
     isKioskMode,
+    isKioskLayoutMode,
     isFullscreenMode,
     isDesktop,
     viewportMode,
@@ -359,6 +378,7 @@ export function useAppShellState() {
     todayLiteNavV2: Boolean(todayLiteNavV2),
     isAdmin,
     // Pruning Flags
+    layoutMode: settings.layoutMode,
     canSeeAdmin,
     canSeeDiagnostics,
     canUseBulkActions,

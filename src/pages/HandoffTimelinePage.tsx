@@ -13,7 +13,24 @@ import {
   Today as TodayIcon,
   ViewDay as DayIcon,
 } from '@mui/icons-material';
-import { Alert, Box, Button, Chip, Container, Dialog, DialogContent, DialogTitle, IconButton, Popover, Snackbar, TextField, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Container,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Popover,
+  Snackbar,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useCallback, useRef, useState } from 'react';
 import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
 import { useNavigate } from 'react-router-dom';
@@ -155,6 +172,24 @@ export default function HandoffTimelinePage() {
           subtitle="申し送りの記録・確認・会議進行ができます"
           icon={<AccessTimeIcon />}
         />
+
+        <Alert severity="info" variant="outlined" sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            この画面では当日の申し送りを確認し、必要時に新規メモを追加できます。
+          </Typography>
+          <Box component="ul" sx={{ mt: 1.25, mb: 0, pl: 2.5, m: 0 }}>
+            <Box component="li" sx={{ mb: 0.5 }}>
+              日: 今日の流れを確認します
+            </Box>
+            <Box component="li" sx={{ mb: 0.5 }}>
+              週: 週内の流れを確認します
+            </Box>
+            <Box component="li" sx={{ mb: 0.5 }}>
+              月: 月全体の傾向を確認します
+            </Box>
+            <Box component="li">「今すぐ申し送り」は HandoffQuickNoteCard を開いて新規メモを作成する入力です</Box>
+          </Box>
+        </Alert>
 
         {/* ── 日付ナビゲーション + 申し送りボタン ── */}
         <Box

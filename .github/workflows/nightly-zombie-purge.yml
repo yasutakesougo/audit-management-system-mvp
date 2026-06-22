@@ -48,7 +48,10 @@ jobs:
           AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
           SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
         run: |
-          npx -y @pnp/cli-microsoft365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
+          test -n "$AAD_TENANT_ID" || (echo "::error::Missing secret: AAD_TENANT_ID" && exit 1)
+          test -n "$AAD_APP_ID" || (echo "::error::Missing secret: AAD_APP_ID" && exit 1)
+          test -n "$SPO_CLIENT_SECRET" || (echo "::error::Missing secret: SPO_CLIENT_SECRET" && exit 1)
+          npx -y --package @pnp/cli-microsoft365 m365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
 
       - name: Build Drift Ledger
         run: npm run patrol:ledger
