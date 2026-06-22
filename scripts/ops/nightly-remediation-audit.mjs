@@ -23,7 +23,7 @@ function resolveM365() {
     const which = execSync('which m365', { encoding: 'utf8', stdio: 'pipe' }).trim();
     if (which) return which;
   } catch (_e) { /* ignore */ }
-  return 'npx -y @pnp/cli-microsoft365';
+  return 'npx -y --package @pnp/cli-microsoft365 m365';
 }
 
 function readJsonFile(p) {
