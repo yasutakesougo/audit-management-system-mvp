@@ -4,6 +4,50 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
 import { resolveProcedureUserQueryCandidates } from '../../utils/resolveProcedureUserQuery';
+import type { IUserMaster } from '@/features/users/types';
+import type { useExecutionRecord as useExecutionRecordHook } from '@/features/daily/hooks/useExecutionRecord';
+import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+
+type UserHookState = {
+  data: IUserMaster | null;
+  status: 'idle' | 'loading' | 'success' | 'error';
+};
+
+type ExecutionRecordHookResult = ReturnType<typeof useExecutionRecordHook>;
+
+const makeUser = (overrides: Partial<IUserMaster> = {}): IUserMaster => ({
+  Id: 1,
+  UserID: 'U001',
+  FullName: '田中 太郎',
+  ...overrides,
+});
+
+const makeExecutionRecord = (overrides: Partial<ExecutionRecord> = {}): ExecutionRecord => ({
+  id: 'rec-1',
+  date: '2026-05-28',
+  userId: 'U001',
+  scheduleItemId: 'P001',
+  status: 'completed',
+  triggeredBipIds: [],
+  memo: '',
+  recordedBy: '',
+  recordedAt: '2026-05-28T10:00:00.000Z',
+  ...overrides,
+});
+
+const makeExecutionRecordHookResult = (
+  overrides: Partial<ExecutionRecordHookResult> = {},
+): ExecutionRecordHookResult => ({
+  record: undefined,
+  setStatus: vi.fn(),
+  setMemo: vi.fn(),
+  saveRecord: mockSaveRecord,
+  deleteRecord: mockDeleteRecord,
+  isLoading: false,
+  error: null,
+  refresh: mockRefreshRecord,
+  ...overrides,
+});
 
 // Mock dependencies
 const mockNavigate = vi.fn();
@@ -18,7 +62,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const mockUseUser = vi.fn(() => ({ data: { FullName: '田中 太郎' }, status: 'success' }));
+const mockUseUser = vi.fn<() => UserHookState>(() => ({ data: makeUser(), status: 'success' }));
 vi.mock('@/features/users/useUsers', () => ({
   useUser: () => mockUseUser(),
 }));
@@ -43,20 +87,19 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
 const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
 const mockDeleteRecord = vi.fn().mockResolvedValue(undefined);
 const mockRefreshRecord = vi.fn();
-const mockUseExecutionRecord = vi.fn((
+const mockUseExecutionRecord = vi.fn<(
   _date?: string,
   _userId?: string,
   _scheduleItemId?: string,
   _fallbackScheduleItemIds?: string[],
   _fallbackUserIds?: string[],
-) => ({
-  record: null,
-  saveRecord: mockSaveRecord,
-  deleteRecord: mockDeleteRecord,
-  isLoading: false,
-  error: null,
-  refresh: mockRefreshRecord,
-}));
+) => ExecutionRecordHookResult>((
+  _date?: string,
+  _userId?: string,
+  _scheduleItemId?: string,
+  _fallbackScheduleItemIds?: string[],
+  _fallbackUserIds?: string[],
+) => makeExecutionRecordHookResult());
 vi.mock('@/features/daily/hooks/useExecutionRecord', () => ({
   useExecutionRecord: (
     date: string,
@@ -81,15 +124,8 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
-    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎' }, status: 'success' });
-    mockUseExecutionRecord.mockReturnValue({
-      record: null,
-      saveRecord: mockSaveRecord,
-      deleteRecord: mockDeleteRecord,
-      isLoading: false,
-      error: null,
-      refresh: mockRefreshRecord,
-    });
+    mockUseUser.mockReturnValue({ data: makeUser(), status: 'success' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
     mockUseKioskAttendance.mockReturnValue({
       isAbsent: false,
       reason: undefined,
@@ -249,14 +285,11 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   });
 
   it('shows unknown saved-state feedback and blocks save when the execution record cannot be loaded', () => {
-    mockUseExecutionRecord.mockReturnValue({
-      record: null,
-      saveRecord: mockSaveRecord,
-      deleteRecord: mockDeleteRecord,
-      isLoading: false,
-      error: new Error('failed to load execution record'),
-      refresh: mockRefreshRecord,
-    });
+    mockUseExecutionRecord.mockReturnValue(
+      makeExecutionRecordHookResult({
+        error: new Error('failed to load execution record'),
+      }),
+    );
 
     render(
       <MemoryRouter>
@@ -275,27 +308,21 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   });
 
   it('postpones form state initialization and populates form from saved record after user load transitions from loading to success', async () => {
-    mockUseUser.mockReturnValue({ data: undefined, status: 'loading' });
+    mockUseUser.mockReturnValue({ data: null, status: 'loading' });
 
     mockUseExecutionRecord.mockImplementation((
       _date,
       userId,
     ) => {
       const isLoaded = userId === 'U001';
-      return {
+      return makeExecutionRecordHookResult({
         record: isLoaded
-          ? {
-              id: 'rec-1',
-              date: '2026-05-28',
-              userId: 'U001',
-              scheduleItemId: 'P001',
-              status: 'completed' as const,
+          ? makeExecutionRecord({
               memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】問題なく実施完了',
-            }
+            })
           : undefined,
-        saveRecord: mockSaveRecord,
         isLoading: !isLoaded,
-      };
+      });
     });
 
     const { rerender } = render(
@@ -308,7 +335,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('読み込み中...')).toBeInTheDocument();
 
     // Transition useUser status to success
-    mockUseUser.mockReturnValue({ data: { FullName: '田中 太郎', UserID: 'U001' }, status: 'success' });
+    mockUseUser.mockReturnValue({ data: makeUser(), status: 'success' });
     rerender(
       <MemoryRouter>
         <KioskProcedureDetailScreen />
@@ -358,18 +385,13 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     });
 
     it('renders the absence warning alert and disables save/delete/abc actions', () => {
-      mockUseExecutionRecord.mockReturnValue({
-        record: {
-          id: 'rec-1',
-          status: 'completed',
-          memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】テスト記録',
-        },
-        saveRecord: mockSaveRecord,
-        deleteRecord: mockDeleteRecord,
-        isLoading: false,
-        error: null,
-        refresh: mockRefreshRecord,
-      });
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: makeExecutionRecord({
+            memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】テスト記録',
+          }),
+        }),
+      );
 
       render(
         <MemoryRouter>

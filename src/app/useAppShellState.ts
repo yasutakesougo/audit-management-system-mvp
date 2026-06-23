@@ -121,9 +121,8 @@ export function useAppShellState() {
       return;
     }
 
-    if (settings.layoutMode === 'kiosk') {
-      updateSettings({ layoutMode: 'normal' });
-    }
+    // NOTE: keep explicitly persisted settings as-is.
+    // Manual kiosk selection should remain effective on non-kiosk routes.
   }, [location.pathname, location.search, settings.layoutMode, updateSettings]);
 
   useEffect(() => {

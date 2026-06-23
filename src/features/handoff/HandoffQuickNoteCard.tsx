@@ -152,7 +152,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
     <Card elevation={2} data-testid="handoff-quicknote-card">
       <CardHeader
         title="📝 今すぐ申し送り"
-        subheader="気になったこと・良かったこと・明日につなげたいことを、短くメモしてください"
+        subheader="誰に向けて・何が起きたか・どの程度急ぎかを、短く共有するための入力です"
         titleTypographyProps={{ variant: 'h6', fontWeight: 'bold' }}
       />
       <CardContent>
@@ -187,8 +187,9 @@ export const HandoffQuickNoteCard: React.FC = () => {
           <Stack direction="row" spacing={1} alignItems="center">
             <TextField
               select
-              label="対象"
+              label="対象（誰へ共有するか）"
               size="small"
+              helperText="「全体向け」は全スタッフ共有、個別は対象者名を選択します"
               value={target === 'ALL' ? 'ALL' : target.UserID.toString()}
               onChange={e => {
                 const value = e.target.value;
@@ -228,7 +229,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
           {/* カテゴリ選択 */}
           <Box>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-              カテゴリ
+              カテゴリ（何の内容か）
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {CATEGORY_OPTIONS.map(opt => (
@@ -248,7 +249,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
           {/* 重要度選択 */}
           <Box>
             <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-              重要度
+              緊急度（どれくらい優先して共有すべきか）
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               {SEVERITY_OPTIONS.map(opt => (
@@ -273,7 +274,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
 
           {/* 本文入力 */}
           <TextField
-            label="申し送り内容"
+            label="申し送りメモ（事実と共有事項）"
             multiline
             minRows={3}
             maxRows={6}
@@ -282,7 +283,11 @@ export const HandoffQuickNoteCard: React.FC = () => {
             placeholder={placeholder}
             fullWidth
             variant="outlined"
-            helperText="改行・箇条書きもOKです。簡潔にポイントを記載してください。"
+            helperText={
+              message.trim()
+                ? '1〜2文で「誰が・何が・対応が必要か」を簡潔に記載すると受け手がすぐ理解できます。'
+                : '本文を入力してください。未入力では投稿できません。'
+            }
           />
 
           <Divider />
@@ -296,7 +301,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
               sx={{ mb: 1 }}
             >
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                最近の申し送り
+                最近の申し送り（直近5件）
               </Typography>
               <Button
                 href="/handoff-timeline"
@@ -332,7 +337,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  まだ入力された申し送りはありません。
+                  まだ申し送りはありません。
                 </Typography>
               </Box>
             )}

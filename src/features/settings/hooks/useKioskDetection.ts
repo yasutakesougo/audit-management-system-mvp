@@ -3,14 +3,16 @@ import { useSettingsContext } from '../SettingsContext';
 import { useMemo } from 'react';
 
 /**
- * useKioskDetection — キオスクモード判定の SSOT
- * 
+ * useKioskDetection — キオスク表示判定の SSOT
+ *
  * 優先順位:
- * 1. URLパラメータ (?kiosk=1) -> 最優先 (即時反映)
- * 2. Settings (layoutMode === 'kiosk') -> 永続状態
- * 
- * このフックにより、状態伝播の遅延（Race Condition）に関わらず、
- * URLにkiosk=1があれば初回フレームからキオスク表示を強制できる。
+ * 1. /kiosk 配下のルート -> キオスク表示を強制
+ * 2. URLパラメータ (?kiosk=1 / ?kiosk=true) -> 通常ルートでもキオスク表示を強制
+ * 3. URLパラメータ (?kiosk=0 / ?kiosk=false) -> 明示的な非キオスク表示
+ * 4. Settings (layoutMode === 'kiosk') -> 手動選択された永続状態
+ *
+ * SettingsDialog 側では、OFF 操作時に強制条件を解除するため、
+ * ?kiosk クエリ削除や /kiosk ルートからの退避を行う。
  */
 export function useKioskDetection() {
   const { settings } = useSettingsContext();
