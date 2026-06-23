@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "nvidia-nim-apply-approved-preview/1.0",
+  "generatedAt": "2026-06-10T12:00:00.000Z",
+  "inputPath": "tmp/review/apply-approved-plan.json",
+  "outputPath": "tmp/review/apply-approved-preview.json",
+  "summary": {
+    "total": 2,
+    "approved": 1,
+    "warnings": 0
+  },
+  "items": [
+    {
+      "artifactId": "art-001",
+      "path": "/support-plans/p1.json",
+      "suggestedTitle": "夜間支援追加",
+      "labels": ["safety", "night"],
+      "reason": "critical flag and recurrence detected"
+    }
+  ],
+  "warnings": [],
+  "preflight": {
+    "passed": false,
+    "failures": [
+      {
+        "code": "WARNINGS_BLOCKED",
+        "message": "warnings must be zero before write"
+      }
+    ]
+  }
+}
