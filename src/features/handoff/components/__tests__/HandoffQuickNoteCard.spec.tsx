@@ -53,14 +53,14 @@ describe('HandoffQuickNoteCard', () => {
     render(<HandoffQuickNoteCard />);
 
     expect(screen.getByText('📝 今すぐ申し送り')).toBeInTheDocument();
-    expect(screen.getByText('気になったこと・良かったこと・明日につなげたいことを、短くメモしてください')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '対象' })).toBeInTheDocument();
-    expect(screen.getByText('カテゴリ')).toBeInTheDocument();
-    expect(screen.getByText('重要度')).toBeInTheDocument();
-    expect(screen.getByText('最近の申し送り')).toBeInTheDocument();
+    expect(screen.getByText('誰に向けて・何が起きたか・どの程度急ぎかを、短く共有するための入力です')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '対象（誰へ共有するか）' })).toBeInTheDocument();
+    expect(screen.getByText('カテゴリ（何の内容か）')).toBeInTheDocument();
+    expect(screen.getByText('緊急度（どれくらい優先して共有すべきか）')).toBeInTheDocument();
+    expect(screen.getByText('最近の申し送り（直近5件）')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '詳細を見る' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'この内容で登録' })).toBeDisabled();
-    expect(screen.getByLabelText('申し送り内容')).toBeInTheDocument();
+    expect(screen.getByLabelText('申し送りメモ（事実と共有事項）')).toBeInTheDocument();
     expect(screen.getByText('佐藤 太郎')).toBeInTheDocument();
     expect(screen.getByText('バイタル確認のサイン。前日より食事摂取が少なめです。')).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe('HandoffQuickNoteCard', () => {
   it('本文を入力した後に quick note の作成フローが起動する', async () => {
     render(<HandoffQuickNoteCard />);
 
-    const textarea = screen.getByLabelText('申し送り内容');
+    const textarea = screen.getByLabelText('申し送りメモ（事実と共有事項）');
     fireEvent.change(textarea, { target: { value: '夜間に起きがちだった件を共有' } });
 
     expect(screen.getByRole('button', { name: 'この内容で登録' })).toBeEnabled();
