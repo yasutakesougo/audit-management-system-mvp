@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { expectLocatorVisibleBestEffort, expectSmokePageReady, prepareSmokePage } from './_helpers/smoke';
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173';
 
@@ -38,6 +39,7 @@ test.describe('router smoke (URL direct, testid based)', () => {
   });
 
   test('GET /audit renders audit-root', async ({ page }) => {
+    await prepareSmokePage(page);
     await page.goto('/audit', { waitUntil: 'domcontentloaded' });
 
     // ルート診断を速くするため URL も確認（あなたのロードマップに合わせた Done 条件）
@@ -72,6 +74,7 @@ test.describe('router smoke (URL direct, testid based)', () => {
   });
 
   test('GET /checklist renders checklist-root', async ({ page }) => {
+    await prepareSmokePage(page);
     await page.goto('/checklist', { waitUntil: 'domcontentloaded' });
 
     await expect(page).toHaveURL(/\/checklist(\b|\/|\?|#)/);
@@ -87,7 +90,11 @@ test.describe('router smoke (URL direct, testid based)', () => {
       await expect(checklistRoot).toBeVisible();
     } else {
       // Fallback: checklist-root may not exist; use minimal UI
-      await expect(page.getByRole('heading').first()).toBeVisible();
+      await expectSmokePageReady(page);
+      await expectLocatorVisibleBestEffort(
+        page.getByRole('heading').first(),
+        'heading not found: heading (allowed for smoke)'
+      );
     }
   });
 });

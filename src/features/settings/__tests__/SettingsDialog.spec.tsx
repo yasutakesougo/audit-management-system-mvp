@@ -4,9 +4,9 @@ import {
   PLANNING_NAV_TELEMETRY_EVENTS,
   type PlanningNavTelemetryEvent,
 } from '@/app/navigation/planningNavTelemetry';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsDialog } from '../SettingsDialog';
 import type { UserSettings } from '../settingsModel';
@@ -49,11 +49,28 @@ const navItems: NavItem[] = [
   },
 ];
 
-const renderDialog = () =>
+const locationProbeKey = 'location-probe';
+
+const LocationProbe = () => {
+  const location = useLocation();
+  return <span data-testid={locationProbeKey} data-path={location.pathname} data-search={location.search} />;
+};
+
+const renderDialog = (initialPath = '/settings') =>
   render(
     <ColorModeContext.Provider value={{ mode: 'light', toggle: vi.fn() }}>
-      <MemoryRouter initialEntries={['/settings']}>
-        <SettingsDialog open onClose={vi.fn()} navItems={navItems} />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route
+            path="*"
+            element={
+              <>
+                <LocationProbe />
+                <SettingsDialog open onClose={vi.fn()} navItems={navItems} />
+              </>
+            }
+          />
+        </Routes>
       </MemoryRouter>
     </ColorModeContext.Provider>,
   );
@@ -123,5 +140,39 @@ describe('SettingsDialog planning visibility behavior', () => {
         trigger: 'user_toggle',
       }),
     );
+  });
+
+  it('can disable kiosk mode even when forced by ?kiosk=1', async () => {
+    mockSettings = {
+      ...mockSettings,
+      layoutMode: 'kiosk',
+    };
+    renderDialog('/today?kiosk=1');
+
+    fireEvent.click(screen.getByRole('switch', { name: 'キオスクモード（タブレット端末用）' }));
+    expect(mockUpdateSettings).toHaveBeenCalledWith({ layoutMode: 'normal' });
+
+    await waitFor(() => {
+      const probe = screen.getByTestId(locationProbeKey);
+      expect(probe.getAttribute('data-path')).toBe('/today');
+      expect(probe.getAttribute('data-search')).toBe('');
+    });
+  });
+
+  it('exits to dashboard when disabling kiosk mode from /kiosk route', async () => {
+    mockSettings = {
+      ...mockSettings,
+      layoutMode: 'kiosk',
+    };
+    renderDialog('/kiosk/users');
+
+    fireEvent.click(screen.getByRole('switch', { name: 'キオスクモード（タブレット端末用）' }));
+    expect(mockUpdateSettings).toHaveBeenCalledWith({ layoutMode: 'normal' });
+
+    await waitFor(() => {
+      const probe = screen.getByTestId(locationProbeKey);
+      expect(probe.getAttribute('data-path')).toBe('/dashboard');
+      expect(probe.getAttribute('data-search')).toBe('');
+    });
   });
 });

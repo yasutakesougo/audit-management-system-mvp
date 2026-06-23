@@ -119,6 +119,9 @@ export const ToiletDailyBoard: React.FC = () => {
     [records, targetUsers],
   );
 
+  const unrecordedRows = React.useMemo(() => rows.filter((row) => !row.recorded), [rows]);
+  const nextUnrecordedUser = unrecordedRows[0]?.user;
+
   const recordedCount = rows.filter((row) => row.recorded).length;
   const unrecordedCount = rows.length - recordedCount;
   const summaryLabel = hasRecordsError ? '記録状態を確認できません' : `未記録 ${unrecordedCount}名 / 記録済み ${recordedCount}名`;
@@ -237,11 +240,56 @@ export const ToiletDailyBoard: React.FC = () => {
         </Box>
       ) : (
         <Stack spacing={3}>
-          <Grid container spacing={1.5}>
-            {usersStatus === 'error' && (
-              <Grid size={12}>
-                <Paper
-                  variant="outlined"
+              <Grid container spacing={1.5}>
+                {rows.length > 0 && (
+                  <Grid size={12}>
+                    <Paper
+                      data-testid="toilet-unrecorded-guidance"
+                      variant="outlined"
+                      sx={{
+                        p: { xs: 1.5, md: 2 },
+                        borderRadius: 2,
+                        borderColor: unrecordedRows.length > 0 ? 'warning.light' : 'success.light',
+                        bgcolor: unrecordedRows.length > 0 ? 'rgba(237, 108, 2, 0.06)' : 'rgba(46, 125, 50, 0.06)',
+                      }}
+                    >
+                      {unrecordedRows.length > 0 ? (
+                        <Stack spacing={1}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
+                            未記録者が {unrecordedRows.length}名います
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            次は「{nextUnrecordedUser?.FullName}さん」を先に記録すると、取りこぼしを減らせます。
+                          </Typography>
+                          {nextUnrecordedUser ? (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => openForm(nextUnrecordedUser)}
+                              sx={{ alignSelf: 'flex-start', minHeight: 40, borderRadius: 2, fontWeight: 900 }}
+                            >
+                              次の利用者を記録
+                            </Button>
+                          ) : null}
+                        </Stack>
+                      ) : (
+                        <Stack spacing={0.5}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
+                            本日の対象者は全員記録済みです
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            必要であれば、個別行の「追加記録」を使って追加入力できます。
+                          </Typography>
+                        </Stack>
+                      )}
+                    </Paper>
+                  </Grid>
+                )}
+
+                {usersStatus === 'error' && (
+                  <Grid size={12}>
+                    <Paper
+                      variant="outlined"
                   sx={{
                     p: 3,
                     borderRadius: 2,

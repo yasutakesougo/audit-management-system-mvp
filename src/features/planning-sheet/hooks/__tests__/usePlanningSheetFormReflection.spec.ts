@@ -5,6 +5,14 @@ import { describe, it, expect, vi } from 'vitest';
 import type { PlanningSheetRepository } from '@/domain/isp/port';
 
 describe('usePlanningSheetForm Reflection Contract', () => {
+  const existingBehavior = {
+    name: '既存の行動',
+    operationalDefinition: '',
+    frequency: '',
+    intensity: '',
+    duration: '',
+  };
+
   const mockSheet: SupportPlanningSheet = {
     id: 'sheet-1',
     userId: 'user-1',
@@ -12,7 +20,7 @@ describe('usePlanningSheetForm Reflection Contract', () => {
     title: 'テスト計画',
     status: 'draft',
     assessment: {
-      targetBehaviors: ['既存の行動'],
+      targetBehaviors: [existingBehavior],
       abcEvents: [],
       hypotheses: [],
       riskLevel: 'low',
@@ -65,14 +73,22 @@ describe('usePlanningSheetForm Reflection Contract', () => {
 
     const updatedAssessment: PlanningAssessment = {
       ...mockSheet.assessment,
-      targetBehaviors: ['反映後の行動'],
+      targetBehaviors: [
+        {
+          ...existingBehavior,
+          name: '反映後の行動',
+        },
+      ],
     };
 
     act(() => {
       result.current.setAssessment(updatedAssessment);
     });
 
-    expect(result.current.assessment.targetBehaviors).toContain('反映後の行動');
+    expect(result.current.assessment.targetBehaviors).toContainEqual({
+      ...existingBehavior,
+      name: '反映後の行動',
+    });
     // 現状の実装では values のみが dirty 判定対象のため、ここが失敗するはず
     expect(result.current.isDirty).toBe(true);
   });
@@ -82,7 +98,12 @@ describe('usePlanningSheetForm Reflection Contract', () => {
 
     const updatedAssessment: PlanningAssessment = {
       ...mockSheet.assessment,
-      targetBehaviors: ['反映後の行動'],
+      targetBehaviors: [
+        {
+          ...existingBehavior,
+          name: '反映後の行動',
+        },
+      ],
     };
 
     act(() => {
@@ -97,7 +118,11 @@ describe('usePlanningSheetForm Reflection Contract', () => {
       'sheet-1',
       expect.objectContaining({
         assessment: expect.objectContaining({
-          targetBehaviors: ['反映後の行動'],
+          targetBehaviors: [
+            expect.objectContaining({
+              name: '反映後の行動',
+            }),
+          ],
         }),
       })
     );
