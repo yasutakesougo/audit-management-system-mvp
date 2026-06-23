@@ -234,20 +234,171 @@ jobs:
     runs-on: ubuntu-latest
     needs: [typecheck, unit-test-shard]
     if: ${{ always() }}
+    permissions:
+      actions: read
+      contents: read
     steps:
+      - name: Classify unit shard outcomes
+        id: classify-shards
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = context.runId;
+            const runAttempt = Number(context.runAttempt || 1);
+            const currentAttempt = isNaN(runAttempt) ? 1 : runAttempt;
+
+            const jobs = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRun,
+              {
+                owner,
+                repo,
+                run_id: runId,
+                per_page: 100,
+              }
+            );
+
+            const unitShardJobs = jobs
+              .filter((job) => /^Unit Test \(Shard \d+\/3\)/.test(job.name))
+              .filter((job) => Number(job.run_attempt) === currentAttempt)
+              .map((job) => ({
+                name: job.name,
+                id: job.id,
+                conclusion: job.conclusion,
+                status: job.status,
+                attempt: job.run_attempt,
+                url: job.html_url,
+              }));
+
+            const allowedConclusions = new Set(["success", "failure", "cancelled", "timed_out", "neutral", "skipped", "action_required", "startup_failure", "stopped"]);
+            const canceledConclusions = new Set(["cancelled"]);
+            const failureLikeConclusions = new Set(["failure", "timed_out", "action_required", "startup_failure", "stopped"]);
+
+            const hasFailureLike = unitShardJobs.some((job) => failureLikeConclusions.has(job.conclusion));
+            const hasCancelled = unitShardJobs.some((job) => canceledConclusions.has(job.conclusion));
+            const hasSkipped = unitShardJobs.some((job) => job.conclusion === "skipped");
+            const allSuccessOrCancelled = unitShardJobs.every(
+              (job) => ["success", "cancelled"].includes(job.conclusion)
+            );
+            const hasSuccess = unitShardJobs.some((job) => job.conclusion === "success");
+            const hasUnknownConclusion = unitShardJobs.some((job) => !allowedConclusions.has(job.conclusion));
+            const hasIncomplete = unitShardJobs.some((job) => job.status !== "completed");
+
+            let classification = "unit_shards_pass";
+            let reason = "All shard jobs passed.";
+
+            if (unitShardJobs.length === 0) {
+              classification = "unit_shards_missing";
+              reason = "No unit shard job entries found for current workflow run.";
+            } else if (hasUnknownConclusion || hasIncomplete) {
+              classification = "unit_shards_nonstandard";
+              reason = "Unit shard has unexpected status/conclusion state.";
+            } else if (hasFailureLike) {
+              classification = "unit_shards_failure";
+              reason = "Unit shard job failure detected.";
+            } else if (hasSkipped) {
+              classification = "unit_shards_skipped";
+              reason = "Unit shard job skipped state detected.";
+            } else if (hasCancelled && !(
+              currentAttempt > 1 &&
+              hasSuccess &&
+              allSuccessOrCancelled
+            )) {
+              classification = "unit_shards_cancelled";
+              reason = `Unit shard cancellations detected on initial attempt (${currentAttempt}).`;
+            } else if (hasCancelled && currentAttempt > 1 && hasSuccess && allSuccessOrCancelled) {
+              classification = "unit_shards_cancelled_rerun_side_effect";
+              reason = "Unit shard cancellations are classified as rerun-side-effect and do not block merge by themselves.";
+            }
+
+            const unitShardCurrentJob = jobs.find(
+              (job) => Number(job.run_attempt) === currentAttempt && job.name === context.job && job.status === "completed"
+            );
+
+            const payload = {
+              run_id: runId,
+              workflow: context.workflow,
+              workflow_run_name: context.workflow,
+              attempt: currentAttempt,
+              job_name: context.job,
+              job_id: unitShardCurrentJob ? unitShardCurrentJob.id : "",
+              merge_commit_sha: context.payload.pull_request ? context.payload.pull_request.merge_commit_sha : context.sha,
+              head_sha: context.sha,
+              reason,
+              classification,
+              shards: unitShardJobs,
+            };
+
+            core.setOutput("classification", classification);
+            core.setOutput("reason", reason);
+            core.setOutput("shard_json", JSON.stringify(unitShardJobs));
+            core.setOutput("payload", JSON.stringify(payload));
+
+            await require("fs").promises.writeFile(
+              `${process.env.GITHUB_WORKSPACE}/unit-shard-cancel-audit.json`,
+              JSON.stringify(payload, null, 2)
+            );
+
+            await core.summary
+              .addHeading("CI Unit shard cancellation classification")
+              .addTable([
+                [{ data: "field" }, { data: "value" }],
+                ["workflow", payload.workflow],
+                ["workflow attempt", payload.attempt],
+                ["classification", payload.classification],
+                ["run", payload.run_id],
+                ["head sha", payload.head_sha],
+              ])
+              .addCodeBlock(JSON.stringify(payload, null, 2), "json")
+              .write();
+
+            const shouldFail = [
+              "unit_shards_failure",
+              "unit_shards_skipped",
+              "unit_shards_cancelled",
+              "unit_shards_missing",
+              "unit_shards_nonstandard",
+            ].includes(classification) || unitShardJobs.length === 0;
+
+            if (shouldFail) {
+              core.setFailed(`Unit shard aggregate check blocked: ${reason}`);
+            }
       - name: Verify required CI dependencies
+        if: always()
         run: |
           echo "typecheck result: ${{ needs.typecheck.result }}"
           echo "unit-test-shard result: ${{ needs.unit-test-shard.result }}"
+          echo "unit shard classification: ${{ steps.classify-shards.outputs.classification }}"
+          echo "unit shard reason: ${{ steps.classify-shards.outputs.reason }}"
 
           if [ "${{ needs.typecheck.result }}" != "success" ]; then
             echo "Error: typecheck failed, cancelled, or skipped."
             exit 1
           fi
 
-          if [ "${{ needs.unit-test-shard.result }}" != "success" ]; then
+          if [ "${{ steps.classify-shards.outputs.classification }}" = "unit_shards_failure" ] || \
+             [ "${{ steps.classify-shards.outputs.classification }}" = "unit_shards_skipped" ] || \
+             [ "${{ steps.classify-shards.outputs.classification }}" = "unit_shards_cancelled" ] || \
+             [ "${{ steps.classify-shards.outputs.classification }}" = "unit_shards_missing" ] || \
+             [ "${{ steps.classify-shards.outputs.classification }}" = "unit_shards_nonstandard" ]; then
             echo "Error: unit-test-shard failed, cancelled, or skipped."
             exit 1
           fi
 
+          if [ "${{ steps.classify-shards.outputs.classification }}" != "unit_shards_pass" ] && \
+             [ "${{ steps.classify-shards.outputs.classification }}" != "unit_shards_cancelled_rerun_side_effect" ]; then
+            echo "Error: Unit shard classification not passable: ${{ steps.classify-shards.outputs.classification }}"
+            exit 1
+          fi
+
           echo "All required CI dependencies passed successfully!"
+
+      - name: Upload unit shard audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-shard-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
+          path: unit-shard-cancel-audit.json
+          retention-days: 14
+          if-no-files-found: ignore

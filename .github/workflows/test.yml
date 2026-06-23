@@ -103,12 +103,14 @@ jobs:
         run: npm run test:nurse:mini
         continue-on-error: true
       - name: Test (PR)
+        id: test_pr
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           set -o pipefail
           npm run test:ci:required 2>&1 | tee /tmp/vitest-required.log
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-required.log --json --json-output /tmp/act-warnings-required.json
       - name: Create/Update act warning regression issue (PR)
+        id: act_warning_required
         if: ${{ failure() && github.event_name == 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -146,6 +148,7 @@ jobs:
           echo "=== /tmp/vite-5173.log (tail -200) ==="
           tail -200 /tmp/vite-5173.log || true
       - name: Playwright E2E
+        id: playwright_e2e
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         env:
           VITE_E2E: "1"
@@ -175,6 +178,7 @@ jobs:
           # Run only the lightest Playwright smoke to keep Quality Gates aligned with this PR scope.
           npx playwright test tests/e2e/basic-smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke
       - name: a11y CI integration tests (complex pages)
+        id: a11y_ci_integration
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         env:
           VITE_E2E: "1"
@@ -220,6 +224,73 @@ jobs:
             reports/perf-summary.json
             lhci-results.json
 
+      - name: Classify quality job completion
+        if: always()
+        run: |
+          cancellation_step="none"
+          direct_cancellation="false"
+
+          if [ "${{ steps.test_pr.outcome }}" = "cancelled" ]; then
+            direct_cancellation="true"
+            cancellation_step="Test (PR)"
+          elif [ "${{ steps.playwright_e2e.outcome }}" = "cancelled" ]; then
+            direct_cancellation="true"
+            cancellation_step="Playwright E2E"
+          elif [ "${{ steps.a11y_ci_integration.outcome }}" = "cancelled" ]; then
+            direct_cancellation="true"
+            cancellation_step="a11y CI integration tests"
+          fi
+
+          case "${{ steps.test_pr.outcome }}|${{ steps.playwright_e2e.outcome }}|${{ steps.a11y_ci_integration.outcome }}" in
+            *failure*)
+              classification="quality_failed"
+              reason="One or more required quality steps failed."
+              ;;
+            *cancelled*)
+              classification="quality_cancelled"
+              reason="Cancellation detected: ${cancellation_step}"
+              ;;
+            *)
+              classification="quality_pass"
+              reason="Quality workflow completed without failure/cancellation."
+              ;;
+          esac
+
+          cat <<EOF > quality-cancel-audit.json
+          {
+            "run_id": "${{ github.run_id }}",
+            "attempt": "${{ github.run_attempt }}",
+            "workflow": "${{ github.workflow }}",
+            "job_name": "${{ github.job }}",
+            "merge_commit_sha": "${{ github.event.pull_request.merge_commit_sha }}",
+            "classification": "${classification}",
+            "direct_cancellation": ${direct_cancellation},
+            "cancellation_step": "${cancellation_step}",
+            "test_pr_outcome": "${{ steps.test_pr.outcome }}",
+            "playwright_e2e_outcome": "${{ steps.playwright_e2e.outcome }}",
+            "a11y_ci_integration_outcome": "${{ steps.a11y_ci_integration.outcome }}",
+            "head_sha": "${{ github.sha }}"
+          }
+          EOF
+
+          echo "## Quality completion classification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Classification: \`${classification}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: ${reason}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat quality-cancel-audit.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload quality completion artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
+          path: quality-cancel-audit.json
+          retention-days: 14
+          if-no-files-found: ignore
+
 
   quality_extended:
     name: quality_extended
@@ -245,11 +316,13 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Test (ci full)
+        id: test_ci_full
         run: |
           set -o pipefail
           npm run test:ci 2>&1 | tee /tmp/vitest-full.log
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-full.log --json --json-output /tmp/act-warnings-full.json
       - name: Create/Update act warning regression issue (ci full)
+        id: act_warning_full
         if: ${{ failure() }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -261,6 +334,65 @@ jobs:
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --branch "${{ github.ref_name }}" \
             --sha "${{ github.sha }}"
+
+      - name: Classify quality_extended completion
+        if: always()
+        run: |
+          cancellation_step="none"
+          direct_cancellation="false"
+
+          if [ "${{ steps.test_ci_full.outcome }}" = "cancelled" ]; then
+            direct_cancellation="true"
+            cancellation_step="Test (ci full)"
+          elif [ "${{ steps.act_warning_full.outcome }}" = "cancelled" ]; then
+            direct_cancellation="true"
+            cancellation_step="Create/Update act warning regression issue (ci full)"
+          fi
+
+          if [ "${{ steps.test_ci_full.outcome }}" = "failure" ]; then
+            classification="quality_extended_failure"
+            reason="Unit/lint/test suite failed in quality_extended."
+          elif [ "${{ steps.test_ci_full.outcome }}" = "cancelled" ]; then
+            classification="quality_extended_cancelled"
+            reason="quality_extended cancelled while running test suite: ${cancellation_step}"
+          else
+            classification="quality_extended_pass"
+            reason="quality_extended completed."
+          fi
+
+          cat <<EOF > quality-extended-cancel-audit.json
+          {
+            "run_id": "${{ github.run_id }}",
+            "attempt": "${{ github.run_attempt }}",
+            "workflow": "${{ github.workflow }}",
+            "job_name": "${{ github.job }}",
+            "merge_commit_sha": "${{ github.event.pull_request.merge_commit_sha }}",
+            "classification": "${classification}",
+            "direct_cancellation": ${direct_cancellation},
+            "cancellation_step": "${cancellation_step}",
+            "test_ci_full_outcome": "${{ steps.test_ci_full.outcome }}",
+            "act_warning_full_outcome": "${{ steps.act_warning_full.outcome }}",
+            "head_sha": "${{ github.sha }}"
+          }
+          EOF
+
+          echo "## Quality extended completion classification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Classification: \`${classification}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: ${reason}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat quality-extended-cancel-audit.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload quality_extended completion artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-extended-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
+          path: quality-extended-cancel-audit.json
+          retention-days: 14
+          if-no-files-found: ignore
 
   canary:
     runs-on: ubuntu-latest
