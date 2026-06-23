@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "nvidia-nim-apply-approved-dry-run/1.0",
+  "generatedAt": "2026-06-10T12:00:00.000Z",
+  "inputPath": "tmp/review/apply-approved-plan.json",
+  "outputPath": "tmp/review/apply-approved-preview.json",
+  "summary": {
+    "total": 3,
+    "approved": 2,
+    "warnings": 1
+  },
+  "items": [
+    {
+      "artifactId": "art-001",
+      "path": "/support-plans/p1.json",
+      "suggestedTitle": "夜間支援追加",
+      "labels": ["safety", "night"],
+      "reason": "critical flag and recurrence detected"
+    },
+    {
+      "artifactId": "art-002",
+      "path": "/support-plans/p2.json",
+      "suggestedTitle": "訪問頻度調整",
+      "labels": ["mobility"],
+      "reason": "review suggests lowering frequency"
+    }
+  ],
+  "warnings": [
+    {
+      "type": "schema-stabilized-warning",
+      "line": 12,
+      "message": "artifactId line differs from source",
+      "raw": "{\\\"expected\\\":\\\"art-001\\\",\\\"actual\\\":\\\"art-001-a\\\"}"
+    }
+  ],
+  "preflight": {
+    "passed": true,
+    "failures": []
+  }
+}
