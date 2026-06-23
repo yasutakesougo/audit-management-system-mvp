@@ -1,6 +1,6 @@
 # CI Cancellation Triage Runbook
 
-更新日: 2026-06-23
+更新日: 2026-06-24
 
 ## 目的
 
@@ -70,6 +70,28 @@
 2. `#2334` 事象と照合し、A/B/C 判定に振り分け
 3. PR差分起因なら修正を対象 PR へ反映
 4. A/B は aggregate の扱いを変更せず、分類情報を残して再試行・追跡
+
+### 先頭で実行する確認コマンド
+
+まず次の順で短時間確認を実施すると、分類の再現性が上がります。
+
+- `gh run view <RUN_ID> --log-failed --exit-status`
+  失敗原因ジョブを JSON ではなく人間読める順序で確認
+- `gh run view <RUN_ID> --json jobs`
+  `unit-test-shard` の各 shard 結果（`success`/`cancelled`/`failure`）と `run_attempt` を確認。
+- `gh run watch <RUN_ID> --exit-status`
+  再試行が入った場合に attempt 遷移を確認し、`currentAttempt` と shard mix の有無を判定。
+
+### 典型分岐（再実行不要な即時判断）
+
+- `unit_shards_cancelled`
+  - 判定条件: 初回試行における shard cancel が残存
+  - 直近の再試行で同時に `failure` なしでも再現しなければ、PR側対処前に一度再実行を推奨
+- `unit_shards_cancelled_rerun_side_effect`
+  - 判定条件: 再試行2回目以降で `success` と `cancelled` 混在のみ
+  - 目的: 再試行時に未対象 shard の cancel を除外して merge 判定したログを残す
+- `unit_shards_missing / nonstandard / skipped / failure`
+  - いずれも即 `re-run` ではなく根因切り分けが優先（CI 設定差分、shard 不備、実障害の順）
 
 ## ケース分離（今回の対象）
 
