@@ -103,6 +103,9 @@ export function shouldSkipSharePoint(): boolean {
   return false;
 }
 
+const shouldSkipProvisioning = (): boolean =>
+  readBool('VITE_SKIP_PROVISIONING', false);
+
 export class SharePointProvisioningCoordinator {
   /**
    * App 起動時に一括初期化を実行
@@ -173,9 +176,13 @@ export class SharePointProvisioningCoordinator {
     // ── Phase 1: Child Lists (Results/ApprovalLogs/UserFlags) ──
     // 既存のメインリスト provision の後に実行。fail-open (非ブロッキング) 構成。
     try {
-      const provisioner = createProvisioningService(client.spFetch);
-      await provisioner.ensureChildLists('bootstrap');
-      trackSpEvent('sp:child_lists_provision_success');
+      if (shouldSkipProvisioning()) {
+        auditLog.warn('sp:provisioning', 'Child lists provisioning skipped.', { reason: 'VITE_SKIP_PROVISIONING' });
+      } else {
+        const provisioner = createProvisioningService(client.spFetch);
+        await provisioner.ensureChildLists('bootstrap');
+        trackSpEvent('sp:child_lists_provision_success');
+      }
     } catch (err) {
       // 子リストの失敗はメイン機能（L0/L1）を止めないため、警告に留めるが Signal は送る
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -260,6 +267,18 @@ export class SharePointProvisioningCoordinator {
       if (!metadata) {
         // If absent, check if we should provision
         if (entry.provisioningFields) {
+          if (shouldSkipProvisioning()) {
+            auditLog.warn('sp:provisioning', `List "${listName}" missing. Provisioning skipped.`, { key: entry.key, reason: 'VITE_SKIP_PROVISIONING' });
+            saveStability(entry.key, 'missing');
+            trackSpEvent(isOptional ? 'sp:list_missing_optional' : 'sp:list_missing_required', {
+              key: entry.key,
+              listName,
+              error: 'List not found',
+              details: { reason: 'VITE_SKIP_PROVISIONING' },
+            });
+            return { key: entry.key, displayName: entry.displayName, listName, status: 'missing', details: 'List not found' };
+          }
+
           auditLog.warn('sp:provisioning', `List "${listName}" missing. Provisioning...`, { key: entry.key });
           await provisioner.ensureList(
               listName, 
@@ -306,15 +325,19 @@ export class SharePointProvisioningCoordinator {
 
           // Attempt self-healing if provisioning fields match missing ones
           if (entry.provisioningFields) {
-            auditLog.warn('sp:provisioning', `Healing ${listName}...`, { missingFields });
-            await provisioner.ensureList(listName, entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[], { phase });
-            
-            // Re-verify after healing
-            const reAvailable = await client.getListFieldInternalNames(listName);
-            const { missing: stillMissing } = resolveInternalNamesDetailed(reAvailable, candidates);
-            if (stillMissing.length === 0) {
-              saveStability(entry.key, 'provisioned');
-              return { key: entry.key, displayName: entry.displayName, listName, status: 'provisioned' };
+            if (shouldSkipProvisioning()) {
+              auditLog.warn('sp:provisioning', `Healing ${listName} skipped.`, { missingFields, reason: 'VITE_SKIP_PROVISIONING' });
+            } else {
+              auditLog.warn('sp:provisioning', `Healing ${listName}...`, { missingFields });
+              await provisioner.ensureList(listName, entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[], { phase });
+
+              // Re-verify after healing
+              const reAvailable = await client.getListFieldInternalNames(listName);
+              const { missing: stillMissing } = resolveInternalNamesDetailed(reAvailable, candidates);
+              if (stillMissing.length === 0) {
+                saveStability(entry.key, 'provisioned');
+                return { key: entry.key, displayName: entry.displayName, listName, status: 'provisioned' };
+              }
             }
           }
           

@@ -28,6 +28,16 @@ vi.mock('@/sharepoint/spListRegistry', async (importOriginal) => {
             { key: 'opt', displayName: 'Optional', resolve: () => 'OptionalList', lifecycle: 'optional', operations: ['R'], category: 'master' },
             { key: 'dep', displayName: 'Deprecated', resolve: () => 'DeprecatedList', lifecycle: 'deprecated', operations: ['R'], category: 'master' },
             { key: 'exp', displayName: 'Experimental', resolve: () => 'ExperimentalList', lifecycle: 'experimental', operations: ['R'], category: 'master' },
+            {
+              key: 'exp_heal',
+              displayName: 'Experimental Healing',
+              resolve: () => 'ExperimentalHealingList',
+              lifecycle: 'experimental',
+              operations: ['R'],
+              category: 'master',
+              essentialFields: ['Title'],
+              provisioningFields: [{ internalName: 'Title', type: 'Text', required: true }],
+            },
         ]
     };
 });
@@ -44,7 +54,7 @@ describe('SharePointProvisioningCoordinator - Lifecycle Support', () => {
       tryGetListMetadata: vi.fn().mockResolvedValue({ listId: '', title: 'SomeList' }),
       getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
       getExistingListTitlesAndIds: vi.fn().mockResolvedValue(
-        new Set(['RequiredList', 'OptionalList', 'DeprecatedList', 'ExperimentalList'])
+        new Set(['RequiredList', 'OptionalList', 'DeprecatedList', 'ExperimentalList', 'ExperimentalHealingList'])
       ),
     } as unknown as ReturnType<typeof useSP>;
   });
@@ -103,5 +113,55 @@ describe('SharePointProvisioningCoordinator - Lifecycle Support', () => {
     expect(trackSpEvent).toHaveBeenCalledWith('sp:list_missing_optional', expect.objectContaining({
       key: 'opt'
     }));
+  });
+
+  it('VITE_SKIP_PROVISIONING: should not ensure a missing list even when provisioning fields exist', async () => {
+    vi.mocked(readBool).mockImplementation((key) =>
+      key === 'VITE_SKIP_PROVISIONING' || key === 'VITE_FEATURE_EXP'
+    );
+    vi.mocked(mockClient.tryGetListMetadata).mockImplementation((name: string) => {
+      if (name === 'ExperimentalList') return Promise.resolve(null);
+      return Promise.resolve({ listId: '', title: name });
+    });
+
+    const result = await SharePointProvisioningCoordinator.bootstrap(mockClient);
+    const expResult = result.summaries.find(s => s.key === 'exp');
+
+    expect(expResult?.status).toBe('missing');
+    expect(mockClient.tryGetListMetadata).toHaveBeenCalledWith('ExperimentalList', expect.any(Object));
+    expect(mockClient.spFetch).not.toHaveBeenCalled();
+  });
+
+  it('VITE_SKIP_PROVISIONING: should not heal missing essential fields', async () => {
+    vi.mocked(readBool).mockImplementation((key) =>
+      key === 'VITE_SKIP_PROVISIONING' || key === 'VITE_FEATURE_EXP_HEAL'
+    );
+    vi.mocked(mockClient.tryGetListMetadata).mockImplementation((name: string) =>
+      Promise.resolve({ listId: '', title: name })
+    );
+    vi.mocked(mockClient.getListFieldInternalNames).mockImplementation((name: string) => {
+      if (name === 'ExperimentalHealingList') return Promise.resolve(new Set());
+      return Promise.resolve(new Set(['Title']));
+    });
+
+    const result = await SharePointProvisioningCoordinator.bootstrap(mockClient);
+    const healingResult = result.summaries.find(s => s.key === 'exp_heal');
+
+    expect(healingResult?.status).toBe('mismatch');
+    expect(mockClient.getListFieldInternalNames).toHaveBeenCalledWith('ExperimentalHealingList');
+    expect(mockClient.spFetch).not.toHaveBeenCalled();
+  });
+
+  it('VITE_SKIP_PROVISIONING: should not ensure child lists during bootstrap', async () => {
+    vi.mocked(readBool).mockImplementation((key) => key === 'VITE_SKIP_PROVISIONING');
+    vi.mocked(mockClient.tryGetListMetadata).mockImplementation((name: string) =>
+      Promise.resolve({ listId: '', title: name })
+    );
+    vi.mocked(mockClient.getListFieldInternalNames).mockResolvedValue(new Set(['Title']));
+
+    await SharePointProvisioningCoordinator.bootstrap(mockClient);
+
+    expect(mockClient.getExistingListTitlesAndIds).toHaveBeenCalled();
+    expect(mockClient.spFetch).not.toHaveBeenCalled();
   });
 });
