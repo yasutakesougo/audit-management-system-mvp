@@ -33,6 +33,7 @@ import {
 
 // Import Route Groups
 import { MASTER_ROUTES } from './routeGroups/masterRoutes';
+import { IBD_ROUTES_BASE } from './routeGroups/ibdRoutes';
 import { OPS_ROUTES } from './routeGroups/opsRoutes';
 import { PLANNING_ROUTES } from './routeGroups/planningRoutes';
 import { PLATFORM_ROUTES } from './routeGroups/platformRoutes';
@@ -94,6 +95,8 @@ const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): Na
   tier: overrides.tier,
 });
 
+const ASSESSMENT_ROUTE = IBD_ROUTES_BASE.find((item) => item.to === '/assessment');
+
 /**
  * Creates the navigation items array based on feature flags and permissions
  *
@@ -141,6 +144,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     PLANNING_ROUTES.SUPPORT_PLAN_GUIDE(isFieldStaffShell),
     PLANNING_ROUTES.ISP_EDITOR(isFieldStaffShell),
     PLANNING_ROUTES.PLANNING_SHEET_LIST(isFieldStaffShell),
+    ...(ASSESSMENT_ROUTE ? [{ ...ASSESSMENT_ROUTE, group: 'planning' as NavGroupKey }] : []),
     
     SEVERE_ROUTES.SUPPORT_REVIEW_HUB(isFieldStaffShell),
 
@@ -184,4 +188,3 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
   return items.filter((item) => isNavVisible(item, navAudience));
 }
-

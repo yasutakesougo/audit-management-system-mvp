@@ -82,16 +82,19 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright (Chromium only)
+        id: install_playwright_browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         timeout-minutes: 10
         run: npx playwright install --with-deps chromium
 
       - name: Install Playwright system dependencies
+        id: install_playwright_deps
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         timeout-minutes: 10
         run: npx playwright install-deps chromium
       
       - name: Build application (preview mode)
+        id: build_preview
         run: npm run build
         env:
           VITE_E2E: '1'
@@ -100,9 +103,11 @@ jobs:
           VITE_FEATURE_SCHEDULES: '1'
       
       - name: Start preview server
+        id: start_preview
         run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
       
       - name: Wait for preview server
+        id: wait_preview
         run: npx wait-on http://127.0.0.1:5173 --timeout 60000
       
       - name: Run deep E2E tests (non-smoke)
@@ -162,6 +167,60 @@ jobs:
             echo "**Total Tests:** ${tests:-0}" >> $GITHUB_STEP_SUMMARY
             echo "**Failures:** ${failures:-0}" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Classify deep test completion
+        if: always()
+        run: |
+          cancellation_step="none"
+          direct_cancellation="false"
+          if [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
+            direct_cancellation="true"
+            if [ "${{ steps.wait_preview.outcome }}" = "cancelled" ]; then
+              cancellation_step="Wait for preview server"
+            elif [ "${{ steps.build_preview.outcome }}" = "cancelled" ]; then
+              cancellation_step="Build application (preview mode)"
+            elif [ "${{ steps.install_playwright_deps.outcome }}" = "cancelled" ]; then
+              cancellation_step="Install Playwright system dependencies"
+            elif [ "${{ steps.install_playwright_browsers.outcome }}" = "cancelled" ]; then
+              cancellation_step="Install Playwright (Chromium only)"
+            elif [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
+              cancellation_step="Run deep E2E tests (non-smoke)"
+            fi
+          fi
+
+          classification="deep_tests_pass"
+          reason="Deep tests completed normally."
+          if [ "${{ steps.deep_tests.outcome }}" = "failure" ]; then
+            classification="deep_tests_failed"
+            reason="Deep tests reported failure."
+          elif [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
+            classification="deep_tests_cancelled"
+            reason="Deep test execution was cancelled: ${cancellation_step}"
+          fi
+
+          cat <<EOF > deep-cancel-audit.json
+          {
+            "run_id": "${{ github.run_id }}",
+            "attempt": "${{ github.run_attempt }}",
+            "workflow": "${{ github.workflow }}",
+            "job_name": "${{ github.job }}",
+            "merge_commit_sha": "${{ github.event.pull_request.merge_commit_sha }}",
+            "classification": "${classification}",
+            "direct_cancellation": ${direct_cancellation},
+            "cancellation_step": "${cancellation_step}",
+            "deep_tests_outcome": "${{ steps.deep_tests.outcome }}",
+            "head_sha": "${{ github.sha }}"
+          }
+          EOF
+
+          echo "## Deep E2E Cancellation Classification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Classification: \`${classification}\`" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: ${reason}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat deep-cancel-audit.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
       
       - name: Upload Playwright HTML report
         if: always()
@@ -180,6 +239,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            deep-cancel-audit.json
           retention-days: 14
           if-no-files-found: warn
       

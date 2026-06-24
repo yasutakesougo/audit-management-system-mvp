@@ -27,6 +27,7 @@
 - [Transport Assignment Page Spec (Phase 1)](./transport-assignment-page-spec.md)
 - [Transport Nightly Critical E2E](./transport-nightly-critical-e2e.md)
 - [TransportCourse Migration](./transport-course-migration.md)
+- [CI Cancellation Triage](./ci-cancellation-triage.md)
 - Weekly Review Issue Template: `.github/ISSUE_TEMPLATE/corrective-action-weekly-review.yml`
 - Transport Week1 Review Issue Template: `.github/ISSUE_TEMPLATE/transport-week1-review.yml`
 - TransportCourse Fallback Removal Issue Template: `.github/ISSUE_TEMPLATE/transport-course-fallback-removal.yml`

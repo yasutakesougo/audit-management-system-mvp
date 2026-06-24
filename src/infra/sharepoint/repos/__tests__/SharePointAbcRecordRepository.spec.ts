@@ -118,7 +118,6 @@ describe('SharePointAbcRecordRepository', () => {
         behavior: '大声で泣く',
         // 不変フィールド (これらは送信されないはず)
         abcRecordId: 'hacker-uuid',
-        createdAt: '2020-01-01T00:00:00Z',
         createdBy: 'hacker-user',
         recorderName: '不審な上書き者',
         // 更新監査

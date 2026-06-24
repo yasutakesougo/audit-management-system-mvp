@@ -56,6 +56,39 @@ describe('ActivityDiarySchemaResolver', () => {
     expect(result?.mapping.mealMain).toBe('MealMain');
   });
 
+  it('normalizes whitespace and skips blank optional fields when probing schema', async () => {
+    const spFetch = vi.fn(async (path: string) => {
+      if (path.startsWith('lists?$select=Title&$top=5000')) {
+        return jsonResponse({
+          value: [{ Title: 'ActivityDiary' }],
+        });
+      }
+      if (path.includes("lists/getbytitle('ActivityDiary')/fields")) {
+        const readonlyFields = [
+          { InternalName: '  UserIdId  ' },
+          { InternalName: '  EntryDate' },
+          { InternalName: 'Period  ' },
+          { InternalName: ' ActivityCategory ' },
+          { InternalName: '' },
+          { InternalName: '   ' },
+          {},
+        ] as const;
+        return jsonResponse({ value: readonlyFields as unknown as Array<{ InternalName?: string | null | undefined }> });
+      }
+      throw new Error(`Unexpected spFetch path: ${path}`);
+    });
+
+    const resolver = new ActivityDiarySchemaResolver(spFetch as unknown as SpFetchFn, 'ActivityDiary');
+    const result = await resolver.resolve();
+
+    expect(result).toBeTruthy();
+    expect(result?.mapping.userId).toBe('UserIdId');
+    expect(result?.mapping.date).toBe('EntryDate');
+    expect(result?.mapping.shift).toBe('Period');
+    expect(result?.mapping.category).toBe('ActivityCategory');
+    expect(result?.mapping.mealMain).toBe('MealMain');
+  });
+
   it('returns null when essential fields cannot be resolved', async () => {
     const spFetch = vi.fn(async (path: string) => {
       if (path.startsWith('lists?$select=Title&$top=5000')) {

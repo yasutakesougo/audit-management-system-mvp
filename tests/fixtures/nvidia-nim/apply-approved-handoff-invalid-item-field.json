@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "nvidia-nim-apply-approved-preview/1.0",
+  "generatedAt": "2026-06-10T12:00:00.000Z",
+  "inputPath": "tmp/review/apply-approved-plan.json",
+  "outputPath": "tmp/review/apply-approved-preview.json",
+  "summary": {
+    "total": 1,
+    "approved": 1,
+    "warnings": 0
+  },
+  "items": [
+    {
+      "artifactId": 123,
+      "path": "/support-plans/p3.json",
+      "suggestedTitle": 456,
+      "labels": ["risk"],
+      "reason": true
+    }
+  ],
+  "warnings": [],
+  "preflight": {
+    "passed": true,
+    "failures": []
+  }
+}
