@@ -23,7 +23,7 @@
  */
 import { doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
 
-import { db } from '@/infra/firestore/client';
+import { db, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 
 export type DailyPdcaEventType = 'DAILY_SUPPORT_SUBMITTED' | 'PDCA_CHECK_VIEWED';
 
@@ -66,6 +66,10 @@ export async function createDailyEventCreateOnly(input: PersistDailyPdcaInput) {
   const idempotencyKey = makeIdempotencyKey(input);
   const ref = doc(db, 'orgs', input.orgId, 'events', idempotencyKey);
 
+  if (!isFirestoreWriteAvailable()) {
+    return { idempotencyKey };
+  }
+
   const payload = {
     orgId: input.orgId,
     templateId: input.templateId,
@@ -91,6 +95,10 @@ export async function createDailyEventCreateOnly(input: PersistDailyPdcaInput) {
 export async function upsertDailySnapshot(input: PersistDailyPdcaInput) {
   const snapId = makeDailySnapshotId(input);
   const ref = doc(db, 'orgs', input.orgId, 'dailySnapshots', snapId);
+
+  if (!isFirestoreWriteAvailable()) {
+    return;
+  }
 
   const submittedAtTs = input.submittedAt ? Timestamp.fromDate(input.submittedAt) : null;
 
