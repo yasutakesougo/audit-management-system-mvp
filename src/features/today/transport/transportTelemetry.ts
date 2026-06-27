@@ -12,7 +12,7 @@
  *
  * @see transport_telemetry_design.md
  */
-import { db } from '@/infra/firestore/client';
+import * as firestoreClient from '@/infra/firestore/client';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { TransportDirection, TransportLegStatus } from './transportTypes';
 
@@ -97,12 +97,22 @@ const LOG = '[transport:telemetry]';
  * エラーは console.warn のみ。UI に影響を与えない。
  */
 export function trackTransportEvent(event: TransportTelemetryEvent): void {
+  const canWrite = typeof firestoreClient.isFirestoreWriteAvailable === 'function'
+    ? firestoreClient.isFirestoreWriteAvailable()
+    : true;
+  if (!canWrite) {
+    return;
+  }
+
   const payload = {
     ...event,
     ts: serverTimestamp(),
   };
 
   try {
+    const db = typeof firestoreClient.getDb === 'function'
+      ? firestoreClient.getDb()
+      : firestoreClient.db;
     addDoc(collection(db, 'telemetry'), payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn(`${LOG} write failed`, err);

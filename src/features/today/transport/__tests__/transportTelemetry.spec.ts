@@ -4,15 +4,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mock Firebase ───────────────────────────────────────────────────────────
-const mockAddDoc = vi.fn().mockResolvedValue({ id: 'mock-doc-id' });
+const { mockAddDoc, mockCollection, mockDb, mockIsFirestoreWriteAvailable, mockGetDb } = vi.hoisted(() => {
+  const mockDb = 'mock-db';
+  return {
+    mockAddDoc: vi.fn().mockResolvedValue({ id: 'mock-doc-id' }),
+    mockCollection: vi.fn((_db: unknown, name: string) => `mock-collection:${name}`),
+    mockDb,
+    mockIsFirestoreWriteAvailable: vi.fn(() => true),
+    mockGetDb: vi.fn(() => mockDb),
+  };
+});
+
 vi.mock('firebase/firestore', () => ({
   addDoc: (...args: unknown[]) => mockAddDoc(...args),
-  collection: vi.fn((_db: unknown, name: string) => `mock-collection:${name}`),
+  collection: mockCollection,
   serverTimestamp: vi.fn(() => 'MOCK_SERVER_TS'),
 }));
 
 vi.mock('@/infra/firestore/client', () => ({
-  db: 'mock-db',
+  db: mockDb,
+  getDb: mockGetDb,
+  isFirestoreWriteAvailable: mockIsFirestoreWriteAvailable,
 }));
 
 import {
@@ -25,7 +37,8 @@ import {
 
 describe('trackTransportEvent', () => {
   beforeEach(() => {
-    mockAddDoc.mockClear();
+    vi.clearAllMocks();
+    mockIsFirestoreWriteAvailable.mockReturnValue(true);
   });
 
   it('writes sync-failed event to telemetry collection', () => {
@@ -127,6 +140,25 @@ describe('trackTransportEvent', () => {
         clientTs: '2026-03-25T09:00:00.000Z',
       });
     }).not.toThrow();
+  });
+
+  it('does not write when Firestore write is unavailable', () => {
+    mockIsFirestoreWriteAvailable.mockReturnValue(false);
+
+    trackTransportEvent({
+      type: 'transport:sync-failed',
+      eventVersion: 1,
+      source: 'useTransportStatus',
+      userCode: 'U001',
+      recordDate: '2026-03-25',
+      direction: 'to',
+      errorMessage: 'test',
+      errorStatus: 503,
+      clientTs: '2026-03-25T09:00:00.000Z',
+    });
+
+    expect(mockCollection).not.toHaveBeenCalled();
+    expect(mockAddDoc).not.toHaveBeenCalled();
   });
 });
 

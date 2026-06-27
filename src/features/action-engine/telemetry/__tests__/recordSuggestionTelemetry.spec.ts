@@ -5,8 +5,16 @@ import {
 } from '../recordSuggestionTelemetry';
 import { SUGGESTION_TELEMETRY_EVENTS, type SuggestionTelemetryEvent } from '../buildSuggestionTelemetryEvent';
 
-const mockAddDoc = vi.fn().mockResolvedValue({ id: 'test-doc-id' });
-const mockCollection = vi.fn().mockReturnValue('mock-collection-ref');
+const { mockAddDoc, mockCollection, mockDb, mockIsFirestoreWriteAvailable, mockGetDb } = vi.hoisted(() => {
+  const mockDb = 'mock-db';
+  return {
+    mockAddDoc: vi.fn().mockResolvedValue({ id: 'test-doc-id' }),
+    mockCollection: vi.fn().mockReturnValue('mock-collection-ref'),
+    mockDb,
+    mockIsFirestoreWriteAvailable: vi.fn(() => true),
+    mockGetDb: vi.fn(() => mockDb),
+  };
+});
 
 vi.mock('firebase/firestore', () => ({
   addDoc: (...args: unknown[]) => mockAddDoc(...args),
@@ -15,7 +23,9 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('@/infra/firestore/client', () => ({
-  db: 'mock-db',
+  db: mockDb,
+  isFirestoreWriteAvailable: mockIsFirestoreWriteAvailable,
+  getDb: mockGetDb,
 }));
 
 const baseEvent: SuggestionTelemetryEvent = {
@@ -63,5 +73,14 @@ describe('recordSuggestionTelemetry', () => {
     expect(() => {
       recordSuggestionTelemetry(baseEvent);
     }).not.toThrow();
+  });
+
+  it('isFirestoreWriteAvailable が false の場合は no-op で collection/addDoc を呼ばない', () => {
+    mockIsFirestoreWriteAvailable.mockReturnValueOnce(false);
+
+    recordSuggestionTelemetry(baseEvent);
+
+    expect(mockCollection).not.toHaveBeenCalled();
+    expect(mockAddDoc).not.toHaveBeenCalled();
   });
 });

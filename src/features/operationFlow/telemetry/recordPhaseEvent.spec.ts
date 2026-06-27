@@ -7,8 +7,16 @@ import {
 } from './recordPhaseEvent';
 
 // ── Mock Firestore ──
-const mockAddDoc = vi.fn().mockResolvedValue({ id: 'test-doc-id' });
-const mockCollection = vi.fn().mockReturnValue('mock-collection-ref');
+const { mockAddDoc, mockCollection, mockDb, mockIsFirestoreWriteAvailable, mockGetDb } = vi.hoisted(() => {
+  const mockDb = 'mock-db';
+  return {
+    mockAddDoc: vi.fn().mockResolvedValue({ id: 'test-doc-id' }),
+    mockCollection: vi.fn().mockReturnValue('mock-collection-ref'),
+    mockDb,
+    mockIsFirestoreWriteAvailable: vi.fn(() => true),
+    mockGetDb: vi.fn(() => mockDb),
+  };
+});
 
 vi.mock('firebase/firestore', () => ({
   addDoc: (...args: unknown[]) => mockAddDoc(...args),
@@ -17,13 +25,16 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('@/infra/firestore/client', () => ({
-  db: 'mock-db',
+  db: mockDb,
+  getDb: mockGetDb,
+  isFirestoreWriteAvailable: mockIsFirestoreWriteAvailable,
 }));
 
 describe('recordPhaseEvent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     _resetGuard();
+    mockIsFirestoreWriteAvailable.mockReturnValue(true);
   });
 
   it('sends event to Firestore telemetry collection', () => {
@@ -46,6 +57,18 @@ describe('recordPhaseEvent', () => {
         ts: 'mock-server-timestamp',
       }),
     );
+  });
+
+  it('does not write when Firestore write is unavailable', () => {
+    mockIsFirestoreWriteAvailable.mockReturnValue(false);
+
+    recordPhaseEvent({
+      event: PHASE_EVENTS.SUGGEST_SHOWN,
+      screen: '/today',
+    });
+
+    expect(mockCollection).not.toHaveBeenCalled();
+    expect(mockAddDoc).not.toHaveBeenCalled();
   });
 
   it('includes clientTs as ISO string', () => {

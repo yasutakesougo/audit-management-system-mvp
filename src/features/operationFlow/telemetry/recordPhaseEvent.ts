@@ -19,7 +19,7 @@
  *
  * @module features/operationFlow/telemetry/recordPhaseEvent
  */
-import { db } from '@/infra/firestore/client';
+import * as firestoreClient from '@/infra/firestore/client';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 // ── イベント名定数 ──────────────────────────────────────────
@@ -95,6 +95,13 @@ export function recordPhaseEvent(
   payload: PhaseEventPayload,
   options: { dedupe?: boolean } = {},
 ): void {
+  const canWrite = typeof firestoreClient.isFirestoreWriteAvailable === 'function'
+    ? firestoreClient.isFirestoreWriteAvailable()
+    : true;
+  if (!canWrite) {
+    return;
+  }
+
   // 重複送信ガード
   if (options.dedupe) {
     const key = guardKey(payload);
@@ -110,6 +117,9 @@ export function recordPhaseEvent(
   };
 
   try {
+    const db = typeof firestoreClient.getDb === 'function'
+      ? firestoreClient.getDb()
+      : firestoreClient.db;
     addDoc(collection(db, 'telemetry'), doc).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[phase-telemetry] write failed', err);
