@@ -13,6 +13,7 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('@/infra/firestore/client', () => ({
   db: 'mock-db',
+  isFirestoreWriteAvailable: vi.fn(() => true),
 }));
 
 import {
