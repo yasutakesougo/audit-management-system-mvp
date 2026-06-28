@@ -1,4 +1,4 @@
-import * as firestoreClient from '@/infra/firestore/client';
+import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { SuggestionTelemetryEvent } from './buildSuggestionTelemetryEvent';
 
@@ -16,10 +16,7 @@ export function recordSuggestionTelemetry(
   event: SuggestionTelemetryEvent,
   options: { dedupeKey?: string } = {},
 ): void {
-  const canWrite = typeof firestoreClient.isFirestoreWriteAvailable === 'function'
-    ? firestoreClient.isFirestoreWriteAvailable()
-    : true;
-  if (!canWrite) {
+  if (!isFirestoreWriteAvailable()) {
     return;
   }
 
@@ -36,9 +33,7 @@ export function recordSuggestionTelemetry(
   };
 
   try {
-    const db = typeof firestoreClient.getDb === 'function'
-      ? firestoreClient.getDb()
-      : firestoreClient.db;
+    const db = getDb();
     addDoc(collection(db, 'telemetry'), payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[suggestion-telemetry] write failed', err);
