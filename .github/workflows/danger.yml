@@ -28,6 +28,6 @@ jobs:
 
       # Today 領域が変更された場合に自動実行（RejectではなくWarnで啓蒙する）
       - name: Run Danger
-        run: npx danger ci
+        run: node scripts/ci/run-danger-with-retry.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
