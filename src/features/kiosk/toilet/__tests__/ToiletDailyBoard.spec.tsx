@@ -268,13 +268,10 @@ describe('ToiletDailyBoard', () => {
     fireEvent.click(screen.getByTestId('toilet-record-save'));
 
     await waitFor(() => {
-      expect(mockCreateRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'user-1',
-          occurredAt: expect.stringContaining('2026-06-12'),
-        }),
-      );
+      expect(mockCreateRecord).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1' }));
     });
+    const createInput = mockCreateRecord.mock.calls[0]?.[0];
+    expect(toLocalDateISO(new Date(createInput.occurredAt))).toBe('2026-06-12');
     await waitFor(() => {
       expect(screen.queryByText('支援 花子さんのトイレ記録')).not.toBeInTheDocument();
     });
