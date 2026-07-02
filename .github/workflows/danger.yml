@@ -5,6 +5,9 @@ on:
     paths:
       - 'src/features/today/**'
       - 'dangerfile.ts'
+      - '.github/workflows/danger.yml'
+      - 'scripts/ci/run-danger-with-retry.mjs'
+      - 'scripts/ci/__tests__/run-danger-with-retry.spec.mjs'
 
 jobs:
   danger:
