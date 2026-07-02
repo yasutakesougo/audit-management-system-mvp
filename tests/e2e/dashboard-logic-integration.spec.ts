@@ -28,8 +28,8 @@ test.describe('Dashboard Page - After Logic Separation', () => {
 
   test('should show meeting guide actions', async ({ page }) => {
     await expect(page.getByRole('button', { name: '朝会・夕会情報' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '🏢 お部屋情報' })).toBeVisible();
-    await expect(page.getByTestId('dashboard-handoff-summary').getByRole('button', { name: 'タイムラインを開く' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'お部屋情報' })).toBeVisible();
+    await expect(page.getByTestId('dashboard-handoff-summary').getByRole('button', { name: 'タイムライン' })).toBeVisible();
   });
 
   test('should display Safety HUD with indicators', async ({ page }) => {
