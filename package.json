@@ -112,6 +112,7 @@
     "release": ".github/scripts/release.sh",
     "patrol": "node scripts/ops/nightly-patrol.mjs",
     "patrol:telemetry": "node scripts/ops/materialize-sp-telemetry.mjs",
+    "patrol:telemetry:capture": "node scripts/ops/capture-sp-telemetry-lanes.mjs",
     "patrol:assert": "node scripts/ops/assert-telemetry-lanes.mjs",
     "patrol:dashboard": "node scripts/ops/os-metrics.mjs",
     "patrol:raw-fetch": "node scripts/ops/fetch-nightly-raw-summaries.mjs",
