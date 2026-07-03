@@ -14,6 +14,10 @@ concurrency:
   group: nightly-patrol
   cancel-in-progress: false
 
+env:
+  # Keep strict telemetry assertions wired to repository variables, not code constants.
+  SP_TELEMETRY_PATH: ${{ vars.SP_TELEMETRY_PATH }}
+
 jobs:
   patrol:
     runs-on: ubuntu-latest
