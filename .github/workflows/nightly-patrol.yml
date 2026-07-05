@@ -119,6 +119,14 @@ jobs:
           echo "open_count=${count}" >> "$GITHUB_OUTPUT"
           echo "open_url=${url}" >> "$GITHUB_OUTPUT"
 
+      - name: Capture SharePoint telemetry lanes
+        env:
+          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+          VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE || 'https://contoso.sharepoint.com' }}
+          VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE || '/sites/Audit' }}
+          SP_TELEMETRY_OUTPUT_PATH: docs/nightly-patrol/sp-telemetry.json
+        run: npm run patrol:telemetry:capture
+
       - name: Run patrol scan
         env:
           ACT_WARNING_SUMMARY_PATH: /tmp/act-warnings-nightly.json
