@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { normalizeSharePointBearerToken } from './indexAuditToken';
 
 // --- 1. Load Env FIRST ---
 function loadEnv() {
@@ -108,7 +109,7 @@ async function main() {
     results: [],
   };
 
-  const token = process.env.SP_TOKEN || process.env.VITE_SP_TOKEN;
+  const token = normalizeSharePointBearerToken(process.env.SP_TOKEN || process.env.VITE_SP_TOKEN);
   if (!token) {
     if (isJson) {
       console.log(JSON.stringify({ error: "SP_TOKEN is not set" }));
