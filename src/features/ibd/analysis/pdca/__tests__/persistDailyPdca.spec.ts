@@ -10,6 +10,7 @@ import {
 const mockSetDoc = vi.fn().mockResolvedValue(undefined);
 const mockDoc = vi.fn().mockReturnValue('mock-doc-ref');
 const mockTimestampFromDate = vi.fn((value: Date) => ({ value }));
+const mockGetDb = vi.fn(() => 'mock-db');
 
 let firestoreWriteAvailable = true;
 
@@ -23,7 +24,7 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('@/infra/firestore/client', () => ({
-  db: 'mock-db',
+  getDb: () => mockGetDb(),
   isFirestoreWriteAvailable: () => firestoreWriteAvailable,
 }));
 
@@ -54,6 +55,8 @@ describe('persistDailyPdca', () => {
     const result = await createDailyEventCreateOnly(baseInput);
 
     expect(result).toEqual({ idempotencyKey: makeIdempotencyKey(baseInput) });
+    expect(mockGetDb).not.toHaveBeenCalled();
+    expect(mockDoc).not.toHaveBeenCalled();
     expect(mockSetDoc).not.toHaveBeenCalled();
   });
 
@@ -62,6 +65,8 @@ describe('persistDailyPdca', () => {
 
     await upsertDailySnapshot(baseInput);
 
+    expect(mockGetDb).not.toHaveBeenCalled();
+    expect(mockDoc).not.toHaveBeenCalled();
     expect(mockSetDoc).not.toHaveBeenCalled();
   });
 
@@ -70,6 +75,8 @@ describe('persistDailyPdca', () => {
     await upsertDailySnapshot(baseInput);
 
     expect(mockSetDoc).toHaveBeenCalledTimes(2);
+    expect(mockGetDb).toHaveBeenCalledTimes(2);
+    expect(mockDoc).toHaveBeenCalledTimes(2);
     expect(mockSetDoc).toHaveBeenNthCalledWith(
       1,
       'mock-doc-ref',
