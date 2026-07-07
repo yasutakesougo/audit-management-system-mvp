@@ -14,6 +14,10 @@ concurrency:
   group: nightly-patrol
   cancel-in-progress: false
 
+env:
+  # Keep telemetry capture and strict assertions wired to the same artifact path.
+  SP_TELEMETRY_PATH: ${{ vars.SP_TELEMETRY_PATH || 'docs/nightly-patrol/sp-telemetry.json' }}
+
 jobs:
   patrol:
     runs-on: ubuntu-latest
@@ -115,13 +119,20 @@ jobs:
           echo "open_count=${count}" >> "$GITHUB_OUTPUT"
           echo "open_url=${url}" >> "$GITHUB_OUTPUT"
 
+      - name: Capture SharePoint telemetry lanes
+        env:
+          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+          VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE || 'https://contoso.sharepoint.com' }}
+          VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE || '/sites/Audit' }}
+          SP_TELEMETRY_OUTPUT_PATH: ${{ env.SP_TELEMETRY_PATH }}
+        run: npm run patrol:telemetry:capture
+
       - name: Run patrol scan
         env:
           ACT_WARNING_SUMMARY_PATH: /tmp/act-warnings-nightly.json
           ACT_WARNING_OPEN_ISSUE_COUNT: ${{ steps.act_issue.outputs.open_count }}
           ACT_WARNING_OPEN_ISSUE_URL: ${{ steps.act_issue.outputs.open_url }}
-          # SP_TELEMETRY_PATH should be provided by the environment if available
-          SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }} 
+          SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }}
           SP_TOKEN: ${{ secrets.SP_TOKEN }}
           VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE || 'https://contoso.sharepoint.com' }}
           VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE || '/sites/Audit' }}
