@@ -8,7 +8,7 @@
  * 4. determinePdcaCycleState — 統合テスト（メインエントリ）
  * 5. サイクル循環（Act → 次 Plan）
  */
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   resolveCurrentPhase,
   buildPhaseCompletionMap,
@@ -39,6 +39,10 @@ function makeInput(overrides: Partial<DetermineCycleInput> = {}): DetermineCycle
     ...overrides,
   };
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 // ─────────────────────────────────────────────
 // 1. resolveCurrentPhase
@@ -251,13 +255,14 @@ describe('determinePdcaCycleState', () => {
   });
 
   it('referenceDate 省略時 → computedAt に今日の日付', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-15T09:00:00.000Z'));
+
     const state = determinePdcaCycleState(
       makeInput({ referenceDate: undefined }),
     );
 
-    // 今日の日付（YYYY-MM-DD 形式）
-    const today = new Date().toISOString().slice(0, 10);
-    expect(state.computedAt).toBe(today);
+    expect(state.computedAt).toBe('2026-03-15');
   });
 });
 
