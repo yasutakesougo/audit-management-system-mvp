@@ -435,37 +435,20 @@ jobs:
         run: |
           echo "=== /tmp/vite-5173.log (tail -200) ==="
           tail -200 /tmp/vite-5173.log || true
-      - name: Canary checks (E2E + LHCI + Summary)
-        id: canary
+      - name: Canary E2E
+        id: canary_e2e
         run: |
           set +e
-          status=0
+          set -o pipefail
+          mkdir -p reports/quality-gates
 
           export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
           export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
           export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-${VITE_SP_RESOURCE}/.default}"
 
-          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp
-          exit_code=$?
-          if [ "$exit_code" -ne 0 ]; then
-            status="$exit_code"
-          fi
-
-          npm run ci:lh
-          exit_code=$?
-          if [ "$exit_code" -ne 0 ] && [ "$status" -eq 0 ]; then
-            status="$exit_code"
-          fi
-
-          npm run perf:summary
-          exit_code=$?
-          if [ "$exit_code" -ne 0 ] && [ "$status" -eq 0 ]; then
-            status="$exit_code"
-          fi
-
-          if [ "$status" -ne 0 ]; then
-            exit "$status"
-          fi
+          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp 2>&1 | tee reports/quality-gates/canary-e2e.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -478,6 +461,82 @@ jobs:
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      - name: Canary LHCI
+        id: canary_lhci
+        if: always()
+        run: |
+          set +e
+          set -o pipefail
+          mkdir -p reports/quality-gates
+
+          npm run ci:lh 2>&1 | tee reports/quality-gates/canary-lhci.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+        env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+          VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      - name: Canary perf summary
+        id: canary_summary
+        if: always()
+        run: |
+          set +e
+          set -o pipefail
+          mkdir -p reports/quality-gates
+
+          npm run perf:summary 2>&1 | tee reports/quality-gates/canary-summary.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+        env:
+          VITE_E2E: "1"
+          VITE_SKIP_LOGIN: "1"
+          VITE_E2E_MSAL_MOCK: "1"
+          VITE_SKIP_SHAREPOINT: "1"
+          VITE_MSAL_CLIENT_ID: "dummy"
+          VITE_MSAL_TENANT_ID: "dummy"
+          VITE_SCHEDULES_TZ: "Asia/Tokyo"
+          VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
+          VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
+          VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE }}
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+      - name: Classify canary failure
+        id: canary
+        if: always()
+        run: node scripts/ci/classify-canary.mjs
+        env:
+          CANARY_E2E_EXIT_CODE: ${{ steps.canary_e2e.outputs.exit_code || '1' }}
+          CANARY_LHCI_EXIT_CODE: ${{ steps.canary_lhci.outputs.exit_code || '1' }}
+          CANARY_SUMMARY_EXIT_CODE: ${{ steps.canary_summary.outputs.exit_code || '1' }}
+          CANARY_E2E_LOG_PATH: reports/quality-gates/canary-e2e.log
+      - name: Upload canary classification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-classification-${{ github.run_number }}-${{ github.run_attempt }}
+          path: reports/quality-gates/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Canary final gate
+        if: always()
+        run: |
+          if [ "${CANARY_SHOULD_FAIL}" != "false" ]; then
+            echo "Canary classified as ${CANARY_CLASSIFICATION:-unknown}"
+            exit "${CANARY_EXIT_CODE:-1}"
+          fi
+        env:
+          CANARY_SHOULD_FAIL: ${{ steps.canary.outputs.should_fail || 'true' }}
+          CANARY_CLASSIFICATION: ${{ steps.canary.outputs.classification || 'unknown' }}
+          CANARY_EXIT_CODE: ${{ steps.canary.outputs.exit_code || '1' }}
       - name: Notify canary failure
         if: failure()
-        run: node scripts/notify.mjs --only-on-fail --title "canary(schedule)" --files reports/perf-summary.md
+        run: node scripts/notify.mjs --only-on-fail --title "canary(schedule)" --files reports/quality-gates/canary-classification.md,reports/perf-summary.md
+        env:
+          NOTIFY_LAST_EXIT_CODE: ${{ steps.canary.outputs.exit_code }}
