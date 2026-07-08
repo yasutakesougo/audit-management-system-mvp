@@ -57,7 +57,7 @@ const UsersMenu: FC<UsersMenuProps> = ({
         onClick={onExportMonthlySummary}
         sx={{ alignSelf: 'flex-start' }}
       >
-        利用実績月次サマリ (Excel) 出力
+        利用実績月次サマリ (CSV) 出力
       </Button>
     </Stack>
 
