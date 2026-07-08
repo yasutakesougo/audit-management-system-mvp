@@ -352,8 +352,9 @@ describe('useBillingSummary', () => {
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
     await waitFor(() => {
-      expect(result.current.isPersistenceMissing).toBe(false);
+      expect(result.current.isPaymentAuditMissing).toBe(true);
     });
+    expect(result.current.isPersistenceMissing).toBe(false);
     expect(result.current.isPaymentAuditMissing).toBe(true);
     expect(result.current.persistenceWarningReason).toContain('PaidAt, PaidBy');
   });
