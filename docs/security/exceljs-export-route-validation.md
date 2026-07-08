@@ -4,6 +4,12 @@
 - docs-only
 - `#2364` の `xlsx` 置換・使用縮小後、`xlsx` 残存経路を再棚卸し
 - `xlsx` 依存が production から除去され、`exceljs` 経路のみが残ることを固定
+- 再実行時点: `#2364` マージ後（2026-07-08）
+
+## 追加確認メモ（再開時点）
+- 2026-07-08 時点で再実行し、`xlsx` 直依存は存在せず (`npm ls xlsx --depth=0` -> `-- (empty)` )。
+- 代替経路として `exceljs@4.4.0` が残存 (`npm ls exceljs --depth=0`)。
+- `rg` 結果では `from 'xlsx'` の直接 import は見当たらず、`wb.xlsx.*` 系 API と `.xlsx` 文字列が主流。
 
 ## 確認コマンド（実行時刻: 2026-07-08）
 
