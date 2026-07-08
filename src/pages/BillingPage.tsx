@@ -80,6 +80,8 @@ export default function BillingPage() {
     isError,
     isMutating,
     isPersistenceMissing,
+    isPaymentAuditMissing,
+    persistenceWarningReason,
     togglePaymentStatus,
     bulkSettle,
     exportCsv,
@@ -444,6 +446,24 @@ export default function BillingPage() {
       {isPersistenceMissing && (
         <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
           精算状態の永続化列を確認できません。現在の精算状態には、この端末・このブラウザ内の一時情報が含まれる可能性があります。別端末・別ブラウザでは一致しない場合があるため、CSVの精算状況を正式な精算結果として扱わないでください。管理者は SharePoint の PaymentStatus / PaidAt / PaidBy 列を確認してください。
+          {persistenceWarningReason && (
+            <>
+              <br />
+              {persistenceWarningReason}
+            </>
+          )}
+        </Alert>
+      )}
+
+      {!isPersistenceMissing && isPaymentAuditMissing && (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+          精算状態は SharePoint に保存できますが、PaidAt / PaidBy などの監査情報列を一部確認できません。管理者は SharePoint の PaymentStatus / PaidAt / PaidBy 列を確認してください。
+          {persistenceWarningReason && (
+            <>
+              <br />
+              {persistenceWarningReason}
+            </>
+          )}
         </Alert>
       )}
 
