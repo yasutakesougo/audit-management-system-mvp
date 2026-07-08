@@ -1,6 +1,7 @@
 import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
 import { useUserRepository } from '@/features/users/repositoryFactory';
 import type { IUserMaster } from '@/features/users/types';
+import { getAppConfig, readEnv } from '@/lib/env';
 import {
     eachDayOfInterval,
     endOfMonth,
@@ -13,6 +14,11 @@ import { useCallback, useState } from 'react';
 import type { AchievementRecordRow } from './AchievementRecordPDF';
 
 const DAYS_JP = ['日', '月', '火', '水', '木', '金', '土'];
+
+export const resolveAchievementFacilityInfo = () => ({
+  facilityName: getAppConfig().facilityName.trim(),
+  facilityNumber: readEnv('VITE_FACILITY_NUMBER', '').trim(),
+});
 
 /**
  * Hook to prepare data for the Service Provision Achievement Record (PDF)
@@ -39,6 +45,8 @@ export function useAchievementPDF() {
       if (!user) {
         throw new Error('利用者が見つかりませんでした。');
       }
+
+      const facility = resolveAchievementFacilityInfo();
 
       // 2. Fetch Daily Records for the month
       const start = startOfMonth(parseISO(`${targetMonth}-01`));
@@ -71,8 +79,8 @@ export function useAchievementPDF() {
           dayOfWeek: DAYS_JP[getDay(date)],
           status: hasContent ? '通所' : '-',
           serviceType: user.severeFlag ? '重度' : '通常',
-          startTime: record?.date ? '10:00' : null, // Dummy logic for now
-          endTime: record?.date ? '15:30' : null,   // Dummy logic for now
+          startTime: null,
+          endTime: null,
           notes: userRow?.specialNotes || '',
         };
       });
@@ -82,6 +90,8 @@ export function useAchievementPDF() {
         month: targetMonth,
         userName: user.FullName,
         userCertNumber: user.RecipientCertNumber || '',
+        facilityName: facility.facilityName,
+        facilityNumber: facility.facilityNumber,
         rows,
       };
     } catch (err) {
