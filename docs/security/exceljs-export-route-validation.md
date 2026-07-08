@@ -1,51 +1,60 @@
-# ExcelJS export routes validation (post #2364)
+# ExcelJS-only xlsx export path inventory (2026-07-08)
 
-## Scope
-- docs-only
-- `#2364` の `xlsx` 置換・使用縮小後、`xlsx` 残存経路を再棚卸し
-- `xlsx` 依存が production から除去され、`exceljs` 経路のみが残ることを固定
-- 再実行時点: `#2364` マージ後（2026-07-08）
+## 背景
 
-## 追加確認メモ（再開時点）
-- 2026-07-08 時点で再実行し、`xlsx` 直依存は存在せず (`npm ls xlsx --depth=0` -> `-- (empty)` )。
-- 代替経路として `exceljs@4.4.0` が残存 (`npm ls exceljs --depth=0`)。
-- `rg` 結果では `from 'xlsx'` の直接 import は見当たらず、`wb.xlsx.*` 系 API と `.xlsx` 文字列が主流。
+pm audit --omit=dev の対象整理後、再調査した結果、
+ランタイム依存としては xlsx パッケージは直接依存から外れており、
+xceljs 経路のみが残存しています。
 
-## 確認コマンド（実行時刻: 2026-07-08）
+## 監査コマンド結果
 
-```bash
-rg -n "\bxlsx\b" src docs
-npm ls xlsx --depth=0
-npm ls exceljs --depth=0
-```
+- 
+pm ls xlsx --depth=0
+  - 結果: -- (empty)
+- 
+pm ls exceljs --depth=0
+  - 結果: xceljs@4.4.0
+- 保存ログ: 
+  - %TEMP%\npm-ls-xlsx.json
+  - %TEMP%\npm-ls-exceljs.json
 
-### 実行結果
+## 検出した .xlsx トレース
 
-- `rg -n "\bxlsx\b" src docs`
-  - `src` 側: `wb.xlsx.load(...)`, `wb.xlsx.writeBuffer()`, テンプレート/出力名 `.xlsx`
-  - `src` 側に `from 'xlsx'` の直接 import は確認されず
-  - `exceljs` ベースの経路が主
-  - `docs` 側: 仕様・ガイド上の `.xlsx` 記載あり（実コード依存とは分離）
-- `npm ls xlsx --depth=0`
-  - `-- (empty)`（production 依存なし）
-- `npm ls exceljs --depth=0`
-  - `-- exceljs@4.4.0`
+### 実装経路
+- src/features/reports/monthly/MonthlySummaryExcel.ts
+  - wb.xlsx.load(...)
+  - wb.xlsx.writeBuffer()
+  - Worksheet / ow / cell 周辺の ExcelJS API 利用
+- src/features/reports/__tests__/MonthlySummaryExcel.spec.ts
+  - wb.xlsx.load(...) によるテスト検証
 
-## 分類
+### 文字列表現・拡張子
+- 文書内・テスト内の .xlsx 文字列/文言（ファイル名・説明文）
+  - docs: docs/security/xlsx-remaining-usage-inventory.md など
 
-- 方針: **C（exceljs 経路のみ残存）**
-- `xlsx` package 削除・更新や major updateは本PR対象外
-- `exceljs` の出力・読み込みルート（`generateSupportProcedureExcel`, `generateSeikatsuKaigoExcel`, `xlsxUtils` 等）の妥当性を次PRで分離して検討
+## 分類（現時点）
 
-## リスク / 次アクション
+- 直接 xlsx パッケージ利用: なし
+- 残存経路: xceljs のみ
+- 判定: C（exceljs 経路のみ残存）
 
-1. `exceljs` ベースの月次・各種レポート生成のユースケース別レビュー
-2. 既存の `.xlsx` 出力要件を維持しつつ、`xlsx` package 非依存の状態を維持できるかを確認
-3. 必要なら `exceljs` 経路のテスト追加 or 改修を別PR化
+## 対応分離方針
 
-## 別レーン（今回非対象）
+- 本PRの対象は棚卸し固定とし、実装変更は行わない。
+- 残存 xceljs の利用経路を確認し、次 PR で下記を検討する。
 
-- package.json / package-lock.json の更新
-- `xlsx` 削除（runtime impact を伴うため別PR）
-- `firebase` / `@blocknote` の major update 対応
-- app 実装の大規模差し替え
+### 次 PR 候補（分離）
+
+1. **exceljs 実装の安全性確認 PR**
+   - MonthlySummaryExcel.ts の xceljs 経路を再レビューし、
+     セキュリティ観点・性能観点の追加対策を検討
+2. **xlsx 依存除去（package lock 追加含む）PR**
+   - xlsx を直接更新する PR とは独立
+3. **firebase / @blocknote 対応 PR**
+   - 本件外の依存更新レーンとして維持
+
+## 補足
+
+- package.json / package-lock.json は未更新
+- app 実装（src）は未更新
+- docs-only の棚卸し PR として扱う
