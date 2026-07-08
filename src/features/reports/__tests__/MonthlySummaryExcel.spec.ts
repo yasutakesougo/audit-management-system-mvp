@@ -1,14 +1,10 @@
 import type { DailyRecordItem } from '@/features/daily';
 import { describe, expect, it, vi } from 'vitest';
-import { exportMonthlySummary } from '../monthly/MonthlySummaryExcel';
-
-const { exportToExcelMock } = vi.hoisted(() => ({
-  exportToExcelMock: vi.fn(),
-}));
-
-vi.mock('@/lib/reports/xlsxUtils', () => ({
-  exportToExcel: (...args: unknown[]) => exportToExcelMock(...args),
-}));
+import {
+  buildMonthlySummaryCsvContent,
+  buildMonthlySummaryRows,
+  exportMonthlySummary,
+} from '../monthly/MonthlySummaryExcel';
 
 const makeRecord = (overrides: Partial<DailyRecordItem> = {}): DailyRecordItem => ({
   date: '2026-03-01',
@@ -38,9 +34,11 @@ const makeRecord = (overrides: Partial<DailyRecordItem> = {}): DailyRecordItem =
 } as unknown as DailyRecordItem);
 
 describe('exportMonthlySummary', () => {
-  it('maps labels, sorts rows, and delegates to exportToExcel', () => {
-    exportToExcelMock.mockClear();
-
+  it('maps labels, sorts rows, and builds CSV content', () => {
+    const users = [
+      { id: 1, userId: 'U1', name: '利用者A', severe: false },
+      { id: 2, userId: 'U2', name: '利用者B', severe: true },
+    ];
     const records: DailyRecordItem[] = [
       makeRecord({
         date: '2026-03-03',
@@ -59,7 +57,7 @@ describe('exportMonthlySummary', () => {
               pica: false,
               other: false,
             },
-            specialNotes: '注意事項あり',
+            specialNotes: '注意,重要',
           },
         ],
       } as unknown as DailyRecordItem),
@@ -86,36 +84,41 @@ describe('exportMonthlySummary', () => {
       } as unknown as DailyRecordItem),
     ];
 
+    const rows = buildMonthlySummaryRows({ users, records });
+    const csv = buildMonthlySummaryCsvContent(rows);
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe(
+      '\ufeff日付,利用者ID,利用者名,午前活動,午後活動,昼食摂取,重度フラグ,問題行動,特記事項,記録者'
+    );
+    expect(lines[1]).toBe('2026-03-01,U1,利用者A,散歩,休憩,半分,-,,,Reporter A');
+    expect(lines[2]).toBe(
+      '2026-03-03,U2,利用者B,制作,運動,8割,○,"自傷, 大声","注意,重要",Reporter B'
+    );
+  });
+
+  it('downloads a CSV file with the expected filename', () => {
+    const originalCreateElement = document.createElement.bind(document);
+    const anchor = originalCreateElement('a') as HTMLAnchorElement;
+    const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(() => {});
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'a') {
+        return anchor;
+      }
+      return originalCreateElement(tagName);
+    });
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:monthly-summary');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
     exportMonthlySummary({
       month: '2026-03',
-      users: [
-        { id: 1, userId: 'U1', name: '利用者A', severe: false },
-        { id: 2, userId: 'U2', name: '利用者B', severe: true },
-      ],
-      records,
+      users: [],
+      records: [],
     });
 
-    expect(exportToExcelMock).toHaveBeenCalledTimes(1);
-    const [data, options] = exportToExcelMock.mock.calls[0] as [
-      Array<Record<string, string>>,
-      { fileName: string; sheetName: string },
-    ];
+    expect(anchor.download).toBe('利用実績月次サマリ_2026-03.csv');
+    expect(clickSpy).toHaveBeenCalledTimes(1);
 
-    expect(options).toEqual({
-      fileName: '利用実績月次サマリ_2026-03',
-      sheetName: '月次状況',
-    });
-
-    expect(data).toHaveLength(2);
-    expect(data[0]['日付']).toBe('2026-03-01');
-    expect(data[0]['利用者ID']).toBe('U1');
-    expect(data[0]['昼食摂取']).toBe('半分');
-    expect(data[0]['重度フラグ']).toBe('-');
-
-    expect(data[1]['日付']).toBe('2026-03-03');
-    expect(data[1]['利用者ID']).toBe('U2');
-    expect(data[1]['昼食摂取']).toBe('8割');
-    expect(data[1]['重度フラグ']).toBe('○');
-    expect(data[1]['問題行動']).toBe('自傷, 大声');
+    vi.restoreAllMocks();
   });
 });

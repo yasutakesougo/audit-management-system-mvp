@@ -1,9 +1,9 @@
 /**
  * useUsersPanelExport
  *
- * PDF・Excel 出力ハンドラ
+ * PDF・CSV 出力ハンドラ
  *
- * Heavy report libraries (@react-pdf/renderer, xlsx) are loaded lazily
+ * Heavy report libraries (@react-pdf/renderer) are loaded lazily
  * via dynamic import() so they stay out of the initial bundle.
  */
 import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
@@ -67,7 +67,7 @@ export function useUsersPanelExport(
         },
       });
 
-      // Lazy-load xlsx only when user clicks export
+      // Lazy-load export module only when user clicks export
       const { exportMonthlySummary } = await import(
         '@/features/reports/monthly/MonthlySummaryExcel'
       );
@@ -92,8 +92,8 @@ export function useUsersPanelExport(
         records,
       });
     } catch (err) {
-      console.error('Excel export failed:', err);
-      alert('Excel出力に失敗しました。');
+      console.error('Monthly summary export failed:', err);
+      alert('CSV出力に失敗しました。');
     } finally {
       setBusyId(null);
     }
