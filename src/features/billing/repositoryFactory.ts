@@ -22,6 +22,10 @@ export function resolveBillingSharePointBaseUrl(): string {
   return baseUrl;
 }
 
+export function resolveBillingSharePointSiteRelative(): string | undefined {
+  return readOptionalEnv('VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE');
+}
+
 const factory = createRepositoryFactory<BillingOrderRepository, BillingOrderRepositoryFactoryOptions>({
   name: 'BillingOrder',
   createDemo: () => inMemoryBillingOrderRepository,
@@ -33,7 +37,7 @@ const factory = createRepositoryFactory<BillingOrderRepository, BillingOrderRepo
     const baseUrl = resolveBillingSharePointBaseUrl();
     const provider = new SharePointDataProvider(createSpClient(acquireToken, baseUrl));
     
-    return new DataProviderBillingOrderRepository(provider);
+    return new DataProviderBillingOrderRepository(provider, undefined, resolveBillingSharePointSiteRelative());
   },
 });
 

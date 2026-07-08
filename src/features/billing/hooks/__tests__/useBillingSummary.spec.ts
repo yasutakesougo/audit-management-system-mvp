@@ -144,11 +144,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 const mockBulkUpdatePaymentStatus = vi.fn(() => Promise.resolve());
 const mockIsPersistenceColumnsResolved = vi.fn(() => Promise.resolve(true));
+const mockGetPersistenceDiagnostics = vi.fn();
 
 vi.mock('../useBillingOrderRepository', () => ({
   useBillingOrderRepository: () => ({
     list: vi.fn(),
     isPersistenceColumnsResolved: mockIsPersistenceColumnsResolved,
+    getPersistenceDiagnostics: mockGetPersistenceDiagnostics,
     updatePaymentStatus: vi.fn(() => Promise.resolve()),
     bulkUpdatePaymentStatus: mockBulkUpdatePaymentStatus,
   }),
@@ -163,6 +165,19 @@ describe('useBillingSummary', () => {
     mockBulkUpdatePaymentStatus.mockClear();
     mockInvalidateQueries.mockClear();
     mockIsPersistenceColumnsResolved.mockClear();
+    mockGetPersistenceDiagnostics.mockReset();
+    mockGetPersistenceDiagnostics.mockResolvedValue({
+      status: 'resolved',
+      listId: 'c4be5492-9803-4fc6-ac7e-82d10e95ff6d',
+      siteRelative: '/sites/2',
+      missingFields: [],
+      resolvedFields: {
+        paymentStatus: 'PaymentStatus',
+        paidAt: 'PaidAt',
+        paidBy: 'PaidBy',
+      },
+      usesList3Fallback: false,
+    });
   });
 
   afterEach(() => {
@@ -291,11 +306,24 @@ describe('useBillingSummary', () => {
 
   it('SharePoint に精算列が無い場合、isPersistenceMissing が true になり LocalStorage フォールバックが働くこと', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(false);
+    mockGetPersistenceDiagnostics.mockResolvedValue({
+      status: 'missing_payment_status',
+      listId: 'List3',
+      siteRelative: '/sites/2',
+      missingFields: ['PaymentStatus'],
+      resolvedFields: {
+        paidAt: 'PaidAt',
+        paidBy: 'PaidBy',
+      },
+      usesList3Fallback: true,
+    });
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
     await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(true);
     });
+    expect(result.current.persistenceDiagnostics?.status).toBe('missing_payment_status');
+    expect(result.current.persistenceWarningReason).toContain('PaymentStatus');
 
     // この状態でトグルを呼ぶ
     await act(async () => {
@@ -308,6 +336,26 @@ describe('useBillingSummary', () => {
 
     // SharePoint への更新は呼ばれていないこと
     expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
+  });
+
+  it('PaymentStatus はあるが PaidAt/PaidBy が無い場合、永続化は維持しつつ監査警告を返すこと', async () => {
+    mockGetPersistenceDiagnostics.mockResolvedValue({
+      status: 'missing_audit_fields',
+      listId: 'c4be5492-9803-4fc6-ac7e-82d10e95ff6d',
+      siteRelative: '/sites/2',
+      missingFields: ['PaidAt', 'PaidBy'],
+      resolvedFields: {
+        paymentStatus: 'PaymentStatus',
+      },
+      usesList3Fallback: false,
+    });
+    const { result } = renderHook(() => useBillingSummary('2026-05'));
+
+    await waitFor(() => {
+      expect(result.current.isPersistenceMissing).toBe(false);
+    });
+    expect(result.current.isPaymentAuditMissing).toBe(true);
+    expect(result.current.persistenceWarningReason).toContain('PaidAt, PaidBy');
   });
 
   it('CSV出力が正常に動作し、BOM(\ufeff) が付与されていること', async () => {
