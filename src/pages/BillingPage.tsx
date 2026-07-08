@@ -109,6 +109,16 @@ export default function BillingPage() {
     window.print();
   };
 
+  const handleExportCsv = () => {
+    if (isPersistenceMissing) {
+      const shouldExport = window.confirm(
+        '精算状態の永続化列を確認できないため、このCSVには端末内の一時的な精算状態が含まれる可能性があります。正式な精算CSVとして扱わないでください。それでもCSVを出力しますか？'
+      );
+      if (!shouldExport) return;
+    }
+    exportCsv(activeTab);
+  };
+
   // 通貨フォーマット
   const formatYen = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount);
@@ -221,7 +231,7 @@ export default function BillingPage() {
             <Button
               variant="contained"
               startIcon={<DownloadIcon />}
-              onClick={() => exportCsv(activeTab)}
+              onClick={handleExportCsv}
               sx={{
                 borderRadius: 2,
                 textTransform: 'none',
@@ -240,6 +250,11 @@ export default function BillingPage() {
             >
               CSV出力
             </Button>
+            {isPersistenceMissing && (
+              <Typography variant="caption" sx={{ color: '#b45309', fontWeight: 600 }}>
+                精算状態未検証のため、CSV出力時に確認が必要です
+              </Typography>
+            )}
           </Stack>
         </Stack>
 
@@ -428,7 +443,7 @@ export default function BillingPage() {
 
       {isPersistenceMissing && (
         <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-          精算状態の永続化列が未設定です。一時的なローカル記憶（LocalStorage）で処理しています。
+          精算状態の永続化列を確認できません。現在の精算状態には、この端末・このブラウザ内の一時情報が含まれる可能性があります。別端末・別ブラウザでは一致しない場合があるため、CSVの精算状況を正式な精算結果として扱わないでください。管理者は SharePoint の PaymentStatus / PaidAt / PaidBy 列を確認してください。
         </Alert>
       )}
 
