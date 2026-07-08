@@ -97,6 +97,37 @@ describe('DataProviderBillingOrderRepository', () => {
       expect(isResolved).toBe(true);
     });
 
+    it('reports resolved diagnostics when PaymentStatus and audit fields exist', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
+        'ID',
+        'OrderDateTime',
+        'RequesterCode',
+        'PaymentStatus',
+        'PaidAt',
+        'PaidBy',
+      ]));
+      const repository = new DataProviderBillingOrderRepository(
+        provider,
+        'c4be5492-9803-4fc6-ac7e-82d10e95ff6d',
+        '/sites/2'
+      );
+
+      await expect(repository.isPersistenceColumnsResolved()).resolves.toBe(true);
+      await expect(repository.getPersistenceDiagnostics()).resolves.toMatchObject({
+        status: 'resolved',
+        listId: 'c4be5492-9803-4fc6-ac7e-82d10e95ff6d',
+        siteRelative: '/sites/2',
+        missingFields: [],
+        usesList3Fallback: false,
+        resolvedFields: expect.objectContaining({
+          paymentStatus: 'PaymentStatus',
+          paidAt: 'PaidAt',
+          paidBy: 'PaidBy',
+        }),
+      });
+    });
+
     it('returns false when PaymentStatus field is missing in data provider', async () => {
       const provider = createProvider();
       vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
@@ -108,6 +139,80 @@ describe('DataProviderBillingOrderRepository', () => {
 
       const isResolved = await repository.isPersistenceColumnsResolved();
       expect(isResolved).toBe(false);
+    });
+
+    it('reports missing_payment_status when PaymentStatus is missing', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
+        'ID',
+        'OrderDateTime',
+        'RequesterCode',
+        'PaidAt',
+        'PaidBy',
+      ]));
+      const repository = new DataProviderBillingOrderRepository(provider, 'List3');
+
+      await expect(repository.isPersistenceColumnsResolved()).resolves.toBe(false);
+      await expect(repository.getPersistenceDiagnostics()).resolves.toMatchObject({
+        status: 'missing_payment_status',
+        missingFields: expect.arrayContaining(['PaymentStatus']),
+        usesList3Fallback: true,
+      });
+    });
+
+    it('reports missing_audit_fields when PaymentStatus exists but PaidAt or PaidBy is missing', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
+        'ID',
+        'OrderDateTime',
+        'RequesterCode',
+        'PaymentStatus',
+      ]));
+      const repository = new DataProviderBillingOrderRepository(provider, 'List3');
+
+      await expect(repository.isPersistenceColumnsResolved()).resolves.toBe(true);
+      await expect(repository.getPersistenceDiagnostics()).resolves.toMatchObject({
+        status: 'missing_audit_fields',
+        missingFields: expect.arrayContaining(['PaidAt', 'PaidBy']),
+        usesList3Fallback: true,
+      });
+    });
+
+    it('reports field_resolution_error when field resolution rejects', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockRejectedValue(new Error('HTTP 404 list not found'));
+      const repository = new DataProviderBillingOrderRepository(provider, 'List3');
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(repository.isPersistenceColumnsResolved()).resolves.toBe(false);
+      await expect(repository.getPersistenceDiagnostics()).resolves.toMatchObject({
+        status: 'field_resolution_error',
+        errorMessage: 'HTTP 404 list not found',
+        missingFields: expect.arrayContaining(['PaymentStatus', 'PaidAt', 'PaidBy']),
+        usesList3Fallback: true,
+      });
+
+      consoleError.mockRestore();
+    });
+
+    it('reports env_fallback_list3 when List3 fallback is used even if fields resolve', async () => {
+      const provider = createProvider();
+      vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
+        'ID',
+        'OrderDateTime',
+        'RequesterCode',
+        'PaymentStatus',
+        'PaidAt',
+        'PaidBy',
+      ]));
+      const repository = new DataProviderBillingOrderRepository(provider, 'List3');
+
+      await expect(repository.isPersistenceColumnsResolved()).resolves.toBe(true);
+      await expect(repository.getPersistenceDiagnostics()).resolves.toMatchObject({
+        status: 'env_fallback_list3',
+        missingFields: [],
+        usesList3Fallback: true,
+      });
     });
   });
 });

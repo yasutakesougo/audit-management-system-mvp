@@ -5,6 +5,7 @@ import { useBillingOrderRepository } from './useBillingOrderRepository';
 import { useUsersStore } from '@/features/users/store';
 import { useStaffStore } from '@/features/staff/store';
 import { useAuth } from '@/auth/useAuth';
+import type { BillingPersistenceDiagnostics } from '../repository';
 
 export interface AggregatedBillingRecord {
   ordererCode: string;
@@ -27,6 +28,9 @@ export interface BillingSummary {
   isError: boolean;
   isMutating: boolean;
   isPersistenceMissing: boolean;
+  isPaymentAuditMissing: boolean;
+  persistenceDiagnostics: BillingPersistenceDiagnostics | null;
+  persistenceWarningReason?: string;
   togglePaymentStatus: (ordererCode: string) => Promise<void>;
   bulkSettle: (category: '利用者' | '職員' | 'ゲスト' | 'すべて') => Promise<void>;
   exportCsv: (category: '利用者' | '職員' | 'ゲスト' | 'すべて') => void;
@@ -52,6 +56,7 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
 
   const [isMutating, setIsMutating] = useState(false);
   const [isPersistenceMissing, setIsPersistenceMissing] = useState(false);
+  const [persistenceDiagnostics, setPersistenceDiagnostics] = useState<BillingPersistenceDiagnostics | null>(null);
 
   const isLoading = ordersLoading || usersLoading || staffLoading;
   const paidByActor = useMemo(() => {
@@ -78,13 +83,43 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     let active = true;
     async function checkSchema() {
       try {
+        if (repository.getPersistenceDiagnostics) {
+          const diagnostics = await repository.getPersistenceDiagnostics();
+          if (active) {
+            setPersistenceDiagnostics(diagnostics);
+            setIsPersistenceMissing(
+              diagnostics.status === 'missing_payment_status' ||
+              diagnostics.status === 'field_resolution_error'
+            );
+            if (diagnostics.status !== 'resolved') {
+              console.warn('[Billing] Payment persistence diagnostics:', {
+                status: diagnostics.status,
+                listId: diagnostics.listId,
+                siteRelative: diagnostics.siteRelative,
+                missingFields: diagnostics.missingFields,
+                usesList3Fallback: diagnostics.usesList3Fallback,
+                errorMessage: diagnostics.errorMessage,
+              });
+            }
+          }
+          return;
+        }
         const isResolved = await repository.isPersistenceColumnsResolved();
         if (active) {
+          setPersistenceDiagnostics(null);
           setIsPersistenceMissing(!isResolved);
         }
       } catch (e) {
         console.error('Failed to resolve SharePoint billing persistence columns', e);
         if (active) {
+          setPersistenceDiagnostics({
+            status: 'field_resolution_error',
+            listId: 'unknown',
+            missingFields: ['PaymentStatus'],
+            resolvedFields: {},
+            errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+            usesList3Fallback: false,
+          });
           setIsPersistenceMissing(true);
         }
       }
@@ -94,6 +129,23 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
       active = false;
     };
   }, [repository]);
+
+  const isPaymentAuditMissing = persistenceDiagnostics?.status === 'missing_audit_fields';
+
+  const persistenceWarningReason = useMemo(() => {
+    switch (persistenceDiagnostics?.status) {
+      case 'env_fallback_list3':
+        return '原因: VITE_SP_LIST_BILLING_ORDERS 未設定により List3 fallback が使われています。';
+      case 'field_resolution_error':
+        return '原因: SharePoint field 解決でエラーが発生しました。';
+      case 'missing_payment_status':
+        return '原因: PaymentStatus 列を解決できません。';
+      case 'missing_audit_fields':
+        return `監査情報列が不足しています: ${persistenceDiagnostics.missingFields.join(', ')}`;
+      default:
+        return undefined;
+    }
+  }, [persistenceDiagnostics]);
 
   // 2. LocalStorage フォールバック用の値
   const [fallbackPaymentStates, setFallbackPaymentStates] = useState<Record<string, boolean>>(() => {
@@ -340,6 +392,9 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     isError: !!ordersError,
     isMutating,
     isPersistenceMissing,
+    isPaymentAuditMissing,
+    persistenceDiagnostics,
+    persistenceWarningReason,
     togglePaymentStatus,
     bulkSettle,
     exportCsv,
