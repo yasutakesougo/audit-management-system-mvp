@@ -161,6 +161,7 @@
     "recharts": "^3.4.1",
     "remark-gfm": "^4.0.0",
     "web-vitals": "^4.2.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.1.12",
     "zustand": "^5.0.11"
   },
@@ -188,6 +189,7 @@
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.16",
     "axe-core": "^4.10.3",
+    "cross-env": "^10.1.0",
     "danger": "^13.0.7",
     "dotenv": "^17.4.2",
     "eslint": "^8.57.0",

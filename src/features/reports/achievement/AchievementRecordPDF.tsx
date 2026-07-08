@@ -80,8 +80,15 @@ export interface AchievementRecordProps {
   month: string; // YYYY-MM
   userName: string;
   userCertNumber: string;
+  facilityName?: string | null;
+  facilityNumber?: string | null;
   rows: AchievementRecordRow[];
 }
+
+const displayMetaValue = (value?: string | null): string => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : '-';
+};
 
 /**
  * Service Provision Achievement Record (実績記録票) PDF Template
@@ -90,6 +97,8 @@ export const AchievementRecordPDF: React.FC<AchievementRecordProps> = ({
   month,
   userName,
   userCertNumber,
+  facilityName,
+  facilityNumber,
   rows,
 }) => (
   <Document>
@@ -105,8 +114,8 @@ export const AchievementRecordPDF: React.FC<AchievementRecordProps> = ({
           <Text>利用者氏名: {userName} 様</Text>
         </View>
         <View>
-          <Text>事業所名: 磯子区障害者地域活動ホーム</Text>
-          <Text>事業所番号: 141XXXXXXX</Text>
+          <Text>事業所名: {displayMetaValue(facilityName)}</Text>
+          <Text>事業所番号: {displayMetaValue(facilityNumber)}</Text>
         </View>
       </View>
 
