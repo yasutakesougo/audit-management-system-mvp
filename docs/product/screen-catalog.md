@@ -79,6 +79,21 @@
    └─ C5. AdminHubPage ........... /admin ................. ✅ 実装済
 ```
 
+### イソカツ推奨ナビゲーション対応
+
+完成形の利用者向けナビゲーションは、画面数ではなく業務目的で 8 区分へ集約する。既存ルートは原則として維持し、ナビ上の見せ方で整理する。
+
+| ナビ | 対応レイヤ | 主な既存ルート | 役割 |
+|------|------------|----------------|------|
+| 今日 | A | `/today` | 当日の管制塔 |
+| 利用者 | A | `/users`, `/users/:userId` | 利用者ごとの文脈 |
+| 記録 | A | `/daily/support`, `/daily/attendance`, `/kiosk/toilet`, `/kiosk/users/:userId/procedures`, `/abc-record` | 日次・出欠・トイレ・ABC などの入力 |
+| 支援設計 | B | `/support-plan-guide`, `/support-planning-sheet/:planningSheetId`, `/planning-sheet-list`, `/monitoring-meeting/:userId` | 計画・手順・モニタリング |
+| 申し送り | A | `/handoff-timeline`, `/handoff-analysis` | 注意事項・共有事項 |
+| 請求 | C | `/billing`, `/records/monthly`, `/records/service-provision` | 月次実績・販売・加算 |
+| 分析 | B/C | `/analysis/*`, `/records/quality-review`, `/support-review` | PDCA・傾向・記録品質 |
+| 管理 | C | `/dashboard`, `/admin/*`, `/exceptions`, `/incidents` | SharePoint・権限・設定・ログ・例外 |
+
 ---
 
 # A. Execution Layer（現場）
@@ -722,4 +737,5 @@ ExceptionCenterPage
 
 | 日付 | バージョン | 変更内容 | 著者 |
 |------|-----------|---------|------|
+| 2026-07-09 | 1.1 | イソカツ推奨ナビゲーション対応表を追加 | Codex |
 | 2026-03-17 | 1.0 | 初版作成 — 15画面の完全定義 | プロダクトチーム |
