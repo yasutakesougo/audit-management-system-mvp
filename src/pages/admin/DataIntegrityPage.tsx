@@ -1,6 +1,5 @@
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ErrorIcon from '@mui/icons-material/Error';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import Alert from '@mui/material/Alert';
@@ -10,6 +9,7 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
+import ErrorIcon from '@mui/icons-material/Error';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -20,7 +20,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import type { ZodTypeAny } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 import React, { useCallback, useMemo, useState } from 'react';
 
 import { SharePointDailyRecordItemSchema } from '@/features/daily/domain/schema';
@@ -28,7 +28,13 @@ import { SpScheduleRowSchema } from '@/features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { emitSkippedFieldTelemetry } from '@/lib/dataIntegrity/skippedFieldTelemetry';
-import { formatScanSummary, type ScanResult, type ScanTarget, type TargetData } from '@/lib/dataIntegrityScanner';
+import {
+  DUPLICATE_REPORT_TEXT,
+  formatScanSummary,
+  type ScanResult,
+  type ScanTarget,
+  type TargetData,
+} from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
 import { 
   fetchRawItemsWithFieldFallback 
@@ -36,34 +42,192 @@ import {
 import { useSP } from '@/lib/spClient';
 import { getDriftProbeTargets } from '@/sharepoint/driftProbeRegistry';
 
-// ────────────────────────────────────────────────────────────────────────────
-// Pre-defined scan targets
-// ────────────────────────────────────────────────────────────────────────────
+type DuplicateRule = {
+  id: string;
+  label: string;
+  fields: readonly string[];
+  ignoreMissing?: boolean;
+};
 
 /** 
  * Map technical registry keys to their corresponding validation schemas.
  * This bridge connects the operational registry (SSOT) with UI-level Zod validation.
  */
 const SCHEMA_MAP: Record<string, ZodTypeAny> = {
-  'users_master': SpUserMasterItemSchema,
-  'schedules': SpScheduleRowSchema,
-  'daily_activity_records': SharePointDailyRecordItemSchema,
+  users_master: SpUserMasterItemSchema,
+  schedule_events: SpScheduleRowSchema,
+  daily_activity_records: SharePointDailyRecordItemSchema,
+};
+
+const FALLBACK_SCHEMA = z.unknown();
+
+/** Duplicate-key checks for major operational lists */
+const INTEGRITY_DUPLICATE_RULES: Record<string, readonly DuplicateRule[]> = {
+  users_master: [
+    {
+      id: 'user-id',
+      label: '利用者ID',
+      fields: ['UserID'],
+    },
+  ],
+  schedule_events: [
+    {
+      id: 'user-schedule-slot',
+      label: '対象者の時間軸',
+      fields: ['TargetUserId', 'EventDate', 'EndDate'],
+      ignoreMissing: true,
+    },
+    {
+      id: 'staff-schedule-slot',
+      label: '担当者の時間軸',
+      fields: ['AssignedStaffId', 'EventDate', 'EndDate'],
+      ignoreMissing: true,
+    },
+  ],
+  daily_activity_records: [
+    {
+      id: 'user-activity',
+      label: '利用者別活動時刻',
+      fields: ['UserCode', 'RecordDate', 'TimeSlot', 'PlanSlotKey'],
+      ignoreMissing: true,
+    },
+  ],
+  support_procedure_record_daily: [
+    {
+      id: 'isp-detail-key',
+      label: 'ISP詳細キー',
+      fields: ['UserCode', 'RecordDate', 'PlanningSheetId'],
+      ignoreMissing: true,
+    },
+  ],
+  isp_master: [
+    {
+      id: 'isp-master-user-start',
+      label: 'ISP開始日',
+      fields: ['UserCode', 'PlanStartDate'],
+      ignoreMissing: true,
+    },
+  ],
+  planning_sheet_master: [
+    {
+      id: 'planning-sheet-user',
+      label: '支援計画シート',
+      fields: ['UserCode', 'UserId', 'ISPId'],
+      ignoreMissing: true,
+    },
+  ],
+  planning_sheet_reassessment_master: [
+    {
+      id: 'reassessment-date',
+      label: '再評価日',
+      fields: ['PlanningSheetId', 'ReassessmentDate'],
+      ignoreMissing: true,
+    },
+  ],
+  support_plans: [
+    {
+      id: 'draft-id',
+      label: 'ドラフトID',
+      fields: ['DraftId'],
+      ignoreMissing: true,
+    },
+  ],
+  service_provision_records: [
+    {
+      id: 'service-entry',
+      label: '提供実績エントリ',
+      fields: ['EntryKey'],
+      ignoreMissing: true,
+    },
+  ],
 };
 
 /**
- * Derived scan targets for depth-validation.
- * We only deep-scan a subset of all drift-probed lists which have defined schemas.
+ * Derived scan targets for depth-validation and duplicate checks.
  */
 const SCAN_TARGETS: ScanTarget[] = getDriftProbeTargets()
-  .filter(t => t.key in SCHEMA_MAP)
-  .map(t => ({
-    name: t.key,
-    displayName: t.displayName,
-    listTitle: t.listTitle,
-    schema: SCHEMA_MAP[t.key],
-    selectFields: t.selectFields,
-  }));
+  .filter((target) =>
+    Object.prototype.hasOwnProperty.call(SCHEMA_MAP, target.key) ||
+    Object.prototype.hasOwnProperty.call(INTEGRITY_DUPLICATE_RULES, target.key)
+  )
+  .map((target) => {
+    const duplicateChecks = INTEGRITY_DUPLICATE_RULES[target.key];
+    const duplicateFields = duplicateChecks ? [...new Set(duplicateChecks.flatMap((rule) => rule.fields))] : [];
+    return {
+      name: target.key,
+      displayName: target.displayName,
+      listTitle: target.listTitle,
+      schema: SCHEMA_MAP[target.key] ?? FALLBACK_SCHEMA,
+      selectFields: Array.from(new Set([...target.selectFields, ...duplicateFields])),
+      duplicateChecks,
+    };
+  });
 
+const csvEscape = (value: unknown): string => {
+  const text = String(value ?? '').replace(/\r?\n/g, ' ');
+  const escaped = text.replace(/"/g, '""');
+  return `"${escaped}"`;
+};
+
+const buildDuplicateCsv = (results: ScanResult[]): string => {
+  const header = [
+    'リストキー',
+    '表示名',
+    '一覧名',
+    'ルールID',
+    'ルール名',
+    DUPLICATE_REPORT_TEXT.keyLabel,
+    DUPLICATE_REPORT_TEXT.countLabel,
+    '該当ID',
+    `${DUPLICATE_REPORT_TEXT.keyValueLabel}項目(見出し=値)`,
+  ];
+
+  const rows = [header.join(',')];
+
+  for (const result of results) {
+    for (const issue of result.duplicateIssues) {
+      rows.push([
+        result.target,
+        result.displayName ?? '',
+        result.listTitle,
+        issue.ruleId,
+        issue.ruleLabel,
+        issue.key,
+        issue.duplicateCount,
+        issue.recordIds.join(','),
+        Object.entries(issue.keyValues)
+          .map(([name, val]) => `${name}=${val}`)
+          .join(' | '),
+      ].map(csvEscape).join(','));
+    }
+  }
+
+  return rows.join('\n');
+};
+
+const buildDuplicateJson = (results: ScanResult[]) => ({
+  generatedAt: new Date().toISOString(),
+  totals: {
+    lists: results.length,
+    records: results.reduce((sum, result) => sum + result.total, 0),
+    invalid: results.reduce((sum, result) => sum + result.invalid, 0),
+    duplicateGroups: results.reduce((sum, result) => sum + result.duplicateIssues.length, 0),
+    duplicateRows: results.reduce((sum, result) => sum + result.duplicateCount, 0),
+  },
+  results,
+});
+
+const downloadText = (content: string, filename: string, mimeType: string): void => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // Component
@@ -72,19 +236,20 @@ const SCAN_TARGETS: ScanTarget[] = getDriftProbeTargets()
 /**
  * 管理者用データ整合性ダッシュボード。
  *
- * 全 SharePoint リストのデータを Zod スキーマで一括検証し、
- * 不整合レコードの一覧を表示するページ。
+ * 全 SharePoint リストを Zod スキーマで一括検証し、重複キーを検知した結果を表示するページ。
  */
 const DataIntegrityPage: React.FC = () => {
   const { spFetch } = useSP();
   const { status, progress, results, error: scanError, startScan, cancelScan } = useDataIntegrityScan();
   const [copied, setCopied] = useState(false);
+  const [runId, setRunId] = useState<string>('');
   const [fetchingData, setFetchingData] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const handleStartScan = useCallback(async () => {
     const requestId = `di-${Date.now().toString(36)}`;
     try {
+      setRunId(requestId);
       setFetchingData(true);
       setFetchError(null);
 
@@ -97,10 +262,20 @@ const DataIntegrityPage: React.FC = () => {
             target.listTitle,
             target.selectFields,
           );
-          data.set(target.name, { items, fetchStatus: 'success', isTruncated, skippedFields });
+          data.set(target.name, {
+            items,
+            fetchStatus: 'success',
+            isTruncated,
+            skippedFields,
+          });
 
           if (skippedFields.length > 0) {
-            emitSkippedFieldTelemetry({ listKey: target.name, skippedFields, count: items.length, requestId });
+            emitSkippedFieldTelemetry({
+              listKey: target.name,
+              skippedFields,
+              count: items.length,
+              requestId,
+            });
           }
         } catch (fetchErr) {
           // eslint-disable-next-line no-console
@@ -123,7 +298,6 @@ const DataIntegrityPage: React.FC = () => {
     }
   }, [spFetch, startScan]);
 
-
   const handleCopy = useCallback(async () => {
     if (results.length === 0) return;
     const summary = formatScanSummary(results);
@@ -136,15 +310,30 @@ const DataIntegrityPage: React.FC = () => {
     }
   }, [results]);
 
+  const handleExportCsv = useCallback(() => {
+    if (results.length === 0) return;
+    const csv = buildDuplicateCsv(results);
+    const filename = `data-integrity-duplicates-${runId || 'latest'}.csv`;
+    downloadText(csv, filename, 'text/csv;charset=utf-8;');
+  }, [results, runId]);
+
+  const handleExportJson = useCallback(() => {
+    if (results.length === 0) return;
+    const json = JSON.stringify(buildDuplicateJson(results), null, 2);
+    const filename = `data-integrity-duplicates-${runId || 'latest'}.json`;
+    downloadText(json, filename, 'application/json;charset=utf-8;');
+  }, [results, runId]);
+
   const totalStats = useMemo(() => {
     if (results.length === 0) return null;
     return {
-      total: results.reduce((s, r) => s + r.total, 0),
-      valid: results.reduce((s, r) => s + r.valid, 0),
-      invalid: results.reduce((s, r) => s + r.invalid, 0),
-      duration: results.reduce((s, r) => s + r.durationMs, 0),
-      // fetchStatus === 'failed' のリスト数。0件成功を「正常」と誤判定しないための必須フラグ
-      fetchFailures: results.filter(r => r.fetchStatus === 'failed').length,
+      total: results.reduce((sum, r) => sum + r.total, 0),
+      valid: results.reduce((sum, r) => sum + r.valid, 0),
+      invalid: results.reduce((sum, r) => sum + r.invalid, 0),
+      duplicates: results.reduce((sum, r) => sum + r.duplicateCount, 0),
+      duplicateGroups: results.reduce((sum, r) => sum + r.duplicateIssues.length, 0),
+      duration: results.reduce((sum, r) => sum + r.durationMs, 0),
+      fetchFailures: results.filter((r) => r.fetchStatus === 'failed').length,
     };
   }, [results]);
 
@@ -154,7 +343,7 @@ const DataIntegrityPage: React.FC = () => {
         🔍 データ整合性チェック
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        SharePoint のデータを Zod スキーマで一括検証し、不整合レコードを特定します。
+        SharePoint のデータを Zod スキーマで検証し、主要ビジネスキーの重複の可能性を検知します。
       </Typography>
 
       {/* ── Control Bar ──────────────────────── */}
@@ -178,6 +367,18 @@ const DataIntegrityPage: React.FC = () => {
             data-testid="copy-report-btn"
           >
             {copied ? 'コピー済み ✓' : 'レポートをコピー'}
+          </Button>
+        )}
+
+        {results.length > 0 && (
+          <Button variant="outlined" onClick={handleExportCsv} data-testid="export-csv-btn">
+            CSVエクスポート
+          </Button>
+        )}
+
+        {results.length > 0 && (
+          <Button variant="outlined" onClick={handleExportJson} data-testid="export-json-btn">
+            JSONエクスポート
           </Button>
         )}
       </Stack>
@@ -207,20 +408,22 @@ const DataIntegrityPage: React.FC = () => {
       {status === 'done' && totalStats && (
         <>
           <Alert
-            severity={totalStats.invalid === 0 && totalStats.fetchFailures === 0 ? 'success' : 'warning'}
-            icon={totalStats.invalid === 0 && totalStats.fetchFailures === 0 ? <CheckCircleIcon /> : <ErrorIcon />}
+            severity={totalStats.invalid === 0 && totalStats.duplicates === 0 && totalStats.fetchFailures === 0 ? 'success' : 'warning'}
+            icon={totalStats.invalid === 0 && totalStats.duplicates === 0 && totalStats.fetchFailures === 0 ? <CheckCircleIcon /> : <ErrorIcon />}
             sx={{ mb: 2 }}
             data-testid="scan-summary"
           >
             <AlertTitle sx={{ fontWeight: 700 }}>
-              {totalStats.fetchFailures > 0
+            {totalStats.fetchFailures > 0
                 ? `⚠ ${totalStats.fetchFailures}件のリストで取得エラー（検証未完了）`
-                : totalStats.invalid === 0
-                  ? '✅ すべてのデータが正常です'
-                  : `⚠ ${totalStats.invalid}件の不整合が検出されました`}
+                : totalStats.invalid > 0
+                  ? `⚠ ${totalStats.invalid}件の不整合が検出されました`
+                  : totalStats.duplicates > 0
+            ? `⚠ ${totalStats.duplicates}件の${DUPLICATE_REPORT_TEXT.possibleRecordsMessage}（${DUPLICATE_REPORT_TEXT.duplicateTypeLabel} ${totalStats.duplicateGroups}）`
+            : '✅ すべてのデータが正常です'}
             </AlertTitle>
-            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー ({totalStats.duration}ms)
-            {results.some(r => r.isTruncated) && (
+            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー / {totalStats.duplicates}件 {DUPLICATE_REPORT_TEXT.possible} ({totalStats.duration}ms)
+            {results.some((r) => r.isTruncated) && (
               <Typography variant="caption" display="block" sx={{ mt: 0.5, fontWeight: 700 }}>
                 ※ 一部のリストで取得上限（10,000件）に到達したため、全件を検証できていない可能性があります。
               </Typography>
@@ -231,8 +434,7 @@ const DataIntegrityPage: React.FC = () => {
           <Alert severity="info" sx={{ mb: 3 }}>
             <AlertTitle sx={{ fontWeight: 700, fontSize: '0.85rem' }}>ℹ️ SharePoint 行サイズ制限 (8KB) に関する注意</AlertTitle>
             <Typography variant="caption">
-              Users_Master 等のフィールド数が多いリストでは、SharePoint の内部制限により一部の列が保存されない、
-              あるいは「列の合計サイズが制限を超えている」エラーが発生する場合があります。
+              Users_Master 等のフィールド数が多いリストでは、SharePoint の内部制限により一部の列が保存されない、あるいは「列の合計サイズが制限を超えている」エラーが発生する場合があります。
               本ツールで「取得エラー」や「必須欠落」が頻発する場合、不要な列の削除や統合を検討してください。
             </Typography>
           </Alert>
@@ -259,6 +461,7 @@ const DataIntegrityPage: React.FC = () => {
                   <TableCell align="right" sx={{ fontWeight: 700 }}>取得数</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>検証OK</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>検証NG</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.countLabel}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>時間</TableCell>
                 </TableRow>
               </TableHead>
@@ -277,9 +480,9 @@ const DataIntegrityPage: React.FC = () => {
                       <Stack spacing={0.5} alignItems="flex-start">
                         {r.fetchStatus === 'success' ? (
                           <Chip
-                            label={r.isTruncated ? "上限到達" : "成功"}
+                            label={r.isTruncated ? '上限到達' : '成功'}
                             size="small"
-                            color={r.isTruncated ? "warning" : "success"}
+                            color={r.isTruncated ? 'warning' : 'success'}
                             variant="filled"
                             sx={{ height: 20, fontSize: '0.7rem' }}
                           />
@@ -325,6 +528,15 @@ const DataIntegrityPage: React.FC = () => {
                         '-'
                       )}
                     </TableCell>
+                    <TableCell align="right">
+                      {r.duplicateCount > 0 ? (
+                        <Typography color="warning.main" variant="body2" fontWeight={700}>
+                          {r.duplicateCount.toLocaleString()} ({r.duplicateIssues.length})
+                        </Typography>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
                     <TableCell align="right" color="text.secondary">{r.durationMs}ms</TableCell>
                   </TableRow>
                 ))}
@@ -344,7 +556,7 @@ const DataIntegrityPage: React.FC = () => {
           {results
             .filter((r) => r.issues.length > 0)
             .map((r) => (
-              <Box key={r.target} sx={{ mb: 3 }}>
+              <Box key={`issue-${r.target}`} sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" component="span" sx={{ mb: 1, color: 'warning.dark' }}>
                   {r.displayName || r.target} — {r.issues.length}件
                 </Typography>
@@ -377,6 +589,49 @@ const DataIntegrityPage: React.FC = () => {
                               </Typography>
                             ))}
                           </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            ))}
+        </>
+      )}
+
+      {/* ── Duplicate Details ──────────────────────── */}
+      {status === 'done' && results.some((r) => r.duplicateIssues.length > 0) && (
+        <>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+            {`🔁 ${DUPLICATE_REPORT_TEXT.duplicateDetailsTitle}`}
+          </Typography>
+          {results
+            .filter((r) => r.duplicateIssues.length > 0)
+            .map((r) => (
+              <Box key={`dup-${r.target}`} sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" component="span" sx={{ mb: 1, color: 'warning.dark' }}>
+                  {r.displayName || r.target} — {r.duplicateIssues.length}種
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small" data-testid={`duplicate-${r.target}`}>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'warning.light', opacity: 0.12 }}>
+                        <TableCell sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.duplicateTypeLabel}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.keyValueLabel}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.countLabel}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>対象ID</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {r.duplicateIssues.map((issue) => (
+                        <TableRow key={`${issue.ruleId}-${issue.key}`}>
+                          <TableCell>{issue.ruleLabel}</TableCell>
+                          <TableCell>
+                            {Object.entries(issue.keyValues).map(([field, value]) => `${field}=${value}`).join(', ')}
+                          </TableCell>
+                          <TableCell align="right">{issue.duplicateCount}</TableCell>
+                          <TableCell>{issue.recordIds.map((id) => String(id)).join(', ')}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

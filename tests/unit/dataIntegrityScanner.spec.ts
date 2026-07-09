@@ -1,4 +1,5 @@
 import {
+    DUPLICATE_REPORT_TEXT,
     formatScanSummary,
     scanAll,
     validateItems,
@@ -27,6 +28,26 @@ const testTarget: ScanTarget = {
   listTitle: 'Users_Test',
   schema: testSchema,
   selectFields: ['Id', 'Title', 'Email'],
+};
+
+const duplicateTarget: ScanTarget = {
+  name: 'test-daily-dup',
+  listTitle: 'Daily_Duplicate_Test',
+  schema: z.object({
+    Id: z.number(),
+    UserCode: z.string(),
+    RecordDate: z.string(),
+    Process: z.string(),
+  }),
+  selectFields: ['Id', 'UserCode', 'RecordDate', 'Process'],
+  duplicateChecks: [
+    {
+      id: 'user-date-process',
+      label: '利用者・日付・工程',
+      fields: ['UserCode', 'RecordDate', 'Process'],
+      ignoreMissing: true,
+    },
+  ],
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -144,6 +165,117 @@ describe('scanAll', () => {
     expect(results[0].valid).toBe(0);
     expect(results[0].invalid).toBe(0);
   });
+
+  it('returns duplicateCount 0 when no duplicate keys exist', () => {
+    const data = new Map<string, TargetData>([
+      [
+        'test-daily-dup',
+        {
+          items: [
+            { Id: 1, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'A' },
+            { Id: 2, UserCode: 'U002', RecordDate: '2026-07-10', Process: 'A' },
+            { Id: 3, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'B' },
+          ],
+          fetchStatus: 'success',
+        },
+      ],
+    ]);
+
+    const [result] = scanAll([duplicateTarget], data);
+
+    expect(result.duplicateCount).toBe(0);
+    expect(result.duplicateIssues).toHaveLength(0);
+  });
+
+  it('detects duplicate groups for identical keys and counts excess rows', () => {
+    const data = new Map<string, TargetData>([
+      [
+        'test-daily-dup',
+        {
+          items: [
+            { Id: 101, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'A' },
+            { Id: 102, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'A' },
+            { Id: 103, UserCode: 'U002', RecordDate: '2026-07-09', Process: 'A' },
+          ],
+          fetchStatus: 'success',
+        },
+      ],
+    ]);
+
+    const [result] = scanAll([duplicateTarget], data);
+
+    expect(result.duplicateIssues).toHaveLength(1);
+    expect(result.duplicateCount).toBe(1);
+    expect(result.duplicateIssues[0].recordIds).toEqual([101, 102]);
+    expect(result.duplicateIssues[0].recordCount).toBe(2);
+  });
+
+  it('normalizes date formats so 2026-07-09 and 2026/07/09 match', () => {
+    const data = new Map<string, TargetData>([
+      [
+        'test-daily-dup',
+        {
+          items: [
+            { Id: 201, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'A' },
+            { Id: 202, UserCode: 'U001', RecordDate: '2026/07/09', Process: 'A' },
+            { Id: 203, UserCode: 'U002', RecordDate: '2026-07-10', Process: 'B' },
+          ],
+          fetchStatus: 'success',
+        },
+      ],
+    ]);
+
+    const [result] = scanAll([duplicateTarget], data);
+
+    expect(result.duplicateCount).toBe(1);
+    expect(result.duplicateIssues).toHaveLength(1);
+    expect(result.duplicateIssues[0].keyValues).toEqual({
+      UserCode: 'u001',
+      RecordDate: '2026-07-09',
+      Process: 'a',
+    });
+  });
+
+  it('does not treat similar records with different process as duplicates', () => {
+    const data = new Map<string, TargetData>([
+      [
+        'test-daily-dup',
+        {
+          items: [
+            { Id: 301, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'A' },
+            { Id: 302, UserCode: 'U001', RecordDate: '2026-07-09', Process: 'B' },
+          ],
+          fetchStatus: 'success',
+        },
+      ],
+    ]);
+
+    const [result] = scanAll([duplicateTarget], data);
+
+    expect(result.duplicateCount).toBe(0);
+    expect(result.duplicateIssues).toHaveLength(0);
+  });
+
+  it('does not create duplicate flags only from missing key values when ignoreMissing is true', () => {
+    const data = new Map<string, TargetData>([
+      [
+        'test-daily-dup',
+        {
+          items: [
+            { Id: 401, UserCode: 'U001', RecordDate: '', Process: 'A' },
+            { Id: 402, UserCode: '', RecordDate: '', Process: 'A' },
+            { Id: 403, UserCode: '', RecordDate: '2026-07-09', Process: 'A' },
+          ],
+          fetchStatus: 'success',
+        },
+      ],
+    ]);
+
+    const [result] = scanAll([duplicateTarget], data);
+
+    expect(result.duplicateCount).toBe(0);
+    expect(result.duplicateIssues).toHaveLength(0);
+  });
 });
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -208,6 +340,7 @@ describe('formatScanSummary', () => {
     expect(summary).toContain('2件中 1件 OK / 1件 エラー');
     expect(summary).toContain('ID 2');
     expect(summary).toContain('不整合データが見つかりました');
+    expect(summary).toContain(DUPLICATE_REPORT_TEXT.possible);
   });
 
   it('includes ⚠ 列スキップ line when skippedFields are present', () => {

@@ -19,9 +19,25 @@ vi.mock('@/sharepoint/fields', () => ({
 }));
 
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
+import { DUPLICATE_REPORT_TEXT } from '@/lib/dataIntegrityScanner';
 import DataIntegrityPage from '@/pages/admin/DataIntegrityPage';
 
 const mockUseDataIntegrityScan = vi.mocked(useDataIntegrityScan);
+
+const duplicateIssueFixture = {
+  target: 'users',
+  ruleId: 'user-date-process',
+  ruleLabel: '利用者・日付・工程',
+  key: 'user-date-process||U001||2026-07-09||A',
+  keyValues: {
+    UserCode: 'U001',
+    RecordDate: '2026-07-09',
+    Process: 'A',
+  },
+  recordCount: 2,
+  duplicateCount: 1,
+  recordIds: [101, 102],
+};
 
 describe('DataIntegrityPage', () => {
   it('renders with scan button in idle state', () => {
@@ -63,7 +79,18 @@ describe('DataIntegrityPage', () => {
       status: 'done',
       progress: null,
       results: [
-        { target: 'users', listTitle: 'Users_Master', total: 100, valid: 100, invalid: 0, issues: [], durationMs: 42, fetchStatus: 'success' },
+        {
+          target: 'users',
+          listTitle: 'Users_Master',
+          total: 100,
+          valid: 100,
+          invalid: 0,
+          duplicateCount: 0,
+          duplicateIssues: [],
+          issues: [],
+          durationMs: 42,
+          fetchStatus: 'success',
+        },
       ],
       error: null,
       startScan: vi.fn(),
@@ -87,6 +114,8 @@ describe('DataIntegrityPage', () => {
           total: 50,
           valid: 48,
           invalid: 2,
+          duplicateCount: 0,
+          duplicateIssues: [],
           issues: [
             { target: 'users', recordId: 101, messages: ['「氏名」は必須項目です'], zodIssues: [] },
             { target: 'users', recordId: 205, messages: ['想定外の値'], zodIssues: [] },
@@ -149,6 +178,8 @@ describe('DataIntegrityPage', () => {
       results: [
         {
           target: 'users', listTitle: 'Users_Master', total: 33, valid: 33, invalid: 0,
+          duplicateCount: 0,
+          duplicateIssues: [],
           issues: [], durationMs: 10, fetchStatus: 'success', skippedFields: ['UserID'],
         },
       ],
@@ -171,6 +202,8 @@ describe('DataIntegrityPage', () => {
       results: [
         {
           target: 'users', listTitle: 'Users_Master', total: 100, valid: 100, invalid: 0,
+          duplicateCount: 0,
+          duplicateIssues: [],
           issues: [], durationMs: 10, fetchStatus: 'success',
         },
       ],
@@ -191,10 +224,14 @@ describe('DataIntegrityPage', () => {
       results: [
         {
           target: 'users', listTitle: 'Users_Master', total: 33, valid: 33, invalid: 0,
+          duplicateCount: 0,
+          duplicateIssues: [],
           issues: [], durationMs: 10, fetchStatus: 'success', skippedFields: ['UserID'],
         },
         {
           target: 'daily', listTitle: 'DailyActivityRecords', total: 10, valid: 10, invalid: 0,
+          duplicateCount: 0,
+          duplicateIssues: [],
           issues: [], durationMs: 5, fetchStatus: 'success',
         },
       ],
@@ -210,5 +247,40 @@ describe('DataIntegrityPage', () => {
     expect(screen.getByText('構成診断を確認する →')).toBeDefined();
     // daily has no skippedFields → no link
     expect(screen.queryByTestId('skipped-fields-link-daily')).toBeNull();
+  });
+
+  it('shows duplicate possibility details and export buttons', () => {
+    mockUseDataIntegrityScan.mockReturnValue({
+      status: 'done',
+      progress: null,
+      results: [
+        {
+          target: 'users',
+          listTitle: 'Users_Master',
+          total: 10,
+          valid: 8,
+          invalid: 0,
+          duplicateCount: 1,
+          duplicateIssues: [duplicateIssueFixture],
+          issues: [],
+          durationMs: 11,
+          fetchStatus: 'success',
+        },
+      ],
+      error: null,
+      startScan: vi.fn(),
+      cancelScan: vi.fn(),
+    });
+
+    render(<DataIntegrityPage />);
+
+    expect(screen.getByText(new RegExp(DUPLICATE_REPORT_TEXT.possibleRecordsMessage))).toBeDefined();
+    expect(screen.getByText(new RegExp(`\\d+件\\s*${DUPLICATE_REPORT_TEXT.possible}`))).toBeDefined();
+    expect(screen.getByTestId('duplicate-users')).toBeDefined();
+    expect(screen.getByText('利用者・日付・工程')).toBeDefined();
+    expect(screen.getByText('101, 102')).toBeDefined();
+    expect(screen.getByTestId('export-csv-btn')).toBeDefined();
+    expect(screen.getByTestId('export-json-btn')).toBeDefined();
+    expect(screen.getAllByText(new RegExp(DUPLICATE_REPORT_TEXT.duplicateTypeLabel))).toHaveLength(2);
   });
 });
