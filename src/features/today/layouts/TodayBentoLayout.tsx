@@ -39,7 +39,7 @@ import { PlanningWorkflowCard, type PlanningWorkflowCardProps } from '../widgets
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import type { TodayTasksCardProps } from '../widgets/TodayTasksCard';
 import { UserCompactList, type UserCompactListProps } from '../widgets/UserCompactList';
-import type { ActionQueueCardProps } from '../widgets/ActionQueueCard';
+import { ActionQueueCard, type ActionQueueCardProps } from '../widgets/ActionQueueCard';
 import type { ActionQueueTimelineWidgetProps } from '../widgets/ActionQueueTimelineWidget';
 import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 import { CallLogSummaryCard, type CallLogSummaryCardProps } from '@/features/callLogs/components/CallLogSummaryCard';
@@ -158,7 +158,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   onNextActionNavigate,
   onPhaseNavigate,
   todayTasks: _todayTasks,
-  actionQueue: _actionQueue,
+  actionQueue,
   actionQueueTimeline: _actionQueueTimeline,
   workflowCard,
   transportCard,
@@ -272,6 +272,12 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
               />
             </BentoCard>
           </>
+        )}
+
+        {!isKiosk && actionQueue && (
+          <BentoCard colSpan={{ xs: 1, sm: 2, md: 4 }} variant="default" testId="bento-action-queue">
+            <ActionQueueCard {...actionQueue} />
+          </BentoCard>
         )}
 
         {/* ZONE B: Progress */}
