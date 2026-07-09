@@ -114,6 +114,7 @@
     "patrol:telemetry": "node scripts/ops/materialize-sp-telemetry.mjs",
     "patrol:telemetry:capture": "node scripts/ops/capture-sp-telemetry-lanes.mjs",
     "patrol:assert": "node scripts/ops/assert-telemetry-lanes.mjs",
+    "patrol:artifact-scan": "node scripts/ops/assert-patrol-artifacts-safe.mjs",
     "patrol:dashboard": "node scripts/ops/os-metrics.mjs",
     "patrol:raw-fetch": "node scripts/ops/fetch-nightly-raw-summaries.mjs",
     "patrol:admin-status": "node scripts/ops/export-admin-status-summary.mjs",
@@ -161,7 +162,6 @@
     "recharts": "^3.4.1",
     "remark-gfm": "^4.0.0",
     "web-vitals": "^4.2.0",
-    "xlsx": "^0.18.5",
     "zod": "^4.1.12",
     "zustand": "^5.0.11"
   },
