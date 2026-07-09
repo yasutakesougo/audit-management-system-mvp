@@ -29,6 +29,8 @@ export interface BillingSummary {
   isMutating: boolean;
   isPersistenceMissing: boolean;
   isPaymentAuditMissing: boolean;
+  hasLocalPaymentState: boolean;
+  localPaymentStateCount: number;
   persistenceDiagnostics: BillingPersistenceDiagnostics | null;
   persistenceWarningReason?: string;
   togglePaymentStatus: (ordererCode: string) => Promise<void>;
@@ -148,6 +150,8 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
   }, [persistenceDiagnostics]);
 
   // 2. LocalStorage フォールバック用の値
+  // 既存端末に残った fallback 値は互換のため読み取るが、
+  // SharePoint の PaymentStatus が解決できる環境では新規保存しない。
   const [fallbackPaymentStates, setFallbackPaymentStates] = useState<Record<string, boolean>>(() => {
     try {
       const stored = localStorage.getItem('app:billing:payment_states');
@@ -156,6 +160,12 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
       return {};
     }
   });
+
+  const localPaymentStateCount = useMemo(
+    () => Object.keys(fallbackPaymentStates).length,
+    [fallbackPaymentStates]
+  );
+  const hasLocalPaymentState = localPaymentStateCount > 0;
 
   const saveFallbackState = (key: string, val: boolean) => {
     const next = { ...fallbackPaymentStates, [key]: val };
@@ -393,6 +403,8 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     isMutating,
     isPersistenceMissing,
     isPaymentAuditMissing,
+    hasLocalPaymentState,
+    localPaymentStateCount,
     persistenceDiagnostics,
     persistenceWarningReason,
     togglePaymentStatus,

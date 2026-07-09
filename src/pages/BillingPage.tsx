@@ -81,6 +81,8 @@ export default function BillingPage() {
     isMutating,
     isPersistenceMissing,
     isPaymentAuditMissing,
+    hasLocalPaymentState,
+    localPaymentStateCount,
     persistenceWarningReason,
     togglePaymentStatus,
     bulkSettle,
@@ -462,6 +464,24 @@ export default function BillingPage() {
             <>
               <br />
               {persistenceWarningReason}
+            </>
+          )}
+        </Alert>
+      )}
+
+      {hasLocalPaymentState && (
+        <Alert severity={isPersistenceMissing ? 'warning' : 'info'} sx={{ mb: 3, borderRadius: 2 }}>
+          {isPersistenceMissing ? (
+            <>
+              端末内の一時状態が表示やCSVへ影響する可能性があります。
+              <br />
+              端末内一時状態: {localPaymentStateCount}件
+            </>
+          ) : (
+            <>
+              端末内の過去一時状態が残っていますが、現在は SharePoint の精算状態を正本として表示しています。
+              <br />
+              端末内一時状態: {localPaymentStateCount}件
             </>
           )}
         </Alert>
