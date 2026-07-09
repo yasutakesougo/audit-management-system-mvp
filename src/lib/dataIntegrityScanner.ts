@@ -107,6 +107,16 @@ export interface TargetData {
 const DUPLICATE_KEY_SEPARATOR = '||';
 const EMPTY_VALUE_MARK = '<空>';
 
+export const DUPLICATE_REPORT_TEXT = {
+  possible: '重複の可能性',
+  possibleRecordsMessage: '重複の可能性がある記録があります',
+  keyLabel: '重複キー',
+  countLabel: '重複件数',
+  duplicateTypeLabel: '重複種別',
+  duplicateDetailsTitle: '重複キー詳細',
+  keyValueLabel: 'キー',
+} as const;
+
 function getRecordId(item: unknown): number | string {
   if (typeof item === 'object' && item !== null && 'Id' in item) {
     const id = (item as Record<string, unknown>).Id;
@@ -343,7 +353,7 @@ export function formatScanSummary(results: ScanResult[]): string {
   for (const r of results) {
     const fetchSuffix = r.isTruncated ? ' (上限到達)' : '';
     lines.push(
-      `【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー / ${r.duplicateCount}件 重複の可能性${fetchSuffix} (${r.durationMs}ms)`,
+      `【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー / ${r.duplicateCount}件 ${DUPLICATE_REPORT_TEXT.possible}${fetchSuffix} (${r.durationMs}ms)`,
     );
     if (r.fetchStatus === 'failed') {
       lines.push(`  ⚠ 取得エラー: ${r.fetchError}`);
@@ -358,7 +368,7 @@ export function formatScanSummary(results: ScanResult[]): string {
       const keyText = Object.entries(issue.keyValues)
         .map(([field, value]) => `${field}=${value}`)
         .join(', ');
-      lines.push(`  ▸ 重複キー (${issue.ruleLabel}): ${keyText} / ${issue.duplicateCount}件`);
+      lines.push(`  ▸ ${DUPLICATE_REPORT_TEXT.keyLabel} (${issue.ruleLabel}): ${keyText} / ${issue.duplicateCount}件`);
     }
     lines.push('');
   }
@@ -374,8 +384,8 @@ export function formatScanSummary(results: ScanResult[]): string {
       ? '✅ すべてのデータが正常です。'
       : totalInvalid > 0
         ? `⚠ ${totalInvalid}件の不整合データが見つかりました。`
-        : `⚠ ${totalDuplicate}件の重複の可能性があります。`,
-  );
+        : `⚠ ${totalDuplicate}件の${DUPLICATE_REPORT_TEXT.possible}があります。`,
+      );
 
   return lines.join('\n');
 }
