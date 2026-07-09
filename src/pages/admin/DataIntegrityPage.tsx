@@ -337,7 +337,7 @@ const DataIntegrityPage: React.FC = () => {
         🔍 データ整合性チェック
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        SharePoint のデータを Zod スキーマで検証し、主要ビジネスキーの重複を検知します。
+        SharePoint のデータを Zod スキーマで検証し、主要ビジネスキーの重複の可能性を検知します。
       </Typography>
 
       {/* ── Control Bar ──────────────────────── */}
@@ -416,7 +416,7 @@ const DataIntegrityPage: React.FC = () => {
                     ? `⚠ ${totalStats.duplicates}件の重複の可能性がある記録があります（重複種別 ${totalStats.duplicateGroups}）`
                     : '✅ すべてのデータが正常です'}
             </AlertTitle>
-            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー / {totalStats.duplicates}件 重複 ({totalStats.duration}ms)
+            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー / {totalStats.duplicates}件 重複の可能性 ({totalStats.duration}ms)
             {results.some((r) => r.isTruncated) && (
               <Typography variant="caption" display="block" sx={{ mt: 0.5, fontWeight: 700 }}>
                 ※ 一部のリストで取得上限（10,000件）に到達したため、全件を検証できていない可能性があります。

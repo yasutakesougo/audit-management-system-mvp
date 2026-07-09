@@ -274,6 +274,7 @@ describe('DataIntegrityPage', () => {
     render(<DataIntegrityPage />);
 
     expect(screen.getByText(/重複の可能性がある記録があります/)).toBeDefined();
+    expect(screen.getByText(/\d+件 重複の可能性 \(/)).toBeDefined();
     expect(screen.getByTestId('duplicate-users')).toBeDefined();
     expect(screen.getByText('利用者・日付・工程')).toBeDefined();
     expect(screen.getByText('101, 102')).toBeDefined();
