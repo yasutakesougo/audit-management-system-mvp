@@ -21,6 +21,7 @@ import {
 } from '../domain/kioskProcedureMemo';
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 import { useKioskAttendance } from '../hooks/useKioskAttendance';
+import { KioskProcedureRecordSummary } from './KioskProcedureRecordSummary';
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
@@ -421,6 +422,14 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             保存済みかどうかを確認できません。再読み込みするまで記録の保存・取消はできません。
           </Typography>
         </Alert>
+      )}
+
+      {record && !isRecordStatusUnknown && (
+        <KioskProcedureRecordSummary
+          record={record}
+          mode="full"
+          testId="kiosk-saved-record-summary"
+        />
       )}
 
       {/* 観察記録の入力パネル */}

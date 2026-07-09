@@ -307,6 +307,65 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(mockSaveRecord).not.toHaveBeenCalled();
   });
 
+  it('shows a saved-record confirmation panel while keeping the editable form restored', async () => {
+    mockUseExecutionRecord.mockReturnValue(
+      makeExecutionRecordHookResult({
+        record: makeExecutionRecord({
+          memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】問題なく実施完了',
+        }),
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    const panel = screen.getByTestId('kiosk-saved-record-summary');
+    expect(panel).toHaveTextContent('保存済みの記録内容');
+    expect(panel).toHaveTextContent('様子');
+    expect(panel).toHaveTextContent('落ち着いていた');
+    expect(panel).toHaveTextContent('対応');
+    expect(panel).toHaveTextContent('見守り');
+    expect(panel).toHaveTextContent('変化');
+    expect(panel).toHaveTextContent('改善した');
+    expect(panel).toHaveTextContent('メモ');
+    expect(panel).toHaveTextContent('問題なく実施完了');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mood-chip-落ち着いていた').className).toContain('MuiChip-filledWarning');
+      expect(screen.getByTestId('action-chip-見守り').className).toContain('MuiChip-filledWarning');
+      expect(screen.getByTestId('result-chip-改善した').className).toContain('MuiChip-filledWarning');
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('問題なく実施完了');
+    });
+  });
+
+  it('shows raw saved memo as memo fallback in the saved-record confirmation panel', async () => {
+    mockUseExecutionRecord.mockReturnValue(
+      makeExecutionRecordHookResult({
+        record: makeExecutionRecord({
+          memo: '自由入力だけの保存済みメモ',
+        }),
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    const panel = screen.getByTestId('kiosk-saved-record-summary');
+    expect(panel).toHaveTextContent('保存済みの記録内容');
+    expect(panel).toHaveTextContent('メモ');
+    expect(panel).toHaveTextContent('自由入力だけの保存済みメモ');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('自由入力だけの保存済みメモ');
+    });
+  });
+
   it('postpones form state initialization and populates form from saved record after user load transitions from loading to success', async () => {
     mockUseUser.mockReturnValue({ data: null, status: 'loading' });
 
