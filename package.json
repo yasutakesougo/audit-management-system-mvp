@@ -114,6 +114,7 @@
     "patrol:telemetry": "node scripts/ops/materialize-sp-telemetry.mjs",
     "patrol:telemetry:capture": "node scripts/ops/capture-sp-telemetry-lanes.mjs",
     "patrol:assert": "node scripts/ops/assert-telemetry-lanes.mjs",
+    "patrol:artifact-scan": "node scripts/ops/assert-patrol-artifacts-safe.mjs",
     "patrol:dashboard": "node scripts/ops/os-metrics.mjs",
     "patrol:raw-fetch": "node scripts/ops/fetch-nightly-raw-summaries.mjs",
     "patrol:admin-status": "node scripts/ops/export-admin-status-summary.mjs",
