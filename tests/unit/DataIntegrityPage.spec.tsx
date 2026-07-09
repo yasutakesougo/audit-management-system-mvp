@@ -19,6 +19,7 @@ vi.mock('@/sharepoint/fields', () => ({
 }));
 
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
+import { DUPLICATE_REPORT_TEXT } from '@/lib/dataIntegrityScanner';
 import DataIntegrityPage from '@/pages/admin/DataIntegrityPage';
 
 const mockUseDataIntegrityScan = vi.mocked(useDataIntegrityScan);
@@ -273,13 +274,13 @@ describe('DataIntegrityPage', () => {
 
     render(<DataIntegrityPage />);
 
-    expect(screen.getByText(/重複の可能性がある記録があります/)).toBeDefined();
-    expect(screen.getByText(/\d+件 重複の可能性 \(/)).toBeDefined();
+    expect(screen.getByText(new RegExp(DUPLICATE_REPORT_TEXT.possibleRecordsMessage))).toBeDefined();
+    expect(screen.getByText(new RegExp(`\\d+件\\s*${DUPLICATE_REPORT_TEXT.possible}`))).toBeDefined();
     expect(screen.getByTestId('duplicate-users')).toBeDefined();
     expect(screen.getByText('利用者・日付・工程')).toBeDefined();
     expect(screen.getByText('101, 102')).toBeDefined();
     expect(screen.getByTestId('export-csv-btn')).toBeDefined();
     expect(screen.getByTestId('export-json-btn')).toBeDefined();
-    expect(screen.getByText(/重複種別/)).toBeDefined();
+    expect(screen.getAllByText(new RegExp(DUPLICATE_REPORT_TEXT.duplicateTypeLabel))).toHaveLength(2);
   });
 });
