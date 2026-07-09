@@ -2,6 +2,7 @@ import { clearEnvCache, getRuntimeEnv, isDev } from '@/env';
 import { shouldSkipLogin } from '@/lib/env';
 import { isDebugFlag } from '@/lib/debugFlag';
 import { guardProdMisconfig } from '@/lib/envGuards';
+import { validateEnv } from '@/config/envSchema';
 import '@/styles/kiosk.css';
 import '@/styles/print.css';
 import React from 'react';
@@ -163,6 +164,7 @@ const run = async (): Promise<void> => {
   // ✅ Step 1: Load runtime env FIRST (before MSAL init)
   await ensureRuntimeEnv()
     .then(() => {
+      validateEnv();
       finalizeHydrationSpan(completeEnv);
     })
     .catch((error) => {
