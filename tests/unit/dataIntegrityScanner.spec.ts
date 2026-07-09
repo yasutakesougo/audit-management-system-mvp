@@ -1,4 +1,5 @@
 import {
+    DUPLICATE_REPORT_TEXT,
     formatScanSummary,
     scanAll,
     validateItems,
@@ -339,7 +340,7 @@ describe('formatScanSummary', () => {
     expect(summary).toContain('2件中 1件 OK / 1件 エラー');
     expect(summary).toContain('ID 2');
     expect(summary).toContain('不整合データが見つかりました');
-    expect(summary).toContain('重複の可能性');
+    expect(summary).toContain(DUPLICATE_REPORT_TEXT.possible);
   });
 
   it('includes ⚠ 列スキップ line when skippedFields are present', () => {

@@ -28,7 +28,13 @@ import { SpScheduleRowSchema } from '@/features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { emitSkippedFieldTelemetry } from '@/lib/dataIntegrity/skippedFieldTelemetry';
-import { formatScanSummary, type ScanResult, type ScanTarget, type TargetData } from '@/lib/dataIntegrityScanner';
+import {
+  DUPLICATE_REPORT_TEXT,
+  formatScanSummary,
+  type ScanResult,
+  type ScanTarget,
+  type TargetData,
+} from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
 import { 
   fetchRawItemsWithFieldFallback 
@@ -170,10 +176,10 @@ const buildDuplicateCsv = (results: ScanResult[]): string => {
     '一覧名',
     'ルールID',
     'ルール名',
-    '重複キー',
-    '重複件数',
+    DUPLICATE_REPORT_TEXT.keyLabel,
+    DUPLICATE_REPORT_TEXT.countLabel,
     '該当ID',
-    'キー項目(見出し=値)',
+    `${DUPLICATE_REPORT_TEXT.keyValueLabel}項目(見出し=値)`,
   ];
 
   const rows = [header.join(',')];
@@ -413,10 +419,10 @@ const DataIntegrityPage: React.FC = () => {
                 : totalStats.invalid > 0
                   ? `⚠ ${totalStats.invalid}件の不整合が検出されました`
                   : totalStats.duplicates > 0
-                    ? `⚠ ${totalStats.duplicates}件の重複の可能性がある記録があります（重複種別 ${totalStats.duplicateGroups}）`
-                    : '✅ すべてのデータが正常です'}
+            ? `⚠ ${totalStats.duplicates}件の${DUPLICATE_REPORT_TEXT.possibleRecordsMessage}（${DUPLICATE_REPORT_TEXT.duplicateTypeLabel} ${totalStats.duplicateGroups}）`
+            : '✅ すべてのデータが正常です'}
             </AlertTitle>
-            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー / {totalStats.duplicates}件 重複の可能性 ({totalStats.duration}ms)
+            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー / {totalStats.duplicates}件 {DUPLICATE_REPORT_TEXT.possible} ({totalStats.duration}ms)
             {results.some((r) => r.isTruncated) && (
               <Typography variant="caption" display="block" sx={{ mt: 0.5, fontWeight: 700 }}>
                 ※ 一部のリストで取得上限（10,000件）に到達したため、全件を検証できていない可能性があります。
@@ -455,7 +461,7 @@ const DataIntegrityPage: React.FC = () => {
                   <TableCell align="right" sx={{ fontWeight: 700 }}>取得数</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>検証OK</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>検証NG</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>重複件数</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.countLabel}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>時間</TableCell>
                 </TableRow>
               </TableHead>
@@ -598,7 +604,7 @@ const DataIntegrityPage: React.FC = () => {
         <>
           <Divider sx={{ my: 2 }} />
           <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-            🔁 重複キー詳細
+            {`🔁 ${DUPLICATE_REPORT_TEXT.duplicateDetailsTitle}`}
           </Typography>
           {results
             .filter((r) => r.duplicateIssues.length > 0)
@@ -611,9 +617,9 @@ const DataIntegrityPage: React.FC = () => {
                   <Table size="small" data-testid={`duplicate-${r.target}`}>
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'warning.light', opacity: 0.12 }}>
-                        <TableCell sx={{ fontWeight: 700 }}>ルール</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>キー</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>重複件数</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.duplicateTypeLabel}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.keyValueLabel}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{DUPLICATE_REPORT_TEXT.countLabel}</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>対象ID</TableCell>
                       </TableRow>
                     </TableHead>
