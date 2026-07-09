@@ -16,6 +16,8 @@
 基本思想は **原則 7: まず日次価値、次に月次価値** に従い、
 現場が毎日使う仕組みから順に価値を積み上げる。
 
+生活介護向けの完成形は、[イソカツシステム完成形ブループリント](isokatsu-completion-blueprint.md) を上位定義とする。既存フェーズは、同ブループリントの「現場導入できる完成」「支援記録 OS としての完成」「管理・請求・監査の完成」「属人化しない運用完成」に接続して読む。
+
 ---
 
 ## フェーズ構成
@@ -27,6 +29,15 @@ Phase 3: Unified Proposal Layer（統合提案） ← 判断補助 OS 始動
 Phase 4: Organizational Knowledge（組織知） ← 知識基盤の構築
 Phase 5: Platform Evolution（OS 進化）     ← スケーラビリティ
 ```
+
+### イソカツ完成ラインとの対応
+
+| イソカツ完成ライン | 対応する既存フェーズ | 完成判定 |
+|--------------------|----------------------|----------|
+| Phase 1: 現場導入できる完成 | Phase 1: Daily Value | `/today` と `/users/:userId` を起点に、出欠・記録・申し送り・キオスク入力が紙の代替として回る |
+| Phase 2: 支援記録 OS としての完成 | Phase 2: Monthly Intelligence / Phase 3: Unified Proposal Layer | 支援計画、日々の記録、ABC、Iceberg、PDCA、Record Quality Review が根拠の流れとして追える |
+| Phase 3: 管理・請求・監査の完成 | Phase 4: Organizational Knowledge | `/billing`、月次出力、修正履歴、権限、監査説明が日々の入力と接続している |
+| Phase 4: 属人化しない運用完成 | Phase 5: Platform Evolution | Runbook、Nightly Patrol、SharePoint schema 管理、PR 判断テンプレでユーザー本人以外も運用できる |
 
 ---
 
@@ -207,4 +218,5 @@ Phase 5: Platform Evolution（OS 進化）     ← スケーラビリティ
 
 | 日付 | バージョン | 変更内容 | 著者 |
 |------|-----------|---------|------|
+| 2026-07-09 | 1.1 | イソカツシステム完成形ブループリントへの対応表を追加 | Codex |
 | 2026-03-16 | 1.0 | 初版作成 | プロダクトチーム |

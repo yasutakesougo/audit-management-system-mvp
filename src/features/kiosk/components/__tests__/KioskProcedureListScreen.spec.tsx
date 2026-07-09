@@ -234,6 +234,45 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('shows saved record summary on recorded procedure cards', async () => {
+    mockGetRecords.mockResolvedValue([
+      {
+        scheduleItemId: '1',
+        status: 'completed',
+        memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】問題なく実施完了',
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      const summary = within(firstCard).getByTestId('kiosk-procedure-record-summary-0');
+      expect(summary).toHaveTextContent('様子: 落ち着いていた');
+      expect(summary).toHaveTextContent('対応: 見守り');
+      expect(summary).toHaveTextContent('変化: 改善した');
+      expect(summary).toHaveTextContent('メモ: 問題なく実施完了');
+    });
+  });
+
+  it('does not show saved record summary on unrecorded procedure cards', async () => {
+    render(
+      <MemoryRouter>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+      expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
+      expect(within(firstCard).queryByTestId('kiosk-procedure-record-summary-0')).toBeNull();
+    });
+  });
+
   it('shows an auth-required alert instead of user-not-found when user lookup requires Microsoft 365 auth', async () => {
     mockRouteUserId = '23';
     mockUseUser.mockReturnValue({
@@ -1343,7 +1382,12 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     it('shows "同期状態未確認" Chip for slots with local cache and "状態未確認" for others when SharePoint load fails', async () => {
       mockGetRecords.mockRejectedValue(new Error('SharePoint fetch failed'));
       mockGetStoreRecords.mockReturnValue([
-        { scheduleItemId: '1', status: 'completed', recordedAt: '2026-05-08T10:00:00Z' }
+        {
+          scheduleItemId: '1',
+          status: 'completed',
+          memo: '【様子】落ち着いていた\n【対応】見守り',
+          recordedAt: '2026-05-08T10:00:00Z',
+        }
       ]);
 
       render(
@@ -1353,7 +1397,10 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('kiosk-uncertain-local-chip-0')).toBeInTheDocument();
+        const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+        expect(within(firstCard).getByTestId('kiosk-uncertain-local-chip-0')).toBeInTheDocument();
+        expect(within(firstCard).getByTestId('kiosk-procedure-record-summary-0')).toHaveTextContent('様子: 落ち着いていた');
+        expect(within(firstCard).getByTestId('kiosk-procedure-record-summary-0')).toHaveTextContent('対応: 見守り');
         expect(screen.getByTestId('kiosk-uncertain-chip-1')).toBeInTheDocument();
         expect(screen.queryByText('未実施')).toBeNull();
         expect(screen.queryByText('記録済み')).toBeNull();
