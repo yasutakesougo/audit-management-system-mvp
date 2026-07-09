@@ -131,12 +131,12 @@ describe('QuickRecordTab Component - ExecutionRecord linkage', () => {
         consequence: '静かな部屋へ誘導した',
       }));
 
-      // 2. 実施手順の `rowNo: 1` から `scheduleItemId: "1"` が特定され、ExecutionRecord が upsert されたこと
+      // 2. 実施手順の `rowNo: 1` から `scheduleItemId: "procedure-1"` が特定され、ExecutionRecord が upsert されたこと
       expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
       expect(mockUpsertRecord).toHaveBeenCalledWith(expect.objectContaining({
         date: '2026-05-22',
         userId: 'user-1',
-        scheduleItemId: '1',
+        scheduleItemId: 'procedure-1',
         status: 'completed',
         memo: expect.stringContaining('【メモ】[ABC記録] 行動: 大声を出した\n結果: 静かな部屋へ誘導した'),
       }));
@@ -151,7 +151,7 @@ describe('QuickRecordTab Component - ExecutionRecord linkage', () => {
       id: '2026-05-22-user-1-1',
       date: '2026-05-22',
       userId: 'user-1',
-      scheduleItemId: '1',
+      scheduleItemId: 'procedure-1',
       status: 'completed',
       triggeredBipIds: [],
       memo: '既存メモ',
@@ -177,9 +177,46 @@ describe('QuickRecordTab Component - ExecutionRecord linkage', () => {
     expect(mockUpsertRecord).toHaveBeenCalledWith(expect.objectContaining({
       date: '2026-05-22',
       userId: 'user-1',
-      scheduleItemId: '1',
+      scheduleItemId: 'procedure-1',
       memo: '【メモ】[ABC記録] 行動: 大声を出した\n結果: 静かな部屋へ誘導した',
       recordedBy: 'テスト記録者',
+    }));
+  });
+
+  it('10:00頃|体操 のABC保存は rowNo 2 の canonical scheduleItemId だけで upsert する', async () => {
+    mockGetByUser.mockReturnValueOnce([
+      { id: 'step-1', rowNo: 1, time: '09:30頃', activity: '朝の準備', instruction: '準備' },
+      { id: 'step-2', rowNo: 2, time: '10:00頃', activity: '体操', instruction: '体操' },
+      { id: 'step-3', rowNo: 3, time: '10:10頃', activity: '水分補給', instruction: '水分補給' },
+    ]);
+
+    const { result } = renderHook(() => useAbcDailySupportIntegration());
+
+    await result.current.linkExecutionRecord(
+      'user-1',
+      '立ち上がった',
+      '体操へ参加できた',
+      {
+        source: 'daily-support',
+        date: '2026-05-22',
+        slotId: '10:00頃|体操',
+      },
+      'テスト記録者',
+    );
+
+    expect(mockGetRecord).toHaveBeenCalledWith('2026-05-22', 'user-1', 'procedure-2');
+    expect(mockGetRecord).not.toHaveBeenCalledWith('2026-05-22', 'user-1', 'procedure-3');
+    expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
+    expect(mockUpsertRecord).toHaveBeenCalledWith(expect.objectContaining({
+      id: '2026-05-22-user-1-procedure-2',
+      date: '2026-05-22',
+      userId: 'user-1',
+      scheduleItemId: 'procedure-2',
+      status: 'completed',
+      memo: '【メモ】[ABC記録] 行動: 立ち上がった\n結果: 体操へ参加できた',
+    }));
+    expect(mockUpsertRecord).not.toHaveBeenCalledWith(expect.objectContaining({
+      scheduleItemId: 'procedure-3',
     }));
   });
 });

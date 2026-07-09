@@ -258,4 +258,59 @@ describe('executionRecordMatching helper', () => {
     expect(result[1]).toBeUndefined();
     expect(result[2]).toBeUndefined();
   });
+
+  it('keeps legacy raw numeric records readable for the matching row', () => {
+    const mockRecords: ExecutionRecord[] = [
+      {
+        id: 'legacy-row-2',
+        date: '2026-05-29',
+        userId: 'U001',
+        scheduleItemId: '2',
+        status: 'completed',
+        memo: 'Legacy raw row 2',
+        recordedAt: '2026-05-29T10:00:00Z',
+        recordedBy: 'Staff A',
+        triggeredBipIds: [],
+      },
+    ];
+
+    const result = matchExecutionRecordsToProcedures(mockSlots, mockRecords);
+
+    expect(result[0]).toBeUndefined();
+    expect(result[1]?.id).toBe('legacy-row-2');
+    expect(result[2]).toBeUndefined();
+  });
+
+  it('does not leak duplicate raw and canonical row records to adjacent procedures', () => {
+    const mockRecords: ExecutionRecord[] = [
+      {
+        id: 'canonical-row-2',
+        date: '2026-05-29',
+        userId: 'U001',
+        scheduleItemId: 'procedure-2',
+        status: 'completed',
+        memo: 'Canonical row 2',
+        recordedAt: '2026-05-29T10:00:00Z',
+        recordedBy: 'Staff A',
+        triggeredBipIds: [],
+      },
+      {
+        id: 'legacy-row-2',
+        date: '2026-05-29',
+        userId: 'U001',
+        scheduleItemId: '2',
+        status: 'completed',
+        memo: 'Legacy raw row 2',
+        recordedAt: '2026-05-29T10:01:00Z',
+        recordedBy: 'Staff B',
+        triggeredBipIds: [],
+      },
+    ];
+
+    const result = matchExecutionRecordsToProcedures(mockSlots, mockRecords);
+
+    expect(result[0]).toBeUndefined();
+    expect(result[1]?.id).toBe('canonical-row-2');
+    expect(result[2]).toBeUndefined();
+  });
 });

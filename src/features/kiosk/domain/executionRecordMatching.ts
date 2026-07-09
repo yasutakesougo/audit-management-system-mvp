@@ -103,7 +103,11 @@ export function matchExecutionRecordsToProcedures(
 
     if (!matchedRecord) {
       matchedRecord = records.find(
-        (r) => !consumed.has(r) && isShiftedProcedureSlot(slot, r)
+        (r) => (
+          !consumed.has(r) &&
+          !normalizedSlots.some((candidateSlot) => isStrictSameProcedureSlot(candidateSlot, r)) &&
+          isShiftedProcedureSlot(slot, r)
+        )
       );
       if (matchedRecord) {
         consumed.add(matchedRecord);

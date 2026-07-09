@@ -36,7 +36,7 @@ export function useAbcDailySupportIntegration() {
     if (!matchingStep) return;
 
     const scheduleItemId = matchingStep.rowNo !== undefined
-      ? String(matchingStep.rowNo)
+      ? `procedure-${matchingStep.rowNo}`
       : matchingStep.id;
 
     if (!scheduleItemId) return;
