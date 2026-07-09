@@ -4,6 +4,8 @@ import BillingPage from '@/pages/BillingPage';
 
 const billingSummaryState = vi.hoisted(() => ({
   isPersistenceMissing: false,
+  hasLocalPaymentState: false,
+  localPaymentStateCount: 0,
 }));
 
 const exportCsvMock = vi.hoisted(() => vi.fn());
@@ -22,6 +24,10 @@ vi.mock('@/features/billing/hooks/useBillingSummary', () => ({
     isError: false,
     isMutating: false,
     isPersistenceMissing: billingSummaryState.isPersistenceMissing,
+    isPaymentAuditMissing: false,
+    hasLocalPaymentState: billingSummaryState.hasLocalPaymentState,
+    localPaymentStateCount: billingSummaryState.localPaymentStateCount,
+    persistenceWarningReason: undefined,
     togglePaymentStatus: togglePaymentStatusMock,
     bulkSettle: bulkSettleMock,
     exportCsv: exportCsvMock,
@@ -31,6 +37,8 @@ vi.mock('@/features/billing/hooks/useBillingSummary', () => ({
 describe('BillingPage CSV export confirmation', () => {
   beforeEach(() => {
     billingSummaryState.isPersistenceMissing = false;
+    billingSummaryState.hasLocalPaymentState = false;
+    billingSummaryState.localPaymentStateCount = 0;
     exportCsvMock.mockReset();
     togglePaymentStatusMock.mockReset();
     bulkSettleMock.mockReset();
@@ -78,5 +86,36 @@ describe('BillingPage CSV export confirmation', () => {
     expect(screen.getByText(/PaymentStatus \/ PaidAt \/ PaidBy/)).toBeInTheDocument();
     expect(screen.getByText(/CSVの精算状況を正式な精算結果として扱わないでください/)).toBeInTheDocument();
     expect(screen.getByText('精算状態未検証のため、CSV出力時に確認が必要です')).toBeInTheDocument();
+  });
+
+  it('shows a local temporary state notice when existing LocalStorage payment state remains in resolved mode', () => {
+    billingSummaryState.hasLocalPaymentState = true;
+    billingSummaryState.localPaymentStateCount = 2;
+
+    render(<BillingPage />);
+
+    expect(screen.getByText(/端末内の過去一時状態が残っています/)).toBeInTheDocument();
+    expect(screen.getByText(/SharePoint の精算状態を正本として表示しています/)).toBeInTheDocument();
+    expect(screen.getByText(/端末内一時状態:\s*2件/)).toBeInTheDocument();
+  });
+
+  it('does not show a local temporary state notice when no LocalStorage payment state remains', () => {
+    render(<BillingPage />);
+
+    expect(
+      screen.queryByText(/端末内の過去一時状態が残っています/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a stronger local temporary state warning when payment persistence is missing', () => {
+    billingSummaryState.isPersistenceMissing = true;
+    billingSummaryState.hasLocalPaymentState = true;
+    billingSummaryState.localPaymentStateCount = 1;
+
+    render(<BillingPage />);
+
+    expect(screen.getByText(/端末内の一時状態が表示やCSVへ影響する可能性があります/)).toBeInTheDocument();
+    expect(screen.getByText(/端末内一時状態:\s*1件/)).toBeInTheDocument();
+    expect(screen.getByText(/CSVの精算状況を正式な精算結果として扱わないでください/)).toBeInTheDocument();
   });
 });

@@ -211,6 +211,8 @@ describe('useBillingSummary', () => {
     expect(result.current.totalServedCount).toBe(5);
     expect(result.current.totalServedAmount).toBe(800);
     expect(result.current.availableMonths).toEqual(['2026-05', '2026-04']);
+    expect(result.current.hasLocalPaymentState).toBe(false);
+    expect(result.current.localPaymentStateCount).toBe(0);
   });
 
   it('個別の精算トグル状態が SharePoint の repository に送られ、query invalidation が走ること', async () => {
@@ -248,6 +250,8 @@ describe('useBillingSummary', () => {
       expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
     });
     expect(result.current.isPersistenceMissing).toBe(false);
+    expect(result.current.hasLocalPaymentState).toBe(true);
+    expect(result.current.localPaymentStateCount).toBe(1);
 
     const userRecord = result.current.records.find((r) => r.ordererCode === 'U-001');
     expect(userRecord?.isPaid).toBe(false);
@@ -410,6 +414,8 @@ describe('useBillingSummary', () => {
 
     const userRecord = result.current.records.find((r) => r.ordererCode === 'U-001');
     expect(userRecord?.isPaid).toBe(true);
+    expect(result.current.hasLocalPaymentState).toBe(true);
+    expect(result.current.localPaymentStateCount).toBe(1);
     expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
   });
 

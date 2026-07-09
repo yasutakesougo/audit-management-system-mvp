@@ -29,6 +29,8 @@ export interface BillingSummary {
   isMutating: boolean;
   isPersistenceMissing: boolean;
   isPaymentAuditMissing: boolean;
+  hasLocalPaymentState: boolean;
+  localPaymentStateCount: number;
   persistenceDiagnostics: BillingPersistenceDiagnostics | null;
   persistenceWarningReason?: string;
   togglePaymentStatus: (ordererCode: string) => Promise<void>;
@@ -158,6 +160,12 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
       return {};
     }
   });
+
+  const localPaymentStateCount = useMemo(
+    () => Object.keys(fallbackPaymentStates).length,
+    [fallbackPaymentStates]
+  );
+  const hasLocalPaymentState = localPaymentStateCount > 0;
 
   const saveFallbackState = (key: string, val: boolean) => {
     const next = { ...fallbackPaymentStates, [key]: val };
@@ -395,6 +403,8 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
     isMutating,
     isPersistenceMissing,
     isPaymentAuditMissing,
+    hasLocalPaymentState,
+    localPaymentStateCount,
     persistenceDiagnostics,
     persistenceWarningReason,
     togglePaymentStatus,
