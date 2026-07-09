@@ -30,6 +30,7 @@ import { resolveSupportStartDateDetailed } from '@/features/planning-sheet/monit
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 import { isAuthRequiredError } from '@/lib/errors';
 import { useKioskAttendance } from '../hooks/useKioskAttendance';
+import { KioskProcedureRecordSummary } from './KioskProcedureRecordSummary';
 
 const buildProcedureMatchKeys = (
   procedure: { id?: unknown; rowNo?: unknown },
@@ -858,6 +859,14 @@ export const KioskProcedureListScreen: React.FC = () => {
                       <Typography variant="body2" color="text.secondary" noWrap>
                         {step.instruction}
                       </Typography>
+                      {(statusType === 'recorded' || statusType === 'uncertain_local') && recordedRecord && (
+                        <KioskProcedureRecordSummary
+                          record={recordedRecord}
+                          mode="compact"
+                          syncState={statusType === 'uncertain_local' ? 'local-uncertain' : 'confirmed'}
+                          testId={`kiosk-procedure-record-summary-${index}`}
+                        />
+                      )}
                     </Grid>
                     <Grid size={3} sx={{ textAlign: 'right' }}>
                       <Button
