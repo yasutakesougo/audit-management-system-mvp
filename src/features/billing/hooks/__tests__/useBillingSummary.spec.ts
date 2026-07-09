@@ -218,8 +218,9 @@ describe('useBillingSummary', () => {
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
     await waitFor(() => {
-      expect(result.current.isPersistenceMissing).toBe(false);
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
     });
+    expect(result.current.isPersistenceMissing).toBe(false);
 
     // 精算トグルを実行 (非同期)
     await act(async () => {
@@ -238,13 +239,40 @@ describe('useBillingSummary', () => {
     expect(mockInvalidateQueries).toHaveBeenCalled();
   });
 
+  it('PaymentStatus 解決済みの場合、既存 LocalStorage 値があっても SharePoint の精算状態を正本にし、新規保存しないこと', async () => {
+    localStorage.setItem('app:billing:payment_states', JSON.stringify({ '2026-05:U-001': true }));
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    const { result } = renderHook(() => useBillingSummary('2026-05'));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(result.current.isPersistenceMissing).toBe(false);
+
+    const userRecord = result.current.records.find((r) => r.ordererCode === 'U-001');
+    expect(userRecord?.isPaid).toBe(false);
+
+    await act(async () => {
+      await result.current.togglePaymentStatus('U-001');
+    });
+
+    expect(mockBulkUpdatePaymentStatus).toHaveBeenCalledWith(
+      [1, 2],
+      '精算済み',
+      expect.any(String),
+      '請求 太郎'
+    );
+    expect(setItemSpy).not.toHaveBeenCalledWith('app:billing:payment_states', expect.any(String));
+  });
+
   it('一括精算を実行すると、選択されたカテゴリがすべて精算済みになるよう SharePoint を一括更新すること', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05'));
 
     await waitFor(() => {
-      expect(result.current.isPersistenceMissing).toBe(false);
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
     });
+    expect(result.current.isPersistenceMissing).toBe(false);
 
     // 「職員」のみを一括精算
     await act(async () => {
@@ -258,6 +286,28 @@ describe('useBillingSummary', () => {
       expect.any(String),
       '請求 太郎'
     );
+  });
+
+  it('PaymentStatus 解決済みの場合、一括精算でも LocalStorage へ新規保存しないこと', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    const { result } = renderHook(() => useBillingSummary('2026-05'));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(result.current.isPersistenceMissing).toBe(false);
+
+    await act(async () => {
+      await result.current.bulkSettle('職員');
+    });
+
+    expect(mockBulkUpdatePaymentStatus).toHaveBeenCalledWith(
+      [3],
+      '精算済み',
+      expect.any(String),
+      '請求 太郎'
+    );
+    expect(setItemSpy).not.toHaveBeenCalledWith('app:billing:payment_states', expect.any(String));
   });
 
   it('ログインユーザー名が無い場合はメールアドレスを PaidBy に使うこと', async () => {
@@ -335,6 +385,31 @@ describe('useBillingSummary', () => {
     expect(stored['2026-05:U-001']).toBe(true);
 
     // SharePoint への更新は呼ばれていないこと
+    expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
+  });
+
+  it('PaymentStatus 未解決の場合、互換のため既存 LocalStorage 精算状態を読み取ること', async () => {
+    localStorage.setItem('app:billing:payment_states', JSON.stringify({ '2026-05:U-001': true }));
+    mockGetPersistenceDiagnostics.mockResolvedValue({
+      status: 'missing_payment_status',
+      listId: 'List3',
+      siteRelative: '/sites/2',
+      missingFields: ['PaymentStatus'],
+      resolvedFields: {
+        paidAt: 'PaidAt',
+        paidBy: 'PaidBy',
+      },
+      usesList3Fallback: true,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-05'));
+
+    await waitFor(() => {
+      expect(result.current.isPersistenceMissing).toBe(true);
+    });
+
+    const userRecord = result.current.records.find((r) => r.ordererCode === 'U-001');
+    expect(userRecord?.isPaid).toBe(true);
     expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
   });
 

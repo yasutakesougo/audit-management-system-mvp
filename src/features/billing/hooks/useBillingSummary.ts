@@ -148,6 +148,8 @@ export function useBillingSummary(selectedMonth: string): BillingSummary {
   }, [persistenceDiagnostics]);
 
   // 2. LocalStorage フォールバック用の値
+  // 既存端末に残った fallback 値は互換のため読み取るが、
+  // SharePoint の PaymentStatus が解決できる環境では新規保存しない。
   const [fallbackPaymentStates, setFallbackPaymentStates] = useState<Record<string, boolean>>(() => {
     try {
       const stored = localStorage.getItem('app:billing:payment_states');
