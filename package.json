@@ -150,7 +150,7 @@
     "dayjs": "^1.11.19",
     "encoding-japanese": "^2.2.0",
     "exceljs": "^4.4.0",
-    "firebase": "^10.14.1",
+    "firebase": "^12.16.0",
     "p-limit": "^4.0.0",
     "papaparse": "^5.5.3",
     "react": "^18.2.0",
