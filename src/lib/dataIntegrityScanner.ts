@@ -343,7 +343,7 @@ export function formatScanSummary(results: ScanResult[]): string {
   for (const r of results) {
     const fetchSuffix = r.isTruncated ? ' (上限到達)' : '';
     lines.push(
-      `【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー / ${r.duplicateCount}件 重複${fetchSuffix} (${r.durationMs}ms)`,
+      `【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー / ${r.duplicateCount}件 重複の可能性${fetchSuffix} (${r.durationMs}ms)`,
     );
     if (r.fetchStatus === 'failed') {
       lines.push(`  ⚠ 取得エラー: ${r.fetchError}`);
