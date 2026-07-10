@@ -1,20 +1,34 @@
 import {
   createRecordQualityReviewFromSupportRecord,
-} from '@/domain/supportRecord/recordQualityReviewCreationUseCase';
-import type { RecordQualityReviewRepository } from '@/domain/supportRecord/recordQualityReviewRepository';
-import type {
-  DailyRecordRepository,
-  DailyRecordRepositoryMutationParams,
-  SaveDailyRecordInput,
-} from '@/features/daily/domain/DailyRecordRepository';
-import type { DailyRecordUserRow } from '@/features/daily/domain/schema';
+} from '@/features/record-quality/application/recordQualityReviewCreationUseCase';
+import type { RecordQualityReviewRepository } from '@/features/record-quality/ports/recordQualityReviewRepository';
 import { auditLog } from '@/lib/debugLogger';
 
-export type SaveDailyRecordWithQualityReviewInput = {
-  readonly dailyRepository: DailyRecordRepository;
+export type ReviewableDailyRecordRow = {
+  readonly userId: string;
+  readonly amActivity: string;
+  readonly pmActivity: string;
+  readonly lunchAmount: string;
+  readonly specialNotes: string;
+};
+
+export type ReviewableDailyRecordInput = {
+  readonly date: string;
+  readonly userRows: readonly ReviewableDailyRecordRow[];
+};
+
+export type DailyRecordSavePort<TInput, TMutationParams = unknown> = {
+  save(input: TInput, params?: TMutationParams): Promise<void>;
+};
+
+export type SaveDailyRecordWithQualityReviewInput<
+  TInput extends ReviewableDailyRecordInput = ReviewableDailyRecordInput,
+  TMutationParams = unknown,
+> = {
+  readonly dailyRepository: DailyRecordSavePort<TInput, TMutationParams>;
   readonly reviewRepository: RecordQualityReviewRepository;
-  readonly input: SaveDailyRecordInput;
-  readonly mutationParams?: DailyRecordRepositoryMutationParams;
+  readonly input: TInput;
+  readonly mutationParams?: TMutationParams;
   readonly createdAt: string;
 };
 
@@ -26,8 +40,11 @@ export type SaveDailyRecordWithQualityReviewResult = {
   readonly existingReviewSkippedReviewCount: number;
 };
 
-export async function saveDailyRecordWithQualityReview(
-  input: SaveDailyRecordWithQualityReviewInput,
+export async function saveDailyRecordWithQualityReview<
+  TInput extends ReviewableDailyRecordInput,
+  TMutationParams = unknown,
+>(
+  input: SaveDailyRecordWithQualityReviewInput<TInput, TMutationParams>,
 ): Promise<SaveDailyRecordWithQualityReviewResult> {
   await input.dailyRepository.save(input.input, input.mutationParams);
 
@@ -82,7 +99,7 @@ export function buildDailyRecordQualityReviewId(date: string, userId: string): s
   return `daily:${date}:${userId}`;
 }
 
-function buildReviewableSupportRecordText(row: DailyRecordUserRow): string {
+function buildReviewableSupportRecordText(row: ReviewableDailyRecordRow): string {
   return [
     row.amActivity,
     row.pmActivity,
