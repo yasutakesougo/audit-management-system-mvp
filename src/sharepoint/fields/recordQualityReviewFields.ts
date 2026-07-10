@@ -1,10 +1,21 @@
 import type { SpFieldDef } from '@/lib/sp/types';
-import {
-  RECORD_QUALITY_REVIEW_FIELDS,
-  RECORD_QUALITY_REVIEW_LIST_TITLE,
-} from '@/domain/supportRecord/dataProviderRecordQualityReviewPersistenceStore';
 
-export { RECORD_QUALITY_REVIEW_LIST_TITLE };
+export const RECORD_QUALITY_REVIEW_LIST_TITLE = 'RecordQualityReview';
+
+export const RECORD_QUALITY_REVIEW_FIELDS = {
+  title: 'Title',
+  recordId: 'RecordId',
+  sourceRecordId: 'SourceRecordId',
+  status: 'ReviewStatus',
+  reviewerId: 'ReviewerId',
+  reviewerName: 'ReviewerName',
+  suggestedCategoriesJson: 'SuggestedCategoriesJson',
+  missingInfoHintsJson: 'MissingInfoHintsJson',
+  reviewerNotesJson: 'ReviewerNotesJson',
+  createdAt: 'CreatedAt',
+  updatedAt: 'UpdatedAt',
+} as const;
+
 
 export const RECORD_QUALITY_REVIEW_CANDIDATES = {
   recordId: [RECORD_QUALITY_REVIEW_FIELDS.recordId, 'Record_x0020_ID'],

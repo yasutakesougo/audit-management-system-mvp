@@ -2,6 +2,19 @@
 
 This document lists ESLint-enforced architectural patterns that prevent common violations.
 
+## Module dependency baseline
+
+ADR-024 のモジュール境界は dependency-cruiser で検査する。
+
+- `npm run arch:check`: 現在の known violations を許容し、新しい違反だけを失敗させる。
+- `npm run arch:baseline`: 違反を解消した後にベースラインを再生成する。
+- `.dependency-cruiser-known-violations.json` への手編集や、変更と無関係な違反追加は禁止する。
+- ベースライン差分は、違反が減っていること、または ADR で明示承認された例外だけが
+  追加されていることをレビューする。
+
+検査対象は feature 間の内部パス参照、domain から外部基盤への依存、
+公開 API を経由しないモジュール参照、runtime 循環依存である。
+
 ## CI Enforcement
 
 These guards are enforced at multiple layers:
