@@ -117,4 +117,46 @@ describe('capture-sp-telemetry-lanes', () => {
     expect(assertResult.stderr).not.toContain('SP_TELEMETRY_PATH is required in strict mode');
     expect(assertResult.stderr).not.toContain('Telemetry file missing in strict mode');
   });
+
+  it.each([
+    {
+      name: 'Error with an authorization header',
+      thrown: new Error('Headers.append: Authorization: Bearer test-token\n is an invalid header value'),
+    },
+    {
+      name: 'Error with a JWT-like value',
+      thrown: new Error('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature'),
+    },
+    {
+      name: 'unknown thrown value',
+      thrown: { message: 'Bearer test-token' },
+    },
+  ])('does not persist external exception details for $name', async ({ thrown }) => {
+    const cwd = makeTempDir();
+    const outputPath = path.join(cwd, 'docs/nightly-patrol/sp-telemetry.json');
+    const fetchImpl = vi.fn(async () => {
+      throw thrown;
+    });
+
+    await captureAndWriteSpTelemetryLanes({
+      env: BASE_ENV,
+      fetchImpl,
+      outputPath,
+      now: () => new Date('2026-07-03T00:00:00.000Z'),
+    });
+
+    const writtenText = fs.readFileSync(outputPath, 'utf8');
+    const written = JSON.parse(writtenText);
+    expect(written.diagnostics).toEqual([
+      {
+        code: 'sp_probe_fetch_error',
+        message: 'The SharePoint read probe failed before receiving a response.',
+      },
+    ]);
+    expect(written.metrics.lanes.read).toMatchObject({ requests: 1, failed: 1 });
+    expect(written.topEndpoints[0]).toMatchObject({ endpoint: '/_api/web/currentuser', failures: 1 });
+    expect(writtenText).not.toContain('Bearer');
+    expect(writtenText).not.toContain('eyJ');
+    expect(writtenText).not.toContain(BASE_ENV.SP_TOKEN);
+  });
 });

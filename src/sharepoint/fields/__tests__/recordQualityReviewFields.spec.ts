@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DATA_OS_RESOURCE_REGISTRY } from '@/lib/data/dataOSResourceRegistry';
-import {
-  RECORD_QUALITY_REVIEW_FIELDS,
-} from '@/domain/supportRecord/dataProviderRecordQualityReviewPersistenceStore';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import {
   RECORD_QUALITY_REVIEW_CANDIDATES,
   RECORD_QUALITY_REVIEW_ESSENTIAL_FIELDS,
+  RECORD_QUALITY_REVIEW_FIELDS,
   RECORD_QUALITY_REVIEW_LIST_TITLE,
   RECORD_QUALITY_REVIEW_PROVISIONING_FIELDS,
 } from '../recordQualityReviewFields';

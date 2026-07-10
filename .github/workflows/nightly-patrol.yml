@@ -425,8 +425,15 @@ jobs:
             echo "Nightly Patrol is report-only in CI; review the uploaded artifacts instead of pushing directly to main."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload generated patrol reports
+      - name: Scan generated patrol reports for credential material
+        id: report_secret_scan
         if: ${{ always() }}
+        env:
+          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+        run: npm run patrol:artifact-scan -- docs/nightly-patrol
+
+      - name: Upload generated patrol reports
+        if: ${{ always() && steps.report_secret_scan.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: nightly-patrol-reports-${{ github.run_number }}

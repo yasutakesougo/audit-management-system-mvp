@@ -6,6 +6,21 @@ import { fileURLToPath } from 'node:url';
 export const SOURCE_KIND = 'nightly-patrol-sp-token-read-probe';
 export const DEFAULT_OUTPUT_PATH = path.join('docs', 'nightly-patrol', 'sp-telemetry.json');
 
+const SAFE_FAILURE_MESSAGES = Object.freeze({
+  sp_token_missing: 'SP_TOKEN is required for the Nightly Patrol SharePoint read probe.',
+  sp_config_missing_resource: 'SharePoint probe resource configuration is missing.',
+  sp_config_missing_site_relative: 'SharePoint probe site configuration is missing.',
+  sp_config_invalid_resource: 'SharePoint probe resource configuration is invalid.',
+  sp_config_invalid_site_relative: 'SharePoint probe site configuration is invalid.',
+  sp_config_invalid: 'SharePoint probe configuration is invalid.',
+  fetch_unavailable: 'The SharePoint read probe cannot run in this Node runtime.',
+  sp_probe_fetch_error: 'The SharePoint read probe failed before receiving a response.',
+});
+
+function safeFailureMessage(code) {
+  return SAFE_FAILURE_MESSAGES[code] ?? 'The SharePoint read probe failed.';
+}
+
 const EMPTY_LANE = Object.freeze({
   requests: 0,
   failed: 0,
@@ -147,7 +162,7 @@ export async function captureSpTelemetryLanes(options = {}) {
     return failureSnapshot({
       generatedAt,
       code: 'sp_token_missing',
-      message: 'SP_TOKEN is required for the Nightly Patrol SharePoint read probe.',
+      message: safeFailureMessage('sp_token_missing'),
     });
   }
 
@@ -155,10 +170,11 @@ export async function captureSpTelemetryLanes(options = {}) {
   try {
     config = resolveSharePointProbeConfig(env);
   } catch (error) {
+    const code = typeof error?.code === 'string' ? error.code : 'sp_config_invalid';
     return failureSnapshot({
       generatedAt,
-      code: error?.code || 'sp_config_invalid',
-      message: error instanceof Error ? error.message : 'SharePoint probe config is invalid.',
+      code,
+      message: safeFailureMessage(code),
     });
   }
 
@@ -166,7 +182,7 @@ export async function captureSpTelemetryLanes(options = {}) {
     return failureSnapshot({
       generatedAt,
       code: 'fetch_unavailable',
-      message: 'global fetch is not available in this Node runtime.',
+      message: safeFailureMessage('fetch_unavailable'),
     });
   }
 
@@ -213,7 +229,7 @@ export async function captureSpTelemetryLanes(options = {}) {
     return failureSnapshot({
       generatedAt,
       code: 'sp_probe_fetch_error',
-      message: error instanceof Error ? error.message : 'SharePoint read probe failed.',
+      message: safeFailureMessage('sp_probe_fetch_error'),
       requestStarted: true,
       endpointPath: config.endpointPath,
       durationMs: Math.max(0, Date.now() - startedAt),
