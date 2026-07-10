@@ -13,6 +13,13 @@ present in that schema are included here.
 - **References** – key modules or functions where the variable is used.
 - **Notes** – warnings, caveats, or important usage notes.
 
+## Runtime responsibility map
+
+- `src/lib/env.schema.ts`: schema validation and defaults for all documented variables.
+- `src/env.ts`: runtime parsed/normalized environment object used by app startup and rendering paths.
+- `src/lib/env.ts`: feature gate and skip-logic decisions (e.g. `E2E`/`SKIP_LOGIN`/`SKIP_SHAREPOINT` behavior).
+- `src/auth/msalConfig.ts`: MSAL public client settings generated from normalized env values.
+- `src/lib/envGuards.ts`: guard checks for invalid production-equivalent startup (required keys and URL sanity).
 ## Startup Profiles (Policy)
 
 ### 1) Production-equivalent startup

@@ -46,8 +46,13 @@
 
 ## 4. 旧仕様との整合
 
-本書はデータモードの運用方針を固定し、`VITE_SKIP_LOGIN`/`VITE_FORCE_DEMO` の挙動を「データモードではなく運用制御」として扱います。
-実装詳細は `src/lib/env.ts` / `src/lib/env.schema.ts` です。
+本書はデータモードの運用方針を固定し、`VITE_SKIP_LOGIN`/`VITE_FORCE_DEMO` の挙動を「データモードではなく運用制御」として扱います。実装は1つのSSOTに集約せず、責務分離で確認します。
+
+- `src/lib/env.schema.ts`: 定義・必須・既定値
+- `src/env.ts`: 起動時の実行時env整形
+- `src/lib/env.ts`: スキップ判定（E2E/skip-login/sharepoint）
+- `src/auth/msalConfig.ts`: MSAL client 設定生成
+- `src/lib/envGuards.ts`: 本番相当起動時の起動ガード（必須キーとURL妥当性）
 
 > [!NOTE]
 > `VITE_MSAL` 系の必須前提は環境監査や起動ガードの結果に基づき、運用手順で優先確認してください。
