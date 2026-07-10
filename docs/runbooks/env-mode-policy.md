@@ -1,36 +1,58 @@
 # Environment Mode Policy
 
-This document defines the single source of truth for switching the application's data source mode (SharePoint vs Local Mock).
+この文書はデータ取得モードと認証ガードの運用ルールを固定し、起動時の想定外動作を防ぐための運用ガイドです。
 
-## Mode Policy
+## 1. データモードの基本方針
 
-* `VITE_SP_ENABLED=true` の場合のみ、Monitoring / Planning 系の repository は `sharepoint` モードを使用する
-* `VITE_SP_ENABLED` が未設定、`false`、その他の値である場合は、`local` モードを使用する
-* `local` モードは localStorage / mock ベースの開発・検証用であり、MSAL 認証を必要としない
-* `sharepoint` モードは SharePoint への実接続を行い、MSAL 認証を必要とする
-* 認証スキップやデモ表示に関する他フラグ（`IS_DEMO`, `IS_SKIP_LOGIN`, etc.）は、repository モード判定には使用しない
+- `VITE_SP_ENABLED=true` の場合、SharePoint 接続モードを前提にします。
+- `VITE_SP_ENABLED` が未設定・`false`・曖昧な値の場合はローカルモード扱いです。
+- `VITE_FORCE_DEMO` や `VITE_DEMO_MODE`、`VITE_SKIP_LOGIN` はデータモードを直接切り替えず、認証・表示の運用前提を変えるだけのフラグです。
 
----
+## 2. 運用パターン
 
-## 運用パターンと動作の対応表
+### A. 本番相当（MSAL + SharePoint）
 
-| 環境 | `VITE_SP_ENABLED` の値 | 適用モード | MSAL 認証 | 用途 |
-|---|---|---|---|---|
-| **Local 開発** | **未設定 （または false）** | `local` | **不要** (Mock / localStorage) | 日々の UI・機能実装、高速なローカル開発 |
-| **SP 接続検証** | `true` | `sharepoint` | **必須** | SPとのつなぎ込み確認、データ整合性テスト |
-| **本番 (Prod)** | `true` | `sharepoint` | **必須** | サポート計画シート等の本番運用 |
+1. 起動前提:
+   - `VITE_E2E=0`
+   - `VITE_E2E_MSAL_MOCK=0`
+   - `VITE_SKIP_LOGIN=0`
+   - `VITE_SKIP_SHAREPOINT=0`
+2. 認証必須項目:
+   - `VITE_MSAL_CLIENT_ID`（必須）
+   - `VITE_MSAL_TENANT_ID`（必須）
+   - `VITE_MSAL_REDIRECT_URI`（本番登録との一致が推奨）
+3. SharePoint:
+   - `VITE_SP_RESOURCE`、`VITE_SP_SITE_RELATIVE` を設定
 
----
+### B. E2E / MSAL mock
 
-## 実装上の注意点
+1. 最低構成:
+   - `VITE_E2E=1`
+   - `VITE_E2E_MSAL_MOCK=1`
+   - `VITE_SKIP_LOGIN=1`
+   - `VITE_SKIP_SHAREPOINT=1`
+   - `VITE_DEMO_MODE=1`（または `VITE_FORCE_DEMO=1`）
+2. 用途:
+   - CI/E2E の安定実行、共有環境の短時間再現
+3. MSAL識別子:
+   - `VITE_MSAL_CLIENT_ID`、`VITE_MSAL_TENANT_ID` はテスト用値で可
 
-`src/lib/env.ts` では、Vite の環境変数 (`VITE_SP_ENABLED`) を文字列の厳密な比較で評価し、モードを決定しています。
+## 3. 本番相当起動での確認対象
 
-```ts
-// src/lib/env.ts — 実装は env.ts を参照
-export const SP_ENABLED = /* VITE_SP_ENABLED === 'true' */;
-export const SP_DISABLED = !SP_ENABLED;
-```
+- MSAL の識別子が欠損していないこと
+- Redirect URI が本番登録と origin / path で齟齬がないこと
+- SharePoint 接続変数が揃っていること
+- skip フラグの残留がないこと
 
-* `'1'`, `'yes'`, `'TRUE'` などの曖昧な値はすべて `false` としてフォールバックし、意図せず SharePoint の本番環境に繋がってしまう事故を防ぎます。
-* アプリケーションが提供するRepository Factory (`createXYZRepository` など) やUI層では、必ずこの `SP_ENABLED` 定数を参照し、3項演算子等でシンプルに分岐を行ってください。
+## 4. 旧仕様との整合
+
+本書はデータモードの運用方針を固定し、`VITE_SKIP_LOGIN`/`VITE_FORCE_DEMO` の挙動を「データモードではなく運用制御」として扱います。実装は1つのSSOTに集約せず、責務分離で確認します。
+
+- `src/lib/env.schema.ts`: 定義・必須・既定値
+- `src/env.ts`: 起動時の実行時env整形
+- `src/lib/env.ts`: スキップ判定（E2E/skip-login/sharepoint）
+- `src/auth/msalConfig.ts`: MSAL client 設定生成
+- `src/lib/envGuards.ts`: 本番相当起動時の起動ガード（必須キーとURL妥当性）
+
+> [!NOTE]
+> `VITE_MSAL` 系の必須前提は環境監査や起動ガードの結果に基づき、運用手順で優先確認してください。
