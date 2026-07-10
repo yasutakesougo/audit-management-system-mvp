@@ -58,7 +58,8 @@ vi.mock('@/lib/data/useDataProvider', () => ({
   }),
 }));
 
-vi.mock('@/features/record-quality/application/saveDailyRecordWithQualityReview', () => ({
+vi.mock('@/features/record-quality', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/features/record-quality')>()),
   saveDailyRecordWithQualityReview: mocks.saveDailyRecordWithQualityReview,
 }));
 

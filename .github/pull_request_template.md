@@ -96,6 +96,15 @@
 - [ ] ドキュメント: 必要に応じて README / docs を更新
 - [ ] 既存の a11y/usability gate に影響がないことを確認した
 
+### Module Boundary Changes（`src/features/*` の境界を変更する場合）
+- [ ] [ADR-024](docs/adr/ADR-024-modular-monolith-module-boundaries.md) と [移行プレイブック](docs/architecture/modular-monolith-migration-playbook.md) に準拠した
+- [ ] 外部参照を公開 `index.ts` に限定し、新しい内部パス参照を追加していない
+- [ ] domain から UI / adapter / SharePoint / Firestore / localStorage への依存がない
+- [ ] Repository interface は ports、基盤実装は adapters、全体の組み立ては `src/app` に置いた
+- [ ] `npm run arch:check` が新規違反0、baseline 921以下で通った
+- [ ] shared/commonへ移動した場合、ADR-024の5条件をすべて満たす根拠を記載した
+- [ ] 未変更モジュールの再配置や、別モジュールの移行を混在させていない
+
 ### UI Changes
 - [ ] **a11y/usability checklist**: [docs/checklists/a11y-usability-rollout-checklist.md](docs/checklists/a11y-usability-rollout-checklist.md) を適用済み
 - [ ] **UI語彙チェック**: UI表示語が統一語彙（`個別支援計画` / `支援計画シート` / `支援手順の実施` / `日々の記録` / `見直し・PDCA`）に準拠している

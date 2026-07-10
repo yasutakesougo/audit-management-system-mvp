@@ -1,17 +1,11 @@
 import { useCancelToToday } from '@/lib/nav/useCancelToDashboard';
 import { TESTIDS } from '@/testids';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  DataProviderRecordQualityReviewPersistenceStore,
-} from '@/domain/supportRecord/dataProviderRecordQualityReviewPersistenceStore';
-import {
-  RecordQualityReviewPersistenceRepository,
-} from '@/domain/supportRecord/recordQualityReviewPersistenceRepository';
-import { useDataProvider } from '@/lib/data/useDataProvider';
-import {
   saveDailyRecordWithQualityReview,
-} from '@/features/record-quality/application/saveDailyRecordWithQualityReview';
+  useRecordQualityRuntime,
+} from '@/features/record-quality';
 import type { TableDailyRecordData } from '../hooks/useTableDailyRecordForm';
 import { useDailyRecordRepository } from '../repositoryFactory';
 
@@ -30,14 +24,7 @@ type TableDailyRecordViewModel = {
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   const cancelToToday = useCancelToToday();
   const repository = useDailyRecordRepository();
-  const { provider } = useDataProvider();
-  const reviewRepository = useMemo(
-    () =>
-      new RecordQualityReviewPersistenceRepository(
-        new DataProviderRecordQualityReviewPersistenceStore({ provider }),
-      ),
-    [provider],
-  );
+  const { reviewRepository } = useRecordQualityRuntime();
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {

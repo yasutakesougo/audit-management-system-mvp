@@ -11,7 +11,7 @@ import { createSuspended } from '../createSuspended';
 // ── React.lazy imports ─────────────────────────────────────────────────────
 
 const RecordList = React.lazy(() => import('@/features/records/RecordList'));
-const RecordQualityHumanReviewPage = React.lazy(() => import('@/features/record-quality/routes/RecordQualityHumanReviewPage'));
+const RecordQualityHumanReviewPage = React.lazy(() => import('./RecordQualityHumanReviewRoute'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
