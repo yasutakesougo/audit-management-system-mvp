@@ -36,6 +36,8 @@ export { DailyRecordList } from './lists/DailyRecordList';
 export { useDailyUserOptions } from './forms/useDailyUserOptions';
 export type { DailyUserOption } from './forms/useDailyUserOptions';
 export { useDaily } from './hooks/useDaily';
+export { TableDailyRecordPage } from './components/table/TableDailyRecordPage';
+export type { TableDailyRecordPageProps } from './components/table/TableDailyRecordPage';
 
 // Domain Utilities
 export { getScheduleKey } from './domain/getScheduleKey';
