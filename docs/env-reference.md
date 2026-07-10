@@ -13,18 +13,50 @@ present in that schema are included here.
 - **References** – key modules or functions where the variable is used.
 - **Notes** – warnings, caveats, or important usage notes.
 
+## Startup Profiles (Policy)
+
+### 1) Production-equivalent startup
+
+For staging/prod-like startup (`VITE_SKIP_LOGIN=0`, `VITE_E2E`/`VITE_E2E_MSAL_MOCK` off), use:
+
+- `VITE_MSAL_CLIENT_ID`, `VITE_MSAL_TENANT_ID` required.
+- Set `VITE_MSAL_REDIRECT_URI` to the Azure AD app redirect URI for the deployed origin (or use origin-consistent fallback only with strict control).
+- `VITE_SP_RESOURCE`, `VITE_SP_SITE_RELATIVE` required for SharePoint repositories.
+- Keep `VITE_SKIP_SHAREPOINT` and `VITE_SKIP_LOGIN` unset/false.
+- If startup fails, the error text identifies the missing key and the remediation target.
+
+### 2) E2E / MSAL mock mode
+
+- Minimum profile: `VITE_E2E=1`, `VITE_E2E_MSAL_MOCK=1`, `VITE_SKIP_LOGIN=1`, `VITE_SKIP_SHAREPOINT=1`, `VITE_DEMO_MODE=1`.
+- `VITE_FORCE_DEMO=1` can be used as equivalent gating in scripts.
+- `VITE_MSAL_CLIENT_ID` and `VITE_MSAL_TENANT_ID` may use test-safe placeholder values.
+- `VITE_MSAL_REDIRECT_URI` may be omitted in mock-only flows.
+
+### 3) Demo / skip-login mode
+
+- `VITE_DEMO_MODE=1` or `VITE_FORCE_DEMO=1` enables non-production fixture startup.
+- `VITE_SKIP_LOGIN=1` disables auth interactions and should be limited to local or automation contexts.
+
+### 4) Skip policy and triage
+
+- There is no dedicated runtime `E2E_SKIP` environment variable in this repository.
+- Existing skip control should be referenced through:
+  - `docs/E2E_SKIP_INVENTORY.md`
+  - `docs/CATEGORY_C_SKIPS.md`
+- If merge checks fail, confirm in order: a11y preflight, E2E smoke env propagation, MSAL required env, then SharePoint scope/site vars.
+
 ## 1. Authentication & MSAL
 
 | Variable | Purpose | Required | Default | References | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `VITE_MSAL_CLIENT_ID` | The application (client) ID registered in Azure AD for MSAL authentication. | **Yes** | – | `env.schema.ts`, `env.ts` | Without this the app cannot obtain tokens from Azure AD. |
-| `VITE_MSAL_TENANT_ID` | The Azure Active Directory tenant ID used with MSAL. | **Yes** | – | `env.schema.ts`, `env.ts` | Must correspond to the tenant where the app registration resides. |
+| `VITE_MSAL_CLIENT_ID` | The application (client) ID registered in Azure AD for MSAL authentication. | **Yes** | – | `env.schema.ts`, `env.ts` | Production-equivalent startup requires this value; startup errors include missing-key guidance. |
+| `VITE_MSAL_TENANT_ID` | The Azure Active Directory tenant ID used with MSAL. | **Yes** | – | `env.schema.ts`, `env.ts` | Must correspond to the tenant where the app registration resides; startup errors include missing-key guidance. |
 | `VITE_MSAL_AUTHORITY` | Authority URL for MSAL, typically `https://login.microsoftonline.com/<tenantId>`. | No | derived from `VITE_MSAL_TENANT_ID` | `env.ts` | Override only for B2C or national clouds. |
 | `VITE_MSAL_SCOPES` | Additional scopes to request when acquiring access tokens. | No | `""` (empty) | `env.schema.ts` | Provide a space‑separated list of Microsoft Graph or custom scopes. |
 | `VITE_MSAL_LOGIN_SCOPES` | Scopes included during the user login flow. | No | `""` (empty) | `env.schema.ts` | Keep the default unless extra claims are needed. |
 | `VITE_MSAL_TOKEN_REFRESH_MIN` | Minimum number of seconds before proactively refreshing access tokens. | No | `300` | `env.schema.ts` | Note: despite the name, the schema default is **300** (parsed as integer). |
 | `VITE_MSAL_LOGIN_FLOW` | Login interaction type: `redirect` or `popup`. | No | `"popup"` | `env.schema.ts` | Schema default is `popup`. |
-| `VITE_MSAL_REDIRECT_URI` | The redirect URI configured in Azure AD for MSAL. | No | Current origin | `env.ts` | Should match one of the redirect URIs on the app registration. |
+| `VITE_MSAL_REDIRECT_URI` | The redirect URI configured in Azure AD for MSAL. | No | Current origin | `env.ts` | In production-equivalent mode, this should match the app registration and deployed origin/path exactly. |
 | `VITE_LOGIN_SCOPES` | Scopes passed to the login helper. | No | `""` (empty) | `env.schema.ts` | Internal alias. |
 | `VITE_AAD_CLIENT_ID` | Alias for Azure AD client ID used by some services. | No | – | `env.schema.ts` | Legacy; keep in sync with `VITE_MSAL_CLIENT_ID`. |
 | `VITE_AAD_TENANT_ID` | Alias for Azure AD tenant ID. | No | – | `env.schema.ts` | Legacy. |
@@ -64,8 +96,8 @@ present in that schema are included here.
 | `VITE_SP_RETRY_MAX_DELAY_MS` | Maximum delay between SharePoint retry attempts in milliseconds. | No | `5000` | `env.schema.ts` | |
 | `VITE_FORCE_SHAREPOINT` | Force usage of SharePoint instead of demo/mock. | No | `false` | `env.schema.ts` | |
 | `VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX` | Allow SharePoint calls outside of the SharePoint Framework (SPFx). | No | `false` | `env.schema.ts` | |
-| `VITE_SKIP_SHAREPOINT` | Skip all SharePoint integration. | No | `false` | `env.schema.ts` | Used in local dev or unit tests. |
-| `VITE_SKIP_LOGIN` | Disable login completely (anonymous mode). | No | `false` | `env.schema.ts` | Use only in development or automated tests. |
+| `VITE_SKIP_SHAREPOINT` | Skip all SharePoint integration. | No | `false` | `env.schema.ts` | Used in local dev or unit tests. Production-equivalent startup should keep it disabled. |
+| `VITE_SKIP_LOGIN` | Disable login completely (anonymous mode). | No | `false` | `env.schema.ts` | Use only in development or automated tests; avoid long-term production bypass usage. |
 
 ### SharePoint List Name Resolution (spListRegistry)
 
@@ -105,7 +137,7 @@ List names used in API calls are resolved by [`spListRegistry.ts`](../src/sharep
 | `VITE_HANDOFF_STORAGE` | Storage backend for handoff data. | No | `"local"` | `env.schema.ts` | Schema default is `local`. |
 | `VITE_STAFF_ATTENDANCE_STORAGE` | Storage backend for staff attendance records. | No | `"local"` | `env.schema.ts` | Schema default is `local`. |
 | `VITE_DEMO_MODE` | Run the application in demonstration mode using fixture data. | No | `false` | `env.schema.ts` | Overrides authentication and data writes. |
-| `VITE_FORCE_DEMO` | Force demonstration mode even when other env vars enable real data. | No | `false` | `env.schema.ts` | |
+| `VITE_FORCE_DEMO` | Force demonstration mode even when other env vars enable real data. | No | `false` | `env.schema.ts` | Use together with `VITE_DEMO_MODE` to align demo/e2e skip behavior. |
 
 ## 4. Schedules & Graph Tuning
 
@@ -123,8 +155,8 @@ List names used in API calls are resolved by [`spListRegistry.ts`](../src/sharep
 
 | Variable | Purpose | Required | Default | References | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `VITE_E2E` | Enable end‑to‑end test mode. | No | `false` | `env.schema.ts` | Enables MSAL mocks and disables real network calls. |
-| `VITE_E2E_MSAL_MOCK` | Mock MSAL responses during E2E tests. | No | `false` | `env.schema.ts` | |
+| `VITE_E2E` | Enable end‑to‑end test mode. | No | `false` | `env.schema.ts` | Enables MSAL mock startup path and relaxes production-equivalent auth strictness. |
+| `VITE_E2E_MSAL_MOCK` | Mock MSAL responses during E2E tests. | No | `false` | `env.schema.ts` | Required for the full mock smoke pattern together with `VITE_E2E=1`. |
 | `VITE_MSAL_MOCK` | Globally mock MSAL (auth) for development. | No | `false` | `env.schema.ts` | |
 | `VITE_AUDIT_DEBUG` | Print verbose logs for audit tracking. | No | `false` | `env.schema.ts` | |
 | `VITE_AUDIT_BATCH_SIZE` | Batch size when processing audit events. | No | `20` | `env.schema.ts` | |
