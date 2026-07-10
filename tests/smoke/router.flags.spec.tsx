@@ -94,7 +94,7 @@ vi.mock('@/pages/DailyRecordMenuPage', () => ({
   default: () => <h1 data-testid="daily-hub-root" />,
 }));
 
-vi.mock('@/features/daily/table/TableDailyRecordPage', () => ({
+vi.mock('@/app/routes/TableDailyRecordRoute', () => ({
   __esModule: true,
   default: () => <h1 data-testid="daily-table-root" />,
 }));
