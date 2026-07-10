@@ -16,6 +16,7 @@ const smokeTestMatch = [
   'tests/e2e/router.smoke.spec.ts',
   'tests/e2e/nav.smoke.spec.ts',
   'tests/e2e/health.smoke.spec.ts',
+  'tests/e2e/users-crud-add-delete.smoke.spec.ts',
   'tests/e2e/schedule-smoke.spec.ts',
   'tests/e2e/schedule-day.aria.smoke.spec.ts',
   'tests/e2e/authz.admin-guard.spec.ts',
