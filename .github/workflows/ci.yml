@@ -154,6 +154,10 @@ jobs:
           echo "Running ESLint boundaries report (warn-only)..."
           npm run lint:boundaries
           echo "✅ Boundaries report generated"
+
+      - name: Architecture dependency guard
+        id: architecture_dependencies
+        run: npm run arch:check
       
       - name: TypeScript type check
         id: typecheck
