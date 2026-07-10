@@ -120,4 +120,5 @@
 | 設計原則 10 箇条 | [docs/product/principles.md](../product/principles.md) |
 | UI 設計規約 | [docs/product/ui-conventions.md](../product/ui-conventions.md) |
 | OS Architecture | [docs/product/support-operations-os-architecture.md](../product/support-operations-os-architecture.md) |
+| モジュラーモノリス移行手順 | [docs/architecture/modular-monolith-migration-playbook.md](../architecture/modular-monolith-migration-playbook.md) |
 | ロードマップ | [docs/product/roadmap.md](../product/roadmap.md) |
