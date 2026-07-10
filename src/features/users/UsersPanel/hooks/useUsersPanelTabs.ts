@@ -153,7 +153,7 @@ export function useUsersPanelTabs(
 
   useEffect(() => {
     if (!detailUserKey) return;
-    if (status === 'loading') return;
+    if (status === 'loading' || status === 'idle') return;
 
     if (!detailUser) {
       setDetailUserKey(null);

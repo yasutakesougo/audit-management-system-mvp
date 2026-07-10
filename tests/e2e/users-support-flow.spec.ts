@@ -46,9 +46,9 @@ test.describe('users support flow', () => {
 		await expect(supportTabPanel).toContainText('支援手順テンプレート');
 		await expect(supportTabPanel).not.toContainText('対象に設定されていません');
 
-		// Select second user (UX-014) from table by clicking its detail button
-		const userRow = page.locator('tr', { has: page.getByText('UX-014') });
-		await userRow.locator('[aria-label="詳細"]').click();
+		// Select another visible row from table by clicking its detail button
+		const secondRow = table.locator('tbody tr').nth(1);
+		await secondRow.locator('[aria-label="詳細"]').click();
 		
 		// Wait for detail sections instead of URL pattern
 		await waitForDetailSections(page);
