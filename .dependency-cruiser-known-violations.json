@@ -52,23 +52,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/domain/supportRecord/dataProviderRecordQualityReviewPersistenceStore.ts",
-    "to": "src/sharepoint/query/builders.ts",
-    "unresolvedTo": "@/sharepoint/query/builders",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "legacy-domain-no-external-platform"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/features/transport-assignments/application/transportAssignmentApplication.ts",
     "to": "src/features/transport-assignments/adapters/assignmentAdapter.ts",
     "unresolvedTo": "../adapters/assignmentAdapter",
@@ -2028,23 +2011,6 @@
     "from": "src/features/daily/stores/procedureStore.ts",
     "to": "src/features/planning-sheet/constants/userProcedureDetails.ts",
     "unresolvedTo": "@/features/planning-sheet/constants/userProcedureDetails",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cross-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/daily/table/useTableDailyRecordViewModel.ts",
-    "to": "src/features/record-quality/application/saveDailyRecordWithQualityReview.ts",
-    "unresolvedTo": "@/features/record-quality/application/saveDailyRecordWithQualityReview",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
@@ -8233,23 +8199,6 @@
     "from": "src/app/routes/lazyPages.tsx",
     "to": "src/features/daily/components/table/TableDailyRecordPage.tsx",
     "unresolvedTo": "@/features/daily/components/table/TableDailyRecordPage",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-external-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/app/routes/lazyPages.tsx",
-    "to": "src/features/record-quality/routes/RecordQualityHumanReviewPage.tsx",
-    "unresolvedTo": "@/features/record-quality/routes/RecordQualityHumanReviewPage",
     "dependencyTypes": [
       "aliased",
       "aliased-tsconfig",
