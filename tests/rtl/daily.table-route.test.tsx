@@ -3,21 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-import TableDailyRecordPage from '@/features/daily/table/TableDailyRecordPage';
+import { TableDailyRecordPage, type DailyRecordRepository } from '@/features/daily';
 import { TESTIDS } from '@/testids';
 
-vi.mock('@/features/daily/table/useTableDailyRecordViewModel', () => ({
-  useTableDailyRecordViewModel: () => ({
-    open: true,
-    title: '一覧形式ケース記録',
-    backTo: '/today',
-    testId: TESTIDS['daily-table-record-page'],
-    onClose: vi.fn(),
-    onSave: vi.fn(async () => {}),
-  }),
+vi.mock('@/lib/nav/useCancelToDashboard', () => ({
+  useCancelToToday: () => vi.fn(),
 }));
 
-vi.mock('@/features/daily/hooks/useTableDailyRecordForm', () => ({
+vi.mock('@/features/daily/hooks/view-models/useTableDailyRecordForm', () => ({
   useTableDailyRecordForm: () =>
     ({
       header: {
@@ -34,6 +27,8 @@ vi.mock('@/features/daily/hooks/useTableDailyRecordForm', () => ({
         unsentRowCount: 0,
         showUnsentOnly: false,
         setShowUnsentOnly: vi.fn(),
+        showMissingOnly: false,
+        setShowMissingOnly: vi.fn(),
       },
       draft: {
         hasDraft: false,
@@ -47,18 +42,23 @@ vi.mock('@/features/daily/hooks/useTableDailyRecordForm', () => ({
     }) as unknown,
 }));
 
-vi.mock('@/features/daily/forms/TableDailyRecordForm', () => ({
+vi.mock('@/features/daily/components/forms/TableDailyRecordForm', () => ({
   TableDailyRecordForm: () => (
     <div data-testid={TESTIDS['daily-table-record-form']}>mock-table-form</div>
   ),
 }));
 
+vi.mock('@/features/daily/components/pages/FullScreenDailyDialogPage', () => ({
+  FullScreenDailyDialogPage: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 describe('/daily/table route', () => {
   it('renders the table daily record form immediately', () => {
+    const repository = createRepository();
     render(
       <MemoryRouter initialEntries={['/daily/table']}>
         <Routes>
-          <Route path="/daily/table" element={<TableDailyRecordPage />} />
+          <Route path="/daily/table" element={<TableDailyRecordPage repository={repository} />} />
         </Routes>
       </MemoryRouter>
     );
@@ -66,3 +66,15 @@ describe('/daily/table route', () => {
     expect(screen.getByTestId(TESTIDS['daily-table-record-form'])).toBeInTheDocument();
   });
 });
+
+function createRepository(): DailyRecordRepository {
+  return {
+    save: vi.fn(async () => undefined),
+    load: vi.fn(async () => null),
+    list: vi.fn(async () => []),
+    approve: vi.fn(async () => {
+      throw new Error('not used');
+    }),
+    scanIntegrity: vi.fn(async () => []),
+  };
+}
