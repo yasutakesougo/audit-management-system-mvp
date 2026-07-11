@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { bootTodayOpsPage } from './_helpers/bootTodayOpsPage';
 import { TESTIDS } from '@/testids';
 
 async function waitForTodayReady(page: Page): Promise<void> {
@@ -44,15 +45,7 @@ async function assertHeroCtaAction(page: Page): Promise<void> {
 
 test.describe('TodayOps NextAction Start/Done', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      (window as unknown as { __E2E_TODAY_OPS_MOCK__?: boolean }).__E2E_TODAY_OPS_MOCK__ = true;
-    });
-
-    await page.route('/_api/**', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ d: { results: [] } }),
-    }));
+    await bootTodayOpsPage(page);
   });
 
   test('HeroActionCard CTA is actionable before/after reload', async ({ page }) => {
