@@ -1,7 +1,6 @@
 import { useCancelToToday } from '@/lib/nav/useCancelToDashboard';
 import { TESTIDS } from '@/testids';
 import { useCallback, useState } from 'react';
-import { useDailyRecordRepository } from '../../repositories/repositoryFactory';
 import type { DailyRecordRepository } from '../../domain/legacy/DailyRecordRepository';
 
 type TableDailyRecordViewModel = {
@@ -14,9 +13,10 @@ type TableDailyRecordViewModel = {
   repository: DailyRecordRepository;
 };
 
-export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
+export const useTableDailyRecordViewModel = (
+  repository: DailyRecordRepository,
+): TableDailyRecordViewModel => {
   const cancelToToday = useCancelToToday();
-  const repository = useDailyRecordRepository();
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {
