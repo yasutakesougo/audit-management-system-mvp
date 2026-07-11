@@ -1,5 +1,5 @@
-import type { BillingOrderRepository } from '../ports/billingOrderRepository';
-import type { BillingOrder } from '../types';
+import type { BillingOrderRepository } from '../../ports/billingOrderRepository';
+import type { BillingOrder } from '../../types';
 
 export class InMemoryBillingOrderRepository implements BillingOrderRepository {
   private orders: BillingOrder[] = [];

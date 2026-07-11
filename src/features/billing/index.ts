@@ -1,6 +1,6 @@
-export { useBillingSummary } from './hooks/useBillingSummary';
-export { useBillingOrderRepository } from './hooks/useBillingOrderRepository';
-export { useBillingOrders, billingOrdersQueryKey } from './useBillingOrders';
+export { default as BillingPage } from './ui/BillingPage';
+export type { BillingPageProps } from './ui/BillingPage';
+export { useBillingRuntime } from './adapters/runtime/useBillingRuntime';
 export type {
   BillingOrderRepository,
   BillingPersistenceDiagnostics,

@@ -4,7 +4,7 @@ import {
   BILLING_ORDERS_PAGE_SIZE,
   DataProviderBillingOrderRepository,
 } from '../DataProviderBillingOrderRepository';
-import { BILLING_DEFAULT_DRINK_PRICE } from '../../domain/billingLogic';
+import { BILLING_DEFAULT_DRINK_PRICE } from '../../../domain/billingLogic';
 
 const createProvider = (): IDataProvider => ({
   listItems: vi.fn().mockResolvedValue([]),
