@@ -1,44 +1,38 @@
 import { expect, test } from '@playwright/test';
 
 import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
-import { bootstrapDashboard } from './utils/bootstrapApp';
-
-const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
-const PDCA_DAILY_METRICS_STORAGE_KEY = 'pdca:daily-submission-events:v1';
+import {
+  bootDailyTablePage,
+  DAILY_TABLE_E2E_DATE,
+  DAILY_TABLE_E2E_USER_ID,
+  PDCA_DAILY_METRICS_STORAGE_KEY,
+} from './_helpers/bootDailyTablePage';
 
 test.describe('daily -> PDCA integration', () => {
   test('daily submit is reflected in PDCA metrics cards', async ({ page }) => {
-    await bootstrapDashboard(page, {
-      skipLogin: true,
-      featureSchedules: true,
+    await bootDailyTablePage(page, {
       featureIcebergPdca: true,
-      initialPath: '/daily/table',
+      path: `/daily/table?date=${DAILY_TABLE_E2E_DATE}`,
+      draft: {
+        reporterName: 'PDCA連携E2E',
+        selectedUserIds: [DAILY_TABLE_E2E_USER_ID],
+        savedAt: new Date(Date.now() - 120000).toISOString(),
+      },
     });
 
-    await page.evaluate(([draftStorageKey, metricsStorageKey]) => {
-      localStorage.removeItem(draftStorageKey);
-      localStorage.removeItem(metricsStorageKey);
+    await expect(page.getByTestId('daily-table-record-form')).toBeVisible({ timeout: 15_000 });
 
-      localStorage.setItem(draftStorageKey, JSON.stringify({
-        formData: {
-          date: new Date().toISOString().slice(0, 10),
-          reporter: { name: 'PDCA連携E2E', role: '生活支援員' },
-          userRows: [],
-        },
-        selectedUserIds: ['e2e-pdca-user'],
-        searchQuery: '',
-        showTodayOnly: true,
-        savedAt: new Date(Date.now() - 120000).toISOString(),
-      }));
-    }, [TABLE_DAILY_DRAFT_STORAGE_KEY, PDCA_DAILY_METRICS_STORAGE_KEY]);
-
-    await page.reload();
-    await expect(page.getByTestId('daily-table-record-form')).toBeVisible();
-
-    const reporterNameInput = page.getByRole('textbox', { name: '記録者名' });
+    const reporterNameInput = page.getByPlaceholder('記録者');
+    await expect(reporterNameInput).toBeVisible();
     if ((await reporterNameInput.inputValue()).trim().length === 0) {
       await reporterNameInput.fill('PDCA連携E2E');
     }
+
+    const table = page.getByTestId('daily-table-record-form-table');
+    await expect(table).toBeVisible();
+    await table.getByPlaceholder('午前').first().fill('PDCA 午前活動');
+    await table.getByPlaceholder('午後').first().fill('PDCA 午後活動');
+    await table.getByPlaceholder('特記').first().fill('PDCA metrics E2E');
 
     const saveButton = page.getByRole('button', { name: /^\d+人分保存$/ });
     if (await saveButton.isDisabled()) {
@@ -46,12 +40,8 @@ test.describe('daily -> PDCA integration', () => {
     }
     await expect(saveButton).toBeEnabled();
 
-    page.once('dialog', async (dialog) => {
-      await dialog.accept();
-    });
-
     await saveButton.click({ force: true });
-    await expect.poll(() => new URL(page.url()).pathname).toMatch(/^(\/dashboard|\/daily\/support|\/dailysupport)$/);
+    await expect.poll(() => new URL(page.url()).pathname).toMatch(/^\/today$/);
 
     const storedMetrics = await page.evaluate((metricsStorageKey) => {
       const raw = localStorage.getItem(metricsStorageKey);
@@ -64,8 +54,16 @@ test.describe('daily -> PDCA integration', () => {
       return {
         count: events.length,
         firstUserId: events[0]?.userId,
+        firstRecordDate: events[0]?.recordDate,
       };
     }, PDCA_DAILY_METRICS_STORAGE_KEY);
+
+    expect(storedMetrics).toMatchObject({
+      count: 1,
+      firstUserId: DAILY_TABLE_E2E_USER_ID,
+      firstRecordDate: DAILY_TABLE_E2E_DATE,
+    });
+
     test.info().annotations.push({
       type: 'note',
       description: `pdca metrics snapshot: ${JSON.stringify(storedMetrics)}`,
