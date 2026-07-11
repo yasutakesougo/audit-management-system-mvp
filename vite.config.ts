@@ -137,7 +137,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
-      dedupe: ['react-is'],
+      dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom', 'react-is'],
       alias: {
         '@': srcDir,
         '@/adapters': resolve(srcDir, 'adapters'),
