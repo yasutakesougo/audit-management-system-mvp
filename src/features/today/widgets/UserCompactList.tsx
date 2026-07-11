@@ -8,6 +8,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import GroupOffIcon from '@mui/icons-material/GroupOff';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { Box, Button, Chip, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
@@ -31,6 +32,7 @@ export type UserRow = {
 export type UserCompactListProps = {
   items: UserRow[];
   onOpenQuickRecord: (id: string) => void;
+  onOpenUserDetail?: (id: string) => void;
   onOpenISP?: (id: string) => void;
   /** Iceberg PDCA 行動分析への導線 */
   onOpenIceberg?: (id: string) => void;
@@ -46,11 +48,12 @@ export type UserCompactListProps = {
 const UserCompactRow = React.memo<{
   user: UserRow;
   onOpenQuickRecord: (id: string) => void;
+  onOpenUserDetail?: (id: string) => void;
   onOpenISP?: (id: string) => void;
   onOpenIceberg?: (id: string) => void;
   onAlertClick?: (userId: string) => void;
   onOpenUserStatus?: (userId: string, userName: string, statusType: UserStatusType) => void;
-}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick, onOpenUserStatus }) {
+}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenUserDetail, onOpenISP, onOpenIceberg, onAlertClick, onOpenUserStatus }) {
   const hasAlerts = user.alerts && user.alerts.length > 0;
   const needsAttention = !user.recordFilled && user.status !== 'absent';
   const isAbsent = user.status === 'absent';
@@ -162,6 +165,21 @@ const UserCompactRow = React.memo<{
         </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {onOpenUserDetail ? (
+          <Tooltip title="利用者詳細">
+            <IconButton
+              size="small"
+              color="info"
+              onClick={(e) => { e.stopPropagation(); onOpenUserDetail(user.userId); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+              aria-label={`${user.name}の利用者詳細を確認`}
+              data-testid={`today-user-detail-${user.userId}`}
+              sx={{ minHeight: 44, minWidth: 44, bgcolor: 'info.50', '&:hover': { bgcolor: 'info.100' } }}
+            >
+              <PersonSearchIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
         {onOpenISP ? (
           <Tooltip title="個別支援計画">
             <IconButton
@@ -246,7 +264,7 @@ const UserCompactRow = React.memo<{
   );
 });
 
-export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick, onOpenUserStatus, onEmptyAction }) => {
+export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenUserDetail, onOpenISP, onOpenIceberg, onAlertClick, onOpenUserStatus, onEmptyAction }) => {
   const [expanded, setExpanded] = useState(false);
 
   // 未記録を先頭に並べる（元の順序を保ちつつ）
@@ -299,6 +317,7 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
           key={u.userId}
           user={u}
           onOpenQuickRecord={onOpenQuickRecord}
+          onOpenUserDetail={onOpenUserDetail}
           onOpenISP={onOpenISP}
           onOpenIceberg={onOpenIceberg}
           onAlertClick={onAlertClick}

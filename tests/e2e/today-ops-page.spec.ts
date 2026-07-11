@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { bootTodayOpsPage } from './_helpers/bootTodayOpsPage';
 import { TESTIDS } from '@/testids';
 
-const MOCK_USER_ID = 'I022';
+const MOCK_USER_ID = 'I005';
 
 async function waitForTodayMain(page: Page): Promise<void> {
   await page.goto('/today');
@@ -56,5 +56,23 @@ test.describe('Today Ops Screen - Happy Path', () => {
 
     const expectedUserId = new URL(page.url()).searchParams.get('userId');
     expect(expectedUserId).toBeTruthy();
+  });
+
+  test('opens Users detail for the selected operation user and exposes support quick access', async ({ page }) => {
+    await waitForTodayMain(page);
+
+    await page.getByTestId(`today-user-detail-${MOCK_USER_ID}`).click();
+
+    await expect(page).toHaveURL(new RegExp(`/users\\?tab=list&selected=${MOCK_USER_ID}`));
+    await expect(page.getByTestId('user-detail-sections')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('user-detail-sections')).toContainText('石渡 由喜子');
+
+    const supportQuickButton = page.getByTestId(`${TESTIDS['users-quick-prefix']}support-procedure`);
+    await expect(supportQuickButton).toBeVisible();
+    await supportQuickButton.click();
+
+    const supportTabPanel = page.getByTestId(`${TESTIDS['user-menu-tabpanel-prefix']}support-procedure`);
+    await expect(supportTabPanel).toBeVisible();
+    await expect(supportTabPanel).toContainText('支援手順テンプレート');
   });
 });
