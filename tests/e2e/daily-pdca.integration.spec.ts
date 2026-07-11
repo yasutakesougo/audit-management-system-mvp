@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import {
@@ -7,6 +7,15 @@ import {
   DAILY_TABLE_E2E_USER_ID,
   PDCA_DAILY_METRICS_STORAGE_KEY,
 } from './_helpers/bootDailyTablePage';
+
+async function waitForIcebergPdcaReady(page: Page): Promise<void> {
+  await page.goto('/analysis/iceberg-pdca', { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveURL(/\/analysis\/iceberg-pdca/);
+
+  const root = page.getByTestId('iceberg-pdca-root');
+  await expect(root).toBeAttached({ timeout: 30_000 });
+  await expect(root).toBeVisible({ timeout: 30_000 });
+}
 
 test.describe('daily -> PDCA integration', () => {
   test('daily submit is reflected in PDCA metrics cards', async ({ page }) => {
@@ -69,8 +78,7 @@ test.describe('daily -> PDCA integration', () => {
       description: `pdca metrics snapshot: ${JSON.stringify(storedMetrics)}`,
     });
 
-    await page.goto('/analysis/iceberg-pdca');
-    await expect(page.getByTestId('iceberg-pdca-root')).toBeVisible();
+    await waitForIcebergPdcaReady(page);
 
     await expectTestIdVisibleBestEffort(page, 'pdca-daily-completion-card');
     await expectTestIdVisibleBestEffort(page, 'pdca-daily-leadtime-card');
