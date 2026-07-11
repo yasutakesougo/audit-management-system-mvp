@@ -8,7 +8,7 @@ async function waitForTodayMain(page: Page): Promise<void> {
   await expect(page.getByTestId('hero-cta')).toBeVisible({ timeout: 15_000 });
 }
 
-async function openUnfilledStateByUrl(page: Page, userId = 'I022') {
+async function openUnfilledStateByUrl(page: Page, userId = 'I005') {
   await page.goto(`/today?mode=unfilled&userId=${encodeURIComponent(userId)}&autoNext=1`);
   await expect(page).toHaveURL(/[?&]mode=unfilled/);
   await expect(page).toHaveURL(new RegExp(`userId=${userId}`));
@@ -27,7 +27,7 @@ test.describe('Today Ops Screen - Sort Attendance', () => {
     await waitForTodayMain(page);
     await openUnfilledStateByUrl(page);
 
-    const userRow = page.getByRole('button', { name: /中村 裕樹/ }).first();
+    const userRow = page.getByRole('button', { name: /石渡 由喜子/ }).first();
     await expect(userRow).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('text=✏️ 未記録')).toContainText('未記録');
     await expect(page).toHaveURL(/autoNext=1/);
