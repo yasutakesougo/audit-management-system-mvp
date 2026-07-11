@@ -78,7 +78,7 @@ describe('UsersPanel smoke test', () => {
 
     fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
 
-    const detailLink = screen.getByRole('link', { name: '詳細' });
+    const detailLink = screen.getByRole('button', { name: '詳細' });
     fireEvent.click(detailLink);
 
     expect(await screen.findByRole('button', { name: '詳細表示を閉じる' })).toBeInTheDocument();
@@ -139,7 +139,7 @@ describe('UsersPanel smoke test', () => {
 
     const router = renderOnUsersRoute('/users?tab=list');
 
-    fireEvent.click(screen.getByRole('link', { name: '詳細' }));
+    fireEvent.click(screen.getByRole('button', { name: '詳細' }));
 
     await waitFor(() => {
       expect(router.state.location.search).toContain('selected=inline-001');
