@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { BillingOrderRepository } from './repository';
+import type { BillingOrderRepository } from './ports/billingOrderRepository';
 
 export const billingOrdersQueryKey = ['billingOrders', 'list'] as const;
 

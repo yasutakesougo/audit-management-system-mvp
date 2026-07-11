@@ -5,7 +5,7 @@ import { useBillingOrderRepository } from './useBillingOrderRepository';
 import { useUsersStore } from '@/features/users/store';
 import { useStaffStore } from '@/features/staff/store';
 import { useAuth } from '@/auth/useAuth';
-import type { BillingPersistenceDiagnostics } from '../repository';
+import type { BillingPersistenceDiagnostics } from '../ports/billingOrderRepository';
 
 export interface AggregatedBillingRecord {
   ordererCode: string;

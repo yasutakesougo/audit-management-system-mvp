@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { BillingOrderRepository } from '../repository';
+import type { BillingOrderRepository } from '../ports/billingOrderRepository';
 
 const envState = {
   isTestMode: true,
