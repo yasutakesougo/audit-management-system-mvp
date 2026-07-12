@@ -36,7 +36,7 @@ const MonthlyRecordPage = React.lazy(() => import('@/pages/MonthlyRecordPage'));
 const ServiceProvisionFormPage = React.lazy(() => import('@/pages/ServiceProvisionFormPage'));
 const BusinessJournalPreviewPage = React.lazy(() => import('@/pages/BusinessJournalPreviewPage'));
 const PersonalJournalPage = React.lazy(() => import('@/pages/PersonalJournalPage'));
-const BillingPage = React.lazy(() => import('@/pages/BillingPage'));
+const BillingPage = React.lazy(() => import('@/app/routes/BillingRoute'));
 
 const AttendanceRecordPage = React.lazy(() => import('@/pages/AttendanceRecordPage'));
 const StaffAttendanceAdminPage = React.lazy(() => import('@/pages/StaffAttendanceAdminPage'));
