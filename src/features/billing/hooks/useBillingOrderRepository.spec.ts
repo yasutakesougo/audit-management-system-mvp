@@ -34,7 +34,8 @@ vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: () => true,
 }));
 
-import { inMemoryBillingOrderRepository } from '../infra/InMemoryBillingOrderRepository';
+import { inMemoryBillingOrderRepository } from '../adapters/in-memory/InMemoryBillingOrderRepository';
+import { useBillingRuntime } from '../adapters/runtime/useBillingRuntime';
 import {
   getCurrentBillingOrderRepositoryKind,
   overrideBillingOrderRepository,
@@ -51,10 +52,16 @@ describe('useBillingOrderRepository', () => {
   });
 
   it('returns in-memory repository in test mode by default', () => {
-    const { result } = renderHook(() => useBillingOrderRepository());
+    const { result } = renderHook(() => useBillingRuntime());
 
     expect(result.current).toBe(inMemoryBillingOrderRepository);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
+  });
+
+  it('keeps the legacy repository hook compatible with the runtime selection', () => {
+    const { result } = renderHook(() => useBillingOrderRepository());
+
+    expect(result.current).toBe(inMemoryBillingOrderRepository);
   });
 
   it('returns override repository before reset', () => {
@@ -66,13 +73,13 @@ describe('useBillingOrderRepository', () => {
     };
 
     overrideBillingOrderRepository(overrideRepo, 'real');
-    const { result } = renderHook(() => useBillingOrderRepository());
+    const { result } = renderHook(() => useBillingRuntime());
 
     expect(result.current).toBe(overrideRepo);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('real');
 
     resetBillingOrderRepository();
-    const { result: resetResult } = renderHook(() => useBillingOrderRepository());
+    const { result: resetResult } = renderHook(() => useBillingRuntime());
     expect(resetResult.current).toBe(inMemoryBillingOrderRepository);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
   });
@@ -81,7 +88,7 @@ describe('useBillingOrderRepository', () => {
     envState.isTestMode = false;
     envState.shouldSkipSharePoint = true;
 
-    const { result } = renderHook(() => useBillingOrderRepository());
+    const { result } = renderHook(() => useBillingRuntime());
 
     expect(result.current).toBe(inMemoryBillingOrderRepository);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
@@ -91,7 +98,7 @@ describe('useBillingOrderRepository', () => {
     envState.isTestMode = false;
     envState.shouldSkipSharePoint = false;
 
-    const { result } = renderHook(() => useBillingOrderRepository());
+    const { result } = renderHook(() => useBillingRuntime());
 
     expect(getCurrentBillingOrderRepositoryKind()).toBe('real');
     expect(result.current).not.toBe(inMemoryBillingOrderRepository);
