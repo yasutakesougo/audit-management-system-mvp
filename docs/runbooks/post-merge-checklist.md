@@ -35,7 +35,30 @@ gh run list --branch main -L 5 --json databaseId,name,status,conclusion,createdA
 
 ---
 
-## 3️⃣ Local Smoke Tests (Optional but Recommended)
+## 3️⃣ Runtime Startup / Env Gate Check (Required)
+
+### 3.1 本番相当起動の必須確認
+
+- `VITE_MSAL_CLIENT_ID` / `VITE_MSAL_TENANT_ID` が実環境値で設定されること
+- `VITE_MSAL_REDIRECT_URI` が Azure AD の登録 URI と一致すること
+- `VITE_SKIP_LOGIN=1` / `VITE_SKIP_SHAREPOINT=1` が誤って有効化されていないこと
+
+### 3.2 E2E / MSAL mock 起動の再現
+
+- E2E smoke 実行は最低以下を想定する:
+  - `VITE_E2E=1`
+  - `VITE_E2E_MSAL_MOCK=1`
+  - `VITE_SKIP_LOGIN=1`
+  - `VITE_SKIP_SHAREPOINT=1`
+  - `VITE_DEMO_MODE=1`
+- 起動時に MSAL missing-key / URL mismatch 由来の停止ログが出た場合、まず以下順で確認:
+  1. `VITE_E2E`, `VITE_E2E_MSAL_MOCK`, `VITE_SKIP_LOGIN`, `VITE_SKIP_SHAREPOINT`
+  2. `VITE_MSAL_CLIENT_ID`, `VITE_MSAL_TENANT_ID`, `VITE_MSAL_REDIRECT_URI`
+  3. `VITE_SP_RESOURCE`, `VITE_SP_SITE_RELATIVE`
+
+---
+
+## 4️⃣ Local Smoke Tests (Optional but Recommended)
 
 For E2E or config changes, run smoke suite locally:
 
@@ -56,7 +79,7 @@ npx playwright test tests/e2e \
 
 ---
 
-## 4️⃣ Manual Smoke (Optional but Thorough)
+## 5️⃣ Manual Smoke (Optional but Thorough)
 
 Start a local preview and spot-check UI:
 
@@ -82,7 +105,7 @@ open http://localhost:5173
 
 ---
 
-## 5️⃣ Cleanup Local Branches (Optional)
+## 6️⃣ Cleanup Local Branches (Optional)
 
 Remove merged branches:
 
@@ -96,7 +119,7 @@ git branch --merged main | egrep -v '^\*| main$' | xargs -n 1 git branch -d
 
 ---
 
-## 6️⃣ Plan Next Steps
+## 7️⃣ Plan Next Steps
 
 ### ✅ If Main is Green
 
@@ -150,6 +173,11 @@ grep -A 10 "smokeTestMatch" playwright.smoke.config.ts
 **Fix**:
 - Add test file to `playwright.smoke.config.ts` `smokeTestMatch` array
 - Or ensure `VITE_E2E: '1'` is set in `webServerEnvVars`
+
+### `test.skip()` の運用
+
+- 運用で長期的に残る skip は、`docs/E2E_SKIP_INVENTORY.md` あるいは `docs/CATEGORY_C_SKIPS.md` で理由・対象・期限付きで管理する。
+- 現行実装に `E2E_SKIP` という実行一括トグルは未確認のため、追加を前提としない。
 
 ### "Main Actions showed FAILURE"
 

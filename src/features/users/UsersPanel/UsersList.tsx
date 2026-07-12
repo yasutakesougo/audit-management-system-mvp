@@ -29,7 +29,6 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { FC, KeyboardEvent, MouseEvent as ReactMouseEvent, RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MuiRouterLink } from '@/lib/muiLink';
 import ErrorState from '../../../ui/components/ErrorState';
 import Loading from '../../../ui/components/Loading';
 import type { IUserMaster } from '../types';
@@ -445,9 +444,6 @@ const UsersList: FC<UsersListProps> = ({
                         <IconButton
                           size="small"
                           color="default"
-                          component={MuiRouterLink}
-                          to={`/users/${encodeURIComponent(userKey)}`}
-                          state={{ user }}
                           disabled={rowBusy}
                           title="詳細"
                           onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {

@@ -116,10 +116,36 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
         run: npm run test:ci:required
 
+  a11y-unit:
+    name: a11y unit (RecordList / UsersPanel)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CI: true
+      TZ: "Asia/Tokyo"
+      VITE_MSAL_CLIENT_ID: dummy-client-id
+      VITE_MSAL_TENANT_ID: dummy-tenant-id
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run RecordList / UsersPanel a11y unit gate
+        run: npm run test:a11y:unit
+
   preflight:
     name: CI Preflight (Aggregator)
     runs-on: ubuntu-latest
-    needs: [test-ids-guard, typecheck, lint, preflight-unit]
+    needs: [test-ids-guard, typecheck, lint, preflight-unit, a11y-unit]
     if: ${{ always() }}
     steps:
       - name: Verify Preflight components
@@ -128,6 +154,7 @@ jobs:
           echo "typecheck result: ${{ needs.typecheck.result }}"
           echo "lint result: ${{ needs.lint.result }}"
           echo "preflight-unit result: ${{ needs.preflight-unit.result }}"
+          echo "a11y-unit result: ${{ needs.a11y-unit.result }}"
 
           if [ "${{ needs.test-ids-guard.result }}" != "success" ]; then
             echo "Error: test-ids-guard failed, cancelled, or skipped."
@@ -146,6 +173,11 @@ jobs:
 
           if [ "${{ needs.preflight-unit.result }}" != "success" ]; then
             echo "Error: preflight-unit failed, cancelled, or skipped."
+            exit 1
+          fi
+
+          if [ "${{ needs.a11y-unit.result }}" != "success" ]; then
+            echo "Error: a11y-unit failed, cancelled, or skipped."
             exit 1
           fi
 

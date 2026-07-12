@@ -1,12 +1,25 @@
 # Auth Troubleshooting Runbook (MSAL Redirect / COOP-safe)
 
-対象: audit-management-system-mvp  
-更新: 2026-02-01 (Phase 3.6 A/B/C sealed)
+対象: audit-management-system-mvp
+更新: 2026-07-10 (PR4 runbook alignment)
 
-## 0. まず結論（3ステップ）
-1) **強制再ログイン** を押す  
-2) ダメなら **キャッシュクリアして再ログイン** を押す  
-3) それでもダメなら **診断情報をコピー** → Teams/Issue に貼る（診断ID付き）
+## 0. まず結論（4ステップ）
+1) 起動/認証前提の env チェックを実施する
+2) **強制再ログイン** を押す
+3) ダメなら **キャッシュクリアして再ログイン** を押す
+4) それでもダメなら **診断情報をコピー** → Teams/Issue に貼る（診断ID付き）
+
+## 0.1 起動前最優先チェック（MSAL / E2E）
+
+- 本番相当: `VITE_MSAL_CLIENT_ID`, `VITE_MSAL_TENANT_ID`, `VITE_MSAL_REDIRECT_URI`
+- E2E mock: `VITE_E2E=1`, `VITE_E2E_MSAL_MOCK=1`, `VITE_SKIP_LOGIN=1`, `VITE_SKIP_SHAREPOINT=1`, `VITE_DEMO_MODE=1`
+- 併せて `VITE_FORCE_DEMO` / `VITE_SKIP_LOGIN` の残留がないか
+
+必要時は以下コマンドで再現:
+
+```bash
+VITE_E2E='1' VITE_E2E_MSAL_MOCK='1' VITE_SKIP_LOGIN='1' VITE_SKIP_SHAREPOINT='1' VITE_DEMO_MODE='1' npm run build
+```
 
 ---
 
@@ -22,6 +35,11 @@
 - 画面URL:
 - 理由コード:
 - 診断ID:
+- 確認した env:
+  - VITE_MSAL_CLIENT_ID / VITE_MSAL_TENANT_ID / VITE_MSAL_REDIRECT_URI
+  - VITE_E2E / VITE_E2E_MSAL_MOCK / VITE_SKIP_LOGIN / VITE_SKIP_SHAREPOINT
+- 実行モード:
+  - 本番相当 / E2E / デモ
 - 実施した操作: (強制再ログイン / キャッシュクリア / どちらも)
 - コピーボタンの内容:
 

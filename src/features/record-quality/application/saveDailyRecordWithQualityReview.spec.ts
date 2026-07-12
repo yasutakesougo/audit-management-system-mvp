@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-  DailyRecordRepository,
-  SaveDailyRecordInput,
-} from '@/features/daily/domain/DailyRecordRepository';
-import { InMemoryRecordQualityReviewRepository } from '@/domain/supportRecord/recordQualityReviewRepository';
+import { InMemoryRecordQualityReviewRepository } from '@/features/record-quality/adapters/in-memory/inMemoryRecordQualityReviewRepository';
 import {
   saveDailyRecordWithQualityReview,
 } from './saveDailyRecordWithQualityReview';
@@ -255,19 +251,18 @@ describe('saveDailyRecordWithQualityReview', () => {
   });
 });
 
-function createDailyRepository(): DailyRecordRepository {
+function createDailyRepository() {
   return {
-    save: vi.fn(async () => undefined),
-    load: vi.fn(),
-    list: vi.fn(),
-    approve: vi.fn(),
-    scanIntegrity: vi.fn(),
+    save: vi.fn(async (
+      _input: ReturnType<typeof createDailyRecordInput>,
+      _params?: { readonly signal?: AbortSignal },
+    ) => undefined),
   };
 }
 
 function createDailyRecordInput(
   overrides: { readonly specialNotes?: string } = {},
-): SaveDailyRecordInput {
+) {
   return {
     date: '2026-06-12',
     reporter: {

@@ -12,7 +12,7 @@ import {
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import { readOptionalEnv } from '@/lib/env';
-import type { BillingOrderRepository, BillingPersistenceDiagnostics } from '../repository';
+import type { BillingOrderRepository, BillingPersistenceDiagnostics } from '../ports/billingOrderRepository';
 import type { BillingOrder } from '../types';
 import { mapToBillingOrder } from '../domain/billingLogic';
 

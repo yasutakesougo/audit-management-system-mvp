@@ -12,7 +12,7 @@ const exportCsvMock = vi.hoisted(() => vi.fn());
 const togglePaymentStatusMock = vi.hoisted(() => vi.fn());
 const bulkSettleMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/billing/hooks/useBillingSummary', () => ({
+vi.mock('@/features/billing', () => ({
   useBillingSummary: () => ({
     records: [],
     availableMonths: ['2026-05'],

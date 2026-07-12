@@ -20,7 +20,20 @@
 | [ADR-008](ADR-008-workflow-phase-navigation-engine.md) | Workflow Phase Navigation Engine — 全画面巡回型ナビゲーション | Accepted | — |
 | [ADR-009](ADR-009-support-operations-os-principles.md) | Support Operations OS 設計原則の採用 | Accepted | 2026-03-16 |
 | [ADR-010](ADR-010-proposal-integration-layer.md) | 提案統合レイヤー（Proposal Integration Layer） | Accepted | 2026-03-16 |
+| [ADR-011](ADR-011-user-reference-architecture.md) | User Reference Architecture | Accepted | — |
+| [ADR-012](ADR-012-ai-dev-os.md) | AI Development OS | Accepted | — |
+| [ADR-013](ADR-013-sharepoint-column-explosion-mitigation.md) | SharePoint Column Explosion Mitigation | Accepted | — |
 | [ADR-014](ADR-014-sharepoint-ssot-drift-contract.md) | SharePoint SSOT Drift Contract（4層統一契約） | Accepted | 2026-04-04 |
+| [ADR-015](ADR-015-sharepoint-infrastructure-hardening-and-zombie-cleanup.md) | SharePoint Infrastructure Hardening | Accepted | — |
+| [ADR-016](ADR-016-proactive-setup-guidance-signals.md) | Proactive Setup Guidance Signals | Accepted | — |
+| [ADR-017](ADR-017-signal-governance-visibility-suppression.md) | Signal Governance Visibility | Accepted | — |
+| [ADR-018](ADR-018-signal-ownership-accountability.md) | Signal Ownership Accountability | Accepted | — |
+| [ADR-019](ADR-019-signal-lifecycle-acknowledgement.md) | Signal Lifecycle Acknowledgement | Accepted | — |
+| [ADR-020](ADR-020-auth-readiness-contract.md) | Auth Readiness Contract | Accepted | — |
+| [ADR-021](ADR-021-soft-delete-column-governance.md) | Soft Delete Column Governance | Accepted | — |
+| [ADR-022](ADR-022-l3-canonical-kiosk-flow.md) | L3 Canonical Kiosk Flow | Accepted | — |
+| [ADR-023](ADR-023-offline-procedure-record-sync.md) | Kiosk Procedure Record Offline Sync Policy | Proposed | — |
+| [ADR-024](ADR-024-modular-monolith-module-boundaries.md) | モジュラーモノリスと業務モジュール境界 | Accepted | 2026-07-10 |
 
 ---
 
@@ -62,6 +75,7 @@
 |-----|------|
 | ADR-001 | アーカイブ戦略 |
 | ADR-014 | SharePoint SSOT Drift Contract（fields/resolver/repository/diagnostics） |
+| ADR-024 | モジュラーモノリス、業務モジュール境界、Ports & Adapters |
 
 ---
 
@@ -106,4 +120,5 @@
 | 設計原則 10 箇条 | [docs/product/principles.md](../product/principles.md) |
 | UI 設計規約 | [docs/product/ui-conventions.md](../product/ui-conventions.md) |
 | OS Architecture | [docs/product/support-operations-os-architecture.md](../product/support-operations-os-architecture.md) |
+| モジュラーモノリス移行手順 | [docs/architecture/modular-monolith-migration-playbook.md](../architecture/modular-monolith-migration-playbook.md) |
 | ロードマップ | [docs/product/roadmap.md](../product/roadmap.md) |

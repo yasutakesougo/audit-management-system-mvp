@@ -53,6 +53,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   const navigate = useNavigate();
   const [_isPending, startTransition] = useTransition();
   const isMounted = useRef(true);
+  const isEmbedded = variant === 'embedded';
 
   useEffect(() => {
     isMounted.current = true;
@@ -70,6 +71,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   const quickAccessSections = useMemo(
     () => menuSections.filter((section) => QUICK_ACCESS_KEYS.includes(section.key)),
     [],
+  );
+  const visibleQuickAccessSections = useMemo(
+    () =>
+      isEmbedded
+        ? quickAccessSections.filter((section) => section.key === 'support-procedure')
+        : quickAccessSections,
+    [isEmbedded, quickAccessSections],
   );
 
   const attendanceLabel = user.AttendanceDays?.length ? user.AttendanceDays.join('・') : '—';
@@ -144,8 +152,6 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   const instructionText =
     '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。';
 
-  const isEmbedded = variant === 'embedded';
-
   return (
     <Stack spacing={isEmbedded ? 1.5 : 3} data-testid={TESTIDS['user-detail-sections']}>
       {backControl}
@@ -159,87 +165,89 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
         isActive={isActive}
       />
 
-      {!isEmbedded && (
-        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
-          <Stack spacing={3}>
-            <Box>
-              <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
-                利用者メニュー
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {instructionText}
-              </Typography>
-            </Box>
-
-            {/* ── Quick Access Bar ── */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
-              {quickAccessSections.map((section) => (
-                <Button
-                  key={`quick-${section.key}`}
-                  {...tidWithSuffix(TESTIDS['users-quick-prefix'], section.key)}
-                  variant={section.key === 'create-user' ? 'contained' : 'outlined'}
-                  color={section.key === 'create-user' ? 'primary' : 'inherit'}
-                  size="small"
-                  onClick={() => handleCardNavigate(section)}
-                >
-                  {section.title}
-                </Button>
-              ))}
-            </Stack>
-
-            {/* ── Menu Card Grid ── */}
-            <MenuCardGrid
-              sections={menuSections}
-              user={user}
-              tabSectionKeys={TAB_SECTION_KEYS}
-              onNavigate={handleCardNavigate}
-            />
-
-            {/* ── Tab Bar ── */}
-            <Tabs
-              value={activeTab}
-              onChange={(_, value) => {
-                startTransition(() => {
-                  setActiveTab(value as MenuSection['key']);
-                });
-              }}
-              variant="scrollable"
-              scrollButtons="auto"
-              aria-label="利用者メニュータブ"
-            >
-              {TAB_SECTIONS.map((section) => {
-                const IconComponent = section.icon;
-                // タイムラインタブには件数バッジを表示
-                const badge =
-                  section.key === 'timeline' && timelineCount != null && timelineCount > 0
-                    ? ` (${timelineCount})`
-                    : '';
-                return (
-                  <Tab
-                    key={section.key}
-                    value={section.key}
-                    label={`${section.title}${badge}`}
-                    icon={<IconComponent fontSize="small" />}
-                    iconPosition="start"
-                    id={`user-menu-tab-${section.key}`}
-                    aria-controls={`user-menu-tabpanel-${section.key}`}
-                  />
-                );
-              })}
-            </Tabs>
-
-            {/* ── Tab Panels ── */}
-            <TabPanelList
-              sections={TAB_SECTIONS}
-              user={user}
-              attendanceLabel={attendanceLabel}
-              activeTab={activeTab}
-              tabPanelRef={tabPanelRef}
-              onTimelineCountsReady={handleTimelineCountsReady}
-            />
+      <Stack spacing={isEmbedded ? 1.5 : 3}>
+        {/* ── Quick Access Bar ── */}
+        {visibleQuickAccessSections.length > 0 && (
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
+            {visibleQuickAccessSections.map((section) => (
+              <Button
+                key={`quick-${section.key}`}
+                {...tidWithSuffix(TESTIDS['users-quick-prefix'], section.key)}
+                variant={section.key === 'create-user' ? 'contained' : 'outlined'}
+                color={section.key === 'create-user' ? 'primary' : 'inherit'}
+                size="small"
+                onClick={() => handleCardNavigate(section)}
+              >
+                {section.title}
+              </Button>
+            ))}
           </Stack>
-        </Paper>
-      )}
+        )}
+
+        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
+                  利用者メニュー
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {instructionText}
+                </Typography>
+              </Box>
+
+              {/* ── Menu Card Grid ── */}
+              <MenuCardGrid
+                sections={menuSections}
+                user={user}
+                tabSectionKeys={TAB_SECTION_KEYS}
+                onNavigate={handleCardNavigate}
+              />
+
+              {/* ── Tab Bar ── */}
+              <Tabs
+                value={activeTab}
+                onChange={(_, value) => {
+                  startTransition(() => {
+                    setActiveTab(value as MenuSection['key']);
+                  });
+                }}
+                variant="scrollable"
+                scrollButtons="auto"
+                aria-label="利用者メニュータブ"
+              >
+                {TAB_SECTIONS.map((section) => {
+                  const IconComponent = section.icon;
+                  // タイムラインタブには件数バッジを表示
+                  const badge =
+                    section.key === 'timeline' && timelineCount != null && timelineCount > 0
+                      ? ` (${timelineCount})`
+                      : '';
+                  return (
+                    <Tab
+                      key={section.key}
+                      value={section.key}
+                      label={`${section.title}${badge}`}
+                      icon={<IconComponent fontSize="small" />}
+                      iconPosition="start"
+                      id={`user-menu-tab-${section.key}`}
+                      aria-controls={`user-menu-tabpanel-${section.key}`}
+                    />
+                  );
+                })}
+              </Tabs>
+
+              {/* ── Tab Panels ── */}
+              <TabPanelList
+                sections={TAB_SECTIONS}
+                user={user}
+                attendanceLabel={attendanceLabel}
+                activeTab={activeTab}
+                tabPanelRef={tabPanelRef}
+                onTimelineCountsReady={handleTimelineCountsReady}
+              />
+            </Stack>
+          </Paper>
+      </Stack>
 
       {/* ── Non-tabbed sections (scrollable anchors) ── */}
       {NON_TABBED_SECTIONS.map((section) => {

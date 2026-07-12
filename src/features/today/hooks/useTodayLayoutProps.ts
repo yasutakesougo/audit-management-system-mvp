@@ -319,11 +319,12 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
       userListProps: {
         items: isE2EEnv
           ? [
-              { userId: 'I022', name: '中村 裕樹', status: 'present' as const, recordFilled: false },
-              { userId: 'I105', name: '山田 花子', status: 'present' as const, recordFilled: true },
+              { userId: 'I005', name: '石渡 由喜子', status: 'present' as const, recordFilled: false },
+              { userId: 'U-001', name: '桂川 進太朗', status: 'present' as const, recordFilled: true },
             ]
           : userItemsWithStatus,
         onOpenQuickRecord: quickRecord.openUser,
+        onOpenUserDetail: (userId: string) => navigate(`/users?tab=list&selected=${encodeURIComponent(userId)}`),
         onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
         onOpenIceberg: (userId: string) => navigate(buildIcebergPdcaUrl(userId)),
         onAlertClick: (userId: string) => {

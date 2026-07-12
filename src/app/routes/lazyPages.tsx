@@ -11,7 +11,7 @@ import { createSuspended } from '../createSuspended';
 // ── React.lazy imports ─────────────────────────────────────────────────────
 
 const RecordList = React.lazy(() => import('@/features/records/RecordList'));
-const RecordQualityHumanReviewPage = React.lazy(() => import('@/features/record-quality/routes/RecordQualityHumanReviewPage'));
+const RecordQualityHumanReviewPage = React.lazy(() => import('./RecordQualityHumanReviewRoute'));
 const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/ChecklistPage'));
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
@@ -20,7 +20,7 @@ const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/
 const OpsSchedulePage = React.lazy(() => import('@/features/schedules/components/ops/OpsSchedulePage').then(m => ({ default: m.OpsSchedulePage })));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
-const TableDailyRecordPage = React.lazy(() => import('@/features/daily/components/table/TableDailyRecordPage'));
+const TableDailyRecordPage = React.lazy(() => import('./TableDailyRecordRoute'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
 const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSupportRecordPage'));
 

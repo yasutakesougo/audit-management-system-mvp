@@ -15,6 +15,7 @@ import {
     Tooltip
 } from '@mui/material';
 import React from 'react';
+import type { DailyRecordRepository } from '../../domain/legacy/DailyRecordRepository';
 
 import { FullScreenDailyDialogPage } from '../pages/FullScreenDailyDialogPage';
 import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
@@ -23,8 +24,12 @@ import { useTableDailyRecordViewModel } from './useTableDailyRecordViewModel';
 
 
 
-export const TableDailyRecordPage: React.FC = () => {
-  const vm = useTableDailyRecordViewModel();
+export type TableDailyRecordPageProps = {
+  readonly repository: DailyRecordRepository;
+};
+
+export const TableDailyRecordPage: React.FC<TableDailyRecordPageProps> = ({ repository }) => {
+  const vm = useTableDailyRecordViewModel(repository);
 
   const formState = useTableDailyRecordForm({
     open: vm.open,

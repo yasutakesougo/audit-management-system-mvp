@@ -169,6 +169,8 @@ const run = async (): Promise<void> => {
       finalizeHydrationSpan(completeEnv, error);
       throw error;
     });
+  // ✅ Step 1.5: Validate production startup configuration before external auth initialization
+  guardProdMisconfig();
 
   // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE Firebase init
   // Skip entirely in demo/skip-login modes to avoid unnecessary AAD initialization.
@@ -369,9 +371,6 @@ const run = async (): Promise<void> => {
   try {
     // 🔧 runtime env を最優先で適用してからモジュールを読み込み
     // (envPromise は既に await ensureRuntimeEnv() で完了済み)
-
-    // ✅ NOW that runtime env is loaded, check for production misconfigurations
-    guardProdMisconfig();
 
     const [modules, appModule] = await Promise.all([modulesPromise, appPromise]);
     const [{ ConfigErrorBoundary }, { auditLog }, featureFlagsModule] = modules;
