@@ -55,7 +55,7 @@ jobs:
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Perf report (LHCI + Web Vitals)
-        run: npm run -s ci:perf-report
+        run: node scripts/ci/run-perf-with-diagnostics.mjs
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -72,6 +72,9 @@ jobs:
             reports/perf-summary.md
             reports/perf-summary.json
             lhci-results.json
+            reports/lhci-diagnostics/
+            .lighthouseci/
+            lhci-artifacts/
       - name: Notify failure
         if: failure()
         env:
