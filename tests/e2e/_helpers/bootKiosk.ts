@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { toLocalDateISO } from '../../../src/utils/getNow';
 import { setupPlaywrightEnv } from './setupPlaywrightEnv';
+import { setupSharePointStubs } from './setupSharePointStubs';
 
 const FEATURE_ENV: Record<string, string> = {
   VITE_E2E: '1',
@@ -28,6 +29,16 @@ type KioskProcedure = {
 type KioskRecordSeed = {
   scheduleItemId: string;
   status: 'completed' | 'triggered' | 'skipped' | 'unrecorded';
+};
+
+type KioskUserSeed = {
+  Id: number;
+  UserID: string;
+  FullName: string;
+  FullNameKana?: string;
+  ServiceStartDate?: string;
+  IsActive?: boolean;
+  UsageStatus?: string;
 };
 
 export type BootKioskOptions = {
@@ -61,6 +72,43 @@ const DEFAULT_PROCEDURES: KioskProcedure[] = [
   { id: 'seed-U-001-17', time: '10:25頃', activity: '外活動', instruction: '外活動中の安全確認、同行支援、見守りを行う' },
 ];
 
+const DEFAULT_USERS: KioskUserSeed[] = [
+  { Id: 1, UserID: 'U-001', FullName: '桂川 進太朗', FullNameKana: 'カツラガワ シンタロウ', ServiceStartDate: '2026-01-01', IsActive: true, UsageStatus: '利用中' },
+  { Id: 3, UserID: 'U-003', FullName: '塩田 裕貴', FullNameKana: 'シオダ ユウキ', ServiceStartDate: '2026-01-01', IsActive: true, UsageStatus: '利用中' },
+  { Id: 6, UserID: 'I005', FullName: '石渡 みのり', FullNameKana: 'イシワタリ ミノリ', ServiceStartDate: '2026-01-01', IsActive: true, UsageStatus: '利用中' },
+  { Id: 23, UserID: 'U-023', FullName: '桂川 進太朗', FullNameKana: 'カツラガワ シンタロウ', ServiceStartDate: '2026-01-01', IsActive: true, UsageStatus: '利用中' },
+];
+
+const resolveCanonicalUserId = (value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  const numeric = Number(trimmed);
+  if (Number.isFinite(numeric)) return `U-${String(numeric).padStart(3, '0')}`;
+  return trimmed;
+};
+
+const resolveSeedUserIds = (value: string): string[] => {
+  const ids = new Set<string>();
+  const trimmed = value.trim();
+  if (trimmed) ids.add(trimmed);
+  const canonical = resolveCanonicalUserId(trimmed);
+  if (canonical) ids.add(canonical);
+  const matched = DEFAULT_USERS.find((user) => String(user.Id) === trimmed || user.UserID === trimmed || user.UserID === canonical);
+  if (matched) {
+    ids.add(String(matched.Id));
+    ids.add(matched.UserID);
+  }
+  return Array.from(ids);
+};
+
+const shouldInstallDefaultSharePointStubs = (route: string, provider: string, envOverrides?: Record<string, string>): boolean => {
+  const routeProviderMatch = route.match(/[?&]provider=([^&]+)/);
+  const routeProvider = routeProviderMatch ? decodeURIComponent(routeProviderMatch[1]) : provider;
+  if (routeProvider === 'sharepoint') return false;
+  if (envOverrides?.VITE_FORCE_SHAREPOINT === '1') return false;
+  return true;
+};
+
 export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Promise<void> {
   // E2E kiosk tests default to memory provider so UI flow and form behavior can be
   // validated deterministically in local/demo runs. Production kiosk is SharePoint-fixed.
@@ -70,6 +118,54 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
   const userId = options.userId ?? '1';
   const procedures = options.procedures ?? DEFAULT_PROCEDURES;
   const records = options.records ?? [];
+
+  if (shouldInstallDefaultSharePointStubs(route, provider, options.envOverrides)) {
+    await setupSharePointStubs(page, {
+      currentUser: { status: 200, body: { Id: 12345, Title: 'Mock User' } },
+      lists: [
+        {
+          name: 'Users_Master',
+          items: DEFAULT_USERS,
+          fields: [
+            { InternalName: 'Id' },
+            { InternalName: 'Title' },
+            { InternalName: 'UserID' },
+            { InternalName: 'FullName' },
+            { InternalName: 'FullNameKana' },
+            { InternalName: 'ServiceStartDate' },
+            { InternalName: 'IsActive' },
+            { InternalName: 'UsageStatus' },
+          ],
+        },
+        {
+          name: 'SupportPlanningSheet_Master',
+          items: [
+            {
+              Id: 1006,
+              Title: '支援計画 I005',
+              UserCode: 'I005',
+              ISPId: '6',
+              Status: 'active',
+              IsCurrent: true,
+              SupportStartDate: '2026-01-01',
+              PlanningJson: JSON.stringify({ procedureSteps: [] }),
+            },
+          ],
+          fields: [
+            { InternalName: 'Id' },
+            { InternalName: 'Title' },
+            { InternalName: 'UserCode' },
+            { InternalName: 'ISPId' },
+            { InternalName: 'Status' },
+            { InternalName: 'IsCurrent' },
+            { InternalName: 'SupportStartDate' },
+            { InternalName: 'PlanningJson' },
+          ],
+        },
+      ],
+      fallback: { status: 200, body: { value: [] } },
+    });
+  }
 
   await setupPlaywrightEnv(page, {
     envOverrides: {
@@ -83,16 +179,18 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
   });
 
   const today = toLocalDateISO(new Date());
+  const seedUserIds = resolveSeedUserIds(userId);
   const executionData =
     records.length > 0
-      ? {
-          [`${today}::${userId}`]: {
+      ? Object.fromEntries(seedUserIds.map((seedUserId) => [
+          `${today}::${seedUserId}`,
+          {
             date: today,
-            userId,
+            userId: seedUserId,
             records: records.map((r) => ({
-              id: `${today}-${userId}-${r.scheduleItemId}`,
+              id: `${today}-${seedUserId}-${r.scheduleItemId}`,
               date: today,
-              userId,
+              userId: seedUserId,
               scheduleItemId: r.scheduleItemId,
               status: r.status,
               triggeredBipIds: [],
@@ -102,18 +200,18 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
             })),
             updatedAt: new Date().toISOString(),
           },
-        }
+        ]))
       : {};
 
   await page.addInitScript(
-    ({ targetUserId, seededProcedures, seededExecutionData }) => {
+    ({ targetUserIds, seededProcedures, seededExecutionData }) => {
+      const procedureData = Object.fromEntries(targetUserIds.map((targetUserId: string) => [targetUserId, seededProcedures]));
+
       window.localStorage.setItem(
         'procedureStore.v1',
         JSON.stringify({
           version: 1,
-          data: {
-            [targetUserId]: seededProcedures,
-          },
+          data: procedureData,
         }),
       );
 
@@ -126,7 +224,7 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
       );
     },
     {
-      targetUserId: userId,
+      targetUserIds: seedUserIds,
       seededProcedures: procedures,
       seededExecutionData: executionData,
     },

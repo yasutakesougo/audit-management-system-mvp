@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBillingSummary } from '../useBillingSummary';
+import type { BillingOrderRepository } from '../../ports/billingOrderRepository';
+
+const { mockUseBillingOrders } = vi.hoisted(() => ({
+  mockUseBillingOrders: vi.fn(),
+}));
 
 // ─── モック定義 ───────────────────────────────────────────
 
@@ -123,13 +128,15 @@ const mockOrders = [
 ];
 
 vi.mock('../../useBillingOrders', () => ({
-  useBillingOrders: () => ({
+  useBillingOrders: mockUseBillingOrders,
+  billingOrdersQueryKey: ['billingOrders', 'list'],
+}));
+
+const billingOrdersResult = {
     data: mockOrders,
     isLoading: false,
     isError: false,
-  }),
-  billingOrdersQueryKey: ['billingOrders', 'list'],
-}));
+};
 
 const mockInvalidateQueries = vi.fn();
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -146,15 +153,13 @@ const mockBulkUpdatePaymentStatus = vi.fn(() => Promise.resolve());
 const mockIsPersistenceColumnsResolved = vi.fn(() => Promise.resolve(true));
 const mockGetPersistenceDiagnostics = vi.fn();
 
-vi.mock('../useBillingOrderRepository', () => ({
-  useBillingOrderRepository: () => ({
-    list: vi.fn(),
-    isPersistenceColumnsResolved: mockIsPersistenceColumnsResolved,
-    getPersistenceDiagnostics: mockGetPersistenceDiagnostics,
-    updatePaymentStatus: vi.fn(() => Promise.resolve()),
-    bulkUpdatePaymentStatus: mockBulkUpdatePaymentStatus,
-  }),
-}));
+const mockRepository: BillingOrderRepository = {
+  list: vi.fn(),
+  isPersistenceColumnsResolved: mockIsPersistenceColumnsResolved,
+  getPersistenceDiagnostics: mockGetPersistenceDiagnostics,
+  updatePaymentStatus: vi.fn(() => Promise.resolve()),
+  bulkUpdatePaymentStatus: mockBulkUpdatePaymentStatus,
+};
 
 describe('useBillingSummary', () => {
   beforeEach(() => {
@@ -164,6 +169,7 @@ describe('useBillingSummary', () => {
     vi.spyOn(window, 'alert').mockImplementation(() => {});
     mockBulkUpdatePaymentStatus.mockClear();
     mockInvalidateQueries.mockClear();
+    mockUseBillingOrders.mockReturnValue(billingOrdersResult);
     mockIsPersistenceColumnsResolved.mockClear();
     mockGetPersistenceDiagnostics.mockReset();
     mockGetPersistenceDiagnostics.mockResolvedValue({
@@ -186,7 +192,7 @@ describe('useBillingSummary', () => {
 
   it('対象月と served===true でフィルタリングし、人ごとに正しく集計すること', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     // スキーマ判定の解決を待つ
     await waitFor(() => {
@@ -213,11 +219,12 @@ describe('useBillingSummary', () => {
     expect(result.current.availableMonths).toEqual(['2026-05', '2026-04']);
     expect(result.current.hasLocalPaymentState).toBe(false);
     expect(result.current.localPaymentStateCount).toBe(0);
+    expect(mockUseBillingOrders).toHaveBeenCalledWith(mockRepository);
   });
 
   it('個別の精算トグル状態が SharePoint の repository に送られ、query invalidation が走ること', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
@@ -244,7 +251,7 @@ describe('useBillingSummary', () => {
   it('PaymentStatus 解決済みの場合、既存 LocalStorage 値があっても SharePoint の精算状態を正本にし、新規保存しないこと', async () => {
     localStorage.setItem('app:billing:payment_states', JSON.stringify({ '2026-05:U-001': true }));
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
@@ -271,7 +278,7 @@ describe('useBillingSummary', () => {
 
   it('一括精算を実行すると、選択されたカテゴリがすべて精算済みになるよう SharePoint を一括更新すること', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
@@ -294,7 +301,7 @@ describe('useBillingSummary', () => {
 
   it('PaymentStatus 解決済みの場合、一括精算でも LocalStorage へ新規保存しないこと', async () => {
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
@@ -318,7 +325,7 @@ describe('useBillingSummary', () => {
     mockAuthAccount.name = '';
     mockAuthAccount.username = 'billing.operator@example.com';
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
@@ -340,7 +347,7 @@ describe('useBillingSummary', () => {
     mockAuthAccount.name = '';
     mockAuthAccount.username = '';
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);
@@ -371,7 +378,7 @@ describe('useBillingSummary', () => {
       },
       usesList3Fallback: true,
     });
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(true);
@@ -406,7 +413,7 @@ describe('useBillingSummary', () => {
       usesList3Fallback: true,
     });
 
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(true);
@@ -430,7 +437,7 @@ describe('useBillingSummary', () => {
       },
       usesList3Fallback: false,
     });
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.isPaymentAuditMissing).toBe(true);
@@ -442,7 +449,7 @@ describe('useBillingSummary', () => {
 
   it('CSV出力が正常に動作し、BOM(\ufeff) が付与されていること', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
-    const { result } = renderHook(() => useBillingSummary('2026-05'));
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
     await waitFor(() => {
       expect(result.current.isPersistenceMissing).toBe(false);

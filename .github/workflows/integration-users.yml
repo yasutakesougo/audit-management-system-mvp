@@ -43,11 +43,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Restore Playwright storageState
-        shell: bash
-        run: |
-          mkdir -p tests/.auth
-          echo "${PW_STORAGE_STATE_B64}" | base64 -d > tests/.auth/storageState.json
-          test -s tests/.auth/storageState.json
+        run: node scripts/ci/restore-playwright-storage-state.mjs
         env:
           PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
 

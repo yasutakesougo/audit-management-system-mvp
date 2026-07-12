@@ -1,10 +1,11 @@
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
-import type { BillingOrderRepository } from './ports/billingOrderRepository';
-import { DataProviderBillingOrderRepository } from './infra/DataProviderBillingOrderRepository';
-import { inMemoryBillingOrderRepository } from './infra/InMemoryBillingOrderRepository';
+import { getAppConfig, readOptionalEnv } from '@/lib/env';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { SharePointDataProvider } from '@/lib/sp/spDataProvider';
-import { getAppConfig, readOptionalEnv } from '@/lib/env';
+
+import { inMemoryBillingOrderRepository } from '../in-memory/InMemoryBillingOrderRepository';
+import { DataProviderBillingOrderRepository } from '../sharepoint/DataProviderBillingOrderRepository';
+import type { BillingOrderRepository } from '../../ports/billingOrderRepository';
 
 export interface BillingOrderRepositoryFactoryOptions extends BaseFactoryOptions {
   spFetch?: (path: string, init?: RequestInit) => Promise<Response>;
@@ -36,13 +37,20 @@ const factory = createRepositoryFactory<BillingOrderRepository, BillingOrderRepo
     }
     const baseUrl = resolveBillingSharePointBaseUrl();
     const provider = new SharePointDataProvider(createSpClient(acquireToken, baseUrl));
-    
+
     return new DataProviderBillingOrderRepository(provider, undefined, resolveBillingSharePointSiteRelative());
   },
 });
 
+/**
+ * Builds the Billing runtime and keeps concrete persistence adapters private.
+ * App routes consume this public hook and inject its port into Billing UI.
+ */
+export function useBillingRuntime(): BillingOrderRepository {
+  return factory.useRepository();
+}
+
 export const getBillingOrderRepository = factory.getRepository;
-export const useBillingOrderRepository = factory.useRepository;
 export const overrideBillingOrderRepository = factory.override;
 export const resetBillingOrderRepository = factory.reset;
 export const getCurrentBillingOrderRepositoryKind = factory.getCurrentKind;
