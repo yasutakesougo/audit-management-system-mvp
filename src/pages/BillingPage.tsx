@@ -35,7 +35,7 @@ import {
   AccountCircle as AccountCircleIcon,
   Check as CheckIcon,
 } from '@mui/icons-material';
-import { useBillingSummary } from '@/features/billing/hooks/useBillingSummary';
+import { useBillingSummary } from '@/features/billing';
 
 type ActiveTab = '利用者' | '職員' | 'ゲスト' | 'すべて';
 

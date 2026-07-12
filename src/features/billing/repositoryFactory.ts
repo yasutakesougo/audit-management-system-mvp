@@ -1,5 +1,5 @@
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
-import type { BillingOrderRepository } from './repository';
+import type { BillingOrderRepository } from './ports/billingOrderRepository';
 import { DataProviderBillingOrderRepository } from './infra/DataProviderBillingOrderRepository';
 import { inMemoryBillingOrderRepository } from './infra/InMemoryBillingOrderRepository';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
