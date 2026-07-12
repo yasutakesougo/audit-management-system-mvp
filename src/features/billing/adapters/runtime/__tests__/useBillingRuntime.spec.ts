@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { BillingOrderRepository } from '../ports/billingOrderRepository';
+import type { BillingOrderRepository } from '../../../ports/billingOrderRepository';
 
 const envState = {
   isTestMode: true,
@@ -34,16 +34,15 @@ vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: () => true,
 }));
 
-import { inMemoryBillingOrderRepository } from '../adapters/in-memory/InMemoryBillingOrderRepository';
-import { useBillingRuntime } from '../adapters/runtime/useBillingRuntime';
+import { inMemoryBillingOrderRepository } from '../../in-memory/InMemoryBillingOrderRepository';
 import {
   getCurrentBillingOrderRepositoryKind,
   overrideBillingOrderRepository,
   resetBillingOrderRepository,
-  useBillingOrderRepository,
-} from '../repositoryFactory';
+  useBillingRuntime,
+} from '../useBillingRuntime';
 
-describe('useBillingOrderRepository', () => {
+describe('useBillingRuntime', () => {
   beforeEach(() => {
     resetBillingOrderRepository();
     envState.isTestMode = true;
@@ -56,12 +55,6 @@ describe('useBillingOrderRepository', () => {
 
     expect(result.current).toBe(inMemoryBillingOrderRepository);
     expect(getCurrentBillingOrderRepositoryKind()).toBe('demo');
-  });
-
-  it('keeps the legacy repository hook compatible with the runtime selection', () => {
-    const { result } = renderHook(() => useBillingOrderRepository());
-
-    expect(result.current).toBe(inMemoryBillingOrderRepository);
   });
 
   it('returns override repository before reset', () => {

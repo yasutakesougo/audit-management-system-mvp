@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-describe('billing repositoryFactory', () => {
+describe('billing runtime composition config', () => {
   afterEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -24,7 +24,7 @@ describe('billing repositoryFactory', () => {
       })),
     }));
 
-    const { resolveBillingSharePointBaseUrl } = await import('../repositoryFactory');
+    const { resolveBillingSharePointBaseUrl } = await import('../useBillingRuntime');
     const { ensureConfig } = await import('@/lib/spClient');
 
     expect(resolveBillingSharePointBaseUrl()).toBe('https://contoso.sharepoint.com/sites/2/_api/web');
@@ -48,7 +48,7 @@ describe('billing repositoryFactory', () => {
       })),
     }));
 
-    const { resolveBillingSharePointBaseUrl } = await import('../repositoryFactory');
+    const { resolveBillingSharePointBaseUrl } = await import('../useBillingRuntime');
     const { ensureConfig } = await import('@/lib/spClient');
 
     expect(resolveBillingSharePointBaseUrl()).toBe('https://contoso.sharepoint.com/sites/welfare/_api/web');

@@ -51,7 +51,6 @@ export function useBillingRuntime(): BillingOrderRepository {
 }
 
 export const getBillingOrderRepository = factory.getRepository;
-export const useBillingOrderRepository = factory.useRepository;
 export const overrideBillingOrderRepository = factory.override;
 export const resetBillingOrderRepository = factory.reset;
 export const getCurrentBillingOrderRepositoryKind = factory.getCurrentKind;
