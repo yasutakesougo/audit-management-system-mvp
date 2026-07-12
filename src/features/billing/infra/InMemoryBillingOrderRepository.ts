@@ -1,4 +1,4 @@
-import type { BillingOrderRepository } from '../repository';
+import type { BillingOrderRepository } from '../ports/billingOrderRepository';
 import type { BillingOrder } from '../types';
 
 export class InMemoryBillingOrderRepository implements BillingOrderRepository {
