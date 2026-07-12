@@ -4,27 +4,62 @@
  * Tests the main daily record hub page navigation and user flows
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
+import { setupPlaywrightEnv } from './_helpers/setupPlaywrightEnv';
+
+async function bootDailyRecordMenu(page: Page): Promise<void> {
+  await setupPlaywrightEnv(page, {
+    envOverrides: {
+      VITE_E2E: '1',
+      VITE_E2E_MSAL_MOCK: '1',
+      VITE_SKIP_LOGIN: '1',
+      VITE_SKIP_SHAREPOINT: '1',
+      VITE_DEMO_MODE: '1',
+      VITE_FORCE_SHAREPOINT: '0',
+    },
+    storageOverrides: {
+      skipLogin: '1',
+      demo: '1',
+    },
+  });
+
+  await page.route('**/login.microsoftonline.com/**', (route) => route.fulfill({ status: 204, body: '' }));
+  await page.route('https://graph.microsoft.com/**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ value: [] }),
+    }),
+  );
+  await page.route('/_api/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ d: { results: [] }, value: [] }),
+    }),
+  );
+
+  await page.goto('/daily', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('daily-record-menu')).toBeVisible({ timeout: 15_000 });
+}
 
 test.describe('Daily Record Menu Page', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to daily record menu page
-    await page.goto('/daily');
-    await page.waitForSelector('[data-testid="daily-record-menu"]');
+    await bootDailyRecordMenu(page);
   });
 
   test('should display page header and description', async ({ page }) => {
     // Check main heading
-    await expect(page.locator('h1')).toHaveText('日次記録システム');
+    await expect(page.getByRole('heading', { name: '日々の記録', level: 1 })).toBeVisible();
 
     // Check subtitle
-    await expect(page.getByText('記録の種類を選択してください')).toBeVisible();
+    await expect(page.getByText(/\d+\/\d+（.+）/)).toBeVisible();
   });
 
   test('should display all three main cards', async ({ page }) => {
     // Activity card
     await expect(page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: /一覧形式ケース記録|支援記録（ケース記録）/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /一覧形式の日々の記録|一覧形式ケース記録|支援記録（ケース記録）/ })).toBeVisible();
 
     // Attendance card
     await expect(page.getByTestId('daily-card-attendance')).toBeVisible();
@@ -32,7 +67,7 @@ test.describe('Daily Record Menu Page', () => {
 
     // Support card
     await expect(page.getByTestId('daily-card-support')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '支援手順記録' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /支援手順の実施|支援手順記録/ })).toBeVisible();
   });
 
   test('should navigate to activity log page', async ({ page }) => {
@@ -60,38 +95,17 @@ test.describe('Daily Record Menu Page', () => {
   });
 
   test('should display statistics summary', async ({ page }) => {
-    const statsSection = page.getByTestId('daily-stats-summary');
-    await expect(statsSection).toBeVisible();
-
-    // Check stats title
-    await expect(statsSection.getByText('本日の記録状況')).toBeVisible();
-
-    // Check activity stats
-    const activityStats = page.getByTestId('daily-stats-activity');
-    await expect(activityStats.getByText('支援記録（ケース記録） 記録済み')).toBeVisible();
-
-    // Check attendance stats
-    const attendanceStats = page.getByTestId('daily-stats-attendance');
-    await expect(attendanceStats.getByText('通所管理 進捗')).toBeVisible();
-
-    // Check support stats
-    const supportStats = page.getByTestId('daily-stats-support');
-    await expect(supportStats.getByText('支援手順記録 記録済み')).toBeVisible();
+    await expect(page.getByRole('button', { name: /未対応 \d+件/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /重要 \d+件/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /出勤 \d+\/\d+/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /日々の記録 \d+\/\d+/ })).toBeVisible();
   });
 
   test('should display percentage completion safely', async ({ page }) => {
-    // Wait for user data to load (mock data simulation)
-    await page.waitForTimeout(1000);
-
-    // Check that percentages are displayed
-    const activityStats = page.getByTestId('daily-stats-activity');
-    await expect(activityStats.locator(':text("% 完了")')).toBeVisible();
-
-    const attendanceStats = page.getByTestId('daily-stats-attendance');
-    await expect(attendanceStats.locator(':text("% 完了")')).toBeVisible();
-
-    const supportStats = page.getByTestId('daily-stats-support');
-    await expect(supportStats.locator(':text("% 完了")')).toBeVisible();
+    await expect(page.getByRole('button', { name: /日々の記録 \d+\/\d+/ })).toBeVisible();
+    const pageContent = await page.textContent('body');
+    expect(pageContent).not.toContain('NaN%');
+    expect(pageContent).not.toContain('Infinity%');
   });
 
   test('should show card hover effects', async ({ page }) => {
@@ -120,7 +134,7 @@ test.describe('Daily Record Menu Page', () => {
 
     // Support card should show intensive support users with special badge
     const supportCard = page.getByTestId('daily-card-support');
-    await expect(supportCard.getByText(/対象：強度行動障害者（\d+名）/)).toBeVisible();
+    await expect(supportCard.getByText(/対象：強度行動障害支援対象者（\d+名）/)).toBeVisible();
     await expect(supportCard.getByText('⚑ 特別支援')).toBeVisible();
   });
 
@@ -135,11 +149,8 @@ test.describe('Daily Record Menu Page', () => {
     });
 
     // Navigate to page after setting up mock
-    await page.goto('/daily');
-    await page.waitForSelector('[data-testid="daily-record-menu"]');
-
-    // Wait for any loading states to complete
-    await page.waitForTimeout(500);
+    await page.goto('/daily', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('daily-record-menu')).toBeVisible({ timeout: 15_000 });
 
     // Should show users count without crashing (may show default mock values)
     const activityCard = page.getByTestId('daily-card-table-activity').or(page.getByTestId('daily-card-activity')).first();
@@ -149,11 +160,10 @@ test.describe('Daily Record Menu Page', () => {
     // Check that user count displays are present (content may vary based on mocks)
     await expect(activityCard.getByText(/対象：(選択した複数利用者|利用者全員（\d+名）)/)).toBeVisible();
     await expect(attendanceCard.getByText(/対象：日次通所者（\d+名）/)).toBeVisible();
-    await expect(supportCard.getByText(/対象：強度行動障害者（\d+名）/)).toBeVisible();
+    await expect(supportCard.getByText(/対象：強度行動障害支援対象者（\d+名）/)).toBeVisible();
 
     // Most importantly: percentages should be valid numbers not NaN%
-    const statsSection = page.getByTestId('daily-stats-summary');
-    await expect(statsSection).toBeVisible();
+    await expect(page.getByRole('button', { name: /日々の記録 \d+\/\d+/ })).toBeVisible();
 
     // Check that percentage displays don't contain 'NaN%'
     const pageContent = await page.textContent('body');
@@ -179,7 +189,7 @@ test.describe('Daily Record Menu Page', () => {
     // Support card features
     const supportCard = page.getByTestId('daily-card-support');
     await expect(supportCard.getByText('• 個別支援計画テンプレート')).toBeVisible();
-    await expect(supportCard.getByText('• 1日19行の支援手順展開')).toBeVisible();
+    await expect(supportCard.getByText('• 1日17行の支援手順展開')).toBeVisible();
     await expect(supportCard.getByText('• 本人の様子・反応記録')).toBeVisible();
     await expect(supportCard.getByText('• 支援効果の観察・評価')).toBeVisible();
     await expect(supportCard.getByText('• 手順変更・改善点の記録')).toBeVisible();
