@@ -5,7 +5,7 @@
       "url": ["http://127.0.0.1:4173/analysis/dashboard"],
       "startServerCommand": "npm run perf:preview",
       "startServerReadyPattern": "localhost:4173|127.0.0.1:4173",
-      "startServerTimeout": 120000
+      "startServerReadyTimeout": 120000
     },
     "assert": {
       "assertions": {
