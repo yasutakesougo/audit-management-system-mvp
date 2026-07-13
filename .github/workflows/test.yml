@@ -206,7 +206,7 @@ jobs:
           if-no-files-found: ignore
       - name: Perf report (LHCI + Web Vitals)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.perf == 'true')
-        run: npm run -s ci:perf-report
+        run: node scripts/ci/run-perf-with-diagnostics.mjs
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -223,6 +223,9 @@ jobs:
             reports/perf-summary.md
             reports/perf-summary.json
             lhci-results.json
+            reports/lhci-diagnostics/
+            .lighthouseci/
+            lhci-artifacts/
 
       - name: Classify quality job completion
         if: always()
