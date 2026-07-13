@@ -13,6 +13,7 @@ describe('summarizeVitestHealth', () => {
       startedFiles: 1,
       endedFiles: 1,
       lastStartedFile: 'a.spec.ts',
+      missingEndedFiles: [],
       unhandledErrors: 0,
       workerAbnormalExits: 0,
       vitestExitCode: 0,
@@ -25,7 +26,7 @@ describe('summarizeVitestHealth', () => {
       memoryText: [event('module-start', 'a.spec.ts'), event('module-end', 'a.spec.ts'), event('module-start', 'b.spec.ts')].join('\n'),
       vitestExitCode: 0,
     });
-    expect(summary).toMatchObject({ startedFiles: 2, endedFiles: 1, lastStartedFile: 'b.spec.ts', healthy: false });
+    expect(summary).toMatchObject({ startedFiles: 2, endedFiles: 1, lastStartedFile: 'b.spec.ts', missingEndedFiles: ['b.spec.ts'], healthy: false });
   });
 
   it.each([
@@ -49,6 +50,24 @@ describe('summarizeVitestHealth', () => {
       vitestExitCode: 2,
     });
     expect(summary).toMatchObject({ vitestExitCode: 2, healthy: false });
+  });
+
+  it('reports worker termination separately from unhandled errors', () => {
+    const summary = summarizeVitestHealth({
+      logText: 'Error: [vitest-pool]: Worker forks emitted error.\nUnhandled Rejection',
+      memoryText: [event('module-start', 'a.spec.ts'), event('module-end', 'a.spec.ts')].join('\n'),
+      vitestExitCode: 1,
+    });
+    expect(summary).toMatchObject({ workerAbnormalExits: 1, unhandledErrors: 1, healthy: false });
+  });
+
+  it('fails when the shard log is missing', () => {
+    const summary = summarizeVitestHealth({
+      memoryText: [event('module-start', 'a.spec.ts'), event('module-end', 'a.spec.ts')].join('\n'),
+      vitestExitCode: 0,
+      logFilePresent: false,
+    });
+    expect(summary).toMatchObject({ logFilePresent: false, healthy: false });
   });
 
   it('keeps a summary and fails when the memory JSONL is truncated', () => {

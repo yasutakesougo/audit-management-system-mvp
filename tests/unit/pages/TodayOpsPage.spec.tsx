@@ -472,6 +472,27 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     );
   });
 
+  it('settles when the summary has not loaded users yet', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    await vi.runAllTimersAsync();
+    expect(screen.getByTestId('bento-layout')).toBeInTheDocument();
+  });
+
   it('passes viewer audience to legacy Today layout when authz role is viewer', () => {
     mockAuthzRole = 'viewer';
     vi.mocked(useTodayActionQueue).mockReturnValue({

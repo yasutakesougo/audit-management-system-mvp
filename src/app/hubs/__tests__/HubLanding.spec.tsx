@@ -49,19 +49,16 @@ describe('HubLanding', () => {
     expect(screen.queryByText('精算ダッシュボード')).not.toBeInTheDocument();
   });
 
-  it('shows billing primary entry for viewer', () => {
+  it('shows empty billing state for viewer', () => {
     render(
       <MemoryRouter initialEntries={['/billing']}>
         <HubLanding hubId="billing" />
       </MemoryRouter>,
     );
 
-    const primary = screen.getByTestId('hub-landing-section-primary-billing');
-
-    expect(within(primary).getByText('請求処理')).toBeInTheDocument();
-    expect(within(primary).getByText('請求画面を開く')).toBeInTheDocument();
-    expect(screen.getByTestId('hub-entry-card-billing-main')).toBeInTheDocument();
-    expect(screen.queryByTestId('hub-landing-empty-billing')).not.toBeInTheDocument();
+    expect(screen.getByTestId('hub-landing-empty-billing')).toBeInTheDocument();
+    expect(screen.queryByTestId('hub-entry-card-billing-main')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hub-landing-section-primary-billing')).not.toBeInTheDocument();
     expect(screen.queryByTestId('hub-landing-section-secondary-billing')).not.toBeInTheDocument();
   });
 
