@@ -52,6 +52,7 @@ jobs:
           fi
           log_path="reports/nightly-memory/shard-${{ matrix.shard }}.log"
           summary_path="reports/nightly-memory/shard-${{ matrix.shard }}-summary.json"
+          mkdir -p reports/nightly-memory
           npm run test:ci:nightly -- --shard=${{ matrix.shard }}/3 $extra_args --reporter=./scripts/ci/vitest-memory-reporter.mjs 2>&1 | tee "$log_path"
           vitest_exit_code=${PIPESTATUS[0]}
           node scripts/ci/assert-vitest-health.mjs \
@@ -68,7 +69,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-memory-shard-${{ matrix.shard }}
-          path: reports/nightly-memory/
+          path: |
+            reports/nightly-memory/shard-${{ matrix.shard }}.log
+            reports/nightly-memory/shard-${{ matrix.shard }}.jsonl
+            reports/nightly-memory/shard-${{ matrix.shard }}-summary.json
           if-no-files-found: warn
 
   e2e-health:

@@ -50,6 +50,9 @@ import { formatDateIso } from '@/lib/dateFormat';
 import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
+import type { IUserMaster } from '@/features/users/types';
+
+const EMPTY_USERS: IUserMaster[] = [];
 
 const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = ({ correctiveActions = [] }) => {
   const navigate = useNavigate();
@@ -80,15 +83,15 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   }, [isKioskMode, location.pathname, telemetryRole]);
 
   const summary = useTodaySummary();
-  const todayPlanPatchActions = useTodayPlanPatchActions(summary.users ?? []);
-  const todayIspRenewSuggest = useTodayIspRenewSuggestActions(summary.users ?? []);
-  const todayMonitoringDeadline = useTodayMonitoringDeadlineActions(summary.users ?? []);
+  const users = summary.users ?? EMPTY_USERS;
+  const todayPlanPatchActions = useTodayPlanPatchActions(users);
+  const todayIspRenewSuggest = useTodayIspRenewSuggestActions(users);
+  const todayMonitoringDeadline = useTodayMonitoringDeadlineActions(users);
   const pendingSupportUsers = useMemo(() => {
     const ids = summary.todayRecordCompletion?.pendingUserIds ?? [];
-    const usersArr = summary.users ?? [];
-    const userMap = new Map(usersArr.map((u) => [u.UserID ?? String(u.Id), u.FullName ?? '']));
+    const userMap = new Map(users.map((u) => [u.UserID ?? String(u.Id), u.FullName ?? '']));
     return ids.map((id) => ({ userId: id, userName: userMap.get(id) ?? id })).filter((u) => u.userName);
-  }, [summary.todayRecordCompletion?.pendingUserIds, summary.users]);
+  }, [summary.todayRecordCompletion?.pendingUserIds, users]);
 
   const exceptionsQueue = useTodayExceptions({ pendingSupportUsers, role: authzRole });
   const realSchedule = useTodayScheduleLanes();
@@ -98,8 +101,8 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
     attendanceSummary: summary.attendanceSummary ?? {},
     dailyRecordStatus: summary.dailyRecordStatus ?? {},
     todayRecordCompletion: summary.todayRecordCompletion,
-    users: summary.users ?? [],
-    scheduledCount: summary.users?.length ?? 0,
+    users,
+    scheduledCount: users.length,
     todayExceptions: summary.todayExceptions,
   });
   const transport = useTransportStatus();
