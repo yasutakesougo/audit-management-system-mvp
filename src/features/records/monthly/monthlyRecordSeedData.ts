@@ -86,7 +86,7 @@ export const DEFAULT_MONTH: YearMonth = mockMonthlySummaries[0]?.yearMonth ?? ge
 /**
  * E2E用 Demo Seed から月次サマリーを取得（E2E限定）
  */
-export function useDemoSummaries(): MonthlySummary[] {
+export function getDemoSummaries(): MonthlySummary[] {
   const e2e = isE2E();
   const w = (typeof window !== 'undefined' ? window : {}) as E2ESeedWindow;
 
@@ -127,5 +127,7 @@ export function useDemoSummaries(): MonthlySummary[] {
 
   return mockMonthlySummaries;
 }
+
+export const useDemoSummaries = getDemoSummaries;
 
 export type { E2ESeedWindow };
