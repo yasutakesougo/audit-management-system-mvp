@@ -176,8 +176,13 @@ export function classifyReport(report, env = process.env) {
   for (const spec of specs) {
     for (const test of spec.tests ?? []) {
       totalTests += 1;
-      increment(testStatuses, test.status ?? "unknown");
-      if (!test.results?.length && test.status !== "skipped") didNotRun += 1;
+      const isDidNotRun =
+        test.status === "skipped" && test.expectedStatus !== "skipped";
+      increment(
+        testStatuses,
+        isDidNotRun ? "didNotRun" : (test.status ?? "unknown"),
+      );
+      if (isDidNotRun) didNotRun += 1;
       if (test.status !== "unexpected") continue;
 
       const errorText = errorTextForTest(test);
@@ -297,6 +302,7 @@ export function renderMarkdown(payload) {
     `Head SHA: \`${payload.metadata.headSha ?? "unknown"}\``,
     `Lane: \`${payload.metadata.lane ?? "unknown"}\``,
     `Unique failed tests: **${payload.totals.failed}**`,
+    `Did not run: **${payload.totals.didNotRun}**`,
     `Feature classifications: **${payload.totals.featureClassifications}**`,
     `Cause classifications: **${payload.totals.causeClassifications}**`,
     "",

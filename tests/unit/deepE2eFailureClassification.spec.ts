@@ -124,6 +124,43 @@ describe("deep E2E failure taxonomy", () => {
     ]);
   });
 
+  it("separates intentionally skipped tests from tests that did not run", () => {
+    const skipped = {
+      ...testEntry(""),
+      expectedStatus: "skipped",
+      status: "skipped",
+      annotations: [
+        { type: "skip", description: "not available in this lane" },
+      ],
+      results: [{ ...result(""), status: "skipped" }],
+    };
+    const didNotRun = {
+      ...testEntry(""),
+      expectedStatus: "passed",
+      status: "skipped",
+      results: [0, 1, 2].map((retry) => ({
+        ...result("", retry),
+        status: "skipped",
+        duration: 0,
+        errors: [],
+      })),
+    };
+    const taxonomy = classifyReport(
+      reportWith([
+        {
+          title: "skip accounting",
+          ok: true,
+          id: "skip-accounting",
+          file: "tests/e2e/example.spec.ts",
+          tests: [skipped, didNotRun],
+        },
+      ]),
+    );
+
+    expect(taxonomy.totals.didNotRun).toBe(1);
+    expect(taxonomy.totals.byStatus).toEqual({ skipped: 1, didNotRun: 1 });
+  });
+
   it.each([
     ["tests/e2e/transport.routes.spec.ts", "Transport"],
     ["tests/e2e/dashboard.spec.ts", "Dashboard"],
