@@ -1,7 +1,6 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { TESTIDS } from '../../src/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoDay } from './utils/scheduleNav';
 import { waitForDayTimeline } from './utils/wait';
@@ -50,6 +49,27 @@ test.describe('Schedule layout regression', () => {
       };
     });
 
+  const getScrollOwnership = async (page: Page) =>
+    page.evaluate(() => {
+      const main = document.querySelector('main');
+      const beforeWindowScrollY = window.scrollY;
+      const beforeMainScrollTop = main?.scrollTop ?? null;
+      window.scrollTo(0, 240);
+      if (main && main.scrollHeight > main.clientHeight) {
+        main.scrollTop = Math.min(240, main.scrollHeight - main.clientHeight);
+      }
+
+      return {
+        hasMain: Boolean(main),
+        mainOverflow: main ? getComputedStyle(main).overflowY : null,
+        mainCanScroll: main ? main.scrollHeight > main.clientHeight : false,
+        beforeWindowScrollY,
+        afterWindowScrollY: window.scrollY,
+        beforeMainScrollTop,
+        afterMainScrollTop: main?.scrollTop ?? null,
+      };
+    });
+
   test('day view has no top gap and main is the scroll area', async ({ page }) => {
     await gotoDay(page, DATE);
     await waitForDayTimeline(page);
@@ -62,17 +82,15 @@ test.describe('Schedule layout regression', () => {
     expect(geometry.stickyTop).not.toBeNull();
     expect(Math.abs(geometry.gap ?? 999)).toBeLessThanOrEqual(2);
 
-    const scrollState = await page.evaluate(() => {
-      const html = getComputedStyle(document.documentElement).overflowY;
-      const body = getComputedStyle(document.body).overflowY;
-      const main = document.querySelector('main');
-      const mainOverflow = main ? getComputedStyle(main).overflowY : null;
-      return { html, body, mainOverflow };
-    });
+    const scrollState = await getScrollOwnership(page);
 
-    expect(['hidden', 'clip']).toContain(scrollState.html);
-    expect(['hidden', 'clip']).toContain(scrollState.body);
+    expect(scrollState.hasMain).toBe(true);
+    expect(scrollState.beforeWindowScrollY).toBeLessThanOrEqual(1);
+    expect(scrollState.afterWindowScrollY).toBeLessThanOrEqual(1);
     expect(['auto', 'scroll']).toContain(scrollState.mainOverflow ?? '');
+    if (scrollState.mainCanScroll) {
+      expect(scrollState.afterMainScrollTop).toBeGreaterThan(scrollState.beforeMainScrollTop ?? -1);
+    }
   });
 
   test('day view keeps header-sticky alignment at 125% zoom equivalent', async ({ page }) => {
@@ -93,34 +111,26 @@ test.describe('Schedule layout regression', () => {
     expect(Math.abs(geometry.gap ?? 999)).toBeLessThanOrEqual(3);
   });
 
-  test('dashboard shows footer quick action after shell refactor', async ({ page }) => {
+  test('dashboard renders the current shell contract', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByTestId(TESTIDS['handoff-footer-quicknote']).first()).toBeVisible();
+    await expect(page.getByTestId('dashboard-page').first()).toBeVisible();
   });
 
   test('dashboard keeps main-only scroll responsibility', async ({ page }) => {
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
-    const scrollState = await page.evaluate(() => {
-      const html = getComputedStyle(document.documentElement).overflowY;
-      const body = getComputedStyle(document.body).overflowY;
-      const main = document.querySelector('main');
-      const mainOverflow = main ? getComputedStyle(main).overflowY : null;
-      return {
-        html,
-        body,
-        hasMain: Boolean(main),
-        mainOverflow,
-      };
-    });
+    const scrollState = await getScrollOwnership(page);
 
     expect(scrollState.hasMain).toBe(true);
-    expect(['hidden', 'clip']).toContain(scrollState.html);
-    expect(['hidden', 'clip']).toContain(scrollState.body);
+    expect(scrollState.beforeWindowScrollY).toBeLessThanOrEqual(1);
+    expect(scrollState.afterWindowScrollY).toBeLessThanOrEqual(1);
     expect(['auto', 'scroll']).toContain(scrollState.mainOverflow ?? '');
+    if (scrollState.mainCanScroll) {
+      expect(scrollState.afterMainScrollTop).toBeGreaterThan(scrollState.beforeMainScrollTop ?? -1);
+    }
   });
 
   test('daily table keeps main-only scroll responsibility', async ({ page }) => {

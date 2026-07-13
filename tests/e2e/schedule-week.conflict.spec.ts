@@ -1,22 +1,25 @@
 import { TESTIDS } from '@/testids';
 import { expect, test } from '@playwright/test';
-import { bootstrapScheduleEnv } from './utils/scheduleEnv';
+import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
 
 const REF_DATE = new Date('2025-11-24');
+const isSharePointLane = process.env.VITE_SKIP_SHAREPOINT === '0';
 
 test.describe('Schedule week conflict handling', () => {
+  test.skip(!isSharePointLane, 'SharePoint conflict contract is excluded from the memory-backed Deep lane.');
+
   test.beforeEach(async ({ page }) => {
-    await bootstrapScheduleEnv(page, {
-      env: {
+    await bootSchedule(page, {
+      mode: 'sharepoint',
+      envOverrides: {
         VITE_TEST_ROLE: 'admin',
         VITE_E2E_FORCE_SCHEDULES_WRITE: '1',
+        VITE_SKIP_SHAREPOINT: '0',
+        VITE_FORCE_SHAREPOINT: '1',
+        VITE_FEATURE_SCHEDULES_SP: '1',
+        VITE_SCHEDULES_SAVE_MODE: 'real',
       },
-    });
-    // Feature toggles for Week V2
-    await page.addInitScript(() => {
-      localStorage.setItem('feature:schedules', '1');
-      localStorage.setItem('feature:schedulesWeekV2', '1');
     });
     page.on('console', (msg) => {
       if (msg.type() === 'error') console.log(`[BROWSER ERROR] ${msg.text()}`);
@@ -88,7 +91,7 @@ test.describe('Schedule week conflict handling', () => {
       url.searchParams.set('dialogDate', dateParam);
       url.searchParams.set('dialogStart', '10:00');
       url.searchParams.set('dialogEnd', '11:00');
-      url.searchParams.set('dialogCategory', 'User');
+      url.searchParams.set('dialogCategory', 'Staff');
       await page.goto(`${url.pathname}?${url.searchParams.toString()}`, { waitUntil: 'networkidle' });
     }
 
@@ -97,9 +100,10 @@ test.describe('Schedule week conflict handling', () => {
 
     // Fill minimal data
     await dialog.getByTestId(TESTIDS['schedule-create-title']).fill('Conflict Test');
-    const serviceTypeSelect = dialog.getByTestId(TESTIDS['schedule-create-service-type']);
-    await serviceTypeSelect.click();
-    await page.getByRole('option', { name: '欠席' }).click();
+    const categorySelect = dialog.getByTestId(TESTIDS['schedule-create-category-select']);
+    await categorySelect.click();
+    await page.getByRole('option', { name: '職員' }).click();
+    await dialog.getByTestId(TESTIDS['schedule-create-staff-id']).fill('1');
 
     await dialog.getByTestId(TESTIDS['schedule-create-save']).click();
 
