@@ -6,7 +6,7 @@ import { useSP } from '@/lib/spClient';
 import { DAILY_ATTENDANCE_LIST_TITLE } from '@/sharepoint/fields/dailyAttendanceFields';
 import { HOLIDAY_MASTER_LIST_TITLE } from '@/sharepoint/fields/holidayFields';
 import { HOLIDAYS } from '@/sharepoint/holidays';
-import { mockMonthlySummaries } from '../monthlyRecordSeedData';
+import { getDemoSummaries } from '../monthlyRecordSeedData';
 import { executeKioskMonthlyAggregation } from '../kioskMonthlyAggregationUseCase';
 import { convertJapaneseWeekdaysToNumbers } from '../utils/weekdayConverter';
 import { getTotalDaysInMonth } from '../aggregate';
@@ -35,9 +35,7 @@ export function useMonthlySummaries(yearMonth: YearMonth) {
   const refresh = useCallback(async () => {
     // 1. Handle Demo Mode
     if (isDemoModeEnabled()) {
-      // Filter mocks by yearMonth if needed, but for now we just return them
-      // as they are primarily for UI demonstration.
-      setSummaries(mockMonthlySummaries);
+      setSummaries(getDemoSummaries());
       setLoading(false);
       return;
     }

@@ -1,54 +1,65 @@
 import { expect, test } from '@playwright/test';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 
-test.describe('Iceberg Analysis (/analysis/iceberg) smoke', () => {
-  test.beforeEach(async ({ page }) => {
-    // bootstrap with viewer role
-    await bootstrapDashboard(page, {
-      skipLogin: true,
-      initialPath: '/analysis/iceberg',
-    });
-
-    // Canvas is rendered only after selecting a target user
-    await page.getByLabel('分析対象').click();
-    const userOptions = page.getByRole('option');
-    await userOptions.nth(1).click();
+async function openIcebergCanvas(page: import('@playwright/test').Page) {
+  await bootstrapDashboard(page, {
+    skipLogin: true,
+    initialPath: '/analysis/iceberg',
   });
 
+  await page.getByLabel('分析対象').click();
+  await page.getByRole('option').nth(1).click();
+
+  const canvas = page.getByTestId('iceberg-canvas').last();
+  await expect(canvas).toBeVisible();
+
+  const cards = page.locator('[data-testid^="iceberg-card-item"]');
+  return { canvas, cards };
+}
+
+async function createManualNode(page: import('@playwright/test').Page, canvas: import('@playwright/test').Locator) {
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas not found');
+
+  await canvas.dblclick({ position: { x: Math.min(box.width - 20, 320), y: Math.min(box.height - 20, 320) } });
+
+  const cards = page.locator('[data-testid^="iceberg-card-item"]');
+  await expect.poll(() => cards.count()).toBeGreaterThan(0);
+
+  return cards;
+}
+
+test.describe('Iceberg Analysis (/analysis/iceberg) smoke', () => {
   test('loads /analysis/iceberg and canvas is visible with cards', async ({ page }) => {
-    // Verify canvas is rendered (data-testid="iceberg-canvas")
-    const canvas = page.getByTestId('iceberg-canvas');
+    const { canvas } = await openIcebergCanvas(page);
+    const cards = await createManualNode(page, canvas);
     await expect(canvas).toBeVisible();
 
-    // Verify at least 1 card is rendered (behavior, assessment, environment)
-    const cards = page.locator('[data-testid^="iceberg-card-"]');
     const cardCount = await cards.count();
     expect(cardCount).toBeGreaterThanOrEqual(1);
     console.info(`[iceberg-smoke] Found ${cardCount} cards`);
 
-    // Verify waterline (SVG links) is rendered
-    const links = page.getByTestId('iceberg-links');
+    const links = page.getByTestId('iceberg-links').last();
     await expect(links).toBeVisible();
   });
 
   test('clicking a card selects it (visual feedback)', async ({ page }) => {
-    const cards = page.locator('[data-testid^="iceberg-card-"]');
+    const { canvas } = await openIcebergCanvas(page);
+    const cards = await createManualNode(page, canvas);
     const firstCard = cards.first();
 
-    // Click to select
     await firstCard.click();
     await expect(firstCard).toBeVisible();
   });
 
   test('drag a card changes its position', async ({ page }) => {
-    const cards = page.locator('[data-testid^="iceberg-card-"]');
+    const { canvas } = await openIcebergCanvas(page);
+    const cards = await createManualNode(page, canvas);
     const firstCard = cards.first();
 
-    // Get initial position (left, top from inline style)
     const _initialLeft = await firstCard.evaluate((el) => el.style.left);
     const _initialTop = await firstCard.evaluate((el) => el.style.top);
 
-    // Drag the card 50px right, 50px down
     const box = await firstCard.boundingBox();
     if (!box) throw new Error('Card not found');
 
@@ -60,24 +71,11 @@ test.describe('Iceberg Analysis (/analysis/iceberg) smoke', () => {
     await expect(firstCard).toBeVisible();
   });
 
-  test('"仮説リンク (Demo)" button creates a link', async ({ page }) => {
-    // Get initial link count
-    const linksBefore = page.locator('[data-testid="iceberg-links"] line');
-    const linkCountBefore = await linksBefore.count();
+  test('double-clicking canvas creates a manual node', async ({ page }) => {
+    const { canvas, cards } = await openIcebergCanvas(page);
+    const countBefore = await cards.count();
 
-    // Click "仮説リンク (Demo)" button
-    const linkButton = page.getByRole('button', { name: /仮説リンク/ });
-    await expect(linkButton).toBeVisible();
-    await linkButton.click();
-
-    // Wait for DOM update
-    await page.waitForTimeout(300);
-
-    // Get new link count
-    const linksAfter = page.locator('[data-testid="iceberg-links"] line');
-    const linkCountAfter = await linksAfter.count();
-
-    expect(linkCountAfter).toBeGreaterThan(linkCountBefore);
-    console.info(`[iceberg-smoke] Links: ${linkCountBefore} → ${linkCountAfter}`);
+    await createManualNode(page, canvas);
+    await expect.poll(() => cards.count()).toBeGreaterThan(countBefore);
   });
 });

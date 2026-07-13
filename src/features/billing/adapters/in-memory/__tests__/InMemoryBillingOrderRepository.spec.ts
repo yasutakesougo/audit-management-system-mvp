@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+
+// Adapter contract tests.
 import { InMemoryBillingOrderRepository } from '../InMemoryBillingOrderRepository';
 
 const baseOrders = [

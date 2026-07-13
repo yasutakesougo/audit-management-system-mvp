@@ -4,19 +4,84 @@ on:
   schedule:
     - cron: '0 18 * * *' # JST 03:00
   workflow_dispatch:
+    inputs:
+      serial:
+        description: Run each shard without file parallelism for comparison
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  health:
+  static-health:
+    name: Static health
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
       - run: npm ci
-      - run: npm run health
+      - run: npm run typecheck
+      - run: npm run lint:dev
+
+  unit-health:
+    name: Unit health (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run unit tests with memory diagnostics
         env:
           TZ: Asia/Tokyo
+          VITEST_MEMORY_LOG: reports/nightly-memory/shard-${{ matrix.shard }}.jsonl
+        run: |
+          set +e
+          set -o pipefail
+          extra_args=""
+          if [ "${{ inputs.serial }}" = "true" ]; then
+            extra_args="--no-file-parallelism"
+          fi
+          log_path="reports/nightly-memory/shard-${{ matrix.shard }}.log"
+          summary_path="reports/nightly-memory/shard-${{ matrix.shard }}-summary.json"
+          npm run test:ci:nightly -- --shard=${{ matrix.shard }}/3 $extra_args --reporter=./scripts/ci/vitest-memory-reporter.mjs 2>&1 | tee "$log_path"
+          vitest_exit_code=${PIPESTATUS[0]}
+          node scripts/ci/assert-vitest-health.mjs \
+            --log "$log_path" \
+            --memory "$VITEST_MEMORY_LOG" \
+            --vitest-exit-code "$vitest_exit_code" \
+            --summary "$summary_path"
+          assertion_exit_code=$?
+          if [ "$vitest_exit_code" -ne 0 ] || [ "$assertion_exit_code" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Upload unit memory diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-memory-shard-${{ matrix.shard }}
+          path: reports/nightly-memory/
+          if-no-files-found: warn
+
+  e2e-health:
+    name: E2E health
+    needs: [static-health, unit-health]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: E2E (nightly transport critical)
         run: npm run test:e2e:transport:critical
@@ -54,6 +119,18 @@ jobs:
 
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+
+  perf-health:
+    name: Perf health
+    needs: [static-health, unit-health]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Perf report (LHCI + Web Vitals)
         run: npm run -s ci:perf-report
         env:
@@ -72,8 +149,14 @@ jobs:
             reports/perf-summary.md
             reports/perf-summary.json
             lhci-results.json
+
+  notify-failure:
+    name: Notify failure
+    needs: [static-health, unit-health, e2e-health, perf-health]
+    if: ${{ always() && (needs.static-health.result == 'failure' || needs.unit-health.result == 'failure' || needs.e2e-health.result == 'failure' || needs.perf-health.result == 'failure') }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Notify failure
-        if: failure()
         env:
           WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
         run: |
