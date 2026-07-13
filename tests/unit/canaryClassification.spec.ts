@@ -18,6 +18,18 @@ describe('classifyCanaryResult', () => {
     expect(classifyCanaryResult({ e2eExitCode: 0, lhciExitCode: 1 }).classification).toBe('canary_lhci_failure');
   });
 
+  it('retains independent LHCI diagnostics when E2E has an auth failure', () => {
+    const result = classifyCanaryResult({ e2eExitCode: 1, lhciExitCode: 1, e2eLog: 'AUTH_REQUIRED' });
+    expect(result.classification).toBe('canary_auth_required');
+    expect(result.diagnostics).toEqual({
+      authSignal: true,
+      e2eFailed: true,
+      lhciFailed: true,
+      summaryFailed: false,
+      independentFailures: ['e2e_auth_or_storage', 'lhci'],
+    });
+  });
+
   it('classifies summary failures after E2E and LHCI pass', () => {
     expect(classifyCanaryResult({ e2eExitCode: 0, lhciExitCode: 0, summaryExitCode: 1 }).classification).toBe(
       'canary_summary_failure'

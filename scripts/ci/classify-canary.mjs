@@ -22,6 +22,18 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
   const e2e = toExitCode(e2eExitCode);
   const lhci = toExitCode(lhciExitCode);
   const summary = toExitCode(summaryExitCode);
+  const authSignal = hasAuthSignal(e2eLog);
+  const independentFailures = [];
+  if (e2e !== 0) independentFailures.push(authSignal ? 'e2e_auth_or_storage' : 'e2e_ui');
+  if (lhci !== 0) independentFailures.push('lhci');
+  if (summary !== 0) independentFailures.push('summary');
+  const diagnostics = {
+    authSignal,
+    e2eFailed: e2e !== 0,
+    lhciFailed: lhci !== 0,
+    summaryFailed: summary !== 0,
+    independentFailures,
+  };
 
   if (e2e !== 0) {
     if (hasAuthSignal(e2eLog)) {
@@ -30,6 +42,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
         failedStage: 'e2e',
         reason: 'E2E failed with an authentication-related signal.',
         exitCode: e2e,
+        diagnostics,
       };
     }
     return {
@@ -37,6 +50,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
       failedStage: 'e2e',
       reason: 'E2E failed without an authentication-related signal.',
       exitCode: e2e,
+      diagnostics,
     };
   }
 
@@ -46,6 +60,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
       failedStage: 'lhci',
       reason: 'LHCI failed after E2E completed.',
       exitCode: lhci,
+      diagnostics,
     };
   }
 
@@ -55,6 +70,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
       failedStage: 'summary',
       reason: 'Performance summary generation failed after E2E and LHCI completed.',
       exitCode: summary,
+      diagnostics,
     };
   }
 
@@ -63,6 +79,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
     failedStage: 'none',
     reason: 'Canary completed without failure.',
     exitCode: 0,
+    diagnostics,
   };
 }
 
@@ -97,6 +114,8 @@ const renderMarkdown = (result, inputs) => `# Quality Gates Canary Classificatio
 - e2eExitCode: ${inputs.e2eExitCode}
 - lhciExitCode: ${inputs.lhciExitCode}
 - summaryExitCode: ${inputs.summaryExitCode}
+- authSignal: **${result.diagnostics.authSignal}**
+- independentFailures: ${result.diagnostics.independentFailures.length ? result.diagnostics.independentFailures.join(', ') : 'none'}
 `;
 
 async function main() {
