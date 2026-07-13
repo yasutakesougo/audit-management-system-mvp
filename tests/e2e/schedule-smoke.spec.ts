@@ -163,17 +163,10 @@ test.describe('Schedule smoke', () => {
       { timeout: 60_000 }
     ).toBe('true');
 
-    const dayTabCandidate = page.getByTestId('tab-day');
-    const dayTab = (await dayTabCandidate.count().catch(() => 0)) > 0
-      ? dayTabCandidate.first()
-      : page.getByRole('tab', { name: '日', exact: true }).first();
-    await expect(dayTab).toBeVisible();
-
-    const monthTabCandidate = page.getByTestId('tab-month');
-    const monthTab = (await monthTabCandidate.count().catch(() => 0)) > 0
-      ? monthTabCandidate.first()
-      : page.getByRole('tab', { name: '月', exact: true }).first();
-    await expect(monthTab).toBeVisible();
+    await expect(page.getByTestId('tab-day')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: '日', exact: true })).toHaveCount(0);
+    await expect(page.getByTestId('tab-month')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: '月', exact: true })).toHaveCount(0);
 
 
     // ✅ Smoke test: verify week page is reachable and tabs are visible

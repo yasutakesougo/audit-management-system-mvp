@@ -33,10 +33,10 @@ test.describe('Schedules day ARIA smoke', () => {
       `testid not found: ${TESTIDS['schedules-day-page']} (allowed for smoke)`
     );
 
-    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
+    const returnWeek = page.getByTestId('schedules-return-week').first();
     await expectLocatorVisibleBestEffort(
-      dayTab,
-      `testid not found: ${TESTIDS.SCHEDULES_WEEK_TAB_DAY} (allowed for smoke)`
+      returnWeek,
+      'testid not found: schedules-return-week (allowed for smoke)'
     );
 
     const dayTimeline = page.getByTestId(TESTIDS['schedules-day-page']).first();

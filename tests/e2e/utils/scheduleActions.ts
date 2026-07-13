@@ -509,14 +509,24 @@ export async function getScheduleWriteState(page: Page): Promise<{ canWrite: boo
 
 export async function openQuickUserCareDialog(page: Page) {
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
-  await expect(dayTab).toBeVisible();
   const dayRoot = page.getByTestId(TESTIDS['schedules-day-page']);
 
-  const isDayActive = (await dayTab.getAttribute('aria-selected')) === 'true';
-  if (!isDayActive) {
-    await dayTab.scrollIntoViewIfNeeded();
-    await dayTab.click();
-    await expect(page).toHaveURL(/tab=day/);
+  const hasDayTab = (await dayTab.count().catch(() => 0)) > 0;
+  if (hasDayTab) {
+    await expect(dayTab).toBeVisible();
+    const isDayActive = (await dayTab.getAttribute('aria-selected')) === 'true';
+    if (!isDayActive) {
+      await dayTab.scrollIntoViewIfNeeded();
+      await dayTab.click();
+      await expect(page).toHaveURL(/tab=day/);
+    }
+  } else if (!(await dayRoot.isVisible().catch(() => false))) {
+    const url = new URL(page.url());
+    const dateParam = url.searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
+    url.pathname = '/schedules/week';
+    url.searchParams.set('tab', 'day');
+    url.searchParams.set('date', dateParam);
+    await page.goto(`${url.pathname}?${url.searchParams.toString()}`, { waitUntil: 'domcontentloaded' });
   }
 
   await expect(dayRoot).toBeVisible({ timeout: 10_000 });

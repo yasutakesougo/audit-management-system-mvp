@@ -39,23 +39,15 @@ test.describe('Schedule day keyboard navigation', () => {
     }, setupEnv);
   });
 
-  test('Tablist arrow keys switch day/week views', async ({ page }) => {
+  test('return-to-week control restores the week view by keyboard', async ({ page }) => {
     await gotoDay(page, new Date('2025-11-24'));
     await waitForDayTimeline(page);
 
-    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
-    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).first();
-
-    await dayTab.focus();
-
-    await dayTab.press('ArrowLeft');
-    await weekTab.press(' ');
+    const returnWeek = page.getByTestId('schedules-return-week').first();
+    await expect(returnWeek).toBeVisible();
+    await returnWeek.focus();
+    await returnWeek.press('Enter');
     await waitForWeekViewReady(page);
-    await expect(weekTab).toBeVisible();
-
-    await weekTab.press('ArrowRight');
-    await dayTab.press(' ');
-    await waitForDayTimeline(page);
-    await expect(dayTab).toBeVisible();
+    await expect(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK)).toBeVisible();
   });
 });
