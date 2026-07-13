@@ -77,7 +77,10 @@ export const buildNextSlot = (iso: string): { start: Date; end: Date } => {
     hours += 1;
     minutes = 0;
   }
-  if (hours >= 24) {
+  // The create dialog currently stores a single date plus start/end times.
+  // Avoid producing a next-day end time (23:00 -> 00:00), which the dialog
+  // would otherwise interpret as an invalid same-day range.
+  if (hours >= 23) {
     return buildDefaultSlot(iso);
   }
   const start = new Date(base);
