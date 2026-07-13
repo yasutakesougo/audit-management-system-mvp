@@ -5,6 +5,7 @@ import { auditRepository } from '@/features/telemetry/repositories/FirestoreAudi
 
 export interface ScheduleOrchestratorDeps {
   repository: ScheduleRepository;
+  createSchedule: (input: CreateScheduleInput) => Promise<{ id: string | number }>;
   onSuccess?: () => void;
   showSnack: (severity: 'success' | 'error' | 'info', message: string) => void;
 }
@@ -15,7 +16,7 @@ export interface ScheduleOrchestratorDeps {
  * スケジュールの作成・移動・削除などの業務アクションを調整する Orchestrator。
  */
 export function useScheduleOrchestrator(deps: ScheduleOrchestratorDeps) {
-  const { repository, onSuccess, showSnack } = deps;
+  const { repository, createSchedule, onSuccess, showSnack } = deps;
 
   /**
    * スケジュールの新規作成
@@ -23,7 +24,7 @@ export function useScheduleOrchestrator(deps: ScheduleOrchestratorDeps) {
   const handleCreateSchedule = useCallback(async (input: CreateScheduleInput) => {
     const startTime = performance.now();
     try {
-      const created = await repository.create(input);
+      const created = await createSchedule(input);
       
       const auditEntry = recordAudit({
         action: 'CREATE_SCHEDULE',
@@ -56,7 +57,7 @@ export function useScheduleOrchestrator(deps: ScheduleOrchestratorDeps) {
       showSnack('error', `作成に失敗しました: ${message}`);
       throw e;
     }
-  }, [repository, onSuccess, showSnack]);
+  }, [createSchedule, onSuccess, showSnack]);
 
   /**
    * スケジュールの移動 (ドラッグ&ドロップ等)
