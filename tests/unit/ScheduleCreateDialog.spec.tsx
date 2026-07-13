@@ -90,9 +90,7 @@ describe('validateScheduleForm', () => {
     expect(result.isValid).toBe(false);
     expect(result.errors).toEqual([
       '予定タイトルを入力してください',
-      '開始日時を入力してください',
-      '終了日時を入力してください',
-      'サービス種別を選択してください'
+      '開始日時を入力してください'
     ]);
   });
 
@@ -120,18 +118,22 @@ describe('toCreateScheduleInput', () => {
 
     expect(() =>
       toCreateScheduleInput(buildForm({ startLocal: '', serviceType: 'normal' }))
-    ).toThrowError(/startLocal and endLocal are required/);
-
-    expect(() =>
-      toCreateScheduleInput(buildForm({ startLocal: 'a', endLocal: 'b', serviceType: '' }))
-    ).toThrowError(/serviceType is required/);
+    ).toThrowError(/startLocal is required/);
   });
 
-  it('maps optional fields to undefined when empty', () => {
-    const result = toCreateScheduleInput(buildForm({ locationName: '', notes: '' }));
+  it('maps optional fields and default values when empty', () => {
+    const result = toCreateScheduleInput(
+      buildForm({
+        userId: '',
+        endLocal: '',
+        serviceType: '',
+        locationName: '',
+        notes: '',
+      })
+    );
     expect(result).toMatchObject({
       title: 'テスト予定',
-      userId: 'user-1',
+      userId: null,
       startLocal: '2025-11-12T10:00',
       endLocal: '2025-11-12T11:00',
       serviceType: 'normal',
@@ -184,6 +186,7 @@ describe('ScheduleCreateDialog component', () => {
     );
 
     const user = userEvent.setup();
+    await user.clear(screen.getByTestId(TESTIDS['schedule-create-title']));
     await user.click(screen.getByTestId(TESTIDS['schedule-create-save']));
 
     const alert = await screen.findByTestId(TESTIDS['schedule-create-error-alert']);
@@ -223,6 +226,9 @@ describe('ScheduleCreateDialog component', () => {
     const endInput = screen.getByTestId(TESTIDS['schedule-create-end']) as HTMLInputElement;
     expect(startInput.value.endsWith('10:00')).toBe(true);
     expect(endInput.value.endsWith('11:00')).toBe(true);
+    expect(startInput).toBeRequired();
+    expect(endInput).not.toBeRequired();
+    expect(userInput).not.toBeRequired();
   });
 
   it('applies initial overrides when provided', async () => {
