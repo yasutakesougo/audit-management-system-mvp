@@ -23,7 +23,7 @@ export function useTodayMonitoringDeadlineActions(
 
     async function load(): Promise<void> {
       if (users.length === 0) {
-        if (active) setMonitoringInputs([]);
+        if (active) setMonitoringInputs((current) => (current.length === 0 ? current : []));
         return;
       }
 
@@ -50,7 +50,7 @@ export function useTodayMonitoringDeadlineActions(
     }
 
     void load().catch(() => {
-      if (active) setMonitoringInputs([]);
+      if (active) setMonitoringInputs((current) => (current.length === 0 ? current : []));
     });
 
     return () => {
