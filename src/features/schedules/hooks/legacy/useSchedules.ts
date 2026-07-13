@@ -21,7 +21,7 @@ export type { InlineScheduleDraft } from '../../domain/builders/inlineScheduleDr
 export type UseSchedulesResult = {
   items: SchedItem[];
   loading: boolean;
-  create: (draft: InlineScheduleDraft) => Promise<void>;
+  create: (draft: InlineScheduleDraft) => Promise<SchedItem>;
   update: (input: UpdateScheduleEventInput) => Promise<void>;
   remove: (eventId: string) => Promise<void>;
   lastError: ResultError | null;
@@ -171,7 +171,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     };
   }, [normalizedRange.from, normalizedRange.to, repository, reloadToken]);
 
-  const create = async (draft: InlineScheduleDraft) => {
+  const create = async (draft: InlineScheduleDraft): Promise<SchedItem> => {
     if (!draft.sourceInput) {
       throw new Error('Schedule draft is missing sourceInput');
     }
@@ -217,6 +217,8 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
           console.warn('[schedules] E2E localStorage write failed', error);
         }
       }
+
+      return created;
     } catch (error) {
       const safeError = toSafeError(error);
       const isConflict = isSchedulesConflictError(error);
