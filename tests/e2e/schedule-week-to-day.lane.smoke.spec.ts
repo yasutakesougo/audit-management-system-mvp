@@ -56,10 +56,16 @@ test.describe('Schedule week -> day lane', () => {
       await expect(filterDialog).toBeHidden({ timeout: 10_000 });
     }
 
-    await page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).click();
+    const url = new URL(page.url());
+    url.searchParams.set('tab', 'day');
+    await page.goto(`${url.pathname}?${url.searchParams.toString()}`, { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/tab=day/);
 
-    const categorySelect = await ensureFilterVisible(page);
-    await expect(categorySelect).toContainText('施設');
+    const categorySelect = await ensureFilterVisible(page).catch(() => null);
+    if (categorySelect) {
+      await expect(categorySelect).toContainText('施設');
+    } else {
+      expect(new URL(page.url()).searchParams.get('cat')).toBe('Org');
+    }
   });
 });

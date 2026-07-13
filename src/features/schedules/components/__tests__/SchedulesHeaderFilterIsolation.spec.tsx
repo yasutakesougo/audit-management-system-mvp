@@ -46,6 +46,25 @@ afterEach(() => {
 });
 
 describe('SchedulesHeader filter isolation', () => {
+  it('renders only visible modes and keeps Tabs unselected when current mode is hidden', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    render(
+      <MemoryRouter>
+        <SchedulesHeader {...baseProps} mode="day" modes={['week']} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('schedules-view-tab-week')).toBeInTheDocument();
+    expect(screen.queryByTestId('schedules-view-tab-day')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedules-view-tab-month')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-tab-ops')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-tab-list')).not.toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining('The `value` provided to the Tabs component is invalid'));
+
+    consoleError.mockRestore();
+  });
+
   it('calendar→ops: clears calendar params (cat, q, lane)', () => {
     // Start on "week" tab
     render(

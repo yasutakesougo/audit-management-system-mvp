@@ -22,6 +22,7 @@ import { OpsWeekBoard } from '@/features/schedules/components/ops/OpsWeekBoard';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import { getIsE2eForceSchedulesWrite } from '@/env';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import Button from '@mui/material/Button';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useScheduleOps } from '../hooks/useScheduleOps';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
@@ -149,6 +150,13 @@ export default function WeekPage() {
   const [searchParams] = useSearchParams();
   const todayFocusDate = searchParams.get('date');
   const isFromToday = searchParams.get('source') === 'today';
+  const isSupplementalMode = mode !== 'week';
+
+  const handleReturnToWeek = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'week');
+    navigate(`${location.pathname}?${next.toString()}`);
+  }, [location.pathname, navigate, searchParams]);
 
   // Ops: weekly drilldown handler — navigate to day tab with auto-create
   const handleOpsWeekDayClick = useCallback(
@@ -269,7 +277,7 @@ export default function WeekPage() {
             dayHref={dayViewHref}
             weekHref={weekViewHref}
             monthHref={monthViewHref}
-            modes={['day', 'week', 'month', 'ops', 'list']}
+            modes={['week']}
             prevTestId="schedules-prev-week"
             nextTestId="schedules-next-week"
           >
@@ -287,6 +295,20 @@ export default function WeekPage() {
         </div>
 
         <ScheduleReadOnlyAlert readOnlyReason={readOnlyReason} />
+
+        {isSupplementalMode && (
+          <div style={{ padding: '8px 16px 0' }}>
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleReturnToWeek}
+              data-testid="schedules-return-week"
+              aria-label="今週の予定へ戻る"
+            >
+              &lt; 今週の予定へ戻る
+            </Button>
+          </div>
+        )}
 
         {/* Today Deep-Link Banner */}
         {isFromToday && todayFocusDate && (

@@ -28,8 +28,6 @@ const openMonthView = async (page: Page) => {
   await waitForMonthViewReady(page);
 };
 
-const tablist = (page: Page) => page.getByRole('tablist').first();
-const tabByName = (page: Page, name: string | RegExp) => tablist(page).getByRole('tab', { name });
 const resolveTab = async (page: Page, label: string, testId?: string): Promise<Locator> => {
   if (testId) {
     const byTestId = page.getByTestId(testId);
@@ -48,7 +46,7 @@ test.describe('Schedules global navigation', () => {
     await bootSchedule(page);
   });
 
-  test('week view can hop to month and back', async ({ page }) => {
+  test('week view exposes only the week tab and month remains directly reachable', async ({ page }) => {
     await openWeekView(page);
 
     const weekTab = await resolveTab(page, '週', TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
@@ -62,26 +60,9 @@ test.describe('Schedules global navigation', () => {
     }
     await expect(weekTab.first()).toBeVisible({ timeout: 10_000 });
     await expect(weekTab.first()).toHaveAttribute('aria-selected', /true|false/);
+    await expect(page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_MONTH)).toHaveCount(0);
 
-    const monthTab = await resolveTab(page, '月', TESTIDS.SCHEDULES_WEEK_TAB_MONTH);
-    const monthTabCount = await monthTab.count();
-
-    if (monthTabCount === 0) {
-      // Missing is acceptable in some tenants.
-      test.info().annotations.push({
-        type: 'note',
-        description: 'month tab not found (allowed for smoke)',
-      });
-      return;
-    }
-
-    await expect(monthTab.first()).toBeVisible({ timeout: 10_000 });
-
-    try {
-      await monthTab.first().click({ timeout: 10_000 });
-    } catch {
-      await gotoMonth(page, TARGET_DATE);
-    }
+    await gotoMonth(page, TARGET_DATE);
     await waitForMonthViewReady(page);
     await expect(page).toHaveURL(/tab=month/);
     const monthChip = await getOrgChipText(page, 'month');
@@ -98,11 +79,7 @@ test.describe('Schedules global navigation', () => {
       }
     }
 
-    try {
-      await weekTab.first().click({ timeout: 10_000 });
-    } catch {
-      await gotoWeek(page, TARGET_DATE);
-    }
+    await page.getByTestId('schedules-return-week').click();
     await waitForWeekViewReady(page);
     await expect(page).toHaveURL(/tab=week/);
     const weekChip = await getOrgChipText(page, 'week');
@@ -136,22 +113,8 @@ test.describe('Schedules global navigation', () => {
     await waitForWeekViewReady(page);
   });
 
-  test('list view keeps tab navigation available', async ({ page }) => {
-    await openWeekView(page);
-    const listTab = await resolveTab(page, 'リスト');
-    const listTabCount = await listTab.count();
-
-    if (listTabCount === 0) {
-      // Missing is acceptable in some tenants.
-      test.info().annotations.push({
-        type: 'note',
-        description: 'list tab not found (allowed for smoke)',
-      });
-      return;
-    }
-
-    await expect(listTab.first()).toBeVisible({ timeout: 10_000 });
-    await listTab.first().click({ timeout: 10_000 });
+  test('list view remains directly reachable and can return to week', async ({ page }) => {
+    await page.goto('/schedules/week?tab=list', { waitUntil: 'domcontentloaded' });
 
     const listRoot = page.getByTestId(TESTIDS.SCHEDULE_WEEK_LIST);
     const listEmpty = page.getByTestId(TESTIDS.SCHEDULE_WEEK_EMPTY);
@@ -160,8 +123,8 @@ test.describe('Schedules global navigation', () => {
       listEmpty.waitFor({ state: 'visible', timeout: 10_000 }),
     ]);
 
-    await expect(tabByName(page, '週')).toBeVisible({ timeout: 10_000 });
-    await expect(tabByName(page, '月')).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId('schedules-return-week').click();
+    await waitForWeekViewReady(page);
   });
 
   test('month view opened directly still links back to week', async ({ page }) => {
@@ -169,19 +132,11 @@ test.describe('Schedules global navigation', () => {
     // Direct month access may normalize to week; accept current behavior
     await expect(page).toHaveURL(/\/schedules\/(week|month)/);
 
-    // Validate month navigation is accessible (if tab exists, use it)
-    const monthTab = await resolveTab(page, '月', TESTIDS.SCHEDULES_WEEK_TAB_MONTH);
-    if ((await monthTab.count()) > 0) {
-      await monthTab.first().click({ timeout: 10_000 });
-      await waitForMonthViewReady(page);
-      await expect(page).toHaveURL(/tab=month/);
-    }
+    await waitForMonthViewReady(page);
+    await expect(page).toHaveURL(/tab=month/);
 
     // Validate week navigation
-    const weekTab = await resolveTab(page, '週', TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
-    if ((await weekTab.count()) > 0) {
-      await weekTab.first().click({ timeout: 10_000 });
-      await waitForWeekViewReady(page);
-    }
+    await page.getByTestId('schedules-return-week').click();
+    await waitForWeekViewReady(page);
   });
 });
