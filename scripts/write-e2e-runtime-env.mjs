@@ -30,6 +30,10 @@ const e2eRuntimeEnv = {
   VITE_SKIP_LOGIN: "1",
   VITE_E2E_MSAL_MOCK: "1",
   VITE_SKIP_SHAREPOINT: "1",
+  VITE_FORCE_SHAREPOINT: "0",
+  VITE_DATA_PROVIDER: "memory",
+  VITE_FEATURE_SCHEDULES: "1",
+  VITE_FEATURE_SCHEDULES_WEEK_V2: "1",
   // Dummy SharePoint settings to pass zod validation
   VITE_SP_RESOURCE: "https://contoso.sharepoint.com",
   VITE_SP_SITE_RELATIVE: "/sites/Audit",
