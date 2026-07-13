@@ -219,13 +219,7 @@ export default function WeekPage() {
       aria-label="週間スケジュール"
       aria-describedby={rangeDescriptionId}
       aria-labelledby={headingId}
-      data-testid={
-        mode === 'month'
-          ? 'schedules-month-page'
-          : mode === 'day'
-            ? 'schedules-day-shell'
-            : 'schedules-week-page'
-      }
+      data-testid="schedules-page-root"
       tabIndex={-1}
       style={{ paddingBottom: 24 }}
     >
