@@ -36,6 +36,7 @@ env:
   # E2E Environment configuration
   VITE_E2E: '1'
   VITE_E2E_MSAL_MOCK: '1'
+  VITE_E2E_FORCE_SCHEDULES_WRITE: '1'
   VITE_SKIP_LOGIN: '1'
   VITE_SKIP_SHAREPOINT: '1'
   VITE_DEMO_MODE: '1'
@@ -95,20 +96,41 @@ jobs:
       
       - name: Build application (preview mode)
         id: build_preview
-        run: npm run build
+        run: |
+          npm run build
+          node scripts/write-e2e-runtime-env.mjs
         env:
+          NODE_ENV: 'production'
           VITE_E2E: '1'
           VITE_E2E_MSAL_MOCK: '1'
           VITE_SKIP_LOGIN: '1'
+          VITE_SKIP_SHAREPOINT: '1'
+          VITE_FORCE_SHAREPOINT: '0'
+          VITE_DATA_PROVIDER: 'memory'
+          VITE_DEMO_MODE: '1'
           VITE_FEATURE_SCHEDULES: '1'
+          VITE_FEATURE_SCHEDULES_WEEK_V2: '1'
       
       - name: Start preview server
         id: start_preview
-        run: npm run preview -- --host 127.0.0.1 --port 5173 --strictPort &
+        env:
+          NODE_ENV: 'production'
+        run: |
+          nohup npm run preview -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/e2e-preview.log 2>&1 &
+          echo "Preview server starting on port 5173"
       
       - name: Wait for preview server
         id: wait_preview
         run: npx wait-on http://127.0.0.1:5173 --timeout 60000
+
+      - name: Capture bootstrap diagnostics
+        id: bootstrap_diagnostics
+        if: always()
+        run: node scripts/ci/collect-e2e-bootstrap-diagnostics.mjs
+        env:
+          BOOTSTRAP_DIAG_URL: http://127.0.0.1:5173/schedules/week?tab=week
+          BOOTSTRAP_DIAG_DIR: reports/e2e-bootstrap
+        continue-on-error: true
       
       - name: Run deep E2E tests (non-smoke)
         id: deep_tests
@@ -126,7 +148,6 @@ jobs:
             npx playwright test ${{ github.event.inputs.test_pattern }} \
               --config=playwright.config.ts \
               --project=chromium \
-              --reporter=list,junit,html \
               --retries=2
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "PR lane: running schedule/day-focused deep tests only"
@@ -136,7 +157,6 @@ jobs:
               tests/e2e/dashboard-schedule-flow.spec.ts \
               --config=playwright.config.ts \
               --project=chromium \
-              --reporter=list,junit,html \
               --retries=1 \
               --workers=1
           else
@@ -145,7 +165,6 @@ jobs:
               --config=playwright.config.ts \
               --project=chromium \
               --grep-invert smoke \
-              --reporter=list,junit,html \
               --retries=2
           fi
         continue-on-error: true
@@ -168,11 +187,34 @@ jobs:
             echo "**Failures:** ${failures:-0}" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Classify deep E2E failures
+        if: always()
+        env:
+          DEEP_E2E_LANE: deep-non-smoke
+        run: |
+          node scripts/ci/classify-deep-e2e-failures.mjs \
+            --input test-results/results.json \
+            --json reports/deep-e2e-failure-taxonomy.json \
+            --markdown reports/deep-e2e-failure-taxonomy.md
+
       - name: Classify deep test completion
         if: always()
         run: |
           cancellation_step="none"
           direct_cancellation="false"
+          setup_failure_step="none"
+          if [ "${{ steps.install_playwright_browsers.outcome }}" = "failure" ]; then
+            setup_failure_step="Install Playwright (Chromium only)"
+          elif [ "${{ steps.install_playwright_deps.outcome }}" = "failure" ]; then
+            setup_failure_step="Install Playwright system dependencies"
+          elif [ "${{ steps.build_preview.outcome }}" = "failure" ]; then
+            setup_failure_step="Build application (preview mode)"
+          elif [ "${{ steps.start_preview.outcome }}" = "failure" ]; then
+            setup_failure_step="Start preview server"
+          elif [ "${{ steps.wait_preview.outcome }}" = "failure" ]; then
+            setup_failure_step="Wait for preview server"
+          fi
+
           if [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
             direct_cancellation="true"
             if [ "${{ steps.wait_preview.outcome }}" = "cancelled" ]; then
@@ -193,9 +235,15 @@ jobs:
           if [ "${{ steps.deep_tests.outcome }}" = "failure" ]; then
             classification="deep_tests_failed"
             reason="Deep tests reported failure."
+          elif [ "${setup_failure_step}" != "none" ]; then
+            classification="deep_setup_failed"
+            reason="Deep test setup failed: ${setup_failure_step}"
           elif [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
             classification="deep_tests_cancelled"
             reason="Deep test execution was cancelled: ${cancellation_step}"
+          elif [ "${{ steps.deep_tests.outcome }}" = "skipped" ]; then
+            classification="deep_tests_skipped"
+            reason="Deep test step did not execute."
           fi
 
           cat <<EOF > deep-cancel-audit.json
@@ -208,6 +256,7 @@ jobs:
             "classification": "${classification}",
             "direct_cancellation": ${direct_cancellation},
             "cancellation_step": "${cancellation_step}",
+            "setup_failure_step": "${setup_failure_step}",
             "deep_tests_outcome": "${{ steps.deep_tests.outcome }}",
             "head_sha": "${{ github.sha }}"
           }
@@ -242,6 +291,17 @@ jobs:
             deep-cancel-audit.json
           retention-days: 14
           if-no-files-found: warn
+
+      - name: Upload bootstrap diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-bootstrap-diagnostics-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            reports/e2e-bootstrap/
+            /tmp/e2e-preview.log
+          retention-days: 14
+          if-no-files-found: warn
       
       - name: Upload JUnit report
         if: always()
@@ -252,6 +312,17 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       
+      - name: Upload deep E2E failure taxonomy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-e2e-failure-taxonomy-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            reports/deep-e2e-failure-taxonomy.json
+            reports/deep-e2e-failure-taxonomy.md
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Upload artifacts on partial failure
         if: failure() || steps.deep_tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -300,7 +371,7 @@ jobs:
           if-no-files-found: ignore
       
       - name: Fail job if tests failed
-        if: steps.deep_tests.outcome == 'failure' && github.event_name != 'pull_request'
+        if: steps.deep_tests.outcome == 'failure'
         run: exit 1
 
   deep-tests-integration:
