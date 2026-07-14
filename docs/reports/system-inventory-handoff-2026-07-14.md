@@ -21,7 +21,7 @@
 | nurse | `/nurse/*` | nurse | `RequireAudience viewer` |
 | hubs | `/planning`, `/operations`, `/master`, `/platform`, `/severe` など | `HubLanding` | `RequireAudience` は hub定義の `requiredRole` |
 
-`src/features` は48個のトップレベル機能を持つ。調査対象の主要ドメインは `attendance`, `daily`, `records`, `reports`, `billing`, `users`, `schedules`, `kiosk`, `kokuhoren-*`, `service-provision`。
+`src/features` 配下には、多数のトップレベル機能モジュールが配置されている。調査対象の主要ドメインは `attendance`, `daily`, `records`, `reports`, `billing`, `users`, `schedules`, `kiosk`, `kokuhoren-*`, `service-provision`。
 
 ## 主要フロー
 
