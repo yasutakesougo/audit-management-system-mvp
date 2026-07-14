@@ -55,6 +55,7 @@ describe('DataIntegrityPage', () => {
     expect(screen.getByTestId('data-integrity-page')).toBeDefined();
     expect(screen.getByTestId('scan-action-btn')).toBeDefined();
     expect(screen.getByText('スキャン開始')).toBeDefined();
+    expect(screen.getByText(`SharePoint のデータを Zod スキーマで検証し、${DUPLICATE_REPORT_TEXT.scanDescription}`)).toBeDefined();
   });
 
   it('shows progress during scanning', () => {
