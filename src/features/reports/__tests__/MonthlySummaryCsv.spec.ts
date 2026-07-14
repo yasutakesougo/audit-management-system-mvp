@@ -4,7 +4,7 @@ import {
   buildMonthlySummaryCsvContent,
   buildMonthlySummaryRows,
   exportMonthlySummary,
-} from '../monthly/MonthlySummaryExcel';
+} from '../monthly/MonthlySummaryCsv';
 
 const makeRecord = (overrides: Partial<DailyRecordItem> = {}): DailyRecordItem => ({
   date: '2026-03-01',
