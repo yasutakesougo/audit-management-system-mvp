@@ -121,7 +121,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   const items: NavItem[] = [
     // --- 1. 現場の実行 (today) ---
     ...(todayOpsEnabled
-      ? [createHubNavItem('today', { testId: TESTIDS.nav.todayOps })]
+      ? [createHubNavItem('today', {
+          testId: TESTIDS.nav.todayOps,
+          // Child routes have their own sidebar entries. Keep aria-current
+          // unique by marking the hub entry active only on its root route.
+          isActive: (pathname) => pathname === '/today',
+        })]
       : []),
     TODAY_ROUTES.TRANSPORT(isFieldStaffShell),
     TODAY_ROUTES.DAILY_SUPPORT(isFieldStaffShell),
@@ -158,7 +163,10 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     createHubNavItem('operations', { label: '運営・管理', tier: 'admin' }),
     OPS_ROUTES.METRICS(isFieldStaffShell),
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
-    createHubNavItem('master'),
+    createHubNavItem('master', {
+      // /users and /staff have dedicated sidebar entries.
+      isActive: (pathname) => pathname === '/master',
+    }),
     createHubNavItem('platform'),
     MASTER_ROUTES.USERS(isFieldStaffShell),
     MASTER_ROUTES.STAFF(isFieldStaffShell),
