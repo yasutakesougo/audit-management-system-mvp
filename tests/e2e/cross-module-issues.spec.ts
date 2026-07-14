@@ -198,7 +198,7 @@ test.describe('C-4: Cross-Module Issues E2E', () => {
 
       const hud = getDashboardHud(page);
       if ((await hud.count()) === 0) {
-        test.skip('No dashboard HUD found for integration validation', () => {});
+        test.skip(true, 'No dashboard HUD found for integration validation');
         return;
       }
       await expect(hud).toBeVisible();
@@ -209,7 +209,7 @@ test.describe('C-4: Cross-Module Issues E2E', () => {
       // アラートの存在確認
       const alertCount = await alerts.count();
       if (alertCount === 0) {
-        test.skip('No alerts found for integration validation', () => {});
+        test.skip(true, 'No alerts found for integration validation');
         return;
       }
 
@@ -248,7 +248,7 @@ test.describe('C-4: Cross-Module Issues E2E', () => {
       // 2. Safety HUDアラート確認
       const hud = getDashboardHud(page);
       if ((await hud.count()) === 0) {
-        test.skip('No dashboard HUD found for full circle navigation test', () => {});
+        test.skip(true, 'No dashboard HUD found for full circle navigation test');
         return;
       }
       await expect(hud).toBeVisible();
@@ -300,7 +300,7 @@ test.describe('C-4: Cross-Module Issues E2E', () => {
           }
         }
       } else {
-        test.skip('No alerts found for full circle navigation test', () => {});
+        test.skip(true, 'No alerts found for full circle navigation test');
       }
     });
   });
