@@ -1,4 +1,5 @@
 export interface VitestHealthSummary {
+  expectedFiles: number;
   startedFiles: number;
   endedFiles: number;
   lastStartedFile: string | null;
@@ -8,6 +9,7 @@ export interface VitestHealthSummary {
   vitestExitCode: number;
   invalidMemoryLines: number;
   logFilePresent: boolean;
+  memoryFilePresent: boolean;
   healthy: boolean;
 }
 
@@ -16,6 +18,7 @@ export function summarizeVitestHealth(input?: {
   memoryText?: string;
   vitestExitCode?: number | string;
   logFilePresent?: boolean;
+  memoryFilePresent?: boolean;
 }): VitestHealthSummary;
 
 export function runVitestHealthAssertion(input: {
