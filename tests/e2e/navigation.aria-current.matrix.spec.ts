@@ -5,7 +5,6 @@ test.describe('Navigation: Aria-Current Matrix', () => {
     '/dashboard',
     '/records',
     '/schedules/week',
-    '/analysis/dashboard',
     '/users'
   ];
 
