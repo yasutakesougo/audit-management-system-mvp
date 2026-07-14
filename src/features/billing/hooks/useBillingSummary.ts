@@ -1,11 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBillingOrders, billingOrdersQueryKey } from '../useBillingOrders';
-import { useBillingOrderRepository } from './useBillingOrderRepository';
 import { useUsersStore } from '@/features/users/store';
 import { useStaffStore } from '@/features/staff/store';
 import { useAuth } from '@/auth/useAuth';
-import type { BillingPersistenceDiagnostics } from '../repository';
+import type { BillingOrderRepository, BillingPersistenceDiagnostics } from '../ports/billingOrderRepository';
 
 export interface AggregatedBillingRecord {
   ordererCode: string;
@@ -47,8 +46,10 @@ export const isServedOrder = (served: unknown): boolean => {
   return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'served' || normalized === '提供済み';
 };
 
-export function useBillingSummary(selectedMonth: string): BillingSummary {
-  const repository = useBillingOrderRepository();
+export function useBillingSummary(
+  selectedMonth: string,
+  repository: BillingOrderRepository,
+): BillingSummary {
   const queryClient = useQueryClient();
   const { account } = useAuth();
   

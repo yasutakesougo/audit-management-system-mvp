@@ -35,7 +35,8 @@ import {
   AccountCircle as AccountCircleIcon,
   Check as CheckIcon,
 } from '@mui/icons-material';
-import { useBillingSummary } from '@/features/billing/hooks/useBillingSummary';
+import { useBillingSummary } from '../hooks/useBillingSummary';
+import type { BillingOrderRepository } from '../ports/billingOrderRepository';
 
 type ActiveTab = '利用者' | '職員' | 'ゲスト' | 'すべて';
 
@@ -63,7 +64,11 @@ const buildMonthOptions = (availableMonths: string[], selectedMonth: string): st
     .sort((a, b) => b.localeCompare(a));
 };
 
-export default function BillingPage() {
+export type BillingPageProps = {
+  readonly repository: BillingOrderRepository;
+};
+
+export default function BillingPage({ repository }: BillingPageProps) {
   const [selectedMonth, setSelectedMonth] = useState(() => toMonthKey(new Date()));
   const [hasUserSelectedMonth, setHasUserSelectedMonth] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('利用者');
@@ -87,7 +92,7 @@ export default function BillingPage() {
     togglePaymentStatus,
     bulkSettle,
     exportCsv,
-  } = useBillingSummary(selectedMonth);
+  } = useBillingSummary(selectedMonth, repository);
 
   useEffect(() => {
     if (!hasUserSelectedMonth && availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {

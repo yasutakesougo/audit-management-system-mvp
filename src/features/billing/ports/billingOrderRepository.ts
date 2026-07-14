@@ -1,4 +1,4 @@
-import type { BillingOrder } from './types';
+import type { BillingOrder } from '../types';
 
 export type BillingPersistenceDiagnosticStatus =
   | 'resolved'
@@ -18,7 +18,7 @@ export interface BillingPersistenceDiagnostics {
   usesList3Fallback: boolean;
 }
 
-/** Repository インターフェース */
+/** Billing order persistence contract. */
 export interface BillingOrderRepository {
   list(): Promise<BillingOrder[]>;
   isPersistenceColumnsResolved(): Promise<boolean>;
@@ -27,12 +27,12 @@ export interface BillingOrderRepository {
     id: number,
     status: '未精算' | '精算済み',
     paidAt?: string,
-    paidBy?: string
+    paidBy?: string,
   ): Promise<void>;
   bulkUpdatePaymentStatus(
     ids: number[],
     status: '未精算' | '精算済み',
     paidAt?: string,
-    paidBy?: string
+    paidBy?: string,
   ): Promise<void>;
 }

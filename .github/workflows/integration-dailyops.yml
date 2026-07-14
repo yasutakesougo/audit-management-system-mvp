@@ -64,22 +64,7 @@ jobs:
         run: npx playwright install-deps chromium
 
       - name: Restore Playwright storageState
-        shell: bash
-        run: |
-          if [ -z "${PW_STORAGE_STATE_B64:-}" ]; then
-            echo "::error::PW_STORAGE_STATE_B64 is empty. Regenerate the Playwright storage state and update the GitHub secret before running DailyOps integration."
-            exit 1
-          fi
-          mkdir -p tests/.auth
-          if ! echo "${PW_STORAGE_STATE_B64}" | base64 -d > tests/.auth/storageState.json; then
-            echo "::error::PW_STORAGE_STATE_B64 is not valid base64."
-            exit 1
-          fi
-          if [ ! -s tests/.auth/storageState.json ]; then
-            echo "::error::Decoded Playwright storageState is empty. Regenerate PW_STORAGE_STATE_B64."
-            exit 1
-          fi
-          node -e "const fs=require('node:fs'); const p='tests/.auth/storageState.json'; try { const state=JSON.parse(fs.readFileSync(p,'utf8')); if (!Array.isArray(state.cookies) || state.cookies.length===0) { console.error('::error::Decoded storageState has no cookies. Regenerate PW_STORAGE_STATE_B64.'); process.exit(1); } } catch (error) { console.error('::error::Decoded PW_STORAGE_STATE_B64 is not valid Playwright storageState JSON.'); console.error(error.message); process.exit(1); }"
+        run: node scripts/ci/restore-playwright-storage-state.mjs
         env:
           PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
 

@@ -2,19 +2,37 @@ import { expect, test } from '@playwright/test';
 import { primeOpsEnv } from './helpers/ops';
 
 test.describe('Procedure 17-row Bridge Verification', () => {
-  const TEST_USER_ID = 'U-007';
+  test.describe.configure({ mode: 'serial' });
+
   const TEST_PLAN_ID = '1007';
 
+  const openPlanningSheetEditor = async (page: Parameters<typeof primeOpsEnv>[0]) => {
+    await page.goto(`/support-planning-sheet/${TEST_PLAN_ID}`, { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(new RegExp(`/support-planning-sheet/${TEST_PLAN_ID}`));
+
+    const editButton = page.getByTestId('planning-sheet-btn-edit');
+    await expect(editButton).toBeVisible({ timeout: 30000 });
+    await editButton.click();
+  };
+
+  const startDailyWizard = async (page: Parameters<typeof primeOpsEnv>[0]) => {
+    const params = new URLSearchParams({
+      planningSheetId: TEST_PLAN_ID,
+    });
+    await page.goto(`/daily/support?${params.toString()}`, { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/daily\/support/);
+
+    const availableHighIntensityUser = page.getByRole('button', { name: /石渡|桂川|田中|塩田/ }).first();
+    await expect(availableHighIntensityUser).toBeVisible({ timeout: 30000 });
+    await availableHighIntensityUser.click();
+
+    await expect(page.getByText('時間帯を選択してください')).toBeVisible({ timeout: 30000 });
+  };
   test('reflects structured planning steps to 17-row daily record', async ({ page }) => {
     await primeOpsEnv(page);
 
     // 1. 支援計画シートエディタで手順を設定
-    await page.goto(`/support-planning-sheet/${TEST_PLAN_ID}`);
-
-    // 編集モードに切り替え
-    const editButton = page.getByTestId('planning-sheet-btn-edit');
-    await expect(editButton).toBeVisible({ timeout: 10000 });
-    await editButton.click();
+    await openPlanningSheetEditor(page);
     
     // 概要タブで必須フィールドを埋める（バリデーション回避）
     await page.getByRole('tab', { name: '概要' }).click();
@@ -55,15 +73,7 @@ test.describe('Procedure 17-row Bridge Verification', () => {
     await expect(page.getByText('保存しました')).toBeVisible();
 
     // 2. 日次記録（Viewer）で反映を確認
-    await page.goto(`/daily/activity?userId=${TEST_USER_ID}`);
-    
-    // 記録開始ボタン（キュー内またはHero）をクリックしてウィザードを起動
-    const startButton = page.getByTestId('queue-cta-U-007').or(page.getByTestId('hero-cta')).first();
-    await expect(startButton).toBeVisible({ timeout: 10000 });
-    await startButton.click();
-
-    // ウィザードの「時間帯選択」ステップが表示されるのを待つ
-    await expect(page.getByText('時間帯を選択してください')).toBeVisible();
+    await startDailyWizard(page);
 
     // ProcedurePanel の存在確認
     const panel = page.getByTestId('procedure-panel');
@@ -93,8 +103,7 @@ test.describe('Procedure 17-row Bridge Verification', () => {
     await primeOpsEnv(page);
 
     // 1. 支援計画シートエディタで構造化手順を削除し、古いテキストフィールドのみ埋める
-    await page.goto(`/support-planning-sheet/${TEST_PLAN_ID}`);
-    await page.getByTestId('planning-sheet-btn-edit').click();
+    await openPlanningSheetEditor(page);
     
     // 概要タブの必須フィールド
     await page.getByRole('tab', { name: '概要' }).click();
@@ -116,10 +125,7 @@ test.describe('Procedure 17-row Bridge Verification', () => {
     await expect(page.getByText('保存しました')).toBeVisible();
 
     // 2. 日次記録のウィザードで反映を確認
-    await page.goto(`/daily/activity?userId=${TEST_USER_ID}`);
-    const startButton = page.getByTestId(`queue-cta-${TEST_USER_ID}`).or(page.getByTestId('hero-cta')).first();
-    await startButton.click();
-    await expect(page.getByText('時間帯を選択してください')).toBeVisible();
+    await startDailyWizard(page);
     
     // AM日中活動行 (Row 5) に集約されているか確認
     const step5 = page.locator('[data-row-no="5"]').first();

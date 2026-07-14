@@ -7,14 +7,14 @@ This document lists ESLint-enforced architectural patterns that prevent common v
 ADR-024 のモジュール境界は dependency-cruiser で検査する。
 
 - 運用手順: [Modular Monolith Migration Playbook](docs/architecture/modular-monolith-migration-playbook.md)
-- `record-quality` の実証完了時点の baseline は **921件** とし、以後は増加を認めない。
+- 現在の baseline は **919件** とし、以後は増加を認めない。
 
 - `npm run arch:check`: 現在の known violations を許容し、新しい違反だけを失敗させる。
 - `npm run arch:baseline`: 違反を解消した後にベースラインを再生成する。
 - `.dependency-cruiser-known-violations.json` への手編集や、変更と無関係な違反追加は禁止する。
 - ベースライン差分は、違反が減っていること、または ADR で明示承認された例外だけが
   追加されていることをレビューする。
-- `arch:check` の結果はPR本文に記録し、baselineが921件以下かつ変更前以下であることを
+- `arch:check` の結果はPR本文に記録し、baselineが919件以下かつ変更前以下であることを
   確認する。
 
 検査対象は feature 間の内部パス参照、domain から外部基盤への依存、

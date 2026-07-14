@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import BillingPage from '@/pages/BillingPage';
+import { BillingPage, type BillingOrderRepository } from '@/features/billing';
 
 const billingSummaryState = vi.hoisted(() => ({
   isPersistenceMissing: false,
@@ -34,6 +34,8 @@ vi.mock('@/features/billing/hooks/useBillingSummary', () => ({
   }),
 }));
 
+const repository = {} as BillingOrderRepository;
+
 describe('BillingPage CSV export confirmation', () => {
   beforeEach(() => {
     billingSummaryState.isPersistenceMissing = false;
@@ -48,7 +50,7 @@ describe('BillingPage CSV export confirmation', () => {
   it('exports CSV without confirmation when payment persistence is available', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
     fireEvent.click(screen.getByRole('button', { name: /CSV出力/ }));
 
     expect(confirmSpy).not.toHaveBeenCalled();
@@ -59,7 +61,7 @@ describe('BillingPage CSV export confirmation', () => {
     billingSummaryState.isPersistenceMissing = true;
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
     fireEvent.click(screen.getByRole('button', { name: /CSV出力/ }));
 
     expect(confirmSpy).toHaveBeenCalledWith(
@@ -72,7 +74,7 @@ describe('BillingPage CSV export confirmation', () => {
     billingSummaryState.isPersistenceMissing = true;
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
     fireEvent.click(screen.getByRole('button', { name: /CSV出力/ }));
 
     expect(exportCsvMock).toHaveBeenCalledWith('利用者');
@@ -81,7 +83,7 @@ describe('BillingPage CSV export confirmation', () => {
   it('shows a stronger warning when payment persistence is missing', () => {
     billingSummaryState.isPersistenceMissing = true;
 
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
 
     expect(screen.getByText(/PaymentStatus \/ PaidAt \/ PaidBy/)).toBeInTheDocument();
     expect(screen.getByText(/CSVの精算状況を正式な精算結果として扱わないでください/)).toBeInTheDocument();
@@ -92,7 +94,7 @@ describe('BillingPage CSV export confirmation', () => {
     billingSummaryState.hasLocalPaymentState = true;
     billingSummaryState.localPaymentStateCount = 2;
 
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
 
     expect(screen.getByText(/端末内の過去一時状態が残っています/)).toBeInTheDocument();
     expect(screen.getByText(/SharePoint の精算状態を正本として表示しています/)).toBeInTheDocument();
@@ -100,7 +102,7 @@ describe('BillingPage CSV export confirmation', () => {
   });
 
   it('does not show a local temporary state notice when no LocalStorage payment state remains', () => {
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
 
     expect(
       screen.queryByText(/端末内の過去一時状態が残っています/)
@@ -112,7 +114,7 @@ describe('BillingPage CSV export confirmation', () => {
     billingSummaryState.hasLocalPaymentState = true;
     billingSummaryState.localPaymentStateCount = 1;
 
-    render(<BillingPage />);
+    render(<BillingPage repository={repository} />);
 
     expect(screen.getByText(/端末内の一時状態が表示やCSVへ影響する可能性があります/)).toBeInTheDocument();
     expect(screen.getByText(/端末内一時状態:\s*1件/)).toBeInTheDocument();

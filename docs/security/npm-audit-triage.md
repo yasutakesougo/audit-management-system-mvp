@@ -1,6 +1,7 @@
 # npm audit（omit=dev）棚卸しメモ
 
 更新日: 2026-07-07  
+補足: 2026-07-14 時点の最新 `main` では、`xlsx` direct dependency は存在しない。月次サマリ出力は CSV 契約であり、公式帳票 Excel は `exceljs` 系の別機能として扱う。
 実行条件:
 - `npm audit --omit=dev --json`  
 - `npm audit --omit=dev`
@@ -15,7 +16,7 @@
 
 | パッケージ | installed | severity | advisory | fix availability | major update required | app runtime impact |
 |---|---:|---|---|---|---|---|
-| xlsx | 0.18.5 | high | GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9 | none | no | yes（アプリが `xlsx` を直接利用） |
+| xlsx | 0.18.5 | high | GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9 | none | no | 履歴上の検出。2026-07-14 時点の最新 `main` では direct dependency なし |
 | @blocknote/core | 0.47.3 | moderate | UUID経由（GHSA-w5hq-g745-h8pq） | 0.51.4 | yes | yes（エディタ機能として直接利用） |
 | @blocknote/mantine | 0.47.3 | moderate | UUID経由（GHSA-w5hq-g745-h8pq） | 0.51.4 | yes | yes（エディタ機能として間接〜直接利用） |
 | @blocknote/react | 0.47.3 | moderate | UUID経由（GHSA-w5hq-g745-h8pq） | 0.51.4 | yes | yes（エディタ機能として間接〜直接利用） |
@@ -26,7 +27,7 @@
 
 ## 分類
 
-- `fixAvailable = false`: xlsx
+- `fixAvailable = false`: xlsx（履歴上の検出。現行 `main` では direct dependency なし）
 - `major update required`: firebase、@blocknote、exceljs 経由の uuid、undici（firebase経由）
 - `app runtime impact`: 上記 8件すべて
 
@@ -34,13 +35,13 @@
 
 - Firebase の major 更新
 - `@blocknote` 系 major 更新
-- `xlsx` の置換・機能削減を伴う対応
+- `xlsx` の置換・機能削減を伴う対応（現行 `main` では月次サマリが CSV 契約）
 - アプリ実装（runtime code）変更
 - lockfile 更新
 
 ## 次レーン候補（分離PR）
 
-1. `xlsx` No-fix（fixAvailable=false）対応方針の確認（暫定継続）
+1. `xlsx` No-fix（fixAvailable=false）対応方針の確認（2026-07-14 時点では direct dependency なしとして再分類）
 2. firebase major update（互換性影響が大きいため別PR）
 3. `@blocknote` major update（UI/編集機能影響を見極める別PR）
 4. `xlsx` 代替 / 機能維持を含む更新候補（別PR）

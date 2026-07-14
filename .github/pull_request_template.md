@@ -101,7 +101,7 @@
 - [ ] 外部参照を公開 `index.ts` に限定し、新しい内部パス参照を追加していない
 - [ ] domain から UI / adapter / SharePoint / Firestore / localStorage への依存がない
 - [ ] Repository interface は ports、基盤実装は adapters、全体の組み立ては `src/app` に置いた
-- [ ] `npm run arch:check` が新規違反0、baseline 921以下で通った
+- [ ] `npm run arch:check` が新規違反0、baseline 919以下で通った
 - [ ] shared/commonへ移動した場合、ADR-024の5条件をすべて満たす根拠を記載した
 - [ ] 未変更モジュールの再配置や、別モジュールの移行を混在させていない
 
