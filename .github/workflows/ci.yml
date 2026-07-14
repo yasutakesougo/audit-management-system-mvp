@@ -250,7 +250,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const runId = context.runId;
-            const runAttempt = Number(context.runAttempt || 1);
+            const runAttempt = Number(process.env.GITHUB_RUN_ATTEMPT || context.runAttempt || 1);
             const currentAttempt = isNaN(runAttempt) ? 1 : runAttempt;
 
             const jobs = await github.paginate(
