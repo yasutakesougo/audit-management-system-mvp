@@ -110,6 +110,7 @@ const EMPTY_VALUE_MARK = '<空>';
 export const DUPLICATE_REPORT_TEXT = {
   possible: '重複の可能性',
   possibleRecordsMessage: '重複の可能性がある記録があります',
+  scanDescription: '主要ビジネスキーの重複の可能性を検知します。',
   keyLabel: '重複キー',
   countLabel: '重複件数',
   duplicateTypeLabel: '重複種別',
