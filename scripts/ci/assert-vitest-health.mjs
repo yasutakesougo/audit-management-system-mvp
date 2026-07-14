@@ -2,7 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const UNHANDLED_ERROR_PATTERN = /unhandled (?:error|rejection)/i;
+const ESCAPE = String.fromCharCode(27);
+const BELL = String.fromCharCode(7);
+const ANSI_PATTERN = new RegExp(
+  `${ESCAPE}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BELL}]*(?:${BELL}|${ESCAPE}\\\\))`,
+  'g',
+);
+const VITEST_RESULT_LINE_PATTERN = /^\s*(?:✓|×)\s+\S+\.(?:spec|test)\.[cm]?[jt]sx?\s+>\s+/;
+const JEST_RESULT_LINE_PATTERN = /^\s*(?:PASS|FAIL)\s+\S+\.(?:spec|test)\.[cm]?[jt]sx?(?:\s|$)/;
+const UNHANDLED_ERROR_PATTERN = /^\s*(?:[-━⎯]+\s*)?unhandled (?:error|rejection)s?(?:\s*[-━⎯]+)?\s*$/i;
 const WORKER_ABNORMAL_EXIT_PATTERN = /worker exited unexpectedly|worker forks emitted error|timeout terminating forks worker/i;
 
 const parseExitCode = (value) => {
@@ -10,7 +18,33 @@ const parseExitCode = (value) => {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 1;
 };
 
-export function summarizeVitestHealth({ logText = '', memoryText = '', vitestExitCode = 1, logFilePresent = true } = {}) {
+const stripAnsi = (line) => line.replace(ANSI_PATTERN, '');
+
+const isTestResultLine = (line) =>
+  VITEST_RESULT_LINE_PATTERN.test(line) || JEST_RESULT_LINE_PATTERN.test(line);
+
+const countSignalBlocks = (lines, pattern) => {
+  let count = 0;
+  let signalSeenInBlock = false;
+  for (const line of lines) {
+    if (!line.trim()) {
+      signalSeenInBlock = false;
+      continue;
+    }
+    if (isTestResultLine(line) || !pattern.test(line)) continue;
+    if (!signalSeenInBlock) count += 1;
+    signalSeenInBlock = true;
+  }
+  return count;
+};
+
+export function summarizeVitestHealth({
+  logText = '',
+  memoryText = '',
+  vitestExitCode = 1,
+  logFilePresent = true,
+  memoryFilePresent = true,
+} = {}) {
   const events = [];
   let invalidMemoryLines = 0;
 
@@ -25,6 +59,9 @@ export function summarizeVitestHealth({ logText = '', memoryText = '', vitestExi
 
   const started = events.filter((event) => event?.event === 'module-start');
   const ended = events.filter((event) => event?.event === 'module-end');
+  const expectedFiles = events.find(
+    (event) => event?.event === 'run-start' && Number.isInteger(event.expectedModules),
+  )?.expectedModules ?? 0;
   const endedCounts = new Map();
   for (const event of ended) endedCounts.set(event.moduleId, (endedCounts.get(event.moduleId) ?? 0) + 1);
   const missingEndedFiles = [];
@@ -33,28 +70,33 @@ export function summarizeVitestHealth({ logText = '', memoryText = '', vitestExi
     if (remaining > 0) endedCounts.set(event.moduleId, remaining - 1);
     else if (event.moduleId && !missingEndedFiles.includes(event.moduleId)) missingEndedFiles.push(event.moduleId);
   }
-  const logLines = logText.split(/\r?\n/);
+  const logLines = logText.split(/\r?\n/).map(stripAnsi);
   const summary = {
+    expectedFiles,
     startedFiles: started.length,
     endedFiles: ended.length,
     lastStartedFile: started.at(-1)?.moduleId ?? null,
     missingEndedFiles,
-    unhandledErrors: logLines.filter((line) => UNHANDLED_ERROR_PATTERN.test(line)).length,
-    workerAbnormalExits: logLines.filter((line) => WORKER_ABNORMAL_EXIT_PATTERN.test(line)).length,
+    unhandledErrors: countSignalBlocks(logLines, UNHANDLED_ERROR_PATTERN),
+    workerAbnormalExits: countSignalBlocks(logLines, WORKER_ABNORMAL_EXIT_PATTERN),
     vitestExitCode: parseExitCode(vitestExitCode),
     invalidMemoryLines,
     logFilePresent,
+    memoryFilePresent,
   };
 
   return {
     ...summary,
     healthy:
-      summary.startedFiles === summary.endedFiles &&
+      summary.expectedFiles > 0 &&
+      summary.startedFiles === summary.expectedFiles &&
+      summary.endedFiles === summary.expectedFiles &&
       summary.unhandledErrors === 0 &&
       summary.workerAbnormalExits === 0 &&
       summary.vitestExitCode === 0 &&
       summary.invalidMemoryLines === 0 &&
-      summary.logFilePresent,
+      summary.logFilePresent &&
+      summary.memoryFilePresent,
   };
 }
 
@@ -88,6 +130,7 @@ export function runVitestHealthAssertion({ logPath, memoryPath, summaryPath, vit
     memoryText: readTextSafe(memoryPath),
     vitestExitCode,
     logFilePresent: fs.existsSync(logPath),
+    memoryFilePresent: fs.existsSync(memoryPath),
   });
   fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
   fs.writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
