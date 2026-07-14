@@ -69,7 +69,7 @@ export function useUsersPanelExport(
 
       // Lazy-load export module only when user clicks export
       const { exportMonthlySummary } = await import(
-        '@/features/reports/monthly/MonthlySummaryCsv'
+        '@/features/reports'
       );
 
       exportMonthlySummary({
