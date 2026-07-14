@@ -221,7 +221,7 @@ export default function WeekPage() {
       aria-labelledby={headingId}
       data-testid={
         mode === 'month'
-          ? 'schedules-month-page'
+          ? 'schedules-page-root'
           : mode === 'day'
             ? 'schedules-day-shell'
             : 'schedules-week-page'

@@ -35,7 +35,7 @@ import {
 
 export interface CrudDeps {
   // CRUD operations from pageState
-  create: (draft: InlineScheduleDraft) => Promise<void>;
+  create: (draft: InlineScheduleDraft) => Promise<SchedItem>;
   update: (input: import('@/features/schedules/domain').UpdateScheduleEventInput) => Promise<void>;
   remove: (id: string) => Promise<void>;
   refetch: () => void;
@@ -238,6 +238,21 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
   // ── Orchestrator Integration ─────────────────────────────────────────────
   const orchestrator = useScheduleOrchestrator({
     repository: repository,
+    createSchedule: (input) => {
+      const [dateIso = '', startTime = '00:00'] = input.startLocal.split('T');
+      const [, endTime = '00:00'] = input.endLocal.split('T');
+      return create({
+        title: input.title,
+        start: input.startLocal,
+        end: input.endLocal,
+        notes: input.notes,
+        serviceType: input.serviceType,
+        dateIso,
+        startTime: startTime.slice(0, 5),
+        endTime: endTime.slice(0, 5),
+        sourceInput: input,
+      });
+    },
     showSnack,
     onSuccess: () => refetch()
   });
