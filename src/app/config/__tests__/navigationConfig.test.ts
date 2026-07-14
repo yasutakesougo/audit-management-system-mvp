@@ -89,6 +89,16 @@ describe("Navigation Configuration", () => {
     expect(items.some((item) => item.to === '/survey/tokusei')).toBe(false);
   });
 
+  it.each([
+    ['/schedules/week', '/schedules/week'],
+    ['/users', '/users'],
+  ])('%s では active な通常ナビを1件に保つ', (pathname, expectedPath) => {
+    const items = createNavItems(baseConfig);
+    const activeItems = items.filter((item) => item.isActive(pathname));
+
+    expect(activeItems.map((item) => item.to)).toEqual([expectedPath]);
+  });
+
   it('reception audience では record/勤怠導線を表示し、個別支援計画更新は表示しない', () => {
     const items = createNavItems({
       ...baseConfig,
