@@ -124,8 +124,10 @@ jobs:
       VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE }}
       VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID != '' && secrets.VITE_MSAL_CLIENT_ID || secrets.AAD_APP_ID }}
       VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID != '' && secrets.VITE_MSAL_TENANT_ID || secrets.AAD_TENANT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VITE_MSAL_REDIRECT_URI: ${{ secrets.VITE_MSAL_REDIRECT_URI != '' && secrets.VITE_MSAL_REDIRECT_URI || secrets.VITE_AZURE_AD_REDIRECT_URI }}
+      VITE_SP_USE_PROXY: "1"
+      VITE_SP_LIST_BILLING_ORDERS: ${{ vars.VITE_SP_LIST_BILLING_ORDERS || 'c4be5492-9803-4fc6-ac7e-82d10e95ff6d' }}
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: ${{ vars.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE || '/sites/2' }}
       EXPECTED_SHA: ${{ inputs.expected_sha }}
 
     steps:
@@ -174,7 +176,38 @@ jobs:
         run: npm ci
 
       - name: Validate production env
-        run: npm run check:env
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm run check:env
+
+          required=(
+            VITE_SP_RESOURCE
+            VITE_SP_SITE_RELATIVE
+            VITE_MSAL_CLIENT_ID
+            VITE_MSAL_TENANT_ID
+            VITE_MSAL_REDIRECT_URI
+          )
+
+          for key in "${required[@]}"; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::${key} is required for production deploy"
+              exit 1
+            fi
+          done
+
+          if echo "${VITE_MSAL_CLIENT_ID}" | grep -qi 'dummy'; then
+            echo "::error::VITE_MSAL_CLIENT_ID must not contain dummy"
+            exit 1
+          fi
+
+          if echo "${VITE_MSAL_TENANT_ID}" | grep -qi 'dummy'; then
+            echo "::error::VITE_MSAL_TENANT_ID must not contain dummy"
+            exit 1
+          fi
+
+          node -e "new URL(process.env.VITE_MSAL_REDIRECT_URI)"
 
       - name: Show pinned Wrangler version
         run: npx wrangler --version
@@ -182,8 +215,51 @@ jobs:
       - name: Build deploy artifacts
         run: npm run build:ci
 
+      - name: Prepare production Wrangler config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node <<'NODE'
+          const fs = require('fs');
+
+          const vars = {
+            VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE,
+            VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE,
+            VITE_SP_USE_PROXY: process.env.VITE_SP_USE_PROXY,
+            VITE_SP_LIST_BILLING_ORDERS: process.env.VITE_SP_LIST_BILLING_ORDERS,
+            VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: process.env.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE,
+          };
+
+          const tomlString = (value) => JSON.stringify(String(value ?? ''));
+          const lines = [
+            '# Generated in CI from the approved GitHub Environment.',
+            'name = "audit-management-system-mvp"',
+            'compatibility_date = "2026-01-17"',
+            'main = "src/worker.ts"',
+            'keep_vars = true',
+            '',
+            '[vars]',
+            ...Object.entries(vars).map(([key, value]) => `${key} = ${tomlString(value)}`),
+            '',
+            '[assets]',
+            'directory = "./dist"',
+            'binding = "ASSETS"',
+            'run_worker_first = true',
+            '',
+          ];
+
+          fs.writeFileSync('wrangler.production.toml', `${lines.join('\n')}\n`);
+          NODE
+
       - name: Cloudflare deploy dry-run
-        run: npx wrangler deploy --dry-run
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config wrangler.production.toml --dry-run --keep-vars
 
       - name: Deploy Worker
-        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config wrangler.production.toml --keep-vars
