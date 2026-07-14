@@ -343,7 +343,7 @@ const DataIntegrityPage: React.FC = () => {
         🔍 データ整合性チェック
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        SharePoint のデータを Zod スキーマで検証し、主要ビジネスキーの重複の可能性を検知します。
+        SharePoint のデータを Zod スキーマで検証し、{DUPLICATE_REPORT_TEXT.scanDescription}
       </Typography>
 
       {/* ── Control Bar ──────────────────────── */}
