@@ -8,7 +8,7 @@
     → `@/features/daily/repositoryFactory`（daily の internal を参照）
     → `@/features/reports/achievement/AchievementRecordPDF`（reports の internal を参照）
     → `@/features/reports/achievement/useAchievementPDF`（reports の hooks を参照）
-    → `@/features/reports/monthly/MonthlySummaryExcel`（reports の internal を参照）
+    → `@/features/reports`
   - `src/features/today/domain/useTodaySummary.ts`
     → `@/features/attendance/store`（attendance の store を直接参照）
     → `@/features/dashboard/useDashboardSummary`（dashboard の internal を参照）
