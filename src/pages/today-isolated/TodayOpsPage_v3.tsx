@@ -109,6 +109,12 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   const transportHighlight = useTransportHighlight();
   const quickRecord = useQuickRecord();
 
+  useEffect(() => {
+    if (transportHighlight.direction) {
+      transport.setActiveDirection(transportHighlight.direction);
+    }
+  }, [transport.setActiveDirection, transportHighlight.direction]);
+
   const { actionQueue, isLoading: isQueueLoading } = useTodayActionQueue({
     currentStaffId: 'staff-a',
     correctiveActions,

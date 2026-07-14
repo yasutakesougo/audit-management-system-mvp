@@ -7,13 +7,6 @@ const COLLAPSED_PARENTS_STORAGE_KEY = 'exception-collapsed-parents';
 test.describe('ExceptionCenter handoff child flow', () => {
   test('flat/grouped rendering and child deep-link navigation remain consistent', async ({ page }) => {
     await page.addInitScript(({ handoffStorageKey, collapsedParentsKey }) => {
-      const w = window as typeof window & { __ENV__?: Record<string, string> };
-      w.__ENV__ = {
-        ...(w.__ENV__ ?? {}),
-        // ユーザー名マッピングを安定化（demo users を利用）
-        VITE_FEATURE_USERS_SP: '0',
-      };
-
       const now = new Date();
       const y = now.getFullYear();
       const m = `${now.getMonth() + 1}`.padStart(2, '0');
@@ -91,6 +84,7 @@ test.describe('ExceptionCenter handoff child flow', () => {
 
     await bootstrapDashboard(page, {
       skipLogin: true,
+      dataProvider: 'memory',
       initialPath: '/admin/exception-center',
     });
 

@@ -7,9 +7,11 @@
 import { useMemo } from 'react';
 import { useExceptionDataSources } from './useExceptionDataSources';
 import { useBridgeExceptions } from './useBridgeExceptions';
+import { useCorrectiveActionExceptions } from './useCorrectiveActionExceptions';
+import { useDailyRecordExceptions } from './useDailyRecordExceptions';
+import { useHandoffExceptions } from './useHandoffExceptions';
+import { useTransportExceptions } from './useTransportExceptions';
 import { 
-  detectMissingRecords, 
-  detectCriticalHandoffs, 
   detectAttentionUsers, 
   detectDataLayerExceptions,
   detectAnalysisSetupExceptions,
@@ -20,22 +22,38 @@ import {
 import { buildExceptionCenterSummary } from '../domain/exceptionCenterSummary';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import type { IUserMaster } from '@/features/users/types';
+import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
 
-export function useExceptionCenterOrchestrator() {
+export type ExceptionCenterOrchestratorOptions = {
+  suggestions?: ActionSuggestion[];
+  suggestionStates?: Record<string, ActionSuggestionState>;
+};
+
+export function useExceptionCenterOrchestrator(
+  options: ExceptionCenterOrchestratorOptions = {},
+) {
   const dataSources = useExceptionDataSources();
   const bridge = useBridgeExceptions();
   const { data: users = [] } = useUsersQuery();
+  const { items: correctiveItems } = useCorrectiveActionExceptions({
+    suggestions: options.suggestions ?? [],
+    states: options.suggestionStates ?? {},
+  });
+  const { items: dailyRecordItems } = useDailyRecordExceptions({
+    expectedUsers: dataSources.expectedUsers,
+    existingRecords: dataSources.todayRecords,
+    integrityExceptions: dataSources.integrityExceptions,
+    targetDate: dataSources.today,
+  });
+  const { items: handoffItems } = useHandoffExceptions({
+    handoffs: dataSources.criticalHandoffs,
+  });
+  const { items: transportItems, status: transportStatus } = useTransportExceptions();
 
   const allExceptions = useMemo(() => {
     if (dataSources.status === 'loading' && bridge.isLoading) return [];
     
     // 1. 既存の検出ロジック (L0/L1)
-    const missingRecords = detectMissingRecords({
-      expectedUsers: dataSources.expectedUsers,
-      existingRecords: dataSources.todayRecords,
-      targetDate: dataSources.today
-    });
-    const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
     const dataOSItems = detectDataLayerExceptions(dataSources.dataOSResolutions);
     const setupIncomplete = detectAnalysisSetupExceptions(dataSources.userSummaries);
@@ -46,16 +64,26 @@ export function useExceptionCenterOrchestrator() {
 
     // 3. 所有カテゴリを集約してソート
     return aggregateExceptions(
-      missingRecords,
-      criticalHandoffs, 
+      dailyRecordItems,
+      handoffItems,
       attentionUsers,
+      correctiveItems,
+      transportItems,
       dataOSItems,
       bridgeItems,
-      dataSources.integrityExceptions,
       setupIncomplete,
       transportSetup
     );
-  }, [dataSources, bridge.exceptions, users]);
+  }, [
+    bridge.exceptions,
+    correctiveItems,
+    dailyRecordItems,
+    dataSources.dataOSResolutions,
+    dataSources.userSummaries,
+    handoffItems,
+    transportItems,
+    users,
+  ]);
 
   // SSOT サマリの構築
   const summary = useMemo(() => buildExceptionCenterSummary(allExceptions), [allExceptions]);
@@ -63,7 +91,10 @@ export function useExceptionCenterOrchestrator() {
   return {
     items: allExceptions,
     summary,
-    isLoading: dataSources.status === 'loading' || bridge.isLoading,
+    isLoading:
+      dataSources.status === 'loading' ||
+      bridge.isLoading ||
+      transportStatus === 'loading',
     error: dataSources.error,
     refetch: () => {
       dataSources.refetchDailyRecords();

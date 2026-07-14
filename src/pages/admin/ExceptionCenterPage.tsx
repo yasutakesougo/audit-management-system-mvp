@@ -41,11 +41,19 @@ const SEVERITY_COLORS: Record<ExceptionSeverity, 'error' | 'warning' | 'primary'
 };
 
 export const ExceptionCenterPage: React.FC = () => {
-  const { items, summary, isLoading, error } = useExceptionCenterOrchestrator();
-  const { activeEscalations } = useEscalationEvaluation(items, summary);
   const { suggestions } = useAllCorrectiveActions();
+  const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
+  const { items, summary, isLoading, error } = useExceptionCenterOrchestrator({
+    suggestions,
+    suggestionStates,
+  });
+  const { activeEscalations } = useEscalationEvaluation(items, summary);
+  const visibleEscalations = React.useMemo(
+    () => activeEscalations.slice(0, 3),
+    [activeEscalations],
+  );
 
   const handleDismiss = React.useCallback((stableId: string) => {
     const s = suggestions.find(x => x.stableId === stableId);
@@ -129,11 +137,11 @@ export const ExceptionCenterPage: React.FC = () => {
   if (error) return <Box sx={{ p: 4 }}>エラー: {error}</Box>;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container data-testid="exception-center-page" maxWidth="xl" sx={{ py: 4 }}>
       <Stack spacing={4}>
         {/* Escalation Area */}
         <EscalationAlertBanner 
-          activeEscalations={activeEscalations}
+          activeEscalations={visibleEscalations}
           onDismiss={(_id: string) => {}} 
           onActionClick={(_id: string) => {}}
         />
@@ -163,8 +171,22 @@ export const ExceptionCenterPage: React.FC = () => {
         {/* Navigation Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={(_e, newValue) => setActiveTab(newValue)}>
-            <Tab label="例外監視ボード" sx={{ fontWeight: 700 }} />
-            <Tab label="SharePoint ドリフト履歴" sx={{ fontWeight: 700 }} />
+            <Tab
+              label="例外監視ボード"
+              sx={{
+                fontWeight: 700,
+                color: 'text.secondary',
+                '&.Mui-selected': { color: 'text.primary' },
+              }}
+            />
+            <Tab
+              label="SharePoint ドリフト履歴"
+              sx={{
+                fontWeight: 700,
+                color: 'text.secondary',
+                '&.Mui-selected': { color: 'text.primary' },
+              }}
+            />
           </Tabs>
         </Box>
 
@@ -253,7 +275,7 @@ export const ExceptionCenterPage: React.FC = () => {
               </Paper>
 
               {/* Detailed Exception Table */}
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, minWidth: 0 }}>
                 <ExceptionTable 
                   items={items} 
                   title="全例外詳細（横断表示）"
