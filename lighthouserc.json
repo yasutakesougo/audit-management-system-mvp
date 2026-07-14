@@ -4,7 +4,7 @@
       "numberOfRuns": 1,
       "url": ["http://127.0.0.1:4173/analysis/dashboard"],
       "startServerCommand": "if [ ! -f dist/index.html ]; then npm run perf:build || exit 1; fi; vite preview --host 127.0.0.1 --port 4173 --strictPort",
-      "startServerReadyPattern": "Local",
+      "startServerReadyPattern": "Local:",
       "startServerReadyTimeout": 120000
     },
     "assert": {
