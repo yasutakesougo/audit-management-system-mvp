@@ -19,6 +19,13 @@ export interface CanaryClassificationResult {
   failedStage: 'e2e' | 'lhci' | 'summary' | 'none';
   reason: string;
   exitCode: number;
+  diagnostics: {
+    authSignal: boolean;
+    e2eFailed: boolean;
+    lhciFailed: boolean;
+    summaryFailed: boolean;
+    independentFailures: string[];
+  };
 }
 
 export function classifyCanaryResult(input?: CanaryClassificationInput): CanaryClassificationResult;

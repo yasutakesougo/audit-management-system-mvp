@@ -251,6 +251,8 @@ jobs:
             "cancellation_step": "${cancellation_step}",
             "setup_failure_step": "${setup_failure_step}",
             "deep_tests_outcome": "${{ steps.deep_tests.outcome }}",
+            "concurrency_group": "e2e-deep-${{ github.ref }}",
+            "event_name": "${{ github.event_name }}",
             "head_sha": "${{ github.sha }}"
           }
           EOF

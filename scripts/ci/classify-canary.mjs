@@ -26,6 +26,18 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
   const e2e = toExitCode(e2eExitCode);
   const lhci = toExitCode(lhciExitCode);
   const summary = toExitCode(summaryExitCode);
+  const authSignal = hasAuthSignal(e2eLog);
+  const independentFailures = [];
+  if (e2e !== 0) independentFailures.push(authSignal ? 'e2e_auth_or_storage' : 'e2e_ui');
+  if (lhci !== 0) independentFailures.push('lhci');
+  if (summary !== 0) independentFailures.push('summary');
+  const diagnostics = {
+    authSignal,
+    e2eFailed: e2e !== 0,
+    lhciFailed: lhci !== 0,
+    summaryFailed: summary !== 0,
+    independentFailures,
+  };
 
   if (e2e !== 0) {
     if (hasAuthSignal(e2eLog)) {
@@ -34,6 +46,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
         failedStage: 'e2e',
         reason: 'E2E failed with an authentication-related signal.',
         exitCode: e2e,
+        diagnostics,
       };
     }
     return {
@@ -41,24 +54,44 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
       failedStage: 'e2e',
       reason: 'E2E failed without an authentication-related signal.',
       exitCode: e2e,
+      diagnostics,
     };
   }
 
   if (lhci !== 0) {
     if (LHCI_SERVER_PATTERNS.some((pattern) => pattern.test(lhciLog))) {
-      return { classification: 'canary_lhci_server_failure', failedStage: 'lhci', reason: 'LHCI could not reach a healthy preview server.', exitCode: lhci };
+      return {
+        classification: 'canary_lhci_server_failure',
+        failedStage: 'lhci',
+        reason: 'LHCI could not reach a healthy preview server.',
+        exitCode: lhci,
+        diagnostics,
+      };
     }
     if (LHCI_CHROME_PATTERNS.some((pattern) => pattern.test(lhciLog))) {
-      return { classification: 'canary_lhci_chrome_failure', failedStage: 'lhci', reason: 'LHCI failed while starting or controlling Chrome.', exitCode: lhci };
+      return {
+        classification: 'canary_lhci_chrome_failure',
+        failedStage: 'lhci',
+        reason: 'LHCI failed while starting or controlling Chrome.',
+        exitCode: lhci,
+        diagnostics,
+      };
     }
     if (LHCI_BUDGET_PATTERNS.some((pattern) => pattern.test(lhciLog))) {
-      return { classification: 'canary_lhci_budget_failure', failedStage: 'lhci', reason: 'LHCI completed collection but failed a performance assertion.', exitCode: lhci };
+      return {
+        classification: 'canary_lhci_budget_failure',
+        failedStage: 'lhci',
+        reason: 'LHCI completed collection but failed a performance assertion.',
+        exitCode: lhci,
+        diagnostics,
+      };
     }
     return {
       classification: 'canary_lhci_failure',
       failedStage: 'lhci',
       reason: 'LHCI failed after E2E completed.',
       exitCode: lhci,
+      diagnostics,
     };
   }
 
@@ -68,6 +101,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
       failedStage: 'summary',
       reason: 'Performance summary generation failed after E2E and LHCI completed.',
       exitCode: summary,
+      diagnostics,
     };
   }
 
@@ -76,6 +110,7 @@ export function classifyCanaryResult({ e2eExitCode = 0, lhciExitCode = 0, summar
     failedStage: 'none',
     reason: 'Canary completed without failure.',
     exitCode: 0,
+    diagnostics,
   };
 }
 
@@ -110,11 +145,14 @@ const renderMarkdown = (result, inputs) => `# Quality Gates Canary Classificatio
 - e2eExitCode: ${inputs.e2eExitCode}
 - lhciExitCode: ${inputs.lhciExitCode}
 - summaryExitCode: ${inputs.summaryExitCode}
+- authSignal: **${result.diagnostics.authSignal}**
+- independentFailures: ${result.diagnostics.independentFailures.length ? result.diagnostics.independentFailures.join(', ') : 'none'}
 `;
 
 async function main() {
   const outDir = process.env.CANARY_CLASSIFICATION_DIR || 'reports/quality-gates';
   const e2eLogPath = process.env.CANARY_E2E_LOG_PATH || path.join(outDir, 'canary-e2e.log');
+  const lhciLogPath = process.env.CANARY_LHCI_LOG_PATH || path.join(outDir, 'canary-lhci.log');
   const inputs = {
     e2eExitCode: toExitCode(process.env.CANARY_E2E_EXIT_CODE),
     lhciExitCode: toExitCode(process.env.CANARY_LHCI_EXIT_CODE),
@@ -133,6 +171,7 @@ async function main() {
     ...result,
     ...inputs,
     e2eLogPath,
+    lhciLogPath,
     generatedAt: new Date().toISOString(),
   };
   const markdown = renderMarkdown(result, inputs);
