@@ -206,7 +206,7 @@ jobs:
           if-no-files-found: ignore
       - name: Perf report (LHCI + Web Vitals)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.perf == 'true')
-        run: npm run -s ci:perf-report
+        run: node scripts/ci/run-perf-with-diagnostics.mjs
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -223,6 +223,9 @@ jobs:
             reports/perf-summary.md
             reports/perf-summary.json
             lhci-results.json
+            reports/lhci-diagnostics/
+            .lighthouseci/
+            lhci-artifacts/
 
       - name: Classify quality job completion
         if: always()
@@ -533,6 +536,7 @@ jobs:
           CANARY_LHCI_EXIT_CODE: ${{ steps.canary_lhci.outputs.exit_code || '1' }}
           CANARY_SUMMARY_EXIT_CODE: ${{ steps.canary_summary.outputs.exit_code || '1' }}
           CANARY_E2E_LOG_PATH: reports/quality-gates/canary-e2e.log
+          CANARY_LHCI_LOG_PATH: reports/quality-gates/canary-lhci.log
       - name: Upload canary classification artifact
         if: always()
         uses: actions/upload-artifact@v4

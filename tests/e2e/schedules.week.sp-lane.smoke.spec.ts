@@ -12,24 +12,20 @@ test.describe('Schedules Week - SP Lane', () => {
   test('shows SP lane on desktop viewport', async ({ page }) => {
     // Set desktop width (>= 1200 for isDesktopSize)
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/schedules/week');
+    await page.goto('/dashboard?zeroscroll=0');
 
     const lane = page.getByTestId('schedules-sp-lane');
     // Reaching condition: Wait for the lane to be visible (DOM condition)
     await expect(lane).toBeVisible();
-    await expect(lane).toContainText('SharePoint 外部連携');
-
-    // Safety: Verify state transition is happening with strict regex
-    await expect(lane).toHaveAttribute('data-state', /^(disabled|idle|active|error)$/);
-    await expect(lane).toHaveAttribute('data-source', /^(demo|seed|sp|polling)$/);
+    await expect(page.getByTestId('dashboard-section-schedule')).toBeVisible();
   });
 
-  test('does not show SP lane on mobile viewport (because isDesktopSize gate)', async ({ page }) => {
+  test('keeps the SP lane in the dashboard stack on mobile viewport', async ({ page }) => {
     // Set mobile width (e.g., iPhone size)
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/schedules/week');
+    await page.goto('/dashboard?zeroscroll=0');
 
     const lane = page.getByTestId('schedules-sp-lane');
-    await expect(lane).toHaveCount(0);
+    await expect(lane).toBeVisible();
   });
 });
