@@ -1,5 +1,6 @@
 import { expect, type APIRequestContext } from '@playwright/test';
 import { assertHasFields, makeListApi, toSelectQuery, type SpClient } from './spHttp';
+import { mapSchemaPayload, resolveSchemaFields } from '../../../scripts/ci/resolve-schema-fields.mjs';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -9,10 +10,11 @@ export type ListSpec<TCreate extends Record<string, unknown>> = {
   listTitle: string;    // e.g. Staff_Master
   keyField: string;     // e.g. StaffID / UserID
   selectFields: string[]; // fields you require (schema)
+  fieldAliases?: Record<string, readonly string[]>; // logical -> physical InternalName aliases
   fixedKeyValue: string; // stable key to avoid record growth
   makeUpsertPayload: (key: string) => TCreate; // create/update payload
   // optional: "deactivate" or "resolve" semantics
-  afterUpsertAssert?: (item: any) => void;
+  afterUpsertAssert?: (item: any, logicalToPhysical?: Record<string, string>) => void;
   deactivate?: {
     field: string;       // e.g. IsActive / Status
     value: unknown;      // e.g. false / 'Resolved'
@@ -26,6 +28,13 @@ export type ListRunner = {
   deactivateIfNeeded: () => Promise<void>;
 };
 
+export type ResolvedListFields = {
+  logicalToPhysical: Record<string, string>;
+  keyField: string;
+  selectFields: string[];
+  deactivateField?: string;
+};
+
 type ODataItem = { d?: any; value?: any };
 
 function buildListItemUrl(siteUrl: string, listTitle: string): string {
@@ -35,6 +44,51 @@ function buildListItemUrl(siteUrl: string, listTitle: string): string {
 
 function buildItemByIdUrl(siteUrl: string, listTitle: string, id: number): string {
   return `${buildListItemUrl(siteUrl, listTitle)}(${id})`;
+}
+
+export function resolveListSpecFields<TCreate extends Record<string, unknown>>(
+  spec: ListSpec<TCreate>,
+  actualNames: string[],
+): ResolvedListFields {
+  const logicalNames = [
+    spec.keyField,
+    ...spec.selectFields,
+    ...(spec.deactivate ? [spec.deactivate.field] : []),
+  ];
+
+  if (!spec.fieldAliases) {
+    const logicalToPhysical = Object.fromEntries(
+      [...new Set(logicalNames)].map((name) => [name, name]),
+    );
+    return {
+      logicalToPhysical,
+      keyField: spec.keyField,
+      selectFields: spec.selectFields,
+      deactivateField: spec.deactivate?.field,
+    };
+  }
+
+  const result = resolveSchemaFields(actualNames, logicalNames, spec.fieldAliases);
+  if (result.missing.length || result.ambiguous.length) {
+    const missing = result.missing.join(', ') || '(none)';
+    const ambiguous = result.ambiguous
+      .map(({ logical, actual }) => `${logical} -> ${actual.join(', ')}`)
+      .join('; ') || '(none)';
+    throw new Error(
+      `[integration] ${spec.name}: unresolved SharePoint fields\n` +
+      `missing=${missing}\n` +
+      `ambiguous=${ambiguous}`,
+    );
+  }
+
+  return {
+    logicalToPhysical: result.resolved,
+    keyField: result.resolved[spec.keyField],
+    selectFields: spec.selectFields.map((field) => result.resolved[field]),
+    deactivateField: spec.deactivate
+      ? result.resolved[spec.deactivate.field]
+      : undefined,
+  };
 }
 
 export function createListRunner<TCreate extends Record<string, unknown>>(
@@ -72,10 +126,34 @@ export function createListRunner<TCreate extends Record<string, unknown>>(
 
   const itemsUrl = buildListItemUrl(spec.siteUrl, spec.listTitle);
 
-  const select = toSelectQuery(['Id', spec.keyField, ...spec.selectFields]);
-  const filter = `${spec.keyField} eq '${spec.fixedKeyValue.replace(/'/g, "''")}'`; // OData escape
+  let resolvedFieldsPromise: Promise<ResolvedListFields> | undefined;
+
+  async function resolveFields(): Promise<ResolvedListFields> {
+    if (!spec.fieldAliases) {
+      return resolveListSpecFields(spec, []);
+    }
+
+    const fieldsUrl =
+      `${spec.siteUrl}/_api/web/lists/GetByTitle('${encodeURIComponent(spec.listTitle)}')/fields?` +
+      '$filter=Hidden eq false&$select=InternalName';
+    const response = await api.get(fieldsUrl, `${spec.name}:discoverFields`);
+    const json = await response.json().catch(() => ({}));
+    const fields = json?.d?.results ?? json?.value ?? [];
+    const actualNames = fields
+      .map((field: { InternalName?: unknown }) => field.InternalName)
+      .filter((name: unknown): name is string => typeof name === 'string');
+    return resolveListSpecFields(spec, actualNames);
+  }
+
+  function getResolvedFields(): Promise<ResolvedListFields> {
+    resolvedFieldsPromise ??= resolveFields();
+    return resolvedFieldsPromise;
+  }
 
   async function fetchByKey(): Promise<any[]> {
+    const fields = await getResolvedFields();
+    const select = toSelectQuery(['Id', fields.keyField, ...fields.selectFields]);
+    const filter = `${fields.keyField} eq '${spec.fixedKeyValue.replace(/'/g, "''")}'`; // OData escape
     const url = `${itemsUrl}?$select=${select}&$filter=${encodeURIComponent(filter)}&$top=5`;
     const res = await api.get(url, `${spec.name}:listByKey`);
     const json: ODataItem = await res.json().catch(() => ({}));
@@ -84,18 +162,23 @@ export function createListRunner<TCreate extends Record<string, unknown>>(
   }
 
   async function upsertOnce(): Promise<{ id: number; count: number; item: any }> {
+    const fields = await getResolvedFields();
+    const makePayload = () => mapSchemaPayload(
+      spec.makeUpsertPayload(spec.fixedKeyValue),
+      fields.logicalToPhysical,
+    );
     const before = await fetchByKey();
     if (before.length > 0) {
       const id = Number(before[0].Id);
       const url = buildItemByIdUrl(spec.siteUrl, spec.listTitle, id);
-      await api.merge(url, spec.makeUpsertPayload(spec.fixedKeyValue), `${spec.name}:merge`);
+      await api.merge(url, makePayload(), `${spec.name}:merge`);
       const after = await fetchByKey();
       return { id, count: after.length, item: after[0] };
     }
 
     // Create (POST)
     const url = itemsUrl;
-    await api.post(url, spec.makeUpsertPayload(spec.fixedKeyValue), `${spec.name}:create`);
+    await api.post(url, makePayload(), `${spec.name}:create`);
     const after = await fetchByKey();
     expect(after.length).toBeGreaterThan(0);
     return { id: Number(after[0].Id), count: after.length, item: after[0] };
@@ -103,16 +186,18 @@ export function createListRunner<TCreate extends Record<string, unknown>>(
 
   return {
     async reachability() {
+      await getResolvedFields();
       const url = `${itemsUrl}?$select=Id&$top=1`;
       const res = await api.get(url, `${spec.name}:reachability`);
       await res.json().catch(() => ({}));
     },
 
     async schema() {
+      const fields = await getResolvedFields();
       const rows = await fetchByKey();
       // If not found yet, create once so schema can be asserted on a real item
       const item = rows[0] ?? (await upsertOnce()).item;
-      assertHasFields(item, ['Id', spec.keyField, ...spec.selectFields]);
+      assertHasFields(item, ['Id', fields.keyField, ...fields.selectFields]);
     },
 
     async idempotentUpsert() {
@@ -123,23 +208,29 @@ export function createListRunner<TCreate extends Record<string, unknown>>(
       expect(second.count).toBe(first.count);
 
       if (spec.afterUpsertAssert) {
-        spec.afterUpsertAssert(second.item);
+        const fields = await getResolvedFields();
+        spec.afterUpsertAssert(second.item, fields.logicalToPhysical);
       }
     },
 
     async deactivateIfNeeded() {
       if (!spec.deactivate) return;
 
+      const fields = await getResolvedFields();
       const rows = await fetchByKey();
       const item = rows[0] ?? (await upsertOnce()).item;
       const id = Number(item.Id);
 
       const url = buildItemByIdUrl(spec.siteUrl, spec.listTitle, id);
-      await api.merge(url, { [spec.deactivate.field]: spec.deactivate.value }, `${spec.name}:deactivate`);
+      const payload = mapSchemaPayload(
+        { [spec.deactivate.field]: spec.deactivate.value },
+        fields.logicalToPhysical,
+      );
+      await api.merge(url, payload, `${spec.name}:deactivate`);
 
       const after = await fetchByKey();
       expect(after.length).toBeGreaterThan(0);
-      expect(after[0][spec.deactivate.field]).toEqual(spec.deactivate.value);
+      expect(after[0][fields.deactivateField || spec.deactivate.field]).toEqual(spec.deactivate.value);
     },
   };
 }

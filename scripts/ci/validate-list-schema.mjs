@@ -28,7 +28,12 @@ const schemaPath = path.isAbsolute(schemaRelativePath)
   ? schemaRelativePath
   : path.resolve(process.cwd(), schemaRelativePath);
 
-const { LIST_TITLE, ESSENTIAL_FIELDS, OPTIONAL_FIELDS } = await import(`file://${schemaPath}`);
+const {
+  LIST_TITLE,
+  ESSENTIAL_FIELDS,
+  OPTIONAL_FIELDS,
+  FIELD_ALIASES = {},
+} = await import(`file://${schemaPath}`);
 
 // ── Main ────────────────────────────────────────────────────────
 const site = process.env.SHAREPOINT_SITE;
@@ -70,7 +75,9 @@ try {
 
   // ── Validation ──
   const actualNames = fields.map((f) => f.InternalName);
-  const result = validateSchema(actualNames, ESSENTIAL_FIELDS, OPTIONAL_FIELDS);
+  const result = validateSchema(actualNames, ESSENTIAL_FIELDS, OPTIONAL_FIELDS, {
+    aliases: FIELD_ALIASES,
+  });
 
   // ── Report ──
   console.log('');
@@ -80,6 +87,20 @@ try {
     console.warn(`⚠️  Case mismatch (drifting):`);
     for (const { expected, actual } of result.caseMismatch) {
       console.warn(`   expected "${expected}" → found "${actual}"`);
+    }
+  }
+
+  if (result.aliasResolutions.length) {
+    console.warn('⚠️  Logical fields resolved through aliases:');
+    for (const { logical, actual, method } of result.aliasResolutions) {
+      console.warn(`   ${logical} → ${actual} (${method})`);
+    }
+  }
+
+  if (result.ambiguous.length) {
+    console.error('❌ Ambiguous InternalName resolution:');
+    for (const { logical, actual } of result.ambiguous) {
+      console.error(`   ${logical} → ${actual.join(', ')}`);
     }
   }
 
