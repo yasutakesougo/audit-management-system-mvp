@@ -91,10 +91,10 @@
 | 支援設計 | B | `/support-plan-guide`, `/support-planning-sheet/:planningSheetId`, `/planning-sheet-list`, `/monitoring-meeting/:userId` | 計画・手順・モニタリング |
 | 申し送り | A | `/handoff-timeline`, `/handoff-analysis` | 注意事項・共有事項 |
 | 請求 | C | `/billing`, `/records/monthly`, `/records/service-provision` | 月次支援実績と請求注文の確認。同じ管理導線配下だが、現行仕様では `/records/monthly` と `/billing` は独立データフロー |
-
-> Phase 4 audit note: `MonthlyRecord_Summary` と `BillingOrders/List3` の明示的な変換契約は現時点で存在しない。月次支援実績の件数と請求注文の件数・金額を一致させる検証は、接続契約が定義されるまで監査対象外とする。
 | 分析 | B/C | `/analysis/*`, `/records/quality-review`, `/support-review` | PDCA・傾向・記録品質 |
 | 管理 | C | `/dashboard`, `/admin/*`, `/exceptions`, `/incidents` | SharePoint・権限・設定・ログ・例外 |
+
+> Phase 4 audit note: `MonthlyRecord_Summary` と `BillingOrders/List3` の明示的な変換契約は現時点で存在しない。月次支援実績の件数と請求注文の件数・金額を一致させる検証は、接続契約が定義されるまで監査対象外とする。
 
 ---
 
