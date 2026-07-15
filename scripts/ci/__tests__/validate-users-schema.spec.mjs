@@ -50,4 +50,22 @@ describe('Users_Master schema validation', () => {
     expect(result.ok).toBe(false);
     expect(result.missing).toEqual(['FullName']);
   });
+
+  it('keeps optional ambiguity as a warning rather than a schema failure', () => {
+    const result = validateSchema(
+      ['UserID', 'FullName', 'Full_x0020_Name_x0020_Kana', 'Full-Name-Kana'],
+      ESSENTIAL_FIELDS,
+      ['FullNameKana'],
+      { aliases: { ...FIELD_ALIASES, FullNameKana: ['LegacyFullNameKana'] } },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.ambiguousEssential).toEqual([]);
+    expect(result.ambiguousOptional).toEqual([
+      {
+        logical: 'FullNameKana',
+        actual: ['Full_x0020_Name_x0020_Kana', 'Full-Name-Kana'],
+      },
+    ]);
+  });
 });

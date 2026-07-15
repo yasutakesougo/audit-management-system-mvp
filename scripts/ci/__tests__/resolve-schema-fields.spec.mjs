@@ -51,12 +51,23 @@ describe('resolveSchemaFields', () => {
     const result = resolveSchemaFields(
       ['User_x0020_ID', 'User-ID'],
       ['UserID'],
+      { UserID: ['LegacyUserId'] },
     );
 
     expect(result.missing).toEqual(['UserID']);
     expect(result.ambiguous).toEqual([
       { logical: 'UserID', actual: ['User_x0020_ID', 'User-ID'] },
     ]);
+  });
+
+  it('does not normalize drift when no alias is declared', () => {
+    const result = resolveSchemaFields(
+      ['target_x0020_Type'],
+      ['targetType'],
+    );
+
+    expect(result.missing).toEqual(['targetType']);
+    expect(result.resolved).toEqual({});
   });
 
   it('maps payload keys with the same logical-to-physical result', () => {

@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { FIELD_ALIASES } from '../../../scripts/ci/schemas/users.mjs';
-import { mapSchemaPayload } from '../../../scripts/ci/resolve-schema-fields.mjs';
-import { resolveListSpecFields } from './listSpecFactory';
+import { FIELD_ALIASES } from '../../scripts/ci/schemas/users.mjs';
+import { mapSchemaPayload } from '../../scripts/ci/resolve-schema-fields.mjs';
+import { resolveListSpecFields } from '../integration/_shared/listSpecFactory';
 
 const usersSpec = {
   name: 'Users_Master',

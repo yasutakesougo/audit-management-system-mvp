@@ -41,6 +41,7 @@ function findUnique(actualNames, predicate, used) {
  *   1. exact candidate match
  *   2. case-insensitive candidate match
  *   3. normalized match (removes SharePoint _x####_ tokens and punctuation)
+ *      only when the logical field declares explicit aliases
  *
  * A physical name can be used only once.  Ambiguous normalized matches are
  * reported instead of selecting an arbitrary field.
@@ -87,6 +88,9 @@ export function resolveSchemaFields(actualNames = [], logicalNames = [], aliases
       }
     }
 
+    const hasExplicitAliases =
+      Array.isArray(aliases?.[logicalName]) && aliases[logicalName].length > 0;
+
     if (!actual && !ambiguous.some((entry) => entry.logical === logicalName)) {
       for (const currentCandidate of candidates) {
         const result = findUnique(
@@ -107,7 +111,7 @@ export function resolveSchemaFields(actualNames = [], logicalNames = [], aliases
       }
     }
 
-    if (!actual && !ambiguous.some((entry) => entry.logical === logicalName)) {
+    if (hasExplicitAliases && !actual && !ambiguous.some((entry) => entry.logical === logicalName)) {
       const normalizedCandidates = unique(candidates.map(normalizeName));
       const result = findUnique(
         available,

@@ -97,10 +97,17 @@ try {
     }
   }
 
-  if (result.ambiguous.length) {
+  if (result.ambiguousEssential.length) {
     console.error('❌ Ambiguous InternalName resolution:');
-    for (const { logical, actual } of result.ambiguous) {
+    for (const { logical, actual } of result.ambiguousEssential) {
       console.error(`   ${logical} → ${actual.join(', ')}`);
+    }
+  }
+
+  if (result.ambiguousOptional.length) {
+    console.warn('⚠️  Ambiguous optional InternalName resolution:');
+    for (const { logical, actual } of result.ambiguousOptional) {
+      console.warn(`   ${logical} → ${actual.join(', ')}`);
     }
   }
 

@@ -20,6 +20,8 @@ import { resolveSchemaFields } from './resolve-schema-fields.mjs';
  *   resolved: Record<string, string>,
  *   aliasResolutions: { logical: string, actual: string, method: string, candidate: string }[],
  *   ambiguous: { logical: string, actual: string[] }[],
+ *   ambiguousEssential: { logical: string, actual: string[] }[],
+ *   ambiguousOptional: { logical: string, actual: string[] }[],
  * }}
  */
 export function validateSchema(
@@ -39,14 +41,19 @@ export function validateSchema(
     .map((name) => ({ expected: name, actual: resolution.resolved[name] }));
   const optionalMissing = optionalFields.filter((name) => !resolution.resolved[name]);
   const aliasResolutions = resolution.resolutions.filter(({ method }) => method !== 'exact');
+  const essentialSet = new Set(essentialFields);
+  const ambiguousEssential = resolution.ambiguous.filter(({ logical }) => essentialSet.has(logical));
+  const ambiguousOptional = resolution.ambiguous.filter(({ logical }) => !essentialSet.has(logical));
 
   return {
-    ok: missing.length === 0 && resolution.ambiguous.length === 0,
+    ok: missing.length === 0 && ambiguousEssential.length === 0,
     missing,
     caseMismatch,
     optionalMissing,
     resolved: resolution.resolved,
     aliasResolutions,
     ambiguous: resolution.ambiguous,
+    ambiguousEssential,
+    ambiguousOptional,
   };
 }
