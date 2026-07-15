@@ -434,6 +434,7 @@ jobs:
             --reporter=list,junit,html \
             --retries=1
         env:
+          NODE_ENV: production
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-integration.xml'
         continue-on-error: true
       
