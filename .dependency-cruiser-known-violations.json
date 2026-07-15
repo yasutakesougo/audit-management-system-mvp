@@ -8197,23 +8197,6 @@
   {
     "type": "dependency",
     "from": "src/app/routes/lazyPages.tsx",
-    "to": "src/features/daily/components/table/TableDailyRecordPage.tsx",
-    "unresolvedTo": "@/features/daily/components/table/TableDailyRecordPage",
-    "dependencyTypes": [
-      "aliased",
-      "aliased-tsconfig",
-      "aliased-tsconfig-paths",
-      "local",
-      "dynamic-import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-external-feature-internals"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/app/routes/lazyPages.tsx",
     "to": "src/features/records/RecordList.tsx",
     "unresolvedTo": "@/features/records/RecordList",
     "dependencyTypes": [
