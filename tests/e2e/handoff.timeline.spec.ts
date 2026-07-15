@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 /**
  * Validates that the handoff quick-note Dialog is accessible from both:
  * 1. The page-level "今すぐ申し送り" button on /handoff-timeline
- * 2. The global footer "申し送り" button
+ * 2. The retired global footer action is not exposed in the standard app shell
  */
 test.describe('Handoff Timeline quick note Dialog', () => {
   test.beforeEach(async ({ page }) => {
@@ -28,13 +28,8 @@ test.describe('Handoff Timeline quick note Dialog', () => {
     await expect(pageDialog).toBeHidden();
   });
 
-  test('footer button opens same dialog on /handoff-timeline', async ({ page }) => {
-    // Click the footer quick action
-    await page.getByTestId('handoff-footer-quicknote').click();
-
-    // Same dialog should appear
-    const dialog = page.getByTestId('handoff-quicknote-dialog');
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByTestId('handoff-quicknote-card')).toBeVisible();
+  test('standard app shell exposes only the page quick-note entry', async ({ page }) => {
+    await expect(page.getByTestId('handoff-page-quicknote-open')).toBeVisible();
+    await expect(page.getByTestId('handoff-footer-quicknote')).toHaveCount(0);
   });
 });

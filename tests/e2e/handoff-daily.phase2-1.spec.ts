@@ -70,9 +70,10 @@ test.describe('Phase 2-1: handoff → daily highlight navigation', () => {
     // 最初のレコード（userCode 001）の id は 1
     const targetCard = page.getByTestId('daily-record-card-1');
     await expect(targetCard).toBeVisible({ timeout: 10_000 });
+    await expect(targetCard).toHaveAttribute('data-person-id', '001');
 
     // ✅ ハイライトバナーが一時表示される
-    const banner = page.getByTestId('daily-highlight-banner');
+    const banner = targetCard.getByTestId('daily-highlight-banner');
     await expect(banner).toBeVisible({ timeout: 5_000 });
     await expect(banner).toHaveText(/申し送りから移動しました/);
   });

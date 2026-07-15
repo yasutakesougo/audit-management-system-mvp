@@ -55,20 +55,25 @@ export function useDailyRecordOrchestrator(): {
     highlightDate?: string | null;
   };
   const highlightUserId = navState.highlightUserId ?? searchParams.get('userId');
+  const setActiveHighlightUserId = uiActions.setActiveHighlightUserId;
 
   // ハイライト実行 (副作用)
   useEffect(() => {
     if (!highlightUserId) return;
-    const timer = setTimeout(() => {
-      const element = document.querySelector(`[data-person-id="${highlightUserId}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        uiActions.setActiveHighlightUserId(highlightUserId);
-        setTimeout(() => uiActions.setActiveHighlightUserId(null), 1500);
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [highlightUserId, uiState.records, uiActions]);
+    if (!uiState.records.some((record) => record.userId === highlightUserId)) return;
+
+    setActiveHighlightUserId(highlightUserId);
+    const scrollFrame = requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-person-id="${highlightUserId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    const clearHighlightTimer = setTimeout(() => setActiveHighlightUserId(null), 5000);
+    return () => {
+      cancelAnimationFrame(scrollFrame);
+      clearTimeout(clearHighlightTimer);
+    };
+  }, [highlightUserId, setActiveHighlightUserId, uiState.records]);
 
   // 2. 外部データ統合
   const { total: handoffTotal, criticalCount: handoffCritical } = useHandoffSummary({ dayScope: 'today' });

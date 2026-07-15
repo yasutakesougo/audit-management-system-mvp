@@ -23,6 +23,25 @@ const sortById = <T extends { Id: number }>(items: T[]) => [...items].sort((a, b
 
 test.describe('Daily records end-to-end', () => {
   test('creates a record and persists extended activity fields', async ({ page }) => {
+    const sharePointApiRequests: string[] = [];
+    const authRequests: string[] = [];
+    const sharePointFailures: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (url.includes('/_api/')) sharePointApiRequests.push(url);
+      if (url.includes('login.microsoftonline.com')) authRequests.push(url);
+    });
+    page.on('requestfailed', (request) => {
+      const url = request.url();
+      if (url.includes('/_api/') || url.includes('sharepoint.com')) sharePointFailures.push(url);
+    });
+    page.on('response', (response) => {
+      const url = response.url();
+      if (url.includes('/_api/') && response.status() >= 400) {
+        sharePointFailures.push(`${response.status()} ${url}`);
+      }
+    });
+
     const users = [
       { Id: 1, UserID: 'U-001', FullName: '山田 太郎' },
       { Id: 2, UserID: 'U-002', FullName: '鈴木 花子' },
@@ -37,7 +56,10 @@ test.describe('Daily records end-to-end', () => {
         VITE_E2E: '1',
         VITE_E2E_MSAL_MOCK: '1',
         VITE_SKIP_LOGIN: '1',
+        VITE_SKIP_SHAREPOINT: '0',
         VITE_FORCE_SHAREPOINT: '1',
+        VITE_DEMO_MODE: '0',
+        VITE_USE_DEMO: '0',
         VITE_E2E_ENFORCE_AUDIENCE: '1',
         VITE_TEST_ROLE: 'viewer',
         VITE_AAD_ADMIN_GROUP_ID: 'e2e-admin-group-id',
@@ -50,11 +72,14 @@ test.describe('Daily records end-to-end', () => {
         VITE_SP_SITE_RELATIVE: '/sites/Audit',
         VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
       };
+      delete globalWithEnv.__ENV__.VITE_DATA_PROVIDER;
 
       try {
         window.localStorage.setItem('skipLogin', '1');
         window.localStorage.setItem('demo', '0');
         window.localStorage.setItem('writeEnabled', '1');
+        window.localStorage.removeItem('dataProvider');
+        window.localStorage.removeItem('VITE_DATA_PROVIDER');
       } catch {
         // ignore storage failures (e.g. safari private mode)
       }
@@ -111,7 +136,7 @@ test.describe('Daily records end-to-end', () => {
     });
 
     await page.goto('/records', { waitUntil: 'load' });
-    await expect(page.getByRole('heading', { name: '日次記録' })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: '日々の記録', level: 2 })).toBeVisible({ timeout: 15000 });
 
     const titleInput = page.getByPlaceholder('タイトル');
     await titleInput.fill('山田 太郎');
@@ -138,5 +163,8 @@ test.describe('Daily records end-to-end', () => {
     await expect(reloadedRow.locator('td').nth(0)).toHaveText('山田 太郎');
     await expect(reloadedRow.locator('td').nth(1)).toHaveText('2025-10-01');
     await expect(reloadedRow.locator('td').nth(2)).toHaveText('午後に通院予定');
+    expect(sharePointApiRequests.length).toBeGreaterThan(0);
+    expect(authRequests).toEqual([]);
+    expect(sharePointFailures).toEqual([]);
   });
 });
