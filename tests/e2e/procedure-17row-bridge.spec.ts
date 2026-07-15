@@ -36,6 +36,8 @@ async function primeProcedureEnv(page: Page): Promise<SharePointStubEvidence> {
       ...(win.__ENV__ ?? {}),
       VITE_E2E: '1',
       VITE_E2E_MSAL_MOCK: '1',
+      MODE: 'production',
+      NODE_ENV: 'production',
       VITE_SKIP_LOGIN: '0',
       VITE_SKIP_SHAREPOINT: '0',
       VITE_FORCE_SHAREPOINT: '1',
@@ -46,6 +48,7 @@ async function primeProcedureEnv(page: Page): Promise<SharePointStubEvidence> {
       VITE_SP_SITE_RELATIVE: '/sites/Audit',
       VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read',
     };
+    delete win.__ENV__.VITE_DATA_PROVIDER;
     window.localStorage.removeItem('skipLogin');
     window.localStorage.setItem('demo', '0');
     window.localStorage.setItem('writeEnabled', '1');
@@ -66,9 +69,9 @@ async function primeProcedureEnv(page: Page): Promise<SharePointStubEvidence> {
         name: 'Users_Master',
         items: [
           {
-            Id: 7,
-            UserID: 'U-007',
-            FullName: '伊藤 雄介',
+            Id: 1,
+            UserID: 'U-001',
+            FullName: '田中 太郎',
             IsHighIntensitySupportTarget: true,
             IsSupportProcedureTarget: true,
             IsActive: true,
@@ -80,21 +83,21 @@ async function primeProcedureEnv(page: Page): Promise<SharePointStubEvidence> {
         name: 'SupportPlanningSheet_Master',
         items: [
           {
-            Id: 1007,
-            Title: '支援計画 U-007',
-            UserCode: 'U-007',
-            ISPId: '7',
+            Id: 1001,
+            Title: '支援計画 U-001',
+            UserCode: 'U-001',
+            ISPId: '1',
             Status: 'active',
             VersionNo: 1,
             IsCurrent: true,
-            SupportPolicy: '伊藤さんの対応方針',
-            ConcreteApproaches: '伊藤さんの具体策',
-            EnvironmentalAdjustments: '伊藤さんの環境調整',
+            SupportPolicy: '田中さんの対応方針',
+            ConcreteApproaches: '田中さんの具体策',
+            EnvironmentalAdjustments: '田中さんの環境調整',
             FormDataJson: JSON.stringify({
-              title: '支援計画 U-007',
-              observationFacts: '伊藤さんの行動観察',
-              interpretationHypothesis: '伊藤さんの分析',
-              supportIssues: '伊藤さんの課題',
+              title: '支援計画 U-001',
+              observationFacts: '田中さんの行動観察',
+              interpretationHypothesis: '田中さんの分析',
+              supportIssues: '田中さんの課題',
             }),
             PlanningJson: JSON.stringify({ procedureSteps: [] }),
           },
@@ -111,7 +114,12 @@ async function primeProcedureEnv(page: Page): Promise<SharePointStubEvidence> {
 }
 
 function expectSharePointStubEvidence(evidence: SharePointStubEvidence): void {
-  expect(evidence.apiRequests.length).toBeGreaterThan(0);
+  expect(
+    evidence.apiRequests.some((url) => url.includes("getbytitle('SupportPlanningSheet_Master')")),
+  ).toBe(true);
+  expect(
+    evidence.apiRequests.some((url) => url.includes("getbytitle('SupportProcedureRecord_Daily')")),
+  ).toBe(true);
   expect(evidence.authRequests).toEqual([]);
   expect(evidence.failures).toEqual([]);
 }
@@ -119,7 +127,7 @@ function expectSharePointStubEvidence(evidence: SharePointStubEvidence): void {
 test.describe('Procedure 17-row Bridge Verification', () => {
   test.describe.configure({ mode: 'serial' });
 
-  const TEST_PLAN_ID = '1007';
+  const TEST_PLAN_ID = '1001';
 
   const openPlanningSheetEditor = async (page: Page) => {
     await page.goto(`/support-planning-sheet/${TEST_PLAN_ID}?provider=sharepoint`, { waitUntil: 'domcontentloaded' });
@@ -145,7 +153,7 @@ test.describe('Procedure 17-row Bridge Verification', () => {
     await page.getByRole('combobox', { name: 'ステータス' }).click();
     await page.getByRole('option', { name: '（全て）' }).click();
 
-    const availableHighIntensityUser = page.getByRole('button', { name: /伊藤 雄介/ }).first();
+    const availableHighIntensityUser = page.getByRole('button', { name: /田中 太郎/ }).first();
     await expect(availableHighIntensityUser).toBeVisible({ timeout: 30000 });
     await availableHighIntensityUser.click();
 

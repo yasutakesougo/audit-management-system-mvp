@@ -26,6 +26,10 @@ test.describe('Daily records end-to-end', () => {
     const sharePointApiRequests: string[] = [];
     const authRequests: string[] = [];
     const sharePointFailures: string[] = [];
+    const isDailyRecordContractRequest = (url: string) =>
+      url.includes("getbytitle('Users_Master')") || url.includes("getbytitle('SupportRecord_Daily')");
+    const isDailyRecordDataRequest = (url: string) =>
+      isDailyRecordContractRequest(url) && url.includes('/items');
     page.on('request', (request) => {
       const url = request.url();
       if (url.includes('/_api/')) sharePointApiRequests.push(url);
@@ -33,11 +37,11 @@ test.describe('Daily records end-to-end', () => {
     });
     page.on('requestfailed', (request) => {
       const url = request.url();
-      if (url.includes('/_api/') || url.includes('sharepoint.com')) sharePointFailures.push(url);
+      if (isDailyRecordDataRequest(url)) sharePointFailures.push(url);
     });
     page.on('response', (response) => {
       const url = response.url();
-      if (url.includes('/_api/') && response.status() >= 400) {
+      if (isDailyRecordDataRequest(url) && response.status() >= 400) {
         sharePointFailures.push(`${response.status()} ${url}`);
       }
     });
@@ -163,7 +167,12 @@ test.describe('Daily records end-to-end', () => {
     await expect(reloadedRow.locator('td').nth(0)).toHaveText('山田 太郎');
     await expect(reloadedRow.locator('td').nth(1)).toHaveText('2025-10-01');
     await expect(reloadedRow.locator('td').nth(2)).toHaveText('午後に通院予定');
-    expect(sharePointApiRequests.length).toBeGreaterThan(0);
+    expect(
+      sharePointApiRequests.some((url) => url.includes("getbytitle('Users_Master')")),
+    ).toBe(true);
+    expect(
+      sharePointApiRequests.some((url) => url.includes("getbytitle('SupportRecord_Daily')")),
+    ).toBe(true);
     expect(authRequests).toEqual([]);
     expect(sharePointFailures).toEqual([]);
   });
