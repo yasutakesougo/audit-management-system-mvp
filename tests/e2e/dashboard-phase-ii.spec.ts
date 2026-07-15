@@ -58,9 +58,16 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // 申し送りサマリーの明示的な導線からタイムラインへ遷移
-    const handoffSummary = page.getByTestId('handoff-summary-card');
-    await expect(handoffSummary).toBeVisible();
-    await handoffSummary.getByRole('link', { name: 'タイムラインを開く' }).click();
+    const dashboardPage = page.getByTestId('dashboard-page');
+    const timelineButton = dashboardPage.getByRole('button', {
+      name: 'タイムラインを開く',
+      exact: true,
+    });
+    await expect(timelineButton).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/handoff-timeline/),
+      timelineButton.click(),
+    ]);
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/\/handoff-timeline/);
   });
