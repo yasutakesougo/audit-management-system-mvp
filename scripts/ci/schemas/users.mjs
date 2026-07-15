@@ -10,6 +10,14 @@ export const ESSENTIAL_FIELDS = [
   'FullName',
 ];
 
+// Logical contract -> known SharePoint physical InternalName aliases.
+// Keep the canonical names above unchanged; the resolver chooses the
+// physical name only when the canonical InternalName is not present.
+export const FIELD_ALIASES = {
+  UserID: ['User_x0020_ID'],
+  FullName: ['Full_x0020_Name'],
+};
+
 export const OPTIONAL_FIELDS = [
   'IsActive',
   'Title',
