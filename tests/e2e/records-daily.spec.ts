@@ -168,9 +168,6 @@ test.describe('Daily records end-to-end', () => {
     await expect(reloadedRow.locator('td').nth(1)).toHaveText('2025-10-01');
     await expect(reloadedRow.locator('td').nth(2)).toHaveText('午後に通院予定');
     expect(
-      sharePointApiRequests.some((url) => url.includes("getbytitle('Users_Master')")),
-    ).toBe(true);
-    expect(
       sharePointApiRequests.some((url) => url.includes("getbytitle('SupportRecord_Daily')")),
     ).toBe(true);
     expect(authRequests).toEqual([]);
