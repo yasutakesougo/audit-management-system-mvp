@@ -60,4 +60,25 @@ describe('Users_Master list field resolution', () => {
     expect(fields.keyField).toBe('UserID');
     expect(fields.selectFields).toEqual(['Title', 'FullName', 'IsActive', 'Modified']);
   });
+
+  it('maps IsActive alias consistently across select, deactivate, and payload', () => {
+    const fields = resolveListSpecFields(usersSpec, [
+      'Id',
+      'Title',
+      'UserID',
+      'FullName',
+      'isActive0',
+      'Modified',
+    ]);
+
+    expect(fields.selectFields).toEqual(['Title', 'FullName', 'isActive0', 'Modified']);
+    expect(fields.deactivateField).toBe('isActive0');
+
+    const payload = mapSchemaPayload(
+      usersSpec.makeUpsertPayload('E2E'),
+      fields.logicalToPhysical,
+    );
+    expect(payload.isActive0).toBe(true);
+    expect(typeof payload.isActive0).toBe('boolean');
+  });
 });

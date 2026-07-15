@@ -16,6 +16,7 @@ export const ESSENTIAL_FIELDS = [
 export const FIELD_ALIASES = {
   UserID: ['User_x0020_ID'],
   FullName: ['Full_x0020_Name'],
+  IsActive: ['isActive0'],
 };
 
 export const OPTIONAL_FIELDS = [
