@@ -25,6 +25,13 @@ describe('toLocalDateISO', () => {
     // In contrast, toISOString would give 2026-03-03 in JST timezone
   });
 
+  it('keeps the JST date key after midnight before the UTC date changes', () => {
+    const boundary = new Date('2026-07-18T00:30:00+09:00');
+
+    expect(toLocalDateISO(boundary)).toBe('2026-07-18');
+    expect(boundary.toISOString().split('T')[0]).toBe('2026-07-17');
+  });
+
   it('defaults to current date when no argument given', () => {
     const result = toLocalDateISO();
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
