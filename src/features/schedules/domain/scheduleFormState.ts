@@ -64,7 +64,7 @@ export const ScheduleFormSchema = z.object({
   category: ScheduleCategorySchema,
   userId: z.string(),
   startLocal: z.string().min(1, '開始日時を入力してください'),
-  endLocal: z.string().min(1, '終了日時を入力してください'),
+  endLocal: z.string(),
   serviceType: z.string().nullable().optional(),
   locationName: z.string(),
   notes: z.string(),
@@ -80,14 +80,6 @@ export const ScheduleFormSchema = z.object({
 }, {
   message: '終了日時は開始日時より後にしてください',
   path: ['endLocal'],
-}).refine(data => {
-  if (data.category === 'User' || data.category === 'LivingSupport') {
-    return !!data.serviceType;
-  }
-  return true;
-}, {
-  message: 'サービス種別を選択してください',
-  path: ['serviceType'],
 });
 
 export type ScheduleFormState = z.infer<typeof ScheduleFormSchema>;
@@ -202,11 +194,8 @@ export function toCreateScheduleInput(
   if (!trimmedTitle) {
     throw new Error('title is required');
   }
-  if (!form.startLocal || !form.endLocal) {
-    throw new Error('startLocal and endLocal are required');
-  }
-  if (form.category === 'User' && !form.serviceType) {
-    throw new Error('serviceType is required for user schedules');
+  if (!form.startLocal) {
+    throw new Error('startLocal is required');
   }
 
   const normalizeLookupId = (value?: unknown): string | null => {
@@ -235,32 +224,15 @@ export function toCreateScheduleInput(
     return null;
   };
 
-  if (form.category === 'User' && !form.userId.trim()) {
-    throw new Error('userId is required for user schedules');
-  }
-
-  if (form.category === 'Staff' && !form.assignedStaffId.trim()) {
-    throw new Error('assignedStaffId is required for staff schedules');
-  }
-
-  let resolvedServiceType: ScheduleServiceType;
-  if (form.category === 'User') {
-    if (typeof form.serviceType === 'string') {
-      resolvedServiceType = form.serviceType as ScheduleServiceType;
-    } else if (!form.serviceType) {
-      resolvedServiceType = 'normal';
-    } else {
-      resolvedServiceType = form.serviceType;
-    }
-  } else {
-    if (typeof form.serviceType === 'string') {
-      resolvedServiceType = form.serviceType as ScheduleServiceType;
-    } else if (!form.serviceType) {
-      resolvedServiceType = 'other';
-    } else {
-      resolvedServiceType = form.serviceType;
-    }
-  }
+  const trimmedServiceType = typeof form.serviceType === 'string' ? form.serviceType.trim() : '';
+  const resolvedServiceType = (trimmedServiceType
+    ? trimmedServiceType
+    : form.category === 'User'
+      ? 'normal'
+      : 'other') as ScheduleServiceType;
+  const resolvedEndLocal = form.endLocal?.trim()
+    ? form.endLocal
+    : formatDateTimeLocal(addHours(new Date(form.startLocal), 1));
   const statusReason = form.statusReason.trim();
   const resolvedUserLookupId = normalizeLookupId(selectedUser?.lookupId ?? undefined);
   const resolvedUserName = selectedUser?.name?.trim() || null;
@@ -272,7 +244,7 @@ export function toCreateScheduleInput(
     userLookupId: resolvedUserLookupId,
     userName: resolvedUserName,
     startLocal: form.startLocal,
-    endLocal: form.endLocal,
+    endLocal: resolvedEndLocal,
     serviceType: resolvedServiceType,
     locationName: form.locationName?.trim() || null,
     notes: form.notes?.trim() || null,
