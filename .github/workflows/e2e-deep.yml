@@ -148,7 +148,6 @@ jobs:
             npx playwright test ${{ github.event.inputs.test_pattern }} \
               --config=playwright.config.ts \
               --project=chromium \
-              --reporter=list,junit,html \
               --retries=2
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "PR lane: running schedule/day-focused deep tests only"
@@ -158,7 +157,6 @@ jobs:
               tests/e2e/dashboard-schedule-flow.spec.ts \
               --config=playwright.config.ts \
               --project=chromium \
-              --reporter=list,junit,html \
               --retries=1 \
               --workers=1
           else
@@ -167,7 +165,6 @@ jobs:
               --config=playwright.config.ts \
               --project=chromium \
               --grep-invert smoke \
-              --reporter=list,junit,html \
               --retries=2
           fi
         continue-on-error: true
@@ -189,6 +186,13 @@ jobs:
             echo "**Total Tests:** ${tests:-0}" >> $GITHUB_STEP_SUMMARY
             echo "**Failures:** ${failures:-0}" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Generate Deep E2E taxonomy
+        if: always()
+        env:
+          TAXONOMY_INPUT: test-results/results.json
+          TAXONOMY_OUTPUT: reports/deep-e2e-taxonomy.json
+        run: node scripts/ci/generate-deep-e2e-taxonomy.mjs --input "$TAXONOMY_INPUT" --output "$TAXONOMY_OUTPUT"
 
       - name: Classify deep test completion
         if: always()
@@ -306,6 +310,15 @@ jobs:
           path: test-results/junit-e2e-deep.xml
           retention-days: 14
           if-no-files-found: warn
+
+      - name: Upload Deep E2E taxonomy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taxonomy-deep-${{ github.run_id }}
+          path: reports/deep-e2e-taxonomy.json
+          retention-days: 14
+          if-no-files-found: error
       
       - name: Upload artifacts on partial failure
         if: failure() || steps.deep_tests.outcome == 'failure'
