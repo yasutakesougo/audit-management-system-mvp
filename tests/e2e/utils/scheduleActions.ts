@@ -509,14 +509,11 @@ export async function getScheduleWriteState(page: Page): Promise<{ canWrite: boo
 
 export async function openQuickUserCareDialog(page: Page) {
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
-  await expect(dayTab).toBeVisible();
   const dayRoot = page.getByTestId(TESTIDS['schedules-day-page']);
 
-  const isDayActive = (await dayTab.getAttribute('aria-selected')) === 'true';
-  if (!isDayActive) {
-    await dayTab.scrollIntoViewIfNeeded();
-    await dayTab.click();
-    await expect(page).toHaveURL(/tab=day/);
+  await expect(dayTab).toHaveCount(0);
+  if (!(await dayRoot.isVisible().catch(() => false))) {
+    await openDirectDayView(page);
   }
 
   await expect(dayRoot).toBeVisible({ timeout: 10_000 });
@@ -553,6 +550,12 @@ export async function openQuickUserCareDialog(page: Page) {
   }
 
   await expect(dialog).toBeVisible({ timeout: 15_000 });
+}
+
+export async function openDirectDayView(page: Page, date = new Date()): Promise<void> {
+  const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  await page.goto(`/schedules/week?tab=day&date=${iso}`, { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveURL(/\/schedules\/week\?.*tab=day/);
 }
 
 export async function fillQuickUserCareForm(page: Page, opts: QuickUserCareFormOptions = {}) {

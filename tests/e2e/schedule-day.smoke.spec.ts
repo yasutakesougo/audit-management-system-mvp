@@ -10,19 +10,22 @@ test.describe('Schedule day – smoke', () => {
     await bootSchedule(page);
   });
 
-  test('renders the day timeline with tabs and basic chrome', async ({ page }) => {
+  test('renders the day timeline with week return chrome', async ({ page }) => {
     await gotoDay(page, new Date('2025-11-24'));
     await waitForDayTimeline(page);
 
-    const root = page.getByTestId(TESTIDS['schedules-day-page']).first();
+    const root = page.getByTestId(TESTIDS['schedules-day-page']);
+    await expect(root).toHaveCount(1);
 
-    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST).first();
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
+    await expect(tablist).toHaveCount(1);
     await expect(tablist).toBeVisible();
 
-    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
-    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).first();
-    await expect(dayTab).toBeVisible();
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
+    await expect(dayTab).toHaveCount(0);
     await expect(weekTab).toBeVisible();
+    await expect(page.getByTestId('schedules-return-week')).toBeVisible();
 
     await expect(root).toBeVisible();
   });
