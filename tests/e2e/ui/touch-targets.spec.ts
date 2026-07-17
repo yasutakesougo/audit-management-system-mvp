@@ -15,16 +15,17 @@ test.describe('Touch Targets', () => {
   });
 
   test('WeekPage: FAB meets 64×64px for tablet', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/schedules/week');
     await page.waitForLoadState('networkidle');
 
-    const fab = page.locator('button[aria-label*="予定を追加"], button[aria-label*="新規作成"]').first();
+    const fab = page.getByTestId('schedules-fab-create');
+    await expect(fab).toBeVisible();
     const box = await fab.boundingBox();
-    
-    if (box) {
-      expect(box.width, 'FAB width should be at least 64px').toBeGreaterThanOrEqual(64);
-      expect(box.height, 'FAB height should be at least 64px').toBeGreaterThanOrEqual(64);
-    }
+
+    expect(box, 'FAB should have a measurable bounding box').not.toBeNull();
+    expect(box!.width, 'FAB width should be at least 64px').toBeGreaterThanOrEqual(64);
+    expect(box!.height, 'FAB height should be at least 64px').toBeGreaterThanOrEqual(64);
   });
 
   test('UsersPanel: Table row actions meet 48px', async ({ page }) => {

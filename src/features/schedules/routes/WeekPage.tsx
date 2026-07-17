@@ -134,8 +134,7 @@ export default function WeekPage() {
   const defaultScheduleUser = scheduleUserOptions.length ? scheduleUserOptions[0] : null;
 
   // Layout flags
-  const isSchedulesView = location.pathname === '/schedules' || location.pathname.startsWith('/schedules/');
-  const showFab = !isDesktopSize && !isSchedulesView;
+  const showFab = !isDesktopSize;
   const compact = isTabletSize && isLandscape;
   const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
   const fabInsetRight = `max(24px, calc(env(safe-area-inset-right, 0px) + 8px))`;
