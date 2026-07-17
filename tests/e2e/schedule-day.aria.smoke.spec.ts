@@ -4,7 +4,6 @@ import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
-import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from './_helpers/smoke';
 import { gotoDay } from './utils/scheduleNav';
 import { waitForDayViewReady, openQuickUserCareDialog } from './utils/scheduleActions';
 
@@ -27,31 +26,22 @@ test.describe('Schedules day ARIA smoke', () => {
     await gotoDay(page, new Date('2025-11-24'));
     await waitForDayViewReady(page);
 
-    const pageRoot = page.getByTestId(TESTIDS['schedules-day-page']).first();
-    await expectLocatorVisibleBestEffort(
-      pageRoot,
-      `testid not found: ${TESTIDS['schedules-day-page']} (allowed for smoke)`
-    );
+    const pageRoot = page.getByTestId(TESTIDS['schedules-day-page']);
+    await expect(pageRoot).toHaveCount(1);
+    await expect(pageRoot).toBeVisible();
 
-    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
-    await expectLocatorVisibleBestEffort(
-      dayTab,
-      `testid not found: ${TESTIDS.SCHEDULES_WEEK_TAB_DAY} (allowed for smoke)`
-    );
+    const returnWeek = page.getByTestId('schedules-return-week');
+    await expect(returnWeek).toHaveCount(1);
+    await expect(returnWeek).toBeVisible();
 
-    const dayTimeline = page.getByTestId(TESTIDS['schedules-day-page']).first();
-    await expectLocatorVisibleBestEffort(
-      dayTimeline,
-      `testid not found: ${TESTIDS['schedules-day-page']} (allowed for smoke)`
-    );
+    const dayTimeline = page.getByTestId(TESTIDS['schedules-day-page']);
+    await expect(dayTimeline).toBeVisible();
 
     await openQuickUserCareDialog(page);
 
     const dialog = page.getByTestId(TESTIDS['schedule-create-dialog']);
-    await expectLocatorVisibleBestEffort(
-      dialog,
-      `testid not found: ${TESTIDS['schedule-create-dialog']} (allowed for smoke)`
-    );
+    await expect(dialog).toHaveCount(1);
+    await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute('aria-labelledby', `${TESTIDS['schedule-create-dialog']}-heading`);
     await expect(dialog).toHaveAttribute('aria-describedby', `${TESTIDS['schedule-create-dialog']}-description`);
     await expect(page.getByTestId(TESTIDS['schedule-create-heading'])).toHaveText('スケジュール新規作成');
@@ -60,7 +50,12 @@ test.describe('Schedules day ARIA smoke', () => {
     // (CloseIcon SVG in the aria-hidden root subtree blocks button clicks).
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden({ timeout: 5_000 });
-    await expectTestIdVisibleBestEffort(page, TESTIDS.SCHEDULES_FAB_CREATE);
+    const createTrigger = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE).or(
+      page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE),
+    );
+    await expect(createTrigger).toHaveCount(1);
+    await expect(createTrigger).toBeVisible();
+    await expect(createTrigger).toBeFocused();
   });
 
   test('header action uses descriptive aria-label', async ({ page }) => {
@@ -69,11 +64,11 @@ test.describe('Schedules day ARIA smoke', () => {
     await expect(page).toHaveURL(/\/schedules\/week/);
     await expect(page).toHaveURL(/tab=day/);
 
-    const prevButton = page.getByTestId(TESTIDS.SCHEDULES_PREV_WEEK).first();
+    const prevButton = page.getByTestId(TESTIDS.SCHEDULES_PREV_WEEK);
     await expect(prevButton).toHaveCount(1);
     await expect(prevButton).toHaveAttribute('aria-label', /前の期間/);
 
-    const nextButton = page.getByTestId(TESTIDS.SCHEDULES_NEXT_WEEK).first();
+    const nextButton = page.getByTestId(TESTIDS.SCHEDULES_NEXT_WEEK);
     await expect(nextButton).toHaveCount(1);
     await expect(nextButton).toHaveAttribute('aria-label', /次の期間/);
   });
