@@ -261,7 +261,7 @@ export default function WeekPage() {
             onNext={navNext}
             onToday={navToday}
             onPrimaryCreate={(canEdit && canWrite) || getIsE2eForceSchedulesWrite() ? handleFabClick : undefined}
-            showPrimaryAction={true}
+            showPrimaryAction={isDesktopSize}
             primaryActionLabel="予定を追加"
             primaryActionAriaLabel="この週に予定を追加"
             headingId={headingId}
