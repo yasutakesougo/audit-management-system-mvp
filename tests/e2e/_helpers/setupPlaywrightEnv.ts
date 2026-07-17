@@ -63,6 +63,16 @@ export async function setupPlaywrightEnv(page: Page, options: SetupPlaywrightEnv
 
   const envPayload = { ...BASE_ENV, ...envOverrides };
   const storagePayload = { ...BASE_STORAGE, ...storageOverrides };
+  if (
+    Object.prototype.hasOwnProperty.call(envOverrides, 'VITE_SKIP_LOGIN') &&
+    !Object.prototype.hasOwnProperty.call(storageOverrides, 'skipLogin')
+  ) {
+    if (envPayload.VITE_SKIP_LOGIN === '1' || envPayload.VITE_SKIP_LOGIN === 'true') {
+      storagePayload.skipLogin = '1';
+    } else {
+      delete storagePayload.skipLogin;
+    }
+  }
 
   await page.addInitScript((providedEnv) => {
     const scope = window as typeof window & { __ENV__?: Record<string, string> };
