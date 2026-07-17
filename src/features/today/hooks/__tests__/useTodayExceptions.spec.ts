@@ -27,7 +27,7 @@ describe('useTodayExceptions - Signal Governance RBV', () => {
   it('admin ロールでは setup-incomplete シグナルが表示される', () => {
     vi.mocked(useExceptionDataSources).mockReturnValue({
       status: 'ready',
-      userSummaries: [{ userId: 'user-1', userName: 'User 1', isSupportProcedureTarget: false }],
+      userSummaries: [{ userId: 'user-1', userName: 'User 1', isSupportProcedureTarget: false, isTransportTarget: false }],
       expectedUsers: [],
       todayRecords: [],
       criticalHandoffs: [],
@@ -44,7 +44,7 @@ describe('useTodayExceptions - Signal Governance RBV', () => {
   it('staff ロールでは setup-incomplete シグナルが抑制される', () => {
     vi.mocked(useExceptionDataSources).mockReturnValue({
       status: 'ready',
-      userSummaries: [{ userId: 'user-1', userName: 'User 1', isSupportProcedureTarget: false }],
+      userSummaries: [{ userId: 'user-1', userName: 'User 1', isSupportProcedureTarget: false, isTransportTarget: false }],
       expectedUsers: [],
       todayRecords: [],
       criticalHandoffs: [],
@@ -61,7 +61,7 @@ describe('useTodayExceptions - Signal Governance RBV', () => {
   it('staff ロールでも missing-record (ownerRole: staff) は表示される', () => {
     vi.mocked(useExceptionDataSources).mockReturnValue({
       status: 'ready',
-      userSummaries: [{ userId: 'user-1', userName: 'User 1', isSupportProcedureTarget: true }],
+      userSummaries: [{ userId: 'user-1', userName: 'User 1', isSupportProcedureTarget: true, isTransportTarget: false }],
       expectedUsers: [{ userId: 'user-1', userName: 'User 1' }],
       todayRecords: [], // Case record missing
       criticalHandoffs: [],
@@ -82,7 +82,8 @@ describe('useTodayExceptions - Signal Governance RBV', () => {
         userId: 'user-1', 
         userName: 'User 1', 
         isHighIntensity: true, 
-        isSupportProcedureTarget: false 
+        isSupportProcedureTarget: false,
+        isTransportTarget: false,
       }],
       expectedUsers: [],
       todayRecords: [],
