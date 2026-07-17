@@ -119,6 +119,7 @@ export const SchedulesHeader: React.FC<Props> = ({
 
   const isOpsTab = (tab: ViewMode) => tab === 'ops' || tab === 'list';
   const isCalendarTab = (tab: ViewMode) => tab === 'day' || tab === 'week' || tab === 'month' || tab === 'org';
+  const tabsValue = modes.includes(mode) ? mode : false;
 
   const handleTabChange = (_: React.SyntheticEvent, value: ViewMode) => {
     if (value === mode) {
@@ -183,7 +184,7 @@ export const SchedulesHeader: React.FC<Props> = ({
         }}
       >
         <Tabs
-          value={mode}
+          value={tabsValue}
           onChange={handleTabChange}
           aria-label={tablistLabel}
           sx={{ flexShrink: 0, minHeight: tabsMinHeight }}
