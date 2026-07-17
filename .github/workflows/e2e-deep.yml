@@ -164,7 +164,7 @@ jobs:
             npx playwright test tests/e2e \
               --config=playwright.config.ts \
               --project=chromium \
-              --grep-invert smoke \
+              --grep-invert "smoke|@live-sp" \
               --retries=2
           fi
         continue-on-error: true

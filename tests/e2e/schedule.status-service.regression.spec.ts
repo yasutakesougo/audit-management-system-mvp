@@ -104,6 +104,8 @@ const orgMasterFixtures = [
 ];
 
 test.describe('Schedule quick-create (regression)', () => {
+  test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
+
   test.beforeEach(async ({ page }) => {
     page.on('console', (message) => {
       if (message.type() === 'info' && message.text().startsWith('[schedulesClient] fixtures=')) {
@@ -198,7 +200,6 @@ test.describe('Schedule quick-create (regression)', () => {
   });
 
   test('create new 生活介護休み entry via quick dialog', async ({ page }, testInfo) => {
-    test.skip(IS_PREVIEW, 'Preview UI diverges; quick dialog not exposed.');
     await gotoWeek(page, TEST_DATE);
     await waitForWeekViewReady(page);
 

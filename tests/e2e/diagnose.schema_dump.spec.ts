@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
 import { resolveSharePointSiteUrl } from '../integration/_shared/resolveSiteUrl';
 
-test.describe('Targeted Schema Check for 400 Errors', () => {
+test.describe('@live-sp Targeted Schema Check for 400 Errors', () => {
   test.use({
     storageState: 'tests/.auth/storageState.json',
   });
