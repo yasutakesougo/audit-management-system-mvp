@@ -3,7 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 import { TESTIDS } from '@/testids';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoWeek } from './utils/scheduleNav';
-import { waitForDayTimeline, waitForWeekViewReady } from './utils/wait';
+import { waitForWeekViewReady } from './utils/wait';
 
 const skipSp = process.env.VITE_SKIP_SHAREPOINT === '1' || process.env.VITE_FEATURE_SCHEDULES_SP === '0';
 
@@ -39,7 +39,7 @@ test.describe('Schedule week keyboard navigation', () => {
     await bootstrapScheduleEnv(page);
   });
 
-  test('keyboard focus moves across tabs and restores the week view', async ({ page }) => {
+  test('keyboard focus remains on the week-only tab navigation', async ({ page }) => {
     await gotoWeek(page, new Date('2025-11-24'));
     await waitForWeekViewReady(page);
 
@@ -49,17 +49,7 @@ test.describe('Schedule week keyboard navigation', () => {
     await weekTab.click();
     await focusLocator(weekTab);
     await expect(weekTab).toHaveAttribute('aria-selected', 'true');
-
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('Enter');
-    await waitForDayTimeline(page);
-    await expect(dayTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
-
-    await focusLocator(dayTab);
-    await page.keyboard.press('ArrowLeft');
-    await page.keyboard.press('Enter');
-    await waitForWeekViewReady(page);
+    await expect(dayTab).toHaveCount(0);
 
     await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible();
   });
