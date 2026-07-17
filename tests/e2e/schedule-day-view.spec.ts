@@ -25,42 +25,46 @@ test.describe('Schedule day view', () => {
     });
   });
 
-  test('指定日の Day ビューが開き、タブとタイムラインが揃う', async ({ page }) => {
+  test('指定日の Day ビューが開き、週へ戻る導線とタイムラインが揃う', async ({ page }) => {
     await gotoDay(page, TEST_DATE);
     await waitForDayViewReady(page);
     await assertDayHasUserCareEvent(page);
 
-    const heading = page.getByRole('heading', { name: /スケジュール|予定表/ }).first();
+    const heading = page.getByRole('heading', { name: /スケジュール|予定表/ });
+    await expect(heading).toHaveCount(1);
     await expect(heading).toBeVisible();
 
-    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST).first();
+    const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
+    await expect(tablist).toHaveCount(1);
     await expect(tablist).toBeVisible();
 
-    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
-    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).first();
+    const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY);
+    const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK);
 
-    await expect(dayTab).toBeVisible();
+    await expect(dayTab).toHaveCount(0);
     await expect(weekTab).toBeVisible();
+    await expect(page.getByTestId('schedules-return-week')).toBeVisible();
 
-    const dayRoot = page.getByTestId(TESTIDS['schedules-day-page']).first();
+    const dayRoot = page.getByTestId(TESTIDS['schedules-day-page']);
+    await expect(dayRoot).toHaveCount(1);
     await expect(dayRoot).toBeVisible();
 
     const rangeLabel = page.getByTestId(TESTIDS.SCHEDULES_RANGE_LABEL);
     await expect(rangeLabel).toBeVisible();
   });
 
-  test('日⇄週タブを切り替えても表示日が維持される', async ({ page }) => {
+  test('日表示から週へ戻り、直接URLで日表示を再表示できる', async ({ page }) => {
     await gotoDay(page, TEST_DATE);
     await waitForDayViewReady(page);
 
     const rangeLabel = page.getByTestId(TESTIDS.SCHEDULES_RANGE_LABEL);
     const initialRangeText = await rangeLabel.textContent();
 
-    await page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).first().click();
+    await page.getByTestId('schedules-return-week').click();
     await waitForWeekViewReady(page);
     await expect(rangeLabel).toBeVisible();
 
-    await page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first().click();
+    await gotoDay(page, TEST_DATE);
     await waitForDayViewReady(page);
 
     const rangeTextAfterToggle = await rangeLabel.textContent();

@@ -211,8 +211,10 @@ describe('WeekPage tabs', () => {
       expect(screen.getByTestId('schedules-week-page')).toBeInTheDocument();
     });
 
-    // Header should render with mode tabs
+    // Simple Schedule MVP keeps the regular navigation on week only.
     expect(screen.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK)).toBeInTheDocument();
+    expect(screen.queryByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TESTIDS.SCHEDULES_WEEK_TAB_MONTH)).not.toBeInTheDocument();
   });
 
   it('renders navigation controls (prev/next)', async () => {

@@ -129,20 +129,9 @@ export async function waitForDayTimeline(page: Page, timeout = 15_000): Promise<
   }
   
   // Wait for the day page container
-  await expect(page.getByTestId(TESTIDS['schedules-day-page']).first()).toBeVisible({ timeout });
-
-  const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
-  await expect(dayTab).toBeVisible({ timeout });
-  const isSelected = (await dayTab.getAttribute('aria-selected')) === 'true';
-  if (!isSelected) {
-    await dayTab.click();
-  }
-  await expect(dayTab).toHaveAttribute('aria-selected', 'true', { timeout });
-
-  const dayPage = page.getByTestId(TESTIDS['schedules-day-page']).first();
-  const hasDayPage = await locatorExists(dayPage, 5_000);
-  const root = hasDayPage ? dayPage : page.getByTestId('schedule-day-root').first();
-  await expect(root).toBeVisible({ timeout });
+  const dayPage = page.getByTestId(TESTIDS['schedules-day-page']);
+  await expect(dayPage).toHaveCount(1);
+  await expect(dayPage).toBeVisible({ timeout });
 }
 
 export async function waitForWeekViewReady(page: Page): Promise<void> {

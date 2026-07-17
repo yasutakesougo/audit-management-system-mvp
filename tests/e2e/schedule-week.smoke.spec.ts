@@ -5,7 +5,7 @@ import { runA11ySmoke } from './utils/a11y';
 import { waitForWeekViewReady } from './utils/scheduleActions';
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
-import { expectLocatorVisibleBestEffort, expectTestIdVisibleBestEffort } from './_helpers/smoke';
+import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
 test.describe('Schedule week smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -23,22 +23,16 @@ test.describe('Schedule week smoke', () => {
 
     await expectTestIdVisibleBestEffort(page, 'schedules-week-root');
     const weekRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT).or(page.getByTestId(TESTIDS['schedules-week-page']));
-    await expectLocatorVisibleBestEffort(
-      weekRoot,
-      `testid not found: ${TESTIDS['schedules-week-page']} (allowed for smoke)`
-    );
+    await expect(weekRoot).toHaveCount(1);
+    await expect(weekRoot).toBeVisible();
 
     const heading = page.getByTestId(TESTIDS['schedules-week-heading']);
-    await expectLocatorVisibleBestEffort(
-      heading,
-      `testid not found: ${TESTIDS['schedules-week-heading']} (allowed for smoke)`
-    );
+    await expect(heading).toHaveCount(1);
+    await expect(heading).toBeVisible();
 
     const grid = page.getByTestId(TESTIDS['schedules-week-grid']);
-    await expectLocatorVisibleBestEffort(
-      grid,
-      `testid not found: ${TESTIDS['schedules-week-grid']} (allowed for smoke)`
-    );
+    await expect(grid).toHaveCount(1);
+    await expect(grid).toBeVisible();
     await expect(grid.getByRole('button').first()).toBeVisible();
 
     await runA11ySmoke(page, 'Schedules Week', {
@@ -53,66 +47,34 @@ test.describe('Schedule week smoke', () => {
     });
   });
 
-  test('week tab stays active when switching views', async ({ page }) => {
+  test('regular navigation shows only week tab while supplemental views stay reachable by URL', async ({ page }) => {
     await gotoScheduleWeek(page, new Date('2025-11-24'));
 
     const tablist = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TABLIST);
-    const fallbackTablist = page.getByRole('tablist');
     const weekTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_WEEK).or(page.getByRole('tab', { name: '週' }));
     const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).or(page.getByRole('tab', { name: '日' }));
+    const monthTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_MONTH).or(page.getByRole('tab', { name: '月' }));
+    const opsTab = page.getByTestId('schedule-tab-ops').or(page.getByRole('tab', { name: '運営' }));
+    const listTab = page.getByTestId('schedule-tab-list').or(page.getByRole('tab', { name: '一覧' }));
 
-    const tablistCount = (await tablist.count().catch(() => 0)) + (await fallbackTablist.count().catch(() => 0));
-    const dayTabCount = await dayTab.count().catch(() => 0);
-    if (dayTabCount === 0) {
-      test.info().annotations.push({
-        type: 'note',
-        description: `testid not found: ${TESTIDS.SCHEDULES_WEEK_TAB_DAY} (allowed for smoke)`,
-      });
-      return;
-    }
-    if (tablistCount === 0) {
-      test.info().annotations.push({
-        type: 'note',
-        description: `tablist not found: ${TESTIDS.SCHEDULES_WEEK_TABLIST} (allowed for smoke)`,
-      });
-    }
-    await expectLocatorVisibleBestEffort(
-      dayTab,
-      `testid not found: ${TESTIDS.SCHEDULES_WEEK_TAB_DAY} (allowed for smoke)`,
-      15_000
-    );
-    await dayTab.first().click();
+    await expect(tablist).toHaveCount(1);
+    await expect(weekTab).toHaveCount(1);
+    await expect(weekTab).toBeVisible({ timeout: 15_000 });
+    await expect(weekTab).toHaveAttribute('aria-selected', 'true');
+    await expect(dayTab).toHaveCount(0);
+    await expect(monthTab).toHaveCount(0);
+    await expect(opsTab).toHaveCount(0);
+    await expect(listTab).toHaveCount(0);
 
-    const dayPanel = page.locator('#panel-day');
-    const dayRoot = page.getByTestId(TESTIDS['schedules-day-page']);
-    const dayList = page.getByTestId(TESTIDS['schedules-day-list']);
-    const dayTabParam = () => new URL(page.url()).searchParams.get('tab');
-
-    await Promise.race([
-      page.waitForFunction(() => new URL(window.location.href).searchParams.get('tab') === 'day', null, {
-        timeout: 15_000,
-      }),
-      dayRoot.waitFor({ state: 'visible', timeout: 15_000 }),
-      dayList.waitFor({ state: 'visible', timeout: 15_000 }),
-      dayPanel.waitFor({ state: 'visible', timeout: 15_000 }),
-    ]);
-
-    if (dayTabParam() === 'day') {
-      await expect(page).toHaveURL(/tab=day/);
-    }
-
-    const weekTabCount = await weekTab.count().catch(() => 0);
-    if (weekTabCount === 0) {
-      test.info().annotations.push({
-        type: 'note',
-        description: `testid not found: ${TESTIDS.SCHEDULES_WEEK_TAB_WEEK} (allowed for smoke)`,
-      });
-      return;
-    }
-    await weekTab.first().click();
+    await page.goto('/schedules/week?tab=day&date=2025-11-24', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId(TESTIDS['schedules-day-heading'])).toBeVisible({ timeout: 15_000 });
+    const returnWeek = page.getByTestId('schedules-return-week');
+    await expect(returnWeek).toBeVisible({ timeout: 10_000 });
+    await returnWeek.click();
+    await expect(page).toHaveURL(/tab=week/);
 
     await waitForWeekViewReady(page);
-    await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-grid'], { timeout: 15_000 });
+    await expect(page.getByTestId(TESTIDS['schedules-week-grid'])).toBeVisible({ timeout: 15_000 });
   });
 
   test('period controls shift the visible week headers', async ({ page }) => {
@@ -153,18 +115,10 @@ test.describe('Schedule week smoke', () => {
 
     // Verify basic rendering (proves AppShell didn't crash)
     const weekPage = page.getByTestId(TESTIDS['schedules-week-page']);
-    await expectLocatorVisibleBestEffort(
-      weekPage,
-      `testid not found: ${TESTIDS['schedules-week-page']} (allowed for smoke)`,
-      15_000
-    );
+    await expect(weekPage).toBeVisible({ timeout: 15_000 });
 
     const heading = page.getByTestId(TESTIDS['schedules-week-heading']);
-    await expectLocatorVisibleBestEffort(
-      heading,
-      `testid not found: ${TESTIDS['schedules-week-heading']} (allowed for smoke)`,
-      10_000
-    );
+    await expect(heading).toBeVisible({ timeout: 10_000 });
 
     // Critical assertion: No infinite loop errors
     const joined = fatalErrors.join('\n');
@@ -183,7 +137,7 @@ test.describe('Schedule week smoke', () => {
 
     // Start at staff context
     await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
-    await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-page'], { timeout: 15_000 });
+    await expect(page.getByTestId(TESTIDS['schedules-week-page'])).toBeVisible({ timeout: 15_000 });
 
     // Navigate to admin context
     await page.goto('/admin/dashboard', { waitUntil: 'domcontentloaded' });
@@ -195,7 +149,7 @@ test.describe('Schedule week smoke', () => {
 
     // Back to schedules (staff)
     await page.goto('/schedules/week', { waitUntil: 'domcontentloaded' });
-    await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-page'], { timeout: 10_000 });
+    await expect(page.getByTestId(TESTIDS['schedules-week-page'])).toBeVisible({ timeout: 10_000 });
 
     // No infinite loop errors should occur during role transitions
     const joined = fatalErrors.join('\n');

@@ -6,6 +6,7 @@ import { TESTIDS } from '@/testids';
 
 import { bootstrapScheduleEnv } from './utils/scheduleEnv';
 import { gotoScheduleWeek } from './utils/scheduleWeek';
+import { gotoDay, gotoMonth } from './utils/scheduleNav';
 import { waitForWeekViewReady } from './utils/wait';
 
 
@@ -56,9 +57,23 @@ test.describe('Schedule week -> day lane', () => {
       await expect(filterDialog).toBeHidden({ timeout: 10_000 });
     }
 
-    await page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).click();
-    await expect(page).toHaveURL(/tab=day/);
+    // The week view no longer exposes a day tab. Use the date/detail lane instead:
+    // open the month calendar for the selected date, then use its day popover.
+    await gotoMonth(page, targetDate, { searchParams: { cat: 'Org' } });
+    await expect(page.getByTestId(TESTIDS.SCHEDULES_MONTH_PAGE)).toBeVisible();
+    const dayCell = page.getByTestId('schedules-month-day-2026-01-27');
+    await expect(dayCell).toHaveCount(1);
+    await dayCell.click();
+    const drawerItem = page.getByRole('heading', { name: 'Org lane smoke', exact: true });
+    await expect(drawerItem).toBeVisible();
+    await drawerItem.click();
+    await expect(page.getByRole('dialog').getByText('Org lane smoke', { exact: true })).toBeVisible();
+    await page.getByTestId('schedule-view-close').click();
 
+    // The detail drawer confirms the selected date/lane before the supported day URL is opened.
+    await gotoDay(page, targetDate, { searchParams: { cat: 'Org' } });
+    await expect(page).toHaveURL(/\/schedules\/week\?.*tab=day/);
+    await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible();
     const categorySelect = await ensureFilterVisible(page);
     await expect(categorySelect).toContainText('施設');
   });

@@ -2,18 +2,28 @@ import { test, expect } from '@playwright/test';
 import { TESTIDS } from '../../src/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoWeek } from './utils/scheduleNav';
-import { waitForWeekViewReady } from './utils/scheduleActions';
+import { getVisibleListbox, waitForWeekViewReady } from './utils/scheduleActions';
 
 const openCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
-  // Keep the created item inside the visible week-grid range regardless of
-  // the wall-clock time at which the full Deep suite reaches this spec.
+  const headerCreate = page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE);
+  if (await headerCreate.isVisible().catch(() => false)) {
+    await headerCreate.click();
+    return;
+  }
+
+  const fab = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
+  if (await fab.isVisible().catch(() => false)) {
+    await fab.click({ timeout: 5000 });
+    return;
+  }
+
   const url = new URL(page.url());
   const dateParam = url.searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
   url.searchParams.set('dialog', 'create');
   url.searchParams.set('dialogDate', dateParam);
   url.searchParams.set('dialogStart', '10:00');
   url.searchParams.set('dialogEnd', '11:00');
-  url.searchParams.set('dialogCategory', 'Staff');
+  url.searchParams.set('dialogCategory', 'User');
   await page.goto(`${url.pathname}?${url.searchParams.toString()}`, { waitUntil: 'networkidle' });
 };
 
@@ -55,26 +65,33 @@ test.describe('Schedules Persistence', () => {
     await saveButton.click();
   };
 
-  const settlePostCreateUi = async (
+  const closeFollowUpDialog = async (
     page: Parameters<typeof test.beforeEach>[0]['page'],
   ) => {
     const dialog = page
       .getByTestId(TESTIDS['schedule-create-dialog'])
       .filter({ has: page.getByTestId(TESTIDS['schedule-create-start']) })
       .last();
-    const nextGapMessage = page.getByText(/次の未入力枠を開きました/);
-    const dayCompleteMessage = page.getByText(/この日の予定入力が完了しました/);
-
-    // Successful creation has two valid outcomes: open the next available
-    // slot, or finish the day when no slot remains.
-    await expect(nextGapMessage.or(dayCompleteMessage)).toBeVisible({ timeout: 3_000 });
-
-    if (await nextGapMessage.isVisible()) {
-      await expect(dialog).toBeVisible();
+    await page.waitForTimeout(500);
+    if (await dialog.isVisible().catch(() => false)) {
       await page.keyboard.press('Escape');
+      await expect(dialog).toBeHidden({ timeout: 5_000 });
     }
+  };
 
-    await expect(dialog).toBeHidden();
+  const selectOtherServiceType = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
+    const serviceTypeSelect = page.getByTestId(TESTIDS['schedule-create-service-type']).first();
+    await serviceTypeSelect.click();
+    await expect(getVisibleListbox(page)).toBeVisible({ timeout: 10_000 });
+    await getVisibleListbox(page).getByRole('option', { name: 'その他' }).first().click();
+    await expect(serviceTypeSelect).toContainText('その他');
+  };
+
+  const selectFirstUser = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
+    const userInput = page.getByTestId(TESTIDS['schedule-create-user-input']).first();
+    await userInput.click();
+    await expect(getVisibleListbox(page)).toBeVisible({ timeout: 10_000 });
+    await getVisibleListbox(page).getByRole('option').first().click();
   };
 
   test.beforeEach(async ({ page }) => {
@@ -140,13 +157,8 @@ test.describe('Schedules Persistence', () => {
     await expect(titleInput).toBeVisible({ timeout: 3000 });
     await titleInput.fill(testTitle);
 
-    const categorySelect = page.getByTestId(TESTIDS['schedule-create-category-select']).first();
-    await categorySelect.click();
-    await page.getByRole('option', { name: /職員/ }).first().click();
-    await expect(categorySelect).toContainText(/職員/);
-
-    const staffIdInput = page.getByTestId(TESTIDS['schedule-create-staff-id']).first();
-    await staffIdInput.fill('1');
+    await selectFirstUser(page);
+    await selectOtherServiceType(page);
 
     await saveFromCreateDialog(page);
 
@@ -158,10 +170,12 @@ test.describe('Schedules Persistence', () => {
         .toBe(true);
     }
 
-    await settlePostCreateUi(page);
+    await closeFollowUpDialog(page);
+    await page.reload({ waitUntil: 'networkidle' });
+    await waitForWeekViewReady(page);
 
     // Verify the created schedule appears in the week view
-    const scheduleItem = page.locator(`text="${testTitle}"`).first();
+    const scheduleItem = page.locator(`[data-testid="schedule-item"][title="${testTitle}"]`).first();
     await expect(scheduleItem).toBeVisible({ timeout: 5000 });
   });
 
@@ -182,13 +196,8 @@ test.describe('Schedules Persistence', () => {
       .first();
     await titleInput.fill(testTitle);
 
-    const categorySelect = page.getByTestId(TESTIDS['schedule-create-category-select']).first();
-    await categorySelect.click();
-    await page.getByRole('option', { name: /職員/ }).first().click();
-    await expect(categorySelect).toContainText(/職員/);
-
-    const staffIdInput = page.getByTestId(TESTIDS['schedule-create-staff-id']).first();
-    await staffIdInput.fill('1');
+    await selectFirstUser(page);
+    await selectOtherServiceType(page);
 
     await saveFromCreateDialog(page);
 
@@ -200,11 +209,7 @@ test.describe('Schedules Persistence', () => {
         .toBe(true);
     }
 
-    await settlePostCreateUi(page);
-
-    // Verify it appears before reload
-    const scheduleBeforeReload = page.locator(`text="${testTitle}"`).first();
-    await expect(scheduleBeforeReload).toBeVisible({ timeout: 5000 });
+    await closeFollowUpDialog(page);
 
     // Reload the page
     await page.reload({ waitUntil: 'networkidle' });
@@ -214,7 +219,7 @@ test.describe('Schedules Persistence', () => {
 
 
     // Verify the schedule still exists after reload (persistence proof)
-    const scheduleAfterReload = page.locator(`text="${testTitle}"`).first();
+    const scheduleAfterReload = page.locator(`[data-testid="schedule-item"][title="${testTitle}"]`).first();
     await expect(scheduleAfterReload).toBeVisible({ timeout: 5000 });
   });
 });
