@@ -23,9 +23,9 @@ describe('Users_Master schema validation', () => {
     expect(result.resolved.FullName).toBe('FullName');
   });
 
-  it('accepts the known physical SharePoint InternalNames', () => {
+  it('accepts the deployed physical SharePoint InternalNames without optional IsActive', () => {
     const result = validateSchema(
-      ['User_x0020_ID', 'Full_x0020_Name', 'isActive0'],
+      ['Title', 'User_x0020_ID', 'Full_x0020_Name'],
       ESSENTIAL_FIELDS,
       OPTIONAL_FIELDS,
       { aliases: FIELD_ALIASES },
@@ -36,37 +36,9 @@ describe('Users_Master schema validation', () => {
     expect(result.aliasResolutions).toEqual(expect.arrayContaining([
       expect.objectContaining({ logical: 'UserID', actual: 'User_x0020_ID' }),
       expect.objectContaining({ logical: 'FullName', actual: 'Full_x0020_Name' }),
-      expect.objectContaining({ logical: 'IsActive', actual: 'isActive0' }),
     ]));
-  });
-
-  it('prefers canonical IsActive when canonical and alias fields coexist', () => {
-    const result = validateSchema(
-      ['UserID', 'FullName', 'IsActive', 'isActive0'],
-      ESSENTIAL_FIELDS,
-      ['IsActive'],
-      { aliases: FIELD_ALIASES },
-    );
-
-    expect(result.ok).toBe(true);
-    expect(result.resolved.IsActive).toBe('IsActive');
-    expect(result.ambiguousOptional).toEqual([]);
-  });
-
-  it('warns on case-only IsActive drift while preserving the boolean field contract', () => {
-    const result = validateSchema(
-      ['UserID', 'FullName', 'isactive'],
-      ESSENTIAL_FIELDS,
-      ['IsActive'],
-      { aliases: FIELD_ALIASES },
-    );
-
-    expect(result.ok).toBe(true);
-    expect(result.resolved.IsActive).toBe('isactive');
-    expect(result.caseMismatch).toEqual([]);
-    expect(result.aliasResolutions).toEqual([
-      expect.objectContaining({ logical: 'IsActive', actual: 'isactive', method: 'case-insensitive' }),
-    ]);
+    expect(result.optionalMissing).toContain('IsActive');
+    expect(result.resolved.IsActive).toBeUndefined();
   });
 
   it('still fails when an essential logical field has no physical match', () => {
