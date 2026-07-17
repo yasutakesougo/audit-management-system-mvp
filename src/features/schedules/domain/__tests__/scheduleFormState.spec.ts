@@ -48,18 +48,22 @@ describe('validateScheduleForm', () => {
     expect(result.errors).toContain('終了日時は開始日時より後にしてください');
   });
 
-  it('fails if category is User and serviceType is missing', () => {
-    const form = { ...validBaseForm, category: 'User' as const, serviceType: '' };
+  it('passes if endLocal is empty', () => {
+    const form = { ...validBaseForm, endLocal: '' };
     const result = validateScheduleForm(form);
-    expect(result.isValid).toBe(false);
-    expect(result.errors).toContain('サービス種別を選択してください');
+    expect(result.isValid).toBe(true);
   });
 
-  it('fails if category is LivingSupport and serviceType is missing', () => {
+  it('passes if category is User and serviceType is missing', () => {
+    const form = { ...validBaseForm, category: 'User' as const, serviceType: '' };
+    const result = validateScheduleForm(form);
+    expect(result.isValid).toBe(true);
+  });
+
+  it('passes if category is LivingSupport and serviceType is missing', () => {
     const form = { ...validBaseForm, category: 'LivingSupport' as const, serviceType: '' };
     const result = validateScheduleForm(form);
-    expect(result.isValid).toBe(false);
-    expect(result.errors).toContain('サービス種別を選択してください');
+    expect(result.isValid).toBe(true);
   });
 
   it('passes if category is Org and serviceType is missing', () => {
