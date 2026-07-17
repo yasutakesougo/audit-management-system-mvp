@@ -4,16 +4,20 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import VitestMemoryReporter, { memorySnapshot } from '../../scripts/ci/vitest-memory-reporter.mjs';
 
-const directories: string[] = [];
+const createdDirectories: string[] = [];
+
 afterEach(() => {
   delete process.env.VITEST_MEMORY_LOG;
-  directories.splice(0).forEach((directory) => fs.rmSync(directory, { recursive: true, force: true }));
+  delete process.env.VITEST_SHARD;
+  for (const directory of createdDirectories.splice(0)) {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 describe('VitestMemoryReporter', () => {
   it('records module start and end events as durable JSONL', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vitest-memory-'));
-    directories.push(directory);
+    createdDirectories.push(directory);
     const outputPath = path.join(directory, 'memory.jsonl');
     process.env.VITEST_MEMORY_LOG = outputPath;
     const reporter = new VitestMemoryReporter();
@@ -27,5 +31,26 @@ describe('VitestMemoryReporter', () => {
 
   it('reports numeric process memory counters', () => {
     expect(memorySnapshot()).toEqual(expect.objectContaining({ rssBytes: expect.any(Number), heapUsedBytes: expect.any(Number) }));
+  });
+
+  it('records shard metadata and structured run-end counts', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vitest-memory-reporter-'));
+    createdDirectories.push(directory);
+    const outputPath = path.join(directory, 'memory.jsonl');
+    process.env.VITEST_MEMORY_LOG = outputPath;
+    process.env.VITEST_SHARD = '2/3';
+
+    const reporter = new VitestMemoryReporter();
+    reporter.onTestRunStart([{}, {}, {}]);
+    reporter.onTestRunEnd([{}, {}], [new Error('worker')]);
+
+    const events = fs.readFileSync(outputPath, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    expect(events[0]).toMatchObject({ event: 'run-start', expectedModules: 3, shard: '2/3' });
+    expect(events[1]).toMatchObject({
+      event: 'run-end',
+      completedModules: 2,
+      errorCount: 1,
+      shard: '2/3',
+    });
   });
 });

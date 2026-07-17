@@ -5,18 +5,8 @@ import { gotoWeek } from './utils/scheduleNav';
 import { waitForWeekViewReady } from './utils/scheduleActions';
 
 const openCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
-  const headerCreate = page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE);
-  if (await headerCreate.isVisible().catch(() => false)) {
-    await headerCreate.click();
-    return;
-  }
-
-  const fab = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
-  if (await fab.isVisible().catch(() => false)) {
-    await fab.click({ timeout: 5000 });
-    return;
-  }
-
+  // Keep the created item inside the visible week-grid range regardless of
+  // the wall-clock time at which the full Deep suite reaches this spec.
   const url = new URL(page.url());
   const dateParam = url.searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
   url.searchParams.set('dialog', 'create');
@@ -44,12 +34,15 @@ test.describe('Schedules Persistence', () => {
   let isWriteEnabled: boolean;
   let isForceWrite: boolean;
 
-  const readStoredCount = async (page: Parameters<typeof test.beforeEach>[0]['page']): Promise<number> =>
-    page.evaluate(() => {
+  const hasStoredTitle = async (
+    page: Parameters<typeof test.beforeEach>[0]['page'],
+    title: string,
+  ): Promise<boolean> =>
+    page.evaluate((expectedTitle) => {
       const raw = window.localStorage.getItem('e2e:schedules.v1');
-      const rows = raw ? (JSON.parse(raw) as unknown[]) : [];
-      return Array.isArray(rows) ? rows.length : 0;
-    });
+      const rows = raw ? (JSON.parse(raw) as Array<{ title?: string }>) : [];
+      return Array.isArray(rows) && rows.some((row) => row.title === expectedTitle);
+    }, title);
 
   const saveFromCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
     const dialog = page
@@ -60,6 +53,28 @@ test.describe('Schedules Persistence', () => {
     await expect(saveButton).toBeVisible({ timeout: 3000 });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
     await saveButton.click();
+  };
+
+  const settlePostCreateUi = async (
+    page: Parameters<typeof test.beforeEach>[0]['page'],
+  ) => {
+    const dialog = page
+      .getByTestId(TESTIDS['schedule-create-dialog'])
+      .filter({ has: page.getByTestId(TESTIDS['schedule-create-start']) })
+      .last();
+    const nextGapMessage = page.getByText(/次の未入力枠を開きました/);
+    const dayCompleteMessage = page.getByText(/この日の予定入力が完了しました/);
+
+    // Successful creation has two valid outcomes: open the next available
+    // slot, or finish the day when no slot remains.
+    await expect(nextGapMessage.or(dayCompleteMessage)).toBeVisible({ timeout: 3_000 });
+
+    if (await nextGapMessage.isVisible()) {
+      await expect(dialog).toBeVisible();
+      await page.keyboard.press('Escape');
+    }
+
+    await expect(dialog).toBeHidden();
   };
 
   test.beforeEach(async ({ page }) => {
@@ -112,8 +127,6 @@ test.describe('Schedules Persistence', () => {
       return;
     }
 
-    const beforeStoredCount = isForceWrite ? await readStoredCount(page) : 0;
-
     // Write enabled: proceed with creation
     await openCreateDialog(page);
 
@@ -140,11 +153,12 @@ test.describe('Schedules Persistence', () => {
     if (isForceWrite) {
       await expect
         .poll(async () => {
-          const current = await readStoredCount(page);
-          return current > beforeStoredCount;
+          return hasStoredTitle(page, testTitle);
         }, { timeout: 10_000 })
         .toBe(true);
     }
+
+    await settlePostCreateUi(page);
 
     // Verify the created schedule appears in the week view
     const scheduleItem = page.locator(`text="${testTitle}"`).first();
@@ -157,8 +171,6 @@ test.describe('Schedules Persistence', () => {
       test.skip(true, 'Write disabled in this environment');
       return;
     }
-
-    const beforeStoredCount = isForceWrite ? await readStoredCount(page) : 0;
 
     // First, create a schedule (same as previous test)
     await openCreateDialog(page);
@@ -183,11 +195,12 @@ test.describe('Schedules Persistence', () => {
     if (isForceWrite) {
       await expect
         .poll(async () => {
-          const current = await readStoredCount(page);
-          return current > beforeStoredCount;
+          return hasStoredTitle(page, testTitle);
         }, { timeout: 10_000 })
         .toBe(true);
     }
+
+    await settlePostCreateUi(page);
 
     // Verify it appears before reload
     const scheduleBeforeReload = page.locator(`text="${testTitle}"`).first();

@@ -45,13 +45,10 @@ test.describe('Schedule week -> day lane', () => {
     await gotoScheduleWeek(page, targetDate);
     await waitForWeekViewReady(page);
 
-    await expect
-      .poll(async () => {
-        const weekCategorySelect = await ensureFilterVisible(page);
-        await weekCategorySelect.selectOption('Org').catch(() => undefined);
-        return weekCategorySelect.inputValue().catch(() => '');
-      }, { timeout: 10_000 })
-      .toBe('Org');
+    const weekCategorySelect = await ensureFilterVisible(page);
+    await weekCategorySelect.click();
+    await page.getByRole('option', { name: '施設' }).click();
+    await expect(weekCategorySelect).toContainText('施設');
 
     const filterDialog = page.getByTestId('schedules-filter-dialog');
     if (await filterDialog.isVisible().catch(() => false)) {
@@ -63,6 +60,6 @@ test.describe('Schedule week -> day lane', () => {
     await expect(page).toHaveURL(/tab=day/);
 
     const categorySelect = await ensureFilterVisible(page);
-    await expect(categorySelect).toHaveValue('Org');
+    await expect(categorySelect).toContainText('施設');
   });
 });

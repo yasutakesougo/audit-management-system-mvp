@@ -73,7 +73,7 @@ export function useDailyRecordUiState(initialRecords: PersonDaily[]) {
     searchQuery, statusFilter, dateFilter, activeHighlightUserId
   ]);
 
-  const actions: DailyRecordUiActions = {
+  const actions: DailyRecordUiActions = useMemo(() => ({
     setRecords,
     updateRecord,
     removeRecord,
@@ -84,7 +84,7 @@ export function useDailyRecordUiState(initialRecords: PersonDaily[]) {
     setStatusFilter,
     setDateFilter,
     setActiveHighlightUserId,
-  };
+  }), [removeRecord, updateRecord]);
 
   return { state, actions };
 }

@@ -7,7 +7,7 @@
  * Sub-hooks:
  *   - useUsersPanelTabs  : タブ管理 + 詳細ユーザー選択 + URL同期
  *   - useUsersPanelCrud  : CRUD + 非同期状態 + フォーム管理
- *   - useUsersPanelExport: PDF / Excel 出力
+ *   - useUsersPanelExport: PDF / CSV 出力
  */
 import { useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
@@ -86,7 +86,7 @@ export function useUsersPanel(): UseUsersPanelReturn {
   // ref を接続（Tabs の setActiveTab を CRUD が使えるようにする）
   setActiveTabRef.current = tabs.setActiveTab;
 
-  // 3) Export — PDF / Excel 出力
+  // 3) Export — PDF / CSV 出力
   const exportHook = useUsersPanelExport(crud.data, crud.setBusyId);
 
   return {

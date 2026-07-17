@@ -24,7 +24,8 @@
 | `/kiosk/toilet` | 現場職員 | トイレ記録の高速入力 |
 | `/kiosk/users/:userId/procedures` | 現場職員 | 利用者別の支援手順確認と実施記録 |
 | `/handoff-timeline` | 全職員 | 申し送りの時系列確認 |
-| `/billing` | 管理者、事務 | 月次実績、請求、販売、加算の確認 |
+| `/billing` | 管理者、事務 | 請求注文、販売、精算の確認 |
+| `/records/monthly` | 管理者、事務 | 月次支援実績と利用者別詳細の確認 |
 | `/analysis/*` | リーダー、支援設計者 | ABC、Iceberg、PDCA、記録品質の分析 |
 | `/admin/*` | 管理者 | SharePoint、権限、設定、ログ、運用状態の管理 |
 
@@ -34,7 +35,7 @@
 |-------|------------|--------------------|----------|
 | Phase 1 | 現場導入できる完成 | `/today`, `/users/:userId`, `/handoff-timeline`, `/daily/support`, `/daily/attendance`, `/kiosk/*` | 紙の代替として最低限回り、未記録・未完了が見え、職員が迷わず入力できる |
 | Phase 2 | 支援記録 OS としての完成 | 個別支援計画、支援計画シート、支援手順書、日次記録、ABC、Iceberg、PDCA、Record Quality Review | 「なぜこの支援をしたのか」を記録、根拠、モニタリングから説明できる |
-| Phase 3 | 管理・請求・監査の完成 | `/billing`, 月次 CSV/Excel 出力、コーヒー販売集計、重度加算、修正履歴、操作ログ、権限管理 | 日々の入力が月次集計と監査説明につながり、誰がいつ何を直したか追える |
+| Phase 3 | 管理・請求・監査の完成 | `/records/monthly`, `/billing`, 月次 CSV 出力、公式帳票 Excel 出力、請求CSV、コーヒー販売集計、重度加算、修正履歴、操作ログ、権限管理 | 日々の入力が月次集計と監査説明につながり、請求注文は独立した注文データとして確認でき、誰がいつ何を直したか追える |
 | Phase 4 | 属人化しない運用完成 | Runbook、Nightly Patrol、SharePoint schema 管理、PR 判断テンプレ、障害対応、権限棚卸し | ユーザー本人以外でも、壊さず運用状態を理解し改善できる |
 
 ## 推奨ナビゲーション
@@ -48,7 +49,7 @@
 | 記録 | `/daily/support`, `/daily/attendance`, `/kiosk/toilet`, `/kiosk/users/:userId/procedures`, `/abc-record` | 日次・出欠・トイレ・ABC などの入力 |
 | 支援設計 | `/support-plan-guide`, `/support-planning-sheet/:planningSheetId`, `/planning-sheet-list`, `/monitoring-meeting/:userId` | 計画・手順・モニタリング |
 | 申し送り | `/handoff-timeline`, `/handoff-analysis` | 注意事項・共有事項 |
-| 請求 | `/billing`, `/records/monthly`, `/records/service-provision` | 月次実績・販売・加算 |
+| 請求 | `/billing`, `/records/monthly`, `/records/service-provision` | 月次支援実績と請求注文を同じ管理導線で確認する。現行仕様では `/records/monthly` と `/billing` は独立データフロー |
 | 分析 | `/analysis/*`, `/records/quality-review`, `/support-review` | PDCA・傾向・記録品質 |
 | 管理 | `/dashboard`, `/admin/*`, `/exceptions`, `/incidents` | SharePoint・権限・設定・ログ・例外 |
 
@@ -60,7 +61,7 @@
 | P0 | SharePoint 接続・権限・保存失敗時の扱い固定 | 本番事故を防ぐため |
 | P0 | 記録・申し送り・未記録の見える化 | 紙運用から移行するため |
 | P1 | 支援計画・支援手順・日次記録の接続 | 支援の根拠を残すため |
-| P1 | 月次集計・請求・CSV/Excel | 管理業務で使うため |
+| P1 | 月次集計・請求注文・CSV/Excel | 管理業務で使うため。月次支援実績と請求注文の接続契約は別途定義が必要 |
 | P2 | AI レビュー・PDCA・分析 | 支援の質を上げるため |
 | P2 | Nightly Patrol・Runbook 強化 | 属人化を減らすため |
 
@@ -70,7 +71,7 @@
 
 - 職員は `/today` を見れば、その日の仕事がわかる。
 - 利用者ページを見れば、その人の支援文脈がわかる。
-- 記録を残せば、支援計画・申し送り・請求・監査につながる。
+- 記録を残せば、支援計画・申し送り・月次監査につながる。請求注文は現時点では独立データフローとして確認する。
 - 管理者は月次・監査・改善状況を説明できる。
 - 開発者であるユーザーが毎回判断しなくても、CI・Runbook・PR 運用で安全に改善できる。
 

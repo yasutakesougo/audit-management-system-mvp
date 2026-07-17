@@ -18,6 +18,36 @@ describe('classifyCanaryResult', () => {
     expect(classifyCanaryResult({ e2eExitCode: 0, lhciExitCode: 1 }).classification).toBe('canary_lhci_failure');
   });
 
+  it('retains independent LHCI diagnostics when E2E has an auth failure', () => {
+    const result = classifyCanaryResult({ e2eExitCode: 1, lhciExitCode: 1, e2eLog: 'AUTH_REQUIRED' });
+    expect(result.classification).toBe('canary_auth_required');
+    expect(result.diagnostics).toEqual({
+      authSignal: true,
+      e2eFailed: true,
+      lhciFailed: true,
+      summaryFailed: false,
+      independentFailures: ['e2e_auth_or_storage', 'lhci'],
+    });
+  });
+
+  it('classifies LHCI preview server failures', () => {
+    expect(
+      classifyCanaryResult({ lhciExitCode: 1, lhciLog: 'ECONNREFUSED while waiting for startServer' }).classification
+    ).toBe('canary_lhci_server_failure');
+  });
+
+  it('classifies Chrome interstitials as Chrome failures', () => {
+    expect(classifyCanaryResult({ lhciExitCode: 1, lhciLog: 'CHROME_INTERSTITIAL_ERROR' }).classification).toBe(
+      'canary_lhci_chrome_failure'
+    );
+  });
+
+  it('classifies LHCI budget failures', () => {
+    expect(
+      classifyCanaryResult({ lhciExitCode: 1, lhciLog: 'categories:performance assertion failed' }).classification
+    ).toBe('canary_lhci_budget_failure');
+  });
+
   it('classifies summary failures after E2E and LHCI pass', () => {
     expect(classifyCanaryResult({ e2eExitCode: 0, lhciExitCode: 0, summaryExitCode: 1 }).classification).toBe(
       'canary_summary_failure'

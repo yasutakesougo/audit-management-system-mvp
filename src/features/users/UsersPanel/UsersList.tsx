@@ -181,7 +181,16 @@ const UsersList: FC<UsersListProps> = ({
         color={chip.color}
         variant={chip.variant ?? 'filled'}
         size="small"
-        sx={{ height: 22, fontSize: '0.75rem' }}
+        sx={(theme) => ({
+          height: 22,
+          fontSize: '0.75rem',
+          ...(chip.color === 'error' && theme.palette.mode === 'dark'
+            ? {
+                backgroundColor: theme.palette.error.dark,
+                color: theme.palette.error.contrastText,
+              }
+            : {}),
+        })}
       />
     );
     return chip.tooltip ? (

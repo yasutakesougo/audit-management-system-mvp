@@ -206,7 +206,7 @@ jobs:
           if-no-files-found: ignore
       - name: Perf report (LHCI + Web Vitals)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.perf == 'true')
-        run: npm run -s ci:perf-report
+        run: node scripts/ci/run-perf-with-diagnostics.mjs
         env:
           VITE_E2E: "1"
           VITE_SKIP_LOGIN: "1"
@@ -223,6 +223,9 @@ jobs:
             reports/perf-summary.md
             reports/perf-summary.json
             lhci-results.json
+            reports/lhci-diagnostics/
+            .lighthouseci/
+            lhci-artifacts/
 
       - name: Classify quality job completion
         if: always()
@@ -397,9 +400,23 @@ jobs:
   canary:
     runs-on: ubuntu-latest
     needs: quality
-    if: github.ref == 'refs/heads/main'
+    # Run the deterministic mock/demo canary on PRs as well as main so the
+    # dedicated lane is verified before merge.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     env:
       VITE_FEATURE_SCHEDULES: "true"
+      # Canary is a deterministic mock/demo lane. Keep these flags at job
+      # scope so the already-running Vite server receives the same runtime
+      # configuration as the Playwright and LHCI steps.
+      VITE_E2E: "1"
+      VITE_E2E_MSAL_MOCK: "1"
+      VITE_SKIP_LOGIN: "1"
+      VITE_SKIP_SHAREPOINT: "1"
+      VITE_FORCE_SHAREPOINT: "0"
+      VITE_DEMO_MODE: "1"
+      VITE_DATA_PROVIDER: "memory"
+      VITE_MSAL_CLIENT_ID: "dummy"
+      VITE_MSAL_TENANT_ID: "dummy"
       NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       VITE_SP_SCOPE_DEFAULT: ${{ vars.VITE_SP_SCOPE_DEFAULT || (vars.VITE_SP_RESOURCE && format('{0}/.default', vars.VITE_SP_RESOURCE)) || secrets.VITE_SP_SCOPE_DEFAULT || 'https://contoso.sharepoint.com/.default' }}
     steps:
@@ -421,6 +438,14 @@ jobs:
           sleep 1
       - name: Start dev server (5173, strict)
         run: |
+          echo "Canary runtime: provider=${VITE_DATA_PROVIDER}, skipLogin=${VITE_SKIP_LOGIN}, skipSharePoint=${VITE_SKIP_SHAREPOINT}, msalMock=${VITE_E2E_MSAL_MOCK}"
+          {
+            echo "## Canary runtime configuration"
+            echo "- provider: `${VITE_DATA_PROVIDER}`"
+            echo "- skip login: `${VITE_SKIP_LOGIN}`"
+            echo "- skip SharePoint: `${VITE_SKIP_SHAREPOINT}`"
+            echo "- MSAL mock: `${VITE_E2E_MSAL_MOCK}`"
+          } >> "$GITHUB_STEP_SUMMARY"
           nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
           echo "Vite starting on port 5173..."
           sleep 2
@@ -442,20 +467,15 @@ jobs:
           set -o pipefail
           mkdir -p reports/quality-gates
 
-          export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
-          export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
-          export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-${VITE_SP_RESOURCE}/.default}"
-
-          npm run ci:e2e -- --grep-invert @seed --grep-invert @csp 2>&1 | tee reports/quality-gates/canary-e2e.log
+          # Do not mix auth/storage-state or real SharePoint specs into the
+          # mock/demo canary. Those belong to the dedicated integration lane.
+          npx playwright test tests/e2e/app-shell.smoke.spec.ts \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --reporter=list 2>&1 | tee reports/quality-gates/canary-e2e.log
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           exit 0
         env:
-          VITE_E2E: "1"
-          VITE_SKIP_LOGIN: "1"
-          VITE_E2E_MSAL_MOCK: "1"
-          VITE_SKIP_SHAREPOINT: "1"
-          VITE_MSAL_CLIENT_ID: "dummy"
-          VITE_MSAL_TENANT_ID: "dummy"
           VITE_SCHEDULES_TZ: "Asia/Tokyo"
           VITE_SP_SCOPE_DEFAULT: ${{ secrets.VITE_SP_SCOPE_DEFAULT }}
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE }}
@@ -516,6 +536,7 @@ jobs:
           CANARY_LHCI_EXIT_CODE: ${{ steps.canary_lhci.outputs.exit_code || '1' }}
           CANARY_SUMMARY_EXIT_CODE: ${{ steps.canary_summary.outputs.exit_code || '1' }}
           CANARY_E2E_LOG_PATH: reports/quality-gates/canary-e2e.log
+          CANARY_LHCI_LOG_PATH: reports/quality-gates/canary-lhci.log
       - name: Upload canary classification artifact
         if: always()
         uses: actions/upload-artifact@v4

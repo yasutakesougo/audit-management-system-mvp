@@ -5,12 +5,9 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // 基本的なページロード確認
-    await expect(page).toHaveTitle(/運営状況/);
-
-    // Dashboard ページ要素の確認
     const dashboardPage = page.getByTestId('dashboard-page');
     await expect(dashboardPage).toBeVisible();
+    await expect(dashboardPage.getByRole('heading', { name: '運営状況' })).toBeVisible();
 
     console.log('✅ Dashboard page loads successfully');
   });
@@ -30,9 +27,8 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // 重要なキーワードが含まれていることを確認 - 実際のコンテンツに基づく
-    const pageText = await page.textContent('body');
-    expect(pageText).toContain('運営状況');
+    const dashboardPage = page.getByTestId('dashboard-page');
+    await expect(dashboardPage).toContainText('運営状況');
 
     console.log('✅ Dashboard contains expected content');
   });

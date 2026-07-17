@@ -8,17 +8,11 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
   });
 
   test('Dashboard表示 - 基本コンポーネント検証', async ({ page }) => {
-    // ページタイトル確認 - 実際のタイトルに合わせて修正
-    await expect(page).toHaveTitle(/運営状況/);
-
-    // Dashboard ページの基本要素確認
     const dashboardPage = page.getByTestId('dashboard-page');
     await expect(dashboardPage).toBeVisible();
+    await expect(dashboardPage.getByRole('heading', { name: '運営状況' })).toBeVisible();
 
     console.log('Dashboard page loaded successfully');
-
-    // ページ内に重要なテキストが含まれていることを確認
-    await expect(page.getByRole('heading', { name: '運営状況' })).toBeVisible();
   });
 
   test('Safety HUD - アラート表示検証', async ({ page }) => {
@@ -63,8 +57,17 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
     await page.goto('/dashboard?zeroscroll=0');
     await page.waitForLoadState('networkidle');
 
-    // 申し送りタイムライン一覧へ遷移
-    await page.getByRole('link', { name: '一覧を見る' }).first().click();
+    // 申し送りサマリーの明示的な導線からタイムラインへ遷移
+    const dashboardPage = page.getByTestId('dashboard-page');
+    const timelineButton = dashboardPage.getByRole('button', {
+      name: 'タイムラインを開く',
+      exact: true,
+    });
+    await expect(timelineButton).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/\/handoff-timeline/),
+      timelineButton.click(),
+    ]);
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/\/handoff-timeline/);
   });

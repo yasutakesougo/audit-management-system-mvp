@@ -171,7 +171,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           color="textSecondary"
           sx={{ mb: 2 }}
         >
-          タイトル、開始/終了時刻、カテゴリと対象を入力して{mode === 'edit' ? '内容を更新' : '新しい予定を登録'}します。
+          タイトルと開始日時を入力して{mode === 'edit' ? '内容を更新' : '新しい予定を登録'}します。対象や担当は後から追加できます。
         </Typography>
 
         {vm.showFacilityGuide ? (
@@ -239,7 +239,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             }}
           />
 
-          <FormControl fullWidth required error={Boolean(vm.fieldErrors.category)}>
+          <FormControl fullWidth error={Boolean(vm.fieldErrors.category)}>
             <InputLabel id="schedule-create-category-label">カテゴリ</InputLabel>
             <Select
               labelId="schedule-create-category-label"
@@ -274,9 +274,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 <TextField
                   {...params}
                   label="利用者"
-                  required
                   error={Boolean(vm.fieldErrors.userId)}
-                  helperText={vm.fieldErrors.userId?.[0]}
+                  helperText={vm.fieldErrors.userId?.[0] ?? '未定でも登録できます。'}
                   inputRef={vm.userInputRef}
                   inputProps={{
                     ...params.inputProps,
@@ -306,13 +305,12 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             <TextField
               type="datetime-local"
               label="終了日時"
-              required
               fullWidth
               value={vm.form.endLocal}
               onChange={e => vm.handleFieldChange('endLocal', e.target.value)}
               InputLabelProps={{ shrink: true }}
               error={Boolean(vm.dateOrderErrorMessage)}
-              helperText={vm.dateOrderErrorMessage}
+              helperText={vm.dateOrderErrorMessage ?? '未入力の場合は開始から1時間で登録します。'}
               inputProps={{
                 'data-testid': 'schedule-create-end'
               }}
@@ -320,7 +318,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           </Stack>
 
           {(vm.form.category === 'User' || vm.form.category === 'LivingSupport') && (
-            <FormControl fullWidth required error={Boolean(vm.serviceTypeErrorMessage)}>
+            <FormControl fullWidth error={Boolean(vm.serviceTypeErrorMessage)}>
               <InputLabel id="schedule-create-service-type-label">サービス種別</InputLabel>
               <Select
                 labelId="schedule-create-service-type-label"
@@ -342,7 +340,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 ))}
               </Select>
               <FormHelperText>
-                {vm.serviceTypeErrorMessage ?? 'サービス種別を付けておくと一覧で絞り込みやすくなります。'}
+                {vm.serviceTypeErrorMessage ?? '未選択の場合は標準の予定として登録します。'}
               </FormHelperText>
             </FormControl>
           )}
@@ -423,9 +421,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   <TextField
                     {...params}
                     placeholder="職員を選択"
-                    required
                     error={Boolean(vm.fieldErrors.assignedStaffId)}
-                    helperText={vm.fieldErrors.assignedStaffId?.[0]}
+                    helperText={vm.fieldErrors.assignedStaffId?.[0] ?? '未定でも登録できます。'}
                     inputRef={vm.staffInputRef}
                     inputProps={{
                       ...params.inputProps,
