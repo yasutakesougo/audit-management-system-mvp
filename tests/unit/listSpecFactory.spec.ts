@@ -9,16 +9,14 @@ const usersSpec = {
   siteUrl: 'https://example.sharepoint.com/sites/welfare',
   listTitle: 'Users_Master',
   keyField: 'UserID',
-  selectFields: ['Title', 'FullName', 'IsActive', 'Modified'],
+  selectFields: ['Title', 'FullName', 'Modified'],
   fieldAliases: FIELD_ALIASES,
   fixedKeyValue: 'E2E_INTEGRATION_USER_0001',
   makeUpsertPayload: (key: string) => ({
     UserID: key,
     Title: `E2E User ${key}`,
     FullName: 'E2E User FullName',
-    IsActive: true,
   }),
-  deactivate: { field: 'IsActive', value: false },
 };
 
 describe('Users_Master list field resolution', () => {
@@ -28,7 +26,6 @@ describe('Users_Master list field resolution', () => {
       'Title',
       'User_x0020_ID',
       'Full_x0020_Name',
-      'IsActive',
       'Modified',
     ]);
 
@@ -36,15 +33,13 @@ describe('Users_Master list field resolution', () => {
     expect(fields.selectFields).toEqual([
       'Title',
       'Full_x0020_Name',
-      'IsActive',
       'Modified',
     ]);
-    expect(fields.deactivateField).toBe('IsActive');
+    expect(fields.deactivateField).toBeUndefined();
     expect(mapSchemaPayload(usersSpec.makeUpsertPayload('E2E'), fields.logicalToPhysical)).toEqual({
       User_x0020_ID: 'E2E',
       Title: 'E2E User E2E',
       Full_x0020_Name: 'E2E User FullName',
-      IsActive: true,
     });
   });
 
@@ -53,11 +48,10 @@ describe('Users_Master list field resolution', () => {
       'Title',
       'UserID',
       'FullName',
-      'IsActive',
       'Modified',
     ]);
 
     expect(fields.keyField).toBe('UserID');
-    expect(fields.selectFields).toEqual(['Title', 'FullName', 'IsActive', 'Modified']);
+    expect(fields.selectFields).toEqual(['Title', 'FullName', 'Modified']);
   });
 });

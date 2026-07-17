@@ -23,9 +23,9 @@ describe('Users_Master schema validation', () => {
     expect(result.resolved.FullName).toBe('FullName');
   });
 
-  it('accepts the known physical SharePoint InternalNames', () => {
+  it('accepts the deployed physical SharePoint InternalNames without optional IsActive', () => {
     const result = validateSchema(
-      ['User_x0020_ID', 'Full_x0020_Name', 'IsActive'],
+      ['Title', 'User_x0020_ID', 'Full_x0020_Name'],
       ESSENTIAL_FIELDS,
       OPTIONAL_FIELDS,
       { aliases: FIELD_ALIASES },
@@ -37,6 +37,8 @@ describe('Users_Master schema validation', () => {
       expect.objectContaining({ logical: 'UserID', actual: 'User_x0020_ID' }),
       expect.objectContaining({ logical: 'FullName', actual: 'Full_x0020_Name' }),
     ]));
+    expect(result.optionalMissing).toContain('IsActive');
+    expect(result.resolved.IsActive).toBeUndefined();
   });
 
   it('still fails when an essential logical field has no physical match', () => {
