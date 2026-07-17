@@ -2,6 +2,10 @@ export interface VitestHealthSummary {
   expectedFiles: number;
   startedFiles: number;
   endedFiles: number;
+  runEndFiles: number | null;
+  runEndErrors: number | null;
+  shard: string | null;
+  shardConsistent: boolean;
   lastStartedFile: string | null;
   missingEndedFiles: string[];
   unhandledErrors: number;
