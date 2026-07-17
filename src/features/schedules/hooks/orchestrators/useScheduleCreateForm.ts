@@ -270,14 +270,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
       return;
     }
     if (didAutoFocusRef.current) return;
-    const target =
-      mode === 'edit' || isOrgCategory
-        ? titleInputRef.current
-        : form.category === 'User'
-          ? userInputRef.current
-          : form.category === 'Staff'
-            ? staffInputRef.current
-            : titleInputRef.current;
+    const target = titleInputRef.current;
     if (target) {
       if (typeof window === 'undefined') {
         target.focus();
@@ -286,7 +279,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
       }
       didAutoFocusRef.current = true;
     }
-  }, [form.category, isOrgCategory, mode, open]);
+  }, [open]);
 
   // Facility guide (one-time)
   useEffect(() => {

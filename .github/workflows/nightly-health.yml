@@ -43,6 +43,7 @@ jobs:
         env:
           TZ: Asia/Tokyo
           VITEST_MEMORY_LOG: reports/nightly-memory/shard-${{ matrix.shard }}.jsonl
+          VITEST_SHARD: ${{ matrix.shard }}/3
         run: |
           set +e
           set -o pipefail

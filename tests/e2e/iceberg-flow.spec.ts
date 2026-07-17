@@ -7,6 +7,14 @@ const ICEBERG_PATH = '/daily/support?planningSheetId=1001';
 test.describe('Iceberg-PDCA Split Stream Flow', () => {
   test.beforeEach(async ({ page }) => {
     await primeOpsEnv(page);
+    await page.addInitScript(() => {
+      const win = window as typeof window & { __ENV__?: Record<string, string> };
+      win.__ENV__ = {
+        ...(win.__ENV__ ?? {}),
+        VITE_FEATURE_ICEBERG_PDCA: '1',
+      };
+      window.localStorage.setItem('feature:icebergPdca', '1');
+    });
 
     await page.goto(ICEBERG_PATH);
     await expect(page).toHaveURL(/\/daily\/support/);
