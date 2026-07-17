@@ -1,26 +1,34 @@
 import { test, expect } from '@playwright/test';
+import { formatInTimeZone } from 'date-fns-tz';
 import { TESTIDS } from '../../src/testids';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { gotoWeek } from './utils/scheduleNav';
 import { getVisibleListbox, waitForWeekViewReady } from './utils/scheduleActions';
 
-const openCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['page']) => {
-  const headerCreate = page.getByTestId(TESTIDS.SCHEDULES_HEADER_CREATE);
-  if (await headerCreate.isVisible().catch(() => false)) {
-    await headerCreate.click();
-    return;
-  }
+const SCHEDULES_TIME_ZONE = 'Asia/Tokyo';
 
-  const fab = page.getByTestId(TESTIDS.SCHEDULES_FAB_CREATE);
-  if (await fab.isVisible().catch(() => false)) {
-    await fab.click({ timeout: 5000 });
-    return;
-  }
+test.use({ timezoneId: SCHEDULES_TIME_ZONE });
 
+const resolveScheduleTestDate = (now = new Date()) => {
+  const dateIso = formatInTimeZone(now, SCHEDULES_TIME_ZONE, 'yyyy-MM-dd');
+  const [year, month, day] = dateIso.split('-').map(Number);
+
+  return {
+    dateIso,
+    // scheduleNav formats Dates in the runner's local time. Local noon keeps
+    // the resolved Tokyo calendar day stable under UTC and Asia/Tokyo runners.
+    navigationDate: new Date(year, month - 1, day, 12),
+  };
+};
+
+const openCreateDialog = async (
+  page: Parameters<typeof test.beforeEach>[0]['page'],
+  dateIso: string,
+) => {
   const url = new URL(page.url());
-  const dateParam = url.searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
+  url.searchParams.set('date', dateIso);
   url.searchParams.set('dialog', 'create');
-  url.searchParams.set('dialogDate', dateParam);
+  url.searchParams.set('dialogDate', dateIso);
   url.searchParams.set('dialogStart', '10:00');
   url.searchParams.set('dialogEnd', '11:00');
   url.searchParams.set('dialogCategory', 'User');
@@ -41,6 +49,8 @@ const openCreateDialog = async (page: Parameters<typeof test.beforeEach>[0]['pag
 
 test.describe('Schedules Persistence', () => {
   let testTitle: string;
+  let testDateIso: string;
+  let testNavigationDate: Date;
   let isWriteEnabled: boolean;
   let isForceWrite: boolean;
 
@@ -98,13 +108,16 @@ test.describe('Schedules Persistence', () => {
     // Generate unique test title for this run
     testTitle = `E2E-Persist-${Date.now()}`;
 
-    const today = new Date();
+    const testDate = resolveScheduleTestDate();
+    testDateIso = testDate.dateIso;
+    testNavigationDate = testDate.navigationDate;
     await bootSchedule(page, {
+      date: testDate.navigationDate,
       seed: { schedulesToday: true },
-      route: '/schedules/week?tab=week',
+      route: `/schedules/week?tab=week&date=${testDateIso}`,
       resetLocalStorage: false,
     });
-    await gotoWeek(page, today);
+    await gotoWeek(page, testDate.navigationDate);
     await waitForWeekViewReady(page);
 
     isForceWrite = await page.evaluate(() => {
@@ -145,7 +158,7 @@ test.describe('Schedules Persistence', () => {
     }
 
     // Write enabled: proceed with creation
-    await openCreateDialog(page);
+    await openCreateDialog(page, testDateIso);
 
     // Wait for dialog to appear
     await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
@@ -171,7 +184,7 @@ test.describe('Schedules Persistence', () => {
     }
 
     await closeFollowUpDialog(page);
-    await page.reload({ waitUntil: 'networkidle' });
+    await gotoWeek(page, testNavigationDate);
     await waitForWeekViewReady(page);
 
     // Verify the created schedule appears in the week view
@@ -187,7 +200,7 @@ test.describe('Schedules Persistence', () => {
     }
 
     // First, create a schedule (same as previous test)
-    await openCreateDialog(page);
+    await openCreateDialog(page, testDateIso);
     await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
 
     const titleInput = page
@@ -213,10 +226,10 @@ test.describe('Schedules Persistence', () => {
 
     // Reload the page
     await page.reload({ waitUntil: 'networkidle' });
+    await gotoWeek(page, testNavigationDate);
 
     // Wait for page to be ready again
     await waitForWeekViewReady(page);
-
 
     // Verify the schedule still exists after reload (persistence proof)
     const scheduleAfterReload = page.locator(`[data-testid="schedule-item"][title="${testTitle}"]`).first();
