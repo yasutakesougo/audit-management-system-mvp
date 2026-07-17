@@ -59,9 +59,18 @@ export function summarizeVitestHealth({
 
   const started = events.filter((event) => event?.event === 'module-start');
   const ended = events.filter((event) => event?.event === 'module-end');
-  const expectedFiles = events.find(
+  const runStart = events.find(
     (event) => event?.event === 'run-start' && Number.isInteger(event.expectedModules),
-  )?.expectedModules ?? 0;
+  );
+  const runEnd = events.findLast((event) => event?.event === 'run-end');
+  const expectedFiles = runStart?.expectedModules ?? 0;
+  const runEndFiles = Number.isInteger(runEnd?.completedModules) ? runEnd.completedModules : null;
+  const runEndErrors = Number.isInteger(runEnd?.errorCount) ? runEnd.errorCount : null;
+  const startShard = typeof runStart?.shard === 'string' ? runStart.shard : null;
+  const endShard = typeof runEnd?.shard === 'string' ? runEnd.shard : null;
+  const shard = endShard ?? startShard;
+  const isShard = typeof shard === 'string' && /^\d+\/\d+$/.test(shard);
+  const shardConsistent = startShard === endShard;
   const endedCounts = new Map();
   for (const event of ended) endedCounts.set(event.moduleId, (endedCounts.get(event.moduleId) ?? 0) + 1);
   const missingEndedFiles = [];
@@ -75,6 +84,10 @@ export function summarizeVitestHealth({
     expectedFiles,
     startedFiles: started.length,
     endedFiles: ended.length,
+    runEndFiles,
+    runEndErrors,
+    shard,
+    shardConsistent,
     lastStartedFile: started.at(-1)?.moduleId ?? null,
     missingEndedFiles,
     unhandledErrors: countSignalBlocks(logLines, UNHANDLED_ERROR_PATTERN),
@@ -85,12 +98,24 @@ export function summarizeVitestHealth({
     memoryFilePresent,
   };
 
+  const completedCountHealthy =
+    summary.runEndFiles !== null &&
+    summary.startedFiles === summary.endedFiles &&
+    summary.endedFiles === summary.runEndFiles;
+  const expectedCountHealthy = isShard
+    ? summary.expectedFiles > 0
+    : summary.expectedFiles > 0 &&
+      summary.startedFiles === summary.expectedFiles &&
+      summary.endedFiles === summary.expectedFiles &&
+      summary.runEndFiles === summary.expectedFiles;
+
   return {
     ...summary,
     healthy:
-      summary.expectedFiles > 0 &&
-      summary.startedFiles === summary.expectedFiles &&
-      summary.endedFiles === summary.expectedFiles &&
+      completedCountHealthy &&
+      expectedCountHealthy &&
+      summary.runEndErrors === 0 &&
+      summary.shardConsistent &&
       summary.unhandledErrors === 0 &&
       summary.workerAbnormalExits === 0 &&
       summary.vitestExitCode === 0 &&
