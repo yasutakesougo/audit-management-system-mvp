@@ -20,9 +20,30 @@ This document summarizes the major CI/CD improvements implemented to enhance tes
 - File: `.github/workflows/e2e-deep.yml`
 - Purpose: Thorough testing of complex scenarios
 - Target time: < 45 minutes
-- Test pattern: All E2E tests except smoke (~83 tests)
-- Retry policy: 2 retries maximum
+- Test pattern: lane-based deep execution (Chromium) by runtime contract + integration scenario job
+- Retry policy: 2 retries maximum (Chromium lanes)
 - Triggers: Push to main, PR to main, nightly (2 AM UTC), manual dispatch
+
+**Deep Test Lane Matrix**
+- **app-a11y**: usability contract-focused specs
+- **fixture-memory**: seeded fixture-dependent specs
+- **sp-stub**: SharePoint-heavy specs
+- **transport-date-check**: timezone-sensitive transport specs
+- **implementation-hot**: implementation-path and timeout/confirmation specs
+- Lane metadata currently recorded in workflow:
+  - `lane`
+  - `runtime_mode`
+  - `preview_env`
+  - `timezone`
+  - `artifact_suffix`
+
+**Lane artifact naming**
+- `playwright-report-deep-<run-id>-<artifact-suffix>`
+- `test-results-deep-<run-id>-<artifact-suffix>`
+- `junit-e2e-deep-<run-id>-<artifact-suffix>`
+- `failure-artifacts-deep-<run-id>-<artifact-suffix>`
+- `flaky-test-report-deep-<run-id>-<artifact-suffix>`
+- `taxonomy-deep-<run-id>-<artifact-suffix>.json`
 
 ### 2. Environment Differentiation
 

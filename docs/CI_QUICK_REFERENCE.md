@@ -88,6 +88,25 @@ npx playwright show-trace test-results/*/trace.zip
 - `flaky-test-report-deep-*`: Flaky test analysis
 - `failure-artifacts-deep-*`: Failure diagnostics
 
+### Deep E2E 分離実行ノート
+
+- 参考: `docs/reports/deep-e2e-classification-29623169810.md`
+- 再現確認用の暫定 Lane 分離方針:
+  - `lane:app-a11y`（usability系）
+  - `lane:fixture-memory`（seed/fixture系）
+  - `lane:sp-stub`（SharePoint/スタブ系）
+  - `lane:transport-date-check`（timezone観点）
+  - `lane:implementation-hot`（実装起因のtimeout/assertion）
+- 主要metadata:
+  - `lane / runtime_mode / preview_env / timezone / artifact_suffix`
+- lane別artifact名（`run_id`付き）:
+  - `playwright-report-deep-<run-id>-<lane>`
+  - `test-results-deep-<run-id>-<lane>`
+  - `junit-e2e-deep-<run-id>-<lane>`
+  - `failure-artifacts-deep-<run-id>-<lane>`
+  - `flaky-test-report-deep-<run-id>-<lane>`
+  - `taxonomy-deep-<run-id>-<lane>.json`
+
 ## Environment Configs
 
 | File | Purpose | Server | Mock Auth |
