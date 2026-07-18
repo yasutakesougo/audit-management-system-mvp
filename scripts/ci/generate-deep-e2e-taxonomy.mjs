@@ -341,9 +341,10 @@ function parseArgs(argv) {
 function main() {
   const options = parseArgs(process.argv.slice(2));
   const payload = readAndClassify(options.input, {
-    headSha: process.env.GITHUB_SHA ?? null,
+    headSha: process.env.TAXONOMY_HEAD_SHA ?? process.env.GITHUB_SHA ?? null,
     runId: process.env.GITHUB_RUN_ID ?? null,
     runAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
+    lane: process.env.DEEP_LANE ?? null,
   });
   writeTaxonomy(payload, options.output);
   process.stdout.write(`${JSON.stringify(payload)}\n`);

@@ -33,6 +33,7 @@ concurrency:
 env:
   CI: true
   NODE_ENV: test
+  SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   # E2E Environment configuration
   VITE_E2E: '1'
   VITE_E2E_MSAL_MOCK: '1'
@@ -48,30 +49,96 @@ env:
 
 jobs:
   deep-tests-chromium:
-    name: Deep Tests (Chromium)
+    name: Deep Tests (Chromium) / ${{ matrix.lane }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: read
       checks: write
-    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: app-a11y
+            runtime_mode: demo
+            preview_env: e2e-deep-app-a11y
+            timezone: Asia/Tokyo
+            artifact_suffix: app-a11y
+            skip_sharepoint: '1'
+            force_sharepoint: '0'
+            demo_mode: '1'
+            data_provider: memory
+            feature_users_sp: '0'
+          - lane: fixture-memory
+            runtime_mode: demo-memory
+            preview_env: e2e-deep-fixture-memory
+            timezone: Asia/Tokyo
+            artifact_suffix: fixture-memory
+            skip_sharepoint: '1'
+            force_sharepoint: '0'
+            demo_mode: '1'
+            data_provider: memory
+            feature_users_sp: '1'
+          - lane: sp-stub
+            runtime_mode: sp-stub
+            preview_env: e2e-deep-sp-stub
+            timezone: Asia/Tokyo
+            artifact_suffix: sp-stub
+            skip_sharepoint: '0'
+            force_sharepoint: '1'
+            demo_mode: '0'
+            data_provider: sharepoint
+            feature_users_sp: '1'
+          - lane: transport-date-check
+            runtime_mode: demo
+            preview_env: e2e-deep-transport-date
+            timezone: Asia/Tokyo
+            artifact_suffix: transport-date-check
+            skip_sharepoint: '1'
+            force_sharepoint: '0'
+            demo_mode: '1'
+            data_provider: memory
+            feature_users_sp: '1'
+          - lane: implementation-hot
+            runtime_mode: demo
+            preview_env: e2e-deep-implementation-hot
+            timezone: Asia/Tokyo
+            artifact_suffix: implementation-hot
+            skip_sharepoint: '1'
+            force_sharepoint: '0'
+            demo_mode: '1'
+            data_provider: memory
+            feature_users_sp: '1'
+          - lane: general
+            runtime_mode: demo-memory
+            preview_env: e2e-deep-general
+            timezone: Asia/Tokyo
+            artifact_suffix: general
+            skip_sharepoint: '1'
+            force_sharepoint: '0'
+            demo_mode: '1'
+            data_provider: memory
+            feature_users_sp: '1'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+        with:
+          ref: ${{ env.SOURCE_HEAD_SHA }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
 
       - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(npx playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
-      
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         id: playwright-cache
@@ -93,35 +160,120 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         timeout-minutes: 10
         run: npx playwright install-deps chromium
-      
+
+      - name: Resolve lane environment
+        shell: bash
+        run: |
+          echo "DEEP_LANE=${{ matrix.lane }}" >> "$GITHUB_ENV"
+          echo "DEEP_RUNTIME_MODE=${{ matrix.runtime_mode }}" >> "$GITHUB_ENV"
+          echo "DEEP_PREVIEW_ENV=${{ matrix.preview_env }}" >> "$GITHUB_ENV"
+          echo "DEEP_TIMEZONE=${{ matrix.timezone }}" >> "$GITHUB_ENV"
+
       - name: Build application (preview mode)
         id: build_preview
-        run: |
-          npm run build
-          node scripts/write-e2e-runtime-env.mjs
         env:
           NODE_ENV: 'production'
           VITE_E2E: '1'
           VITE_E2E_MSAL_MOCK: '1'
           VITE_SKIP_LOGIN: '1'
-          VITE_SKIP_SHAREPOINT: '1'
-          VITE_FORCE_SHAREPOINT: '0'
-          VITE_DATA_PROVIDER: 'memory'
-          VITE_DEMO_MODE: '1'
+          VITE_SKIP_SHAREPOINT: ${{ matrix.skip_sharepoint }}
+          VITE_FORCE_SHAREPOINT: ${{ matrix.force_sharepoint }}
+          VITE_DATA_PROVIDER: ${{ matrix.data_provider }}
+          VITE_DEMO_MODE: ${{ matrix.demo_mode }}
+          VITE_FEATURE_USERS_SP: ${{ matrix.feature_users_sp }}
+          VITE_SCHEDULES_TZ: ${{ matrix.timezone }}
           VITE_FEATURE_SCHEDULES: '1'
           VITE_FEATURE_SCHEDULES_WEEK_V2: '1'
-      
+        run: |
+          npm run build
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const runtime = {
+            VITE_DEMO_MODE: process.env.VITE_DEMO_MODE,
+            VITE_E2E: process.env.VITE_E2E,
+            VITE_SKIP_LOGIN: process.env.VITE_SKIP_LOGIN,
+            VITE_E2E_MSAL_MOCK: process.env.VITE_E2E_MSAL_MOCK,
+            VITE_E2E_FORCE_SCHEDULES_WRITE: process.env.VITE_E2E_FORCE_SCHEDULES_WRITE,
+            VITE_SKIP_SHAREPOINT: process.env.VITE_SKIP_SHAREPOINT,
+            VITE_FORCE_SHAREPOINT: process.env.VITE_FORCE_SHAREPOINT,
+            VITE_DATA_PROVIDER: process.env.VITE_DATA_PROVIDER,
+            VITE_FEATURE_USERS_SP: process.env.VITE_FEATURE_USERS_SP,
+            VITE_FEATURE_SCHEDULES: process.env.VITE_FEATURE_SCHEDULES,
+            VITE_FEATURE_SCHEDULES_WEEK_V2: process.env.VITE_FEATURE_SCHEDULES_WEEK_V2,
+            VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ,
+            VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+            VITE_SP_SITE_RELATIVE: '/sites/Audit',
+            VITE_MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
+            VITE_MSAL_TENANT_ID: '00000000-0000-0000-0000-000000000000',
+          };
+          writeFileSync('dist/env.runtime.json', `${JSON.stringify(runtime, null, 2)}\n`, 'utf8');
+          NODE
+
       - name: Start preview server
         id: start_preview
         env:
           NODE_ENV: 'production'
+          VITE_SKIP_SHAREPOINT: ${{ matrix.skip_sharepoint }}
+          VITE_FORCE_SHAREPOINT: ${{ matrix.force_sharepoint }}
+          VITE_DATA_PROVIDER: ${{ matrix.data_provider }}
+          VITE_DEMO_MODE: ${{ matrix.demo_mode }}
+          VITE_FEATURE_USERS_SP: ${{ matrix.feature_users_sp }}
+          VITE_SCHEDULES_TZ: ${{ matrix.timezone }}
         run: |
+          echo "Starting preview for lane=${{ matrix.lane }} preview_env=${{ matrix.preview_env }} runtime_mode=${{ matrix.runtime_mode }} tz=${{ matrix.timezone }}"
           nohup npm run preview -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/e2e-preview.log 2>&1 &
           echo "Preview server starting on port 5173"
-      
+
       - name: Wait for preview server
         id: wait_preview
         run: npx wait-on http://127.0.0.1:5173 --timeout 60000
+
+      - name: Validate lane runtime contract
+        id: validate_lane_runtime
+        env:
+          EXPECT_SKIP_SHAREPOINT: ${{ matrix.skip_sharepoint }}
+          EXPECT_FORCE_SHAREPOINT: ${{ matrix.force_sharepoint }}
+          EXPECT_DEMO_MODE: ${{ matrix.demo_mode }}
+          EXPECT_DATA_PROVIDER: ${{ matrix.data_provider }}
+          EXPECT_FEATURE_USERS_SP: ${{ matrix.feature_users_sp }}
+        run: |
+          runtime_file="$(mktemp)"
+          curl -fsS http://127.0.0.1:5173/env.runtime.json > "$runtime_file"
+          node - <<'NODE' "$runtime_file"
+          const fs = require('fs');
+          const runtime = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = {
+            VITE_SKIP_SHAREPOINT: process.env.EXPECT_SKIP_SHAREPOINT,
+            VITE_FORCE_SHAREPOINT: process.env.EXPECT_FORCE_SHAREPOINT,
+            VITE_DEMO_MODE: process.env.EXPECT_DEMO_MODE,
+            VITE_DATA_PROVIDER: process.env.EXPECT_DATA_PROVIDER,
+            VITE_FEATURE_USERS_SP: process.env.EXPECT_FEATURE_USERS_SP,
+          };
+          const mismatches = Object.entries(expected).filter(
+            ([key, value]) => String(runtime[key] ?? '') !== String(value),
+          );
+          if (mismatches.length > 0) {
+            console.error('Runtime environment contract mismatch');
+            for (const [key, value] of mismatches) {
+              console.error(`${key}: expected=${value} actual=${runtime[key]}`);
+            }
+            process.exit(1);
+          }
+          NODE
+
+      - name: Resolve complete lane spec coverage
+        id: resolve_lane_specs
+        env:
+          DEEP_LANE: ${{ matrix.lane }}
+        run: |
+          mkdir -p reports
+          node scripts/ci/resolve-deep-e2e-lane.mjs \
+            --lane "$DEEP_LANE" \
+            --format lines \
+            --output "reports/deep-e2e-coverage-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json" \
+            > lane-specs.txt
+          test -s lane-specs.txt
+          echo "Resolved $(wc -l < lane-specs.txt | tr -d ' ') specs for lane=${DEEP_LANE}"
 
       - name: Capture bootstrap diagnostics
         id: bootstrap_diagnostics
@@ -131,68 +283,76 @@ jobs:
           BOOTSTRAP_DIAG_URL: http://127.0.0.1:5173/schedules/week?tab=week
           BOOTSTRAP_DIAG_DIR: reports/e2e-bootstrap
         continue-on-error: true
-      
+
       - name: Run deep E2E tests (non-smoke)
         id: deep_tests
+        shell: bash
         env:
-          TZ: Asia/Tokyo
+          TZ: ${{ matrix.timezone }}
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
           PLAYWRIGHT_WEB_SERVER_URL: http://127.0.0.1:5173
           PLAYWRIGHT_SKIP_BUILD: '1'
-          PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-deep.xml'
+          PLAYWRIGHT_JUNIT_OUTPUT: test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml
           PW_USE_PREVIEW: '1'
+          VITE_E2E: '1'
+          VITE_E2E_MSAL_MOCK: '1'
+          VITE_SKIP_LOGIN: '1'
+          VITE_SKIP_SHAREPOINT: ${{ matrix.skip_sharepoint }}
+          VITE_FORCE_SHAREPOINT: ${{ matrix.force_sharepoint }}
+          VITE_DATA_PROVIDER: ${{ matrix.data_provider }}
+          VITE_DEMO_MODE: ${{ matrix.demo_mode }}
+          VITE_FEATURE_USERS_SP: ${{ matrix.feature_users_sp }}
+          VITE_SCHEDULES_TZ: ${{ matrix.timezone }}
+          VITE_FEATURE_SCHEDULES: '1'
+          VITE_FEATURE_SCHEDULES_WEEK_V2: '1'
         run: |
-          # Run all E2E tests excluding smoke tests
-          if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
-            echo "Running custom test pattern: ${{ github.event.inputs.test_pattern }}"
-            npx playwright test ${{ github.event.inputs.test_pattern }} \
-              --config=playwright.config.ts \
-              --project=chromium \
-              --retries=2
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PR lane: running schedule/day-focused deep tests only"
-            npx playwright test \
-              tests/e2e/schedule-*.spec.ts \
-              tests/e2e/schedules*.spec.ts \
-              tests/e2e/dashboard-schedule-flow.spec.ts \
-              --config=playwright.config.ts \
-              --project=chromium \
-              --retries=1 \
-              --workers=1
-          else
-            echo "Running all deep (non-smoke) tests"
-            npx playwright test tests/e2e \
-              --config=playwright.config.ts \
-              --project=chromium \
-              --grep-invert "smoke|@live-sp" \
-              --retries=2
+          mapfile -t TEST_PATTERNS < lane-specs.txt
+          if [ -n "${{ github.event.inputs.test_pattern }}" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TEST_PATTERNS=("${{ github.event.inputs.test_pattern }}")
+            echo "Custom dispatch pattern overrides lane ownership for execution only."
           fi
+
+          if [ "${#TEST_PATTERNS[@]}" -eq 0 ]; then
+            echo "No test pattern for lane=${{ matrix.lane }}"
+            exit 1
+          fi
+
+          echo "Running lane=${{ matrix.lane }} with ${#TEST_PATTERNS[@]} spec pattern(s)"
+          npx playwright test "${TEST_PATTERNS[@]}" \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --grep-invert "smoke|@live-sp" \
+            --retries=2
         continue-on-error: true
-      
-      - name: Generate test summary
-        if: always()
-        run: |
-          echo "## E2E Deep Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** e2e" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ steps.deep_tests.outcome }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Pattern:** ${{ github.event.inputs.test_pattern || 'All deep tests (non-smoke)' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Check if JUnit report exists and parse it
-          if [ -f "test-results/junit-e2e-deep.xml" ]; then
-            tests=$(grep -o 'tests="[0-9]*"' test-results/junit-e2e-deep.xml | head -1 | grep -o '[0-9]*')
-            failures=$(grep -o 'failures="[0-9]*"' test-results/junit-e2e-deep.xml | head -1 | grep -o '[0-9]*')
-            echo "**Total Tests:** ${tests:-0}" >> $GITHUB_STEP_SUMMARY
-            echo "**Failures:** ${failures:-0}" >> $GITHUB_STEP_SUMMARY
-          fi
 
       - name: Generate Deep E2E taxonomy
         if: always()
         env:
           TAXONOMY_INPUT: test-results/results.json
-          TAXONOMY_OUTPUT: reports/deep-e2e-taxonomy.json
+          TAXONOMY_OUTPUT: reports/deep-e2e-taxonomy-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
+          TAXONOMY_HEAD_SHA: ${{ env.SOURCE_HEAD_SHA }}
+          DEEP_LANE: ${{ matrix.lane }}
         run: node scripts/ci/generate-deep-e2e-taxonomy.mjs --input "$TAXONOMY_INPUT" --output "$TAXONOMY_OUTPUT"
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## E2E Deep Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** e2e / lane=${{ matrix.lane }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Runtime Mode:** ${{ matrix.runtime_mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Preview Env:** ${{ matrix.preview_env }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time Zone:** ${{ matrix.timezone }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.deep_tests.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Resolved Specs:** $(wc -l < lane-specs.txt | tr -d ' ')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml" ]; then
+            tests=$(grep -o 'tests="[0-9]*"' test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml | head -1 | grep -o '[0-9]*')
+            failures=$(grep -o 'failures="[0-9]*"' test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml | head -1 | grep -o '[0-9]*')
+            echo "**Total Tests:** ${tests:-0}" >> $GITHUB_STEP_SUMMARY
+            echo "**Failures:** ${failures:-0}" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Classify deep test completion
         if: always()
@@ -210,6 +370,8 @@ jobs:
             setup_failure_step="Start preview server"
           elif [ "${{ steps.wait_preview.outcome }}" = "failure" ]; then
             setup_failure_step="Wait for preview server"
+          elif [ "${{ steps.validate_lane_runtime.outcome }}" = "failure" ]; then
+            setup_failure_step="Validate lane runtime contract"
           fi
 
           if [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
@@ -250,6 +412,10 @@ jobs:
             "workflow": "${{ github.workflow }}",
             "job_name": "${{ github.job }}",
             "merge_commit_sha": "${{ github.event.pull_request.merge_commit_sha }}",
+            "lane": "${{ matrix.lane }}",
+            "runtime_mode": "${{ matrix.runtime_mode }}",
+            "preview_env": "${{ matrix.preview_env }}",
+            "timezone": "${{ matrix.timezone }}",
             "classification": "${classification}",
             "direct_cancellation": ${direct_cancellation},
             "cancellation_step": "${cancellation_step}",
@@ -257,7 +423,7 @@ jobs:
             "deep_tests_outcome": "${{ steps.deep_tests.outcome }}",
             "concurrency_group": "e2e-deep-${{ github.ref }}",
             "event_name": "${{ github.event_name }}",
-            "head_sha": "${{ github.sha }}"
+            "head_sha": "${{ env.SOURCE_HEAD_SHA }}"
           }
           EOF
 
@@ -269,25 +435,26 @@ jobs:
           echo '```json' >> $GITHUB_STEP_SUMMARY
           cat deep-cancel-audit.json >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-      
+
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-deep-${{ github.run_number }}
+          name: playwright-report-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: playwright-report/
           retention-days: 14
           if-no-files-found: warn
-      
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-deep-${{ github.run_number }}
+          name: test-results-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: |
             test-results/
             playwright-report/
             deep-cancel-audit.json
+            reports/deep-e2e-taxonomy-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -295,19 +462,19 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-bootstrap-diagnostics-${{ github.run_number }}-${{ github.run_attempt }}
+          name: e2e-bootstrap-diagnostics-${{ github.run_id }}-${{ matrix.artifact_suffix }}-${{ github.run_attempt }}
           path: |
             reports/e2e-bootstrap/
             /tmp/e2e-preview.log
           retention-days: 14
           if-no-files-found: warn
-      
+
       - name: Upload JUnit report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-e2e-deep-${{ github.run_number }}
-          path: test-results/junit-e2e-deep.xml
+          name: junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
+          path: test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml
           retention-days: 14
           if-no-files-found: warn
 
@@ -315,61 +482,174 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: taxonomy-deep-${{ github.run_id }}
-          path: reports/deep-e2e-taxonomy.json
+          name: taxonomy-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
+          path: reports/deep-e2e-taxonomy-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
           retention-days: 14
           if-no-files-found: error
-      
+
+      - name: Upload lane coverage manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
+          path: reports/deep-e2e-coverage-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload lane cancellation audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cancel-audit-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
+          path: deep-cancel-audit.json
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Upload artifacts on partial failure
         if: failure() || steps.deep_tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: failure-artifacts-deep-${{ github.run_number }}
+          name: failure-artifacts-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: |
             test-results/
             playwright-report/
             logs/
           retention-days: 14
           if-no-files-found: warn
-      
+
       - name: Check for flaky tests
         if: always()
         run: |
           echo "## Flaky Test Detection" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Check if any tests were retried (indicator of flakiness)
+
           if [ -d "test-results" ]; then
-            retried_tests=$(find test-results -name "*-retry*" -type d | wc -l)
+            retried_tests=$(find test-results -name "*-retry-*" -type d | wc -l)
             if [ "$retried_tests" -gt 0 ]; then
               echo "⚠️ **Warning:** $retried_tests test(s) required retry" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "Please investigate these potentially flaky tests:" >> $GITHUB_STEP_SUMMARY
-              find test-results -name "*-retry*" -type d | sed 's/test-results\//- /' >> $GITHUB_STEP_SUMMARY || true
+              find test-results -name "*-retry-*" -type d | sed 's/test-results\//- /' >> $GITHUB_STEP_SUMMARY || true
             else
               echo "✅ No test retries detected - all tests passed on first attempt" >> $GITHUB_STEP_SUMMARY
             fi
           fi
-      
+
       - name: Analyze flaky tests (detailed)
         if: always()
         env:
           FLAKY_EXIT_ON: NEVER
         run: node scripts/analyze-flaky-tests.mjs
         continue-on-error: true
-      
+
       - name: Upload flaky test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flaky-test-report-deep-${{ github.run_number }}
+          name: flaky-test-report-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/flaky-tests.md
           retention-days: 30
           if-no-files-found: ignore
-      
+
       - name: Fail job if tests failed
         if: steps.deep_tests.outcome == 'failure'
         run: exit 1
+
+  deep-lane-union-audit:
+    name: Deep Lane Union Audit
+    runs-on: ubuntu-latest
+    needs: deep-tests-chromium
+    if: always()
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout exact source head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_HEAD_SHA }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate monolithic expected test identity inventory
+        run: |
+          npx playwright test tests/e2e \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --grep-invert "smoke|@live-sp" \
+            --list \
+            --reporter=json \
+            > expected-deep-inventory.json
+
+      - name: Download lane taxonomies
+        uses: actions/download-artifact@v4
+        with:
+          pattern: taxonomy-deep-${{ github.run_id }}-*
+          path: lane-artifacts
+
+      - name: Download lane coverage manifests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-deep-${{ github.run_id }}-*
+          path: lane-artifacts
+
+      - name: Download lane JUnit reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: junit-e2e-deep-${{ github.run_id }}-*
+          path: lane-artifacts
+
+      - name: Download lane cancellation audits
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cancel-audit-deep-${{ github.run_id }}-*
+          path: lane-artifacts
+
+      - name: Download lane bootstrap diagnostics
+        uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-bootstrap-diagnostics-${{ github.run_id }}-*
+          path: lane-artifacts
+
+      - name: Merge and validate lane evidence
+        run: |
+          node scripts/ci/merge-deep-e2e-lanes.mjs \
+            --root lane-artifacts \
+            --expected-head-sha "$SOURCE_HEAD_SHA" \
+            --expected-inventory expected-deep-inventory.json \
+            --run-id "${{ github.run_id }}" \
+            --output "reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json" \
+            --coverage-output "reports/deep-e2e-coverage-union-${{ github.run_id }}.json"
+          failed=$(node -p "require('./reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json').failed")
+          specs=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').ownedSpecCount")
+          tests=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').junitTestCount")
+          {
+            echo "## Deep Lane Union Audit"
+            echo ""
+            echo "- Source head: \`$SOURCE_HEAD_SHA\`"
+            echo "- Lanes: 6"
+            echo "- Owned specs: $specs"
+            echo "- JUnit test identities: $tests"
+            echo "- Failure key union: $failed"
+            echo "- Duplicate specs/test identities/failure keys: 0"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload union taxonomy and coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: taxonomy-deep-union-${{ github.run_id }}
+          path: |
+            reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json
+            reports/deep-e2e-coverage-union-${{ github.run_id }}.json
+          retention-days: 14
+          if-no-files-found: error
 
   deep-tests-integration:
     name: Deep Tests (Integration Scenarios)
@@ -383,6 +663,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_HEAD_SHA }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
