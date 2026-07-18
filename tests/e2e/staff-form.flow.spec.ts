@@ -21,6 +21,9 @@ const T = {
   formEmail: 'staff-form-email',
   formPhone: 'staff-form-phone',
   formRole: 'staff-form-role',
+  confirmDialog: 'confirm-dialog',
+  confirmCancel: 'confirm-dialog-cancel',
+  confirmSubmit: 'confirm-dialog-confirm',
 } as const;
 
 /**
@@ -104,20 +107,28 @@ test.describe('StaffForm — create flow', () => {
     await expect(page.getByTestId(T.formRoot)).not.toBeVisible({ timeout: 10_000 });
   });
 
-  test('close button triggers confirmation dialog when form is dirty', async ({ page }) => {
+  test('dirty create form can cancel or confirm the in-app close dialog', async ({ page }) => {
     await openCreateForm(page);
-    await page.getByTestId(T.formFullname).fill('変更あり');
-
-    let dialogType: string | null = null;
-    page.once('dialog', async (dialog) => {
-      dialogType = dialog.type();
-      await dialog.dismiss();
-    });
+    const fullnameInput = page.getByTestId(T.formFullname);
+    await fullnameInput.fill('変更あり');
 
     await page.getByTestId(T.formClose).click();
-    // Give a moment for the dialog event to fire
-    await page.waitForTimeout(500);
-    expect(dialogType).toBe('confirm');
+    const confirmDialog = page.getByTestId(T.confirmDialog);
+    await expect(confirmDialog).toBeVisible();
+    await expect(confirmDialog).toContainText('変更が保存されていません');
+    await expect(confirmDialog).toContainText('このまま閉じると入力内容は失われます。');
+    await expect(page.getByTestId(T.confirmCancel)).toHaveText('戻る');
+    await expect(page.getByTestId(T.confirmSubmit)).toHaveText('破棄して閉じる');
+
+    await page.getByTestId(T.confirmCancel).click();
+    await expect(confirmDialog).not.toBeVisible();
+    await expect(page.getByTestId(T.formRoot)).toBeVisible();
+    await expect(fullnameInput).toHaveValue('変更あり');
+
+    await page.getByTestId(T.formClose).click();
+    await expect(confirmDialog).toBeVisible();
+    await page.getByTestId(T.confirmSubmit).click();
+    await expect(page.getByTestId(T.formRoot)).not.toBeVisible({ timeout: 5_000 });
   });
 
   test('close button closes form immediately when form is pristine', async ({ page }) => {
@@ -169,20 +180,32 @@ test.describe('StaffForm — update flow', () => {
     await expect(page.getByTestId(T.formRole)).toHaveValue('支援員');
   });
 
-  test('editing FullName in update mode makes form dirty and triggers confirm on close', async ({ page }) => {
-    await openEditForm(page, '佐藤 花子');
-    const fullnameInput = page.getByTestId(T.formFullname);
-    await fullnameInput.fill('佐藤 花子 (変更)');
+  test('dirty update form can cancel or confirm the in-app close dialog', async ({ page }) => {
+    await openCreateForm(page);
+    await page.getByTestId(T.formFullname).fill('確認用 職員');
+    await page.getByTestId(T.formSubmit).click();
+    await expect(page.getByTestId(T.formRoot)).not.toBeVisible({ timeout: 10_000 });
 
-    let dialogType: string | null = null;
-    page.once('dialog', async (dialog) => {
-      dialogType = dialog.type();
-      await dialog.dismiss();
-    });
+    await openEditForm(page, '確認用 職員');
+    const fullnameInput = page.getByTestId(T.formFullname);
+    await fullnameInput.fill('確認用 職員 (変更)');
 
     await page.getByTestId(T.formClose).click();
-    await page.waitForTimeout(500);
-    expect(dialogType).toBe('confirm');
+    const confirmDialog = page.getByTestId(T.confirmDialog);
+    await expect(confirmDialog).toBeVisible();
+    await expect(confirmDialog).toContainText('変更が保存されていません');
+    await expect(page.getByTestId(T.confirmCancel)).toHaveText('戻る');
+    await expect(page.getByTestId(T.confirmSubmit)).toHaveText('破棄して閉じる');
+
+    await page.getByTestId(T.confirmCancel).click();
+    await expect(confirmDialog).not.toBeVisible();
+    await expect(page.getByTestId(T.formRoot)).toBeVisible();
+    await expect(fullnameInput).toHaveValue('確認用 職員 (変更)');
+
+    await page.getByTestId(T.formClose).click();
+    await expect(confirmDialog).toBeVisible();
+    await page.getByTestId(T.confirmSubmit).click();
+    await expect(page.getByTestId(T.formRoot)).not.toBeVisible({ timeout: 5_000 });
   });
 
   test('successful update closes the edit form', async ({ page }) => {
