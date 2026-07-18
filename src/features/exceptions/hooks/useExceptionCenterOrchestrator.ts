@@ -9,6 +9,7 @@ import { useExceptionDataSources } from './useExceptionDataSources';
 import { useBridgeExceptions } from './useBridgeExceptions';
 import { useDailyRecordExceptions } from './useDailyRecordExceptions';
 import { useHandoffExceptions } from './useHandoffExceptions';
+import { useCorrectiveActionExceptions } from './useCorrectiveActionExceptions';
 import {
   detectAttentionUsers, 
   detectDataLayerExceptions,
@@ -20,8 +21,20 @@ import {
 import { buildExceptionCenterSummary } from '../domain/exceptionCenterSummary';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import type { IUserMaster } from '@/features/users/types';
+import type {
+  ActionSuggestion,
+  ActionSuggestionState,
+} from '@/features/action-engine/domain/types';
 
-export function useExceptionCenterOrchestrator() {
+export interface UseExceptionCenterOrchestratorOptions {
+  correctiveSuggestions?: ActionSuggestion[];
+  correctiveStates?: Record<string, ActionSuggestionState>;
+}
+
+export function useExceptionCenterOrchestrator({
+  correctiveSuggestions = [],
+  correctiveStates = {},
+}: UseExceptionCenterOrchestratorOptions = {}) {
   const dataSources = useExceptionDataSources();
   const bridge = useBridgeExceptions();
   const { data: users = [] } = useUsersQuery();
@@ -33,6 +46,10 @@ export function useExceptionCenterOrchestrator() {
   });
   const { items: handoffItems } = useHandoffExceptions({
     handoffs: dataSources.criticalHandoffs,
+  });
+  const { items: correctiveActionItems } = useCorrectiveActionExceptions({
+    suggestions: correctiveSuggestions,
+    states: correctiveStates,
   });
 
   const allExceptions = useMemo(() => {
@@ -51,13 +68,21 @@ export function useExceptionCenterOrchestrator() {
     return aggregateExceptions(
       dailyRecordItems,
       handoffItems,
+      correctiveActionItems,
       attentionUsers,
       dataOSItems,
       bridgeItems,
       setupIncomplete,
       transportSetup
     );
-  }, [dataSources, bridge.exceptions, users, dailyRecordItems, handoffItems]);
+  }, [
+    dataSources,
+    bridge.exceptions,
+    users,
+    dailyRecordItems,
+    handoffItems,
+    correctiveActionItems,
+  ]);
 
   // SSOT サマリの構築
   const summary = useMemo(() => buildExceptionCenterSummary(allExceptions), [allExceptions]);
