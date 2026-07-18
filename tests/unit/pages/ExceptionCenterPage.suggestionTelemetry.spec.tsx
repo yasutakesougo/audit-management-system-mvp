@@ -52,15 +52,61 @@ vi.mock('../../../src/features/exceptions/hooks/useCorrectiveActionExceptions', 
 
 vi.mock('../../../src/features/exceptions/hooks/useHandoffExceptions', () => ({
   useHandoffExceptions: vi.fn(() => ({
-    items: [],
-    count: 0,
+    items: [
+      {
+        id: 'handoff-user-user-002',
+        category: 'critical-handoff',
+        severity: 'critical',
+        title: '利用者Bの重要申し送り',
+        description: '1件の未完了申し送りがあります。',
+        targetUser: '利用者B',
+        targetUserId: 'user-002',
+        targetDate: '2026-03-21',
+        updatedAt: '2026-03-21T09:00:00Z',
+      },
+      {
+        id: 'handoff-handoff-001',
+        parentId: 'handoff-user-user-002',
+        category: 'critical-handoff',
+        severity: 'critical',
+        title: '利用者Bの重要申し送り（未対応）',
+        description: '要確認',
+        targetUser: '利用者B',
+        targetUserId: 'user-002',
+        targetDate: '2026-03-21',
+        updatedAt: '2026-03-21T09:00:00Z',
+      },
+    ],
+    count: 1,
   })),
 }));
 
 vi.mock('../../../src/features/exceptions/hooks/useDailyRecordExceptions', () => ({
   useDailyRecordExceptions: vi.fn(() => ({
-    items: [],
-    count: 0,
+    items: [
+      {
+        id: 'daily-missing-record-2026-03-21',
+        category: 'missing-record',
+        severity: 'high',
+        title: '2026-03-21 の日々の記録未作成',
+        description: '1名の日々の記録が未作成です。',
+        targetDate: '2026-03-21',
+        updatedAt: '2026-03-21',
+      },
+      {
+        id: 'missing-record-user-001-2026-03-21',
+        parentId: 'daily-missing-record-2026-03-21',
+        category: 'missing-record',
+        severity: 'high',
+        title: '利用者Aの日々の記録が未作成',
+        description: '日々の記録を作成してください。',
+        targetUser: '利用者A',
+        targetUserId: 'user-001',
+        targetDate: '2026-03-21',
+        updatedAt: '2026-03-21',
+      },
+    ],
+    count: 1,
   })),
 }));
 
@@ -152,6 +198,16 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
     expect(ExceptionTable).toHaveBeenCalled();
     const calls = vi.mocked(ExceptionTable).mock.calls;
     const props = calls.length > 0 ? (calls[calls.length - 1]?.[0] as Record<string, unknown>) : {};
+    expect(props.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'missing-record-user-001-2026-03-21',
+        parentId: 'daily-missing-record-2026-03-21',
+      }),
+      expect.objectContaining({
+        id: 'handoff-handoff-001',
+        parentId: 'handoff-user-user-002',
+      }),
+    ]));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actions = (props.suggestionActions as any);
 
