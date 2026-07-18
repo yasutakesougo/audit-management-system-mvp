@@ -7,9 +7,9 @@
 import { useMemo } from 'react';
 import { useExceptionDataSources } from './useExceptionDataSources';
 import { useBridgeExceptions } from './useBridgeExceptions';
-import { 
-  detectMissingRecords, 
-  detectCriticalHandoffs, 
+import { useDailyRecordExceptions } from './useDailyRecordExceptions';
+import { useHandoffExceptions } from './useHandoffExceptions';
+import {
   detectAttentionUsers, 
   detectDataLayerExceptions,
   detectAnalysisSetupExceptions,
@@ -25,17 +25,20 @@ export function useExceptionCenterOrchestrator() {
   const dataSources = useExceptionDataSources();
   const bridge = useBridgeExceptions();
   const { data: users = [] } = useUsersQuery();
+  const { items: dailyRecordItems } = useDailyRecordExceptions({
+    expectedUsers: dataSources.expectedUsers,
+    existingRecords: dataSources.todayRecords,
+    integrityExceptions: dataSources.integrityExceptions,
+    targetDate: dataSources.today,
+  });
+  const { items: handoffItems } = useHandoffExceptions({
+    handoffs: dataSources.criticalHandoffs,
+  });
 
   const allExceptions = useMemo(() => {
     if (dataSources.status === 'loading' && bridge.isLoading) return [];
     
     // 1. 既存の検出ロジック (L0/L1)
-    const missingRecords = detectMissingRecords({
-      expectedUsers: dataSources.expectedUsers,
-      existingRecords: dataSources.todayRecords,
-      targetDate: dataSources.today
-    });
-    const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
     const dataOSItems = detectDataLayerExceptions(dataSources.dataOSResolutions);
     const setupIncomplete = detectAnalysisSetupExceptions(dataSources.userSummaries);
@@ -46,16 +49,15 @@ export function useExceptionCenterOrchestrator() {
 
     // 3. 所有カテゴリを集約してソート
     return aggregateExceptions(
-      missingRecords,
-      criticalHandoffs, 
+      dailyRecordItems,
+      handoffItems,
       attentionUsers,
       dataOSItems,
       bridgeItems,
-      dataSources.integrityExceptions,
       setupIncomplete,
       transportSetup
     );
-  }, [dataSources, bridge.exceptions, users]);
+  }, [dataSources, bridge.exceptions, users, dailyRecordItems, handoffItems]);
 
   // SSOT サマリの構築
   const summary = useMemo(() => buildExceptionCenterSummary(allExceptions), [allExceptions]);
