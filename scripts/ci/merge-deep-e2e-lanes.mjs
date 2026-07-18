@@ -178,12 +178,27 @@ export function mergeLaneArtifacts(
       `Expected ${DEEP_LANES.length} bootstrap diagnostics, found ${bootstrapFiles.length}`,
     );
   }
+  let expectedBootstrapRequestFailureCount = 0;
   for (const file of bootstrapFiles) {
     const bootstrap = readJson(file);
+    const lane = DEEP_LANES.find((candidate) =>
+      file.split(path.sep).some((part) => part.includes(`-${candidate}-`)),
+    );
+    const requestFailures = bootstrap.requestFailures ?? [];
+    const expectedSpStubFailures =
+      lane === "sp-stub" &&
+      requestFailures.every(
+        (failure) =>
+          failure?.url?.startsWith("https://example.sharepoint.com/") &&
+          failure?.errorText === "net::ERR_NAME_NOT_RESOLVED",
+      );
+    if (expectedSpStubFailures) {
+      expectedBootstrapRequestFailureCount += requestFailures.length;
+    }
     if (
       bootstrap.error ||
       (bootstrap.pageErrors?.length ?? 0) > 0 ||
-      (bootstrap.requestFailures?.length ?? 0) > 0
+      (requestFailures.length > 0 && !expectedSpStubFailures)
     ) {
       throw new Error(`Bootstrap diagnostics contain errors: ${file}`);
     }
@@ -224,6 +239,7 @@ export function mergeLaneArtifacts(
       ownedSpecCount: ownedSpecs.length,
       junitTestCount: junitIdentities.length,
       expectedTestCount,
+      expectedBootstrapRequestFailureCount,
       duplicateSpecCount: 0,
       duplicateTestIdentityCount: 0,
     },

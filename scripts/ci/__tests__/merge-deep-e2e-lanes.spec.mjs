@@ -66,10 +66,18 @@ function artifactFixture() {
       setup_failure_step: "none",
       direct_cancellation: false,
     });
-    write(root, `${lane}/bootstrap-diagnostics.json`, {
+    write(root, `${lane}/bootstrap-${lane}-artifact/bootstrap-diagnostics.json`, {
       error: null,
       pageErrors: [],
-      requestFailures: [],
+      requestFailures:
+        lane === "sp-stub"
+          ? [
+              {
+                url: "https://example.sharepoint.com/sites/demo/_api/web",
+                errorText: "net::ERR_NAME_NOT_RESOLVED",
+              },
+            ]
+          : [],
     });
   }
   return root;
@@ -107,6 +115,7 @@ describe("mergeLaneArtifacts", () => {
     assert.equal(merged.coverage.ownedSpecCount, DEEP_LANES.length);
     assert.equal(merged.coverage.junitTestCount, DEEP_LANES.length);
     assert.equal(merged.coverage.expectedTestCount, DEEP_LANES.length);
+    assert.equal(merged.coverage.expectedBootstrapRequestFailureCount, 1);
   });
 
   it("derives JUnit-compatible identities from Playwright list JSON", () => {
