@@ -44,6 +44,27 @@ Three distinct environment configurations:
 - Optimized for CI performance
 - Strict environment isolation
 
+### 2b. Deep E2E Lane Segregation
+
+The deep Chromium workflow is executed as 5 runtime-specific matrix lanes to avoid mixing environment contracts:
+
+- `app-a11y`
+- `fixture-memory`
+- `sp-stub`
+- `transport-date-check`
+- `implementation-hot`
+
+Each lane defines its own:
+
+- `lane`
+- `runtime_mode`
+- `preview_env`
+- `timezone`
+- `artifact_suffix`
+- `test_pattern`
+
+Lane-specific artifacts and taxonomy outputs now include lane suffix (e.g., `taxonomy-deep-${run_id}-app-a11y.json`) so results stay isolated.
+
 ### 3. Enhanced Failure Handling
 
 **Artifact Uploads:**
