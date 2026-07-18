@@ -76,6 +76,31 @@ export function AppShellV2({
         bgcolor: 'background.default',
       }}
     >
+      <Box
+        component="a"
+        data-testid="skip-to-main-link"
+        href={`#${mainId}`}
+        sx={{
+          position: 'fixed',
+          top: 8,
+          left: 8,
+          zIndex: (currentTheme) => currentTheme.zIndex.tooltip + 1,
+          px: 2,
+          py: 1,
+          borderRadius: 1,
+          bgcolor: 'background.paper',
+          color: 'text.primary',
+          boxShadow: 3,
+          transform: 'translateY(-200%)',
+          transition: 'transform 120ms ease-out',
+          '&:focus': {
+            transform: 'translateY(0)',
+          },
+        }}
+      >
+        メインコンテンツへ移動
+      </Box>
+
       {/* Header */}
       <Box
         sx={{

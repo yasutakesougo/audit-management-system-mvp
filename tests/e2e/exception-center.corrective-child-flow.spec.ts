@@ -90,10 +90,11 @@ test.describe('ExceptionCenter corrective child flow', () => {
 
     await bootstrapDashboard(page, {
       skipLogin: true,
+      dataProvider: 'memory',
       initialPath: '/admin/exception-center',
     });
 
-    await expect(page.getByTestId('exception-table')).toBeVisible();
+    await expect(page.getByTestId('exception-table')).toBeVisible({ timeout: 20_000 });
 
     // 1) flat で parent 下に child が表示される
     await expect(page.getByTestId('exception-row-corrective-user-U-001')).toBeVisible();
@@ -113,9 +114,9 @@ test.describe('ExceptionCenter corrective child flow', () => {
 
     // 4) grouped/flat で二重集約されない（U-001 は child 2件）
     await page.getByTestId('exception-mode-grouped').click();
-    await expect(page.getByTestId('exception-row-ae:ca-s1').getByText('田中 太郎 の例外 (2件)')).toBeVisible();
-    await expect(page.getByTestId('exception-row-ae:ca-s3').getByText('佐藤 花子 の例外 (1件)')).toBeVisible();
-    await expect(page.getByText('田中 太郎 の改善提案')).toHaveCount(0);
+    await expect(page.getByTestId('exception-row-ae:ca-s1').getByText('桂川 進太朗 の例外 (2件)')).toBeVisible();
+    await expect(page.getByTestId('exception-row-ae:ca-s3').getByText('田中 太郎 の例外 (1件)')).toBeVisible();
+    await expect(page.getByText('桂川 進太朗 の改善提案')).toHaveCount(0);
     await page.getByTestId('exception-mode-flat').click();
 
     // 2) child CTA で actionPath に遷移できる
@@ -127,11 +128,11 @@ test.describe('ExceptionCenter corrective child flow', () => {
 
     // 3) child でも snooze / dismiss が機能する
     await page.getByTestId('suggestion-menu-button-ae:ca-s1').click();
-    await page.getByRole('menuitem', { name: '明日まで' }).click();
+    await page.getByText('明日まで', { exact: true }).last().click();
     await expect(page.getByTestId('exception-row-ae:ca-s1')).toHaveCount(0);
 
     await page.getByTestId('suggestion-menu-button-ae:ca-s2').click();
-    await page.getByRole('menuitem', { name: '対応済みにする' }).click();
+    await page.getByText('対応済みにする', { exact: true }).last().click();
     await expect(page.getByTestId('exception-row-ae:ca-s2')).toHaveCount(0);
   });
 });

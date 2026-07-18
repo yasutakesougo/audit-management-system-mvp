@@ -7,13 +7,6 @@ const SCHEDULES_STORAGE_KEY = 'e2e:schedules.v1';
 test.describe('ExceptionCenter transport missing-driver child flow', () => {
   test('flat/grouped rendering and child deep-link landing remain consistent', async ({ page }) => {
     await page.addInitScript(({ collapsedParentsKey, schedulesKey }) => {
-      const w = window as typeof window & { __ENV__?: Record<string, string> };
-      w.__ENV__ = {
-        ...(w.__ENV__ ?? {}),
-        // ユーザー名マッピングを安定化（demo users を利用）
-        VITE_FEATURE_USERS_SP: '0',
-      };
-
       const today = new Intl.DateTimeFormat('sv-SE', {
         timeZone: 'Asia/Tokyo',
         year: 'numeric',
@@ -26,8 +19,8 @@ test.describe('ExceptionCenter transport missing-driver child flow', () => {
           id: 'e2e-transport-missing-driver-1',
           title: '迎え送迎（E2E）',
           category: 'User',
-          userId: 'U-002',
-          userName: '鈴木 美子',
+          userId: 'U-001',
+          userName: '桂川 進太朗',
           start: `${today}T08:30:00+09:00`,
           end: `${today}T09:00:00+09:00`,
           serviceType: 'transport',
@@ -48,6 +41,7 @@ test.describe('ExceptionCenter transport missing-driver child flow', () => {
 
     await bootstrapDashboard(page, {
       skipLogin: true,
+      dataProvider: 'memory',
       initialPath: '/admin/exception-center',
     });
 

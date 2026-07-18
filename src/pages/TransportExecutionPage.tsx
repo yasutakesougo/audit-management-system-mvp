@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -24,6 +24,12 @@ import { useTransportHighlight } from '@/features/today/transport/useTransportHi
 const TransportExecutionPage: React.FC = () => {
   const transport = useTransportStatus();
   const transportHighlight = useTransportHighlight();
+
+  useEffect(() => {
+    if (transportHighlight.direction) {
+      transport.setActiveDirection(transportHighlight.direction);
+    }
+  }, [transport.setActiveDirection, transportHighlight.direction]);
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} data-testid="transport-execution-page">

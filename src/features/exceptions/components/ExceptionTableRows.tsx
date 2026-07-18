@@ -395,7 +395,7 @@ export const ExceptionTableRows: React.FC<ExceptionTableRowsProps> = ({
 
   return (
     <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-      <Table size="small">
+      <Table size="small" sx={{ minWidth: 760 }}>
         <TableHead>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
             <TableCell sx={{ fontWeight: 700, width: 80, color: 'text.primary' }}>重要度</TableCell>

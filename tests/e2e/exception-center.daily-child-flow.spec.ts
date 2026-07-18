@@ -6,12 +6,6 @@ const COLLAPSED_PARENTS_STORAGE_KEY = 'exception-collapsed-parents';
 test.describe('ExceptionCenter daily-record child flow', () => {
   test('missing-record parent/child rendering and deep-link navigation remain consistent', async ({ page }) => {
     await page.addInitScript(({ collapsedParentsKey }) => {
-      const w = window as typeof window & { __ENV__?: Record<string, string> };
-      w.__ENV__ = {
-        ...(w.__ENV__ ?? {}),
-        // ExceptionCenter の expectedUsers を安定化するため demo users を使用
-        VITE_FEATURE_USERS_SP: '0',
-      };
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.removeItem(collapsedParentsKey);
     }, {
@@ -20,6 +14,7 @@ test.describe('ExceptionCenter daily-record child flow', () => {
 
     await bootstrapDashboard(page, {
       skipLogin: true,
+      dataProvider: 'memory',
       initialPath: '/admin/exception-center',
     });
 

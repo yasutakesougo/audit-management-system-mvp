@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { renderWithProviders } from '../_helpers/renderWithProviders';
 import ExceptionCenterPage from '../../../src/pages/admin/ExceptionCenterPage';
 import { ExceptionTable } from '../../../src/features/exceptions/components/ExceptionTable';
@@ -149,9 +149,13 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
       <ExceptionCenterPage />,
     );
 
+    expect(screen.getByTestId('exception-center-page')).toBeVisible();
     expect(ExceptionTable).toHaveBeenCalled();
     const calls = vi.mocked(ExceptionTable).mock.calls;
     const props = calls.length > 0 ? (calls[calls.length - 1]?.[0] as Record<string, unknown>) : {};
+    expect(props.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ stableId }),
+    ]));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actions = (props.suggestionActions as any);
 

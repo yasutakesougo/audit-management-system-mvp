@@ -16,16 +16,11 @@ test.describe('exception-center a11y smoke', () => {
     test(`has no critical a11y violations (${mode})`, async ({ page }) => {
       await page.addInitScript((colorMode) => {
         window.localStorage.setItem('app_color_mode', colorMode);
-
-        const w = window as typeof window & { __ENV__?: Record<string, string> };
-        w.__ENV__ = {
-          ...(w.__ENV__ ?? {}),
-          VITE_FEATURE_USERS_SP: '0',
-        };
       }, mode);
 
       await bootstrapDashboard(page, {
         skipLogin: true,
+        dataProvider: 'memory',
         initialPath: '/admin/exception-center',
       });
 

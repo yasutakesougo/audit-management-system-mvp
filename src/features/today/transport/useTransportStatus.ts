@@ -74,6 +74,7 @@ import type {
 function adaptUsers(
   summaryUsers: IUserMaster[],
   attendanceUsers?: Array<{ UserCode: string; IsTransportTarget?: boolean }>,
+  scheduledTransportUserIds: ReadonlySet<string> = new Set(),
 ): TransportUserInfo[] {
   // Build a set of transport-target user codes from AttendanceUsers.
   const transportTargetSet = new Set(
@@ -86,6 +87,10 @@ function adaptUsers(
   return summaryUsers
     .filter((u) => {
       const userCode = (u.UserID ?? '').trim();
+
+      // A transport schedule is also an explicit assignment contract. This
+      // keeps memory/demo lanes useful when split user-master fields are absent.
+      if (scheduledTransportUserIds.has(userCode)) return true;
 
       // If we have explicit flag from AttendanceUsers, prioritize it
       if (hasAttendanceFilter && transportTargetSet.has(userCode)) return true;
@@ -289,8 +294,34 @@ export function useTransportStatus(): UseTransportStatusReturn {
       }),
     ]);
 
-    const users = adaptUsers(summary.users, attendanceUsers);
+    const scheduledTransportUserIds = new Set([
+      ...assignmentIndex.to.keys(),
+      ...assignmentIndex.from.keys(),
+    ]);
+    const users = adaptUsers(summary.users, attendanceUsers, scheduledTransportUserIds);
     const visits = adaptVisits(summary.visits);
+    for (const user of users) {
+      const normalizedUserId = normalizeLookupKey(user.userId);
+      const hasToAssignment =
+        assignmentIndex.to.has(user.userId) || assignmentIndex.to.has(normalizedUserId);
+      const hasFromAssignment =
+        assignmentIndex.from.has(user.userId) || assignmentIndex.from.has(normalizedUserId);
+      if (!hasToAssignment && !hasFromAssignment) continue;
+
+      const current = visits[user.userId] ?? {
+        transportTo: false,
+        transportFrom: false,
+      };
+      visits[user.userId] = {
+        ...current,
+        ...(hasToAssignment
+          ? { transportTo: true, transportToMethod: 'office_shuttle' as const }
+          : {}),
+        ...(hasFromAssignment
+          ? { transportFrom: true, transportFromMethod: 'office_shuttle' as const }
+          : {}),
+      };
+    }
     const toLegs = deriveTransportLegs(users, visits, existingLogs, 'to');
     const fromLegs = deriveTransportLegs(users, visits, existingLogs, 'from');
 
@@ -299,7 +330,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
       usersCount: users.length,
       legs: [...toLegs, ...fromLegs],
     };
-  }, [summary.users, summary.visits, sp]);
+  }, [assignmentIndex, summary.users, summary.visits, sp]);
 
   const refresh = useCallback(async () => {
     const snapshot = await buildLegSnapshot();

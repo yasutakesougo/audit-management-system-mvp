@@ -34,12 +34,6 @@ const seedSuggestions = [
 async function bootExceptionCenter(page: Page, mode: (typeof modes)[number]): Promise<void> {
   await page.addInitScript(
     ({ colorMode, suggestionsKey, suggestionStateKey, collapsedParentsKey, seededSuggestions }) => {
-      const w = window as typeof window & { __ENV__?: Record<string, string> };
-      w.__ENV__ = {
-        ...(w.__ENV__ ?? {}),
-        VITE_FEATURE_USERS_SP: '0',
-      };
-
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.setItem('app_color_mode', colorMode);
       window.localStorage.removeItem(suggestionStateKey);
@@ -57,6 +51,7 @@ async function bootExceptionCenter(page: Page, mode: (typeof modes)[number]): Pr
 
   await bootstrapDashboard(page, {
     skipLogin: true,
+    dataProvider: 'memory',
     initialPath: '/admin/exception-center',
   });
 
