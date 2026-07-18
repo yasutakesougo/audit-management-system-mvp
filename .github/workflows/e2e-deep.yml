@@ -202,7 +202,28 @@ jobs:
           VITE_FEATURE_SCHEDULES_WEEK_V2: '1'
         run: |
           npm run build
-          node scripts/write-e2e-runtime-env.mjs
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const runtime = {
+            VITE_DEMO_MODE: process.env.VITE_DEMO_MODE,
+            VITE_E2E: process.env.VITE_E2E,
+            VITE_SKIP_LOGIN: process.env.VITE_SKIP_LOGIN,
+            VITE_E2E_MSAL_MOCK: process.env.VITE_E2E_MSAL_MOCK,
+            VITE_E2E_FORCE_SCHEDULES_WRITE: process.env.VITE_E2E_FORCE_SCHEDULES_WRITE,
+            VITE_SKIP_SHAREPOINT: process.env.VITE_SKIP_SHAREPOINT,
+            VITE_FORCE_SHAREPOINT: process.env.VITE_FORCE_SHAREPOINT,
+            VITE_DATA_PROVIDER: process.env.VITE_DATA_PROVIDER,
+            VITE_FEATURE_USERS_SP: process.env.VITE_FEATURE_USERS_SP,
+            VITE_FEATURE_SCHEDULES: process.env.VITE_FEATURE_SCHEDULES,
+            VITE_FEATURE_SCHEDULES_WEEK_V2: process.env.VITE_FEATURE_SCHEDULES_WEEK_V2,
+            VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ,
+            VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
+            VITE_SP_SITE_RELATIVE: '/sites/Audit',
+            VITE_MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
+            VITE_MSAL_TENANT_ID: '00000000-0000-0000-0000-000000000000',
+          };
+          writeFileSync('dist/env.runtime.json', `${JSON.stringify(runtime, null, 2)}\n`, 'utf8');
+          NODE
 
       - name: Start preview server
         id: start_preview
@@ -348,6 +369,8 @@ jobs:
             setup_failure_step="Start preview server"
           elif [ "${{ steps.wait_preview.outcome }}" = "failure" ]; then
             setup_failure_step="Wait for preview server"
+          elif [ "${{ steps.validate_lane_runtime.outcome }}" = "failure" ]; then
+            setup_failure_step="Validate lane runtime contract"
           fi
 
           if [ "${{ steps.deep_tests.outcome }}" = "cancelled" ]; then
