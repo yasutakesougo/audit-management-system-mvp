@@ -41,9 +41,13 @@ const SEVERITY_COLORS: Record<ExceptionSeverity, 'error' | 'warning' | 'primary'
 };
 
 export const ExceptionCenterPage: React.FC = () => {
-  const { items, summary, isLoading, error } = useExceptionCenterOrchestrator();
-  const { activeEscalations } = useEscalationEvaluation(items, summary);
   const { suggestions } = useAllCorrectiveActions();
+  const suggestionStates = useSuggestionStateStore((s) => s.states);
+  const { items, summary, isLoading, error } = useExceptionCenterOrchestrator({
+    correctiveSuggestions: suggestions,
+    correctiveStates: suggestionStates,
+  });
+  const { activeEscalations } = useEscalationEvaluation(items, summary);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
 

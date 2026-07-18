@@ -3,6 +3,7 @@ import { renderWithProviders } from '../_helpers/renderWithProviders';
 import ExceptionCenterPage from '../../../src/pages/admin/ExceptionCenterPage';
 import { ExceptionTable } from '../../../src/features/exceptions/components/ExceptionTable';
 import type { ActionSuggestion } from '../../../src/features/action-engine/domain/types';
+import { useCorrectiveActionExceptions } from '../../../src/features/exceptions/hooks/useCorrectiveActionExceptions';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -33,7 +34,19 @@ vi.mock('../../../src/features/exceptions/hooks/useCorrectiveActionExceptions', 
   useCorrectiveActionExceptions: vi.fn(() => ({
     items: [
       {
+        id: 'corrective-user-user-001',
+        category: 'corrective-action',
+        severity: 'high',
+        title: '利用者Aの改善提案',
+        description: '1件の提案があります。',
+        targetUser: '利用者A',
+        targetUserId: 'user-001',
+        targetDate: '2026-03-21',
+        updatedAt: '2026-03-21T09:00:00Z',
+      },
+      {
         id: `ae:${stableId}`,
+        parentId: 'corrective-user-user-001',
         category: 'corrective-action',
         severity: 'high',
         title: '改善提案',
@@ -207,7 +220,18 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
         id: 'handoff-handoff-001',
         parentId: 'handoff-user-user-002',
       }),
+      expect.objectContaining({
+        id: 'corrective-user-user-001',
+      }),
+      expect.objectContaining({
+        id: `ae:${stableId}`,
+        parentId: 'corrective-user-user-001',
+      }),
     ]));
+    expect(vi.mocked(useCorrectiveActionExceptions)).toHaveBeenCalledWith({
+      suggestions: [suggestion],
+      states: {},
+    });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actions = (props.suggestionActions as any);
 
