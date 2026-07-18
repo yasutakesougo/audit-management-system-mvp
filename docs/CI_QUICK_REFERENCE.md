@@ -83,25 +83,30 @@ npx playwright show-trace test-results/*/trace.zip
 2. Deep Tests (Integration) - Complex scenarios
 
 **Deep lane strategy:**
-The Chromium job is now split into 5 runtime-specific lanes:
+The Chromium job is split into 6 exhaustive runtime-specific lanes:
 - `app-a11y` (demo + app accessibility)
 - `fixture-memory` (memory provider + fixture-based flows)
 - `sp-stub` (SharePoint stub mode)
 - `transport-date-check` (timezone/date-dependent flows)
 - `implementation-hot` (remaining implementation-focused failures)
+- `general` (dynamic complement of every unowned `tests/e2e/**/*.spec.ts`)
+
+`scripts/ci/resolve-deep-e2e-lane.mjs` is the lane ownership SSOT. It rejects missing or duplicate specialized specs and assigns every other spec to `general`.
 
 Each lane runs with dedicated preview/bootstrap inputs:
 - `runtime_mode`
 - `preview_env`
 - `timezone`
 - `artifact_suffix`
-- `test_pattern`
+- source-head SHA
 
 **Artifacts:**
 - `playwright-report-deep-<run-id>-<lane>`: HTML reports
 - `test-results-deep-<run-id>-<lane>`: All test results
 - `junit-e2e-deep-<run-id>-<lane>`: JUnit reports
 - `taxonomy-deep-<run-id>-<lane>`: Deep taxonomy JSON
+- `coverage-deep-<run-id>-<lane>`: Exact spec ownership manifest
+- `taxonomy-deep-union-<run-id>`: Exact-head failure-key union and coverage audit
 - `flaky-test-report-deep-<run-id>-<lane>`: Flaky test analysis
 - `failure-artifacts-deep-<run-id>-<lane>`: Failure diagnostics
 

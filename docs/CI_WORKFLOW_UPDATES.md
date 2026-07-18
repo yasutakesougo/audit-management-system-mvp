@@ -46,13 +46,16 @@ Three distinct environment configurations:
 
 ### 2b. Deep E2E Lane Segregation
 
-The deep Chromium workflow is executed as 5 runtime-specific matrix lanes to avoid mixing environment contracts:
+The deep Chromium workflow is executed as 6 exhaustive runtime-specific matrix lanes to avoid mixing environment contracts:
 
 - `app-a11y`
 - `fixture-memory`
 - `sp-stub`
 - `transport-date-check`
 - `implementation-hot`
+- `general`
+
+The first five lanes keep explicit runtime-sensitive ownership. `general` is generated as the complement of all `tests/e2e/**/*.spec.ts`, so a newly added spec cannot silently fall outside Deep execution.
 
 Each lane defines its own:
 
@@ -61,9 +64,9 @@ Each lane defines its own:
 - `preview_env`
 - `timezone`
 - `artifact_suffix`
-- `test_pattern`
+- source-head SHA
 
-Lane-specific artifacts and taxonomy outputs now include lane suffix (e.g., `taxonomy-deep-${run_id}-app-a11y.json`) so results stay isolated.
+Lane-specific artifacts and taxonomy outputs include a lane suffix (e.g., `taxonomy-deep-${run_id}-app-a11y.json`) so results stay isolated. The `Deep Lane Union Audit` then verifies exact-head taxonomy, six healthy bootstraps, complete/no-duplicate spec ownership, unique JUnit identities, and a duplicate-free failure-key union.
 
 ### 3. Enhanced Failure Handling
 
