@@ -115,7 +115,13 @@ test.describe('ExceptionCenter handoff child flow', () => {
     // 3) child CTA で handoff deep link に遷移する
     await page.getByTestId('corrective-primary-handoff-701').click();
     await expect(page).toHaveURL(/\/handoff-timeline\?range=day&date=\d{4}-\d{2}-\d{2}&handoffId=701/);
-    await expect(page.getByText('申し送りタイムライン')).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: '申し送りタイムライン',
+        level: 1,
+        exact: true,
+      }),
+    ).toBeVisible();
 
     // URL handoffId により対象カードが先頭表示される（highlight order）
     const firstItem = page.locator('[data-testid="agenda-timeline-item"]').first();
