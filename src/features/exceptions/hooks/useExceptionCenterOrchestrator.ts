@@ -84,11 +84,22 @@ export function useExceptionCenterOrchestrator({
     correctiveActionItems,
   ]);
 
+  const evaluationItems = useMemo(
+    () => allExceptions.filter(
+      (item) => item.category !== 'corrective-action' || Boolean(item.stableId),
+    ),
+    [allExceptions],
+  );
+
   // SSOT サマリの構築
-  const summary = useMemo(() => buildExceptionCenterSummary(allExceptions), [allExceptions]);
+  const summary = useMemo(
+    () => buildExceptionCenterSummary(evaluationItems),
+    [evaluationItems],
+  );
 
   return {
     items: allExceptions,
+    evaluationItems,
     summary,
     isLoading: dataSources.status === 'loading' || bridge.isLoading,
     error: dataSources.error,
