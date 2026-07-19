@@ -113,8 +113,8 @@ test.describe('ExceptionCenter corrective child flow', () => {
 
     // 4) grouped/flat で二重集約されない（U-001 は child 2件）
     await page.getByTestId('exception-mode-grouped').click();
-    await expect(page.getByTestId('exception-row-ae:ca-s1').getByText('田中 太郎 の例外 (2件)')).toBeVisible();
-    await expect(page.getByTestId('exception-row-ae:ca-s3').getByText('佐藤 花子 の例外 (1件)')).toBeVisible();
+    await expect(page.getByTestId('exception-row-ae:ca-s1').getByText('桂川 進太朗 の例外 (2件)')).toBeVisible();
+    await expect(page.getByTestId('exception-row-ae:ca-s3').getByText('田中 太郎 の例外 (1件)')).toBeVisible();
     await expect(page.getByText('田中 太郎 の改善提案')).toHaveCount(0);
     await page.getByTestId('exception-mode-flat').click();
 
