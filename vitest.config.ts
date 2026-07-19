@@ -32,6 +32,8 @@ export default defineConfig({
       'tests/unit/schedule/briefing.user.spec.ts',
       'tests/unit/schedule/month.spec.ts',
       'tests/unit/schedule.spMap*.spec.ts',
+      'scripts/ci/__tests__/merge-deep-e2e-lanes.spec.mjs',
+      'scripts/ci/__tests__/resolve-deep-e2e-lane.spec.mjs',
       'playwright.config.ts',
       'playwright.*.config.ts'
     ],
