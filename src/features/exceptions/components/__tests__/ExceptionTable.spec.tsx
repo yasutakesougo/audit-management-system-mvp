@@ -299,8 +299,9 @@ describe('ExceptionTable', () => {
       fireEvent.click(screen.getByTestId('suggestion-menu-button-ae-2'));
     });
     await act(async () => {
-      fireEvent.click(await screen.findByText('明日まで'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: '明日まで' }));
     });
+    expect(onSnooze).toHaveBeenCalledTimes(1);
     expect(onSnooze).toHaveBeenCalledWith('stable-2', 'tomorrow');
   });
 });
