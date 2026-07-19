@@ -64,7 +64,6 @@ export function DismissSnoozeMenu({
         open={isOpen}
         onClose={closeMenu}
         onClick={(e) => e.stopPropagation()}
-        disablePortal
       >
         <MenuItem
           onClick={() => {
