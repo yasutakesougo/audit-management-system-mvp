@@ -11,13 +11,17 @@ export const REASONS = Object.freeze({
   ARTIFACT_INVALID: "ARTIFACT_INVALID",
   SCHEMA_VERSION_INVALID: "SCHEMA_VERSION_INVALID",
   STATUS_INVALID: "STATUS_INVALID",
+  STATUS_FAILED: "STATUS_FAILED",
   STATUS_UNKNOWN: "STATUS_UNKNOWN",
   TRUE_FLAKY_INVALID: "TRUE_FLAKY_INVALID",
+  TRUE_FLAKY_FAILED: "TRUE_FLAKY_FAILED",
   DID_NOT_RUN: "DID_NOT_RUN",
   DID_NOT_RUN_INVALID: "DID_NOT_RUN_INVALID",
   INTEGRATION_JUNIT_MISSING: "INTEGRATION_JUNIT_MISSING",
   INTEGRATION_INVALID: "INTEGRATION_INVALID",
+  INTEGRATION_FAILED: "INTEGRATION_FAILED",
   BOOTSTRAP_INVALID: "BOOTSTRAP_INVALID",
+  BOOTSTRAP_FAILED: "BOOTSTRAP_FAILED",
   SOURCE_CHECKOUT_SHA_MISMATCH: "SOURCE_CHECKOUT_SHA_MISMATCH",
   MISSING_SOURCES: "MISSING_SOURCES",
   FAILURE_KEYS_INVALID: "FAILURE_KEYS_INVALID",
@@ -62,20 +66,20 @@ function validateTarget(target) {
   );
 }
 
-function validateStatus(value, name, reasons) {
+function validateStatus(value, invalidReason, reasons) {
   if (!STATUS_SET.has(value)) {
-    addReason(reasons, name === "artifact" ? REASONS.STATUS_INVALID : `${name.toUpperCase()}_INVALID`);
+    addReason(reasons, invalidReason);
     return "invalid";
   }
   return value;
 }
 
-function validateEvidenceShape(value, name, reasons) {
+function validateEvidenceShape(value, invalidReason, reasons) {
   if (!isRecord(value)) {
-    addReason(reasons, `${name.toUpperCase()}_INVALID`);
+    addReason(reasons, invalidReason);
     return "invalid";
   }
-  const status = validateStatus(value.status, name, reasons);
+  const status = validateStatus(value.status, invalidReason, reasons);
   if (status === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
   return status;
 }
@@ -146,19 +150,26 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
   }
 
   const reasons = [];
-  const artifactStatus = validateStatus(artifact.status, "artifact", reasons);
+  const artifactStatus = validateStatus(artifact.status, REASONS.STATUS_INVALID, reasons);
   if (artifactStatus === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
 
-  if (!Array.isArray(artifact.missingSources) || !artifact.missingSources.every((item) => typeof item === "string")) {
+  const missingSourcesValid =
+    Array.isArray(artifact.missingSources) &&
+    artifact.missingSources.every((item) => typeof item === "string");
+  const missingSources = missingSourcesValid ? artifact.missingSources : [];
+  if (!missingSourcesValid) {
     addReason(reasons, REASONS.MISSING_SOURCES);
-  } else if (artifact.missingSources.length > 0) {
+  } else if (missingSources.length > 0) {
     addReason(reasons, REASONS.MISSING_SOURCES);
   }
 
-  const trueFlakyStatus = validateEvidenceShape(artifact.trueFlaky, "trueFlaky", reasons);
-  const didNotRunStatus = validateEvidenceShape(artifact.didNotRun, "didNotRun", reasons);
-  const integrationStatus = validateEvidenceShape(artifact.integration, "integration", reasons);
-  const bootstrapStatus = validateEvidenceShape(artifact.bootstrap, "bootstrap", reasons);
+  const trueFlakyStatus = validateEvidenceShape(artifact.trueFlaky, REASONS.TRUE_FLAKY_INVALID, reasons);
+  const didNotRunStatus = validateEvidenceShape(artifact.didNotRun, REASONS.DID_NOT_RUN_INVALID, reasons);
+  const integrationStatus = validateEvidenceShape(artifact.integration, REASONS.INTEGRATION_INVALID, reasons);
+  const bootstrapStatus = validateEvidenceShape(artifact.bootstrap, REASONS.BOOTSTRAP_INVALID, reasons);
+
+  if (artifactStatus === "fail") addReason(reasons, REASONS.STATUS_FAILED);
+  if (trueFlakyStatus === "fail") addReason(reasons, REASONS.TRUE_FLAKY_FAILED);
 
   if (trueFlakyStatus === "pass") {
     const summary = artifact.trueFlaky.summary;
@@ -180,13 +191,14 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
   } else if (didNotRunStatus === "fail") {
     addReason(reasons, REASONS.DID_NOT_RUN);
   }
+  if (integrationStatus === "fail") addReason(reasons, REASONS.INTEGRATION_FAILED);
 
   if (integrationStatus === "pass") {
     const summary = artifact.integration.summary;
     if (!isRecord(summary) || summary.jobResult !== "success" || summary.junitResult !== "pass") {
       addReason(reasons, REASONS.INTEGRATION_INVALID);
     }
-    if (artifact.missingSources.includes("junit-e2e-integration.xml")) {
+    if (missingSources.includes("junit-e2e-integration.xml")) {
       addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
     }
   } else if (integrationStatus === "unknown") {
@@ -208,6 +220,7 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
   } else if (bootstrapStatus === "unknown" || bootstrapStatus === "invalid") {
     addReason(reasons, REASONS.BOOTSTRAP_INVALID);
   }
+  if (bootstrapStatus === "fail") addReason(reasons, REASONS.BOOTSTRAP_FAILED);
 
   if (
     typeof artifact.sourceSha !== "string" ||
@@ -235,8 +248,8 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     REASONS.TRUE_FLAKY_INVALID,
     REASONS.DID_NOT_RUN_INVALID,
     REASONS.INTEGRATION_INVALID,
-    REASONS.INTEGRATION_JUNIT_MISSING,
     REASONS.BOOTSTRAP_INVALID,
+    REASONS.INTEGRATION_JUNIT_MISSING,
     REASONS.SOURCE_CHECKOUT_SHA_MISMATCH,
     REASONS.MISSING_SOURCES,
     REASONS.FAILURE_KEYS_INVALID,

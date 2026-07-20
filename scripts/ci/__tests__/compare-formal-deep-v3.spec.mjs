@@ -110,6 +110,17 @@ test("missing artifact is distinguished from invalid JSON", () => {
   assertStatus(compareFormalDeepV3({ artifactPath: invalidPath, targetPath }), "HOLD", REASONS.ARTIFACT_INVALID);
 });
 
+test("invalid missingSources is normalized and never throws", () => {
+  const { root, targetPath } = tempCase();
+  for (const value of [undefined, "junit-e2e-integration.xml", ["valid", 1]]) {
+    const artifact = validArtifact();
+    if (value === undefined) delete artifact.missingSources;
+    else artifact.missingSources = value;
+    const result = compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath });
+    assertStatus(result, "HOLD", REASONS.MISSING_SOURCES);
+  }
+});
+
 test("artifact status is fail-closed", () => {
   const { root, targetPath } = tempCase();
   const missing = validArtifact();
@@ -123,33 +134,36 @@ test("artifact status is fail-closed", () => {
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, unknown), targetPath }), "HOLD", REASONS.STATUS_UNKNOWN);
   const failed = validArtifact();
   failed.status = "fail";
-  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL");
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.STATUS_FAILED);
 });
 
 test("trueFlaky unknown, malformed, and pass/count mismatch never PASS", () => {
   const { root, targetPath } = tempCase();
-  for (const mutation of [
-    (artifact) => { artifact.trueFlaky.status = "unknown"; },
-    (artifact) => { artifact.trueFlaky = "bad"; },
-    (artifact) => { artifact.trueFlaky.summary.count = 1; },
+  for (const [mutation, expectedReason] of [
+    [(artifact) => { artifact.trueFlaky.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
+    [(artifact) => { artifact.trueFlaky = "bad"; }, REASONS.TRUE_FLAKY_INVALID],
+    [(artifact) => { artifact.trueFlaky.summary.count = 1; }, REASONS.TRUE_FLAKY_INVALID],
   ]) {
     const artifact = validArtifact();
     mutation(artifact);
-    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD");
+    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", expectedReason);
   }
+  const failed = validArtifact();
+  failed.trueFlaky.status = "fail";
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.TRUE_FLAKY_FAILED);
 });
 
 test("didNotRun unknown, malformed, count mismatch, and expected mismatch never PASS", () => {
   const { root, targetPath } = tempCase();
-  for (const mutation of [
-    (artifact) => { artifact.didNotRun.status = "unknown"; },
-    (artifact) => { artifact.didNotRun = "bad"; },
-    (artifact) => { artifact.didNotRun.summary.count = 1; },
-    (artifact) => { artifact.didNotRun.summary.expected = 2; },
+  for (const [mutation, expectedReason] of [
+    [(artifact) => { artifact.didNotRun.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
+    [(artifact) => { artifact.didNotRun = "bad"; }, REASONS.DID_NOT_RUN_INVALID],
+    [(artifact) => { artifact.didNotRun.summary.count = 1; }, REASONS.DID_NOT_RUN_INVALID],
+    [(artifact) => { artifact.didNotRun.summary.expected = 2; }, REASONS.DID_NOT_RUN_INVALID],
   ]) {
     const artifact = validArtifact();
     mutation(artifact);
-    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD");
+    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", expectedReason);
   }
   const failed = validArtifact();
   failed.didNotRun.status = "fail";
@@ -158,31 +172,37 @@ test("didNotRun unknown, malformed, count mismatch, and expected mismatch never 
 
 test("integration unknown, malformed, job mismatch, junit mismatch, and missing JUnit never PASS", () => {
   const { root, targetPath } = tempCase();
-  for (const mutation of [
-    (artifact) => { artifact.integration.status = "unknown"; },
-    (artifact) => { artifact.integration = "bad"; },
-    (artifact) => { artifact.integration.summary.jobResult = "failure"; },
-    (artifact) => { artifact.integration.summary.junitResult = "unknown"; },
-    (artifact) => { artifact.missingSources = ["junit-e2e-integration.xml"]; },
+  for (const [mutation, expectedReason] of [
+    [(artifact) => { artifact.integration.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
+    [(artifact) => { artifact.integration = "bad"; }, REASONS.INTEGRATION_INVALID],
+    [(artifact) => { artifact.integration.summary.jobResult = "failure"; }, REASONS.INTEGRATION_INVALID],
+    [(artifact) => { artifact.integration.summary.junitResult = "unknown"; }, REASONS.INTEGRATION_INVALID],
+    [(artifact) => { artifact.missingSources = ["junit-e2e-integration.xml"]; }, REASONS.MISSING_SOURCES],
   ]) {
     const artifact = validArtifact();
     mutation(artifact);
-    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD");
+    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", expectedReason);
   }
+  const failed = validArtifact();
+  failed.integration.status = "fail";
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.INTEGRATION_FAILED);
 });
 
 test("bootstrap unknown, malformed, abnormal, and missing lanes never PASS", () => {
   const { root, targetPath } = tempCase();
-  for (const mutation of [
-    (artifact) => { artifact.bootstrap.status = "unknown"; },
-    (artifact) => { artifact.bootstrap = "bad"; },
-    (artifact) => { artifact.bootstrap.summary.abnormalLanes = ["general"]; },
-    (artifact) => { artifact.bootstrap.summary.missingLanes = ["general"]; },
+  for (const [mutation, expectedReason] of [
+    [(artifact) => { artifact.bootstrap.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
+    [(artifact) => { artifact.bootstrap = "bad"; }, REASONS.BOOTSTRAP_INVALID],
+    [(artifact) => { artifact.bootstrap.summary.abnormalLanes = ["general"]; }, REASONS.BOOTSTRAP_INVALID],
+    [(artifact) => { artifact.bootstrap.summary.missingLanes = ["general"]; }, REASONS.BOOTSTRAP_INVALID],
   ]) {
     const artifact = validArtifact();
     mutation(artifact);
-    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD");
+    assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", expectedReason);
   }
+  const failed = validArtifact();
+  failed.bootstrap.status = "fail";
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.BOOTSTRAP_FAILED);
 });
 
 test("invalid failureKeys use FAILURE_KEYS_INVALID and HOLD", () => {
