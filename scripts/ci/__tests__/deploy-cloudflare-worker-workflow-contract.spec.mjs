@@ -7,9 +7,22 @@ import { describe, it } from "node:test";
 
 const workflowPath = path.join(process.cwd(), ".github/workflows/deploy-cloudflare-worker.yml");
 const workflow = fs.readFileSync(workflowPath, "utf8");
+const verifyStart = workflow.indexOf("  verify:");
+const deployStart = workflow.indexOf("  deploy:");
+const verifySection = workflow.slice(verifyStart, deployStart);
 
 function expectContains(subject, expected, label) {
   assert.ok(subject.includes(expected), `missing ${label}: ${expected}`);
+}
+
+function assertOrder(subject, labels) {
+  let cursor = -1;
+  for (const label of labels) {
+    const idx = subject.indexOf(label);
+    assert.ok(idx >= 0, `missing ordered step label: ${label}`);
+    assert.ok(idx > cursor, `order violation for ${label}`);
+    cursor = idx;
+  }
 }
 
 describe("deploy-cloudflare-worker workflow contract", () => {
@@ -144,5 +157,25 @@ describe("deploy-cloudflare-worker workflow contract", () => {
       "run: npx wrangler deploy --config wrangler.production.toml --keep-vars",
       "production deploy command",
     );
+  });
+
+  it("enforces kiosk Playwright steps after node setup and npm ci in verify job", () => {
+    assertOrder(verifySection, [
+      "- name: Setup Node",
+      "- name: Install dependencies",
+      "- name: Cache Playwright browsers (kiosk scope)",
+      "npx playwright install --with-deps chromium",
+      "npx playwright install-deps chromium",
+      "- name: Required regression tests (kiosk scope)",
+    ]);
+
+    const setupIdx = verifySection.indexOf("- name: Setup Node");
+    const playwrightIdx = verifySection.indexOf("npx playwright install --with-deps chromium");
+    assert.ok(playwrightIdx > setupIdx, "Playwright install with deps must come after Setup Node");
+
+    const installDepsIdx = verifySection.indexOf("npx playwright install-deps chromium");
+    assert.ok(installDepsIdx > setupIdx, "Playwright install-deps must come after Setup Node");
+    assert.ok(playwrightIdx > verifySection.indexOf("- name: Install dependencies"), "Playwright install should happen after npm ci");
+    assert.ok(installDepsIdx > verifySection.indexOf("- name: Cache Playwright browsers (kiosk scope)"), "Playwright install-deps should happen after cache step");
   });
 });

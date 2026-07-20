@@ -104,6 +104,15 @@ jobs:
               ;;
           esac
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Cache Playwright browsers (kiosk scope)
         if: env.RELEASE_SCOPE == 'kiosk'
         uses: actions/cache@v4
@@ -123,15 +132,6 @@ jobs:
         if: env.RELEASE_SCOPE == 'kiosk' && steps.playwright-cache.outputs.cache-hit == 'true'
         timeout-minutes: 5
         run: npx playwright install-deps chromium
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Show pinned Wrangler version
         run: npx wrangler --version
