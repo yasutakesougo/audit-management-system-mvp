@@ -409,13 +409,18 @@ function buildBootstrapEvidence(root, expectedHeadSha, runId) {
   };
 }
 
-function unknownIntegration(source, sourceHeadSha = null, checkoutSha = null) {
+function unknownIntegration(
+  source,
+  sourceHeadSha = null,
+  checkoutSha = null,
+  jobResult = null,
+) {
   return {
     status: "unknown",
     source,
     missingSources: [],
     summary: {
-      jobResult: null,
+      jobResult,
       junitResult: "unknown",
       expectedSpecs: 3,
       expectedTests: null,
@@ -457,17 +462,22 @@ function buildIntegrationEvidence({
 
   if (!eligible && integrationJobResult === "skipped") {
     return {
-      ...unknownIntegration(source),
+      ...unknownIntegration(source, null, null, integrationJobResult),
       status: "not_run",
       missingSources,
     };
   }
-  if (!eligible || integrationJobResult === "skipped") return unknownIntegration(source);
+  if (!eligible || integrationJobResult === "skipped") {
+    return unknownIntegration(source, null, null, integrationJobResult);
+  }
   if (!auditFile || !junitFile || !integrationExpectedInventory) {
     if (!auditFile) missingSources.push(integrationArtifactName ?? "integration-results");
     if (!junitFile) missingSources.push("junit-e2e-integration.xml");
     if (!integrationExpectedInventory) missingSources.push("expected-integration-inventory.json");
-    return { ...unknownIntegration(source), missingSources };
+    return {
+      ...unknownIntegration(source, null, null, integrationJobResult),
+      missingSources,
+    };
   }
 
   const audit = tryReadJson(auditFile);
@@ -477,12 +487,13 @@ function buildIntegrationEvidence({
       source,
       audit.value?.source_head_sha ?? null,
       audit.value?.checkout_sha ?? null,
+      integrationJobResult,
     ), missingSources: ["integration-execution-audit.json"] };
   }
   const sourceHeadSha = audit.value?.source_head_sha ?? null;
   const checkoutSha = audit.value?.checkout_sha ?? null;
   if (sourceHeadSha !== expectedHeadSha || checkoutSha !== expectedHeadSha) {
-    return { ...unknownIntegration(source, sourceHeadSha, checkoutSha), missingSources: ["source/checkout SHA mismatch"] };
+    return { ...unknownIntegration(source, sourceHeadSha, checkoutSha, integrationJobResult), missingSources: ["source/checkout SHA mismatch"] };
   }
 
   const expectedIdentities = playwrightExpectedIdentities(inventory.value);
@@ -492,7 +503,7 @@ function buildIntegrationEvidence({
     new Set(expectedIdentities).size !== expectedIdentities.length ||
     new Set(identities).size !== identities.length
   ) {
-    return { ...unknownIntegration(source, sourceHeadSha, checkoutSha), missingSources: ["integration JUnit identity coverage"] };
+    return { ...unknownIntegration(source, sourceHeadSha, checkoutSha, integrationJobResult), missingSources: ["integration JUnit identity coverage"] };
   }
   const expectedSet = new Set(expectedIdentities);
   const actualSet = new Set(identities);
