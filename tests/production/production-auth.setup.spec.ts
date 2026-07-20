@@ -21,6 +21,9 @@ test('create production Workers Entra storage state', async ({ page, context }) 
     waitUntil: 'domcontentloaded',
     timeout: 60_000,
   });
+  await expect(page.getByRole('button', { name: 'サインアウト' })).toBeVisible({
+    timeout: authWaitTimeout,
+  });
   await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({
     timeout: authWaitTimeout,
   });
