@@ -4,19 +4,29 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const COMPARISON_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
+export const EVIDENCE_STATUSES = Object.freeze(["pass", "fail", "unknown"]);
 
-const REASONS = Object.freeze({
+export const REASONS = Object.freeze({
   ARTIFACT_MISSING: "ARTIFACT_MISSING",
+  ARTIFACT_INVALID: "ARTIFACT_INVALID",
   SCHEMA_VERSION_INVALID: "SCHEMA_VERSION_INVALID",
+  STATUS_INVALID: "STATUS_INVALID",
   STATUS_UNKNOWN: "STATUS_UNKNOWN",
-  INTEGRATION_JUNIT_MISSING: "INTEGRATION_JUNIT_MISSING",
+  TRUE_FLAKY_INVALID: "TRUE_FLAKY_INVALID",
   DID_NOT_RUN: "DID_NOT_RUN",
+  DID_NOT_RUN_INVALID: "DID_NOT_RUN_INVALID",
+  INTEGRATION_JUNIT_MISSING: "INTEGRATION_JUNIT_MISSING",
+  INTEGRATION_INVALID: "INTEGRATION_INVALID",
   BOOTSTRAP_INVALID: "BOOTSTRAP_INVALID",
   SOURCE_CHECKOUT_SHA_MISMATCH: "SOURCE_CHECKOUT_SHA_MISMATCH",
   MISSING_SOURCES: "MISSING_SOURCES",
-  NEW_FAILURE_KEYS: "NEW_FAILURE_KEYS",
+  FAILURE_KEYS_INVALID: "FAILURE_KEYS_INVALID",
   TARGET_MANIFEST_INVALID: "TARGET_MANIFEST_INVALID",
+  TARGET_FAILURE_KEYS_PRESENT: "TARGET_FAILURE_KEYS_PRESENT",
+  NEW_FAILURE_KEYS: "NEW_FAILURE_KEYS",
 });
+
+const STATUS_SET = new Set(EVIDENCE_STATUSES);
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -24,40 +34,61 @@ function isRecord(value) {
 
 function readJson(filePath) {
   try {
-    return { value: JSON.parse(fs.readFileSync(filePath, "utf8")), error: null };
+    const text = fs.readFileSync(filePath, "utf8");
+    try {
+      return { value: JSON.parse(text), error: null, kind: "ok" };
+    } catch (error) {
+      return { value: null, error, kind: "invalid" };
+    }
   } catch (error) {
-    return { value: null, error };
+    return { value: null, error, kind: error?.code === "ENOENT" ? "missing" : "invalid" };
   }
 }
 
-function reason(status, reasonCodes, details = {}) {
+function addReason(reasons, code) {
+  if (!reasons.includes(code)) reasons.push(code);
+}
+
+function result(status, reasonCodes, details = {}) {
   return { status, reasonCodes: [...new Set(reasonCodes)], ...details };
 }
 
 function validateTarget(target) {
-  if (!isRecord(target) || target.schemaVersion !== 1 || !Array.isArray(target.failureKeys)) {
-    return false;
-  }
-  return target.failureKeys.every((key) => typeof key === "string");
+  return (
+    isRecord(target) &&
+    target.schemaVersion === 1 &&
+    Array.isArray(target.failureKeys) &&
+    target.failureKeys.every((key) => typeof key === "string")
+  );
 }
 
-function evidenceStatus(value, name, reasonCodes) {
-  if (!isRecord(value) || typeof value.status !== "string") {
-    reasonCodes.push(`${name.toUpperCase()}_INVALID`);
+function validateStatus(value, name, reasons) {
+  if (!STATUS_SET.has(value)) {
+    addReason(reasons, name === "artifact" ? REASONS.STATUS_INVALID : `${name.toUpperCase()}_INVALID`);
     return "invalid";
   }
-  return value.status;
+  return value;
 }
 
-function buildResult(artifactPath, targetPath, artifact, target, result) {
+function validateEvidenceShape(value, name, reasons) {
+  if (!isRecord(value)) {
+    addReason(reasons, `${name.toUpperCase()}_INVALID`);
+    return "invalid";
+  }
+  const status = validateStatus(value.status, name, reasons);
+  if (status === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
+  return status;
+}
+
+function buildResult(artifactPath, targetPath, artifact, target, evaluation) {
   return {
     consumer: "formal-deep-v3-comparison",
     artifact: artifactPath,
     target: targetPath,
     schemaVersion: artifact?.schemaVersion ?? null,
     runId: artifact?.runId ?? null,
-    status: result.status,
-    reasonCodes: result.reasonCodes,
+    status: evaluation.status,
+    reasonCodes: evaluation.reasonCodes,
     evidence: {
       status: artifact?.status ?? null,
       trueFlaky: artifact?.trueFlaky ?? null,
@@ -69,70 +100,113 @@ function buildResult(artifactPath, targetPath, artifact, target, result) {
       missingSources: artifact?.missingSources ?? null,
       failureKeys: artifact?.failureKeys ?? null,
     },
-    comparison: result.comparison ?? null,
+    comparison: evaluation.comparison ?? null,
     targetManifest: target
       ? { schemaVersion: target.schemaVersion, failureKeys: target.failureKeys }
       : null,
   };
 }
 
+function earlyResult(artifactPath, targetPath, artifact, target, status, reasonCode) {
+  return buildResult(artifactPath, targetPath, artifact, target, result(status, [reasonCode]));
+}
+
 export function compareFormalDeepV3({ artifactPath, targetPath }) {
   const artifactRead = readJson(artifactPath);
-  if (artifactRead.error) {
-    return buildResult(
-      artifactPath,
-      targetPath,
-      null,
-      null,
-      reason("HOLD", [REASONS.ARTIFACT_MISSING]),
-    );
+  if (artifactRead.kind === "missing") {
+    return earlyResult(artifactPath, targetPath, null, null, "HOLD", REASONS.ARTIFACT_MISSING);
+  }
+  if (artifactRead.kind === "invalid") {
+    return earlyResult(artifactPath, targetPath, null, null, "HOLD", REASONS.ARTIFACT_INVALID);
   }
 
   const targetRead = readJson(targetPath);
-  if (targetRead.error || !validateTarget(targetRead.value)) {
-    return buildResult(
+  if (targetRead.kind !== "ok" || !validateTarget(targetRead.value)) {
+    return earlyResult(
       artifactPath,
       targetPath,
       artifactRead.value,
       null,
-      reason("HOLD", [REASONS.TARGET_MANIFEST_INVALID]),
+      "HOLD",
+      REASONS.TARGET_MANIFEST_INVALID,
     );
   }
 
   const artifact = artifactRead.value;
   const target = targetRead.value;
-  const reasonCodes = [];
   if (!isRecord(artifact) || artifact.schemaVersion !== 3) {
-    return buildResult(
+    return earlyResult(
       artifactPath,
       targetPath,
       artifact,
       target,
-      reason("HOLD", [REASONS.SCHEMA_VERSION_INVALID]),
+      "HOLD",
+      REASONS.SCHEMA_VERSION_INVALID,
     );
   }
 
-  if (artifact.status === "unknown") reasonCodes.push(REASONS.STATUS_UNKNOWN);
-  if (!Array.isArray(artifact.missingSources)) {
-    reasonCodes.push(REASONS.MISSING_SOURCES);
+  const reasons = [];
+  const artifactStatus = validateStatus(artifact.status, "artifact", reasons);
+  if (artifactStatus === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
+
+  if (!Array.isArray(artifact.missingSources) || !artifact.missingSources.every((item) => typeof item === "string")) {
+    addReason(reasons, REASONS.MISSING_SOURCES);
   } else if (artifact.missingSources.length > 0) {
-    reasonCodes.push(REASONS.MISSING_SOURCES);
+    addReason(reasons, REASONS.MISSING_SOURCES);
   }
 
-  const trueFlakyStatus = evidenceStatus(artifact.trueFlaky, "trueFlaky", reasonCodes);
-  const didNotRunStatus = evidenceStatus(artifact.didNotRun, "didNotRun", reasonCodes);
-  const integrationStatus = evidenceStatus(artifact.integration, "integration", reasonCodes);
-  const bootstrapStatus = evidenceStatus(artifact.bootstrap, "bootstrap", reasonCodes);
+  const trueFlakyStatus = validateEvidenceShape(artifact.trueFlaky, "trueFlaky", reasons);
+  const didNotRunStatus = validateEvidenceShape(artifact.didNotRun, "didNotRun", reasons);
+  const integrationStatus = validateEvidenceShape(artifact.integration, "integration", reasons);
+  const bootstrapStatus = validateEvidenceShape(artifact.bootstrap, "bootstrap", reasons);
 
-  if (didNotRunStatus === "fail") reasonCodes.push(REASONS.DID_NOT_RUN);
-  if (["fail", "invalid"].includes(bootstrapStatus)) reasonCodes.push(REASONS.BOOTSTRAP_INVALID);
-  if (bootstrapStatus === "unknown") reasonCodes.push(REASONS.BOOTSTRAP_INVALID);
-  if (integrationStatus === "unknown") reasonCodes.push(REASONS.INTEGRATION_JUNIT_MISSING);
-  if (
-    integrationStatus === "pass" &&
-    artifact.integration?.summary?.junitResult !== "pass"
-  ) {
-    reasonCodes.push(REASONS.INTEGRATION_JUNIT_MISSING);
+  if (trueFlakyStatus === "pass") {
+    const summary = artifact.trueFlaky.summary;
+    if (!isRecord(summary) || summary.count !== 0) addReason(reasons, REASONS.TRUE_FLAKY_INVALID);
+  }
+
+  if (didNotRunStatus === "pass") {
+    const summary = artifact.didNotRun.summary;
+    if (
+      !isRecord(summary) ||
+      summary.count !== 0 ||
+      summary.unit !== "test" ||
+      !Number.isInteger(summary.expected) ||
+      !Number.isInteger(summary.executed) ||
+      summary.expected !== summary.executed
+    ) {
+      addReason(reasons, REASONS.DID_NOT_RUN_INVALID);
+    }
+  } else if (didNotRunStatus === "fail") {
+    addReason(reasons, REASONS.DID_NOT_RUN);
+  }
+
+  if (integrationStatus === "pass") {
+    const summary = artifact.integration.summary;
+    if (!isRecord(summary) || summary.jobResult !== "success" || summary.junitResult !== "pass") {
+      addReason(reasons, REASONS.INTEGRATION_INVALID);
+    }
+    if (artifact.missingSources.includes("junit-e2e-integration.xml")) {
+      addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
+    }
+  } else if (integrationStatus === "unknown") {
+    addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
+  }
+
+  if (bootstrapStatus === "pass") {
+    const summary = artifact.bootstrap.summary;
+    if (
+      !isRecord(summary) ||
+      !Array.isArray(summary.normalLanes) ||
+      !Array.isArray(summary.abnormalLanes) ||
+      !Array.isArray(summary.missingLanes) ||
+      summary.abnormalLanes.length !== 0 ||
+      summary.missingLanes.length !== 0
+    ) {
+      addReason(reasons, REASONS.BOOTSTRAP_INVALID);
+    }
+  } else if (bootstrapStatus === "unknown" || bootstrapStatus === "invalid") {
+    addReason(reasons, REASONS.BOOTSTRAP_INVALID);
   }
 
   if (
@@ -142,33 +216,35 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     artifact.checkoutSha.length === 0 ||
     artifact.sourceSha !== artifact.checkoutSha
   ) {
-    reasonCodes.push(REASONS.SOURCE_CHECKOUT_SHA_MISMATCH);
+    addReason(reasons, REASONS.SOURCE_CHECKOUT_SHA_MISMATCH);
   }
 
-  if (!Array.isArray(artifact.failureKeys) || !artifact.failureKeys.every((key) => typeof key === "string")) {
-    reasonCodes.push(REASONS.MISSING_SOURCES);
-  }
-  const currentKeys = Array.isArray(artifact.failureKeys) ? artifact.failureKeys : [];
-  const targetKeys = new Set(target.failureKeys);
-  const newFailureKeys = currentKeys.filter((key) => !targetKeys.has(key));
-  if (newFailureKeys.length > 0) reasonCodes.push(REASONS.NEW_FAILURE_KEYS);
+  const failureKeysValid = Array.isArray(artifact.failureKeys) && artifact.failureKeys.every((key) => typeof key === "string");
+  if (!failureKeysValid) addReason(reasons, REASONS.FAILURE_KEYS_INVALID);
+  const currentFailureKeys = failureKeysValid ? artifact.failureKeys : [];
+  const targetKeySet = new Set(target.failureKeys);
+  const targetFailureKeys = currentFailureKeys.filter((key) => targetKeySet.has(key));
+  const newFailureKeys = currentFailureKeys.filter((key) => !targetKeySet.has(key));
+  if (targetFailureKeys.length > 0) addReason(reasons, REASONS.TARGET_FAILURE_KEYS_PRESENT);
+  if (newFailureKeys.length > 0) addReason(reasons, REASONS.NEW_FAILURE_KEYS);
 
-  const hasExplicitFailure =
-    artifact.status === "fail" ||
-    trueFlakyStatus === "fail" ||
-    didNotRunStatus === "fail" ||
-    integrationStatus === "fail" ||
-    bootstrapStatus === "fail" ||
-    newFailureKeys.length > 0;
-  const hasHoldCondition =
-    reasonCodes.some((code) =>
-      [
-        REASONS.STATUS_UNKNOWN,
-        REASONS.INTEGRATION_JUNIT_MISSING,
-        REASONS.MISSING_SOURCES,
-        REASONS.SOURCE_CHECKOUT_SHA_MISMATCH,
-      ].includes(code),
-    ) || ["unknown", "invalid"].includes(bootstrapStatus);
+  const holdReasons = new Set([
+    REASONS.ARTIFACT_INVALID,
+    REASONS.STATUS_INVALID,
+    REASONS.STATUS_UNKNOWN,
+    REASONS.TRUE_FLAKY_INVALID,
+    REASONS.DID_NOT_RUN_INVALID,
+    REASONS.INTEGRATION_INVALID,
+    REASONS.INTEGRATION_JUNIT_MISSING,
+    REASONS.BOOTSTRAP_INVALID,
+    REASONS.SOURCE_CHECKOUT_SHA_MISMATCH,
+    REASONS.MISSING_SOURCES,
+    REASONS.FAILURE_KEYS_INVALID,
+  ]);
+  const hasHoldCondition = reasons.some((code) => holdReasons.has(code)) ||
+    [artifactStatus, trueFlakyStatus, didNotRunStatus, integrationStatus, bootstrapStatus].includes("invalid");
+  const hasExplicitFailure = [artifactStatus, trueFlakyStatus, didNotRunStatus, integrationStatus, bootstrapStatus].includes("fail") ||
+    targetFailureKeys.length > 0 || newFailureKeys.length > 0;
   const status = hasHoldCondition ? "HOLD" : hasExplicitFailure ? "FAIL" : "PASS";
 
   return buildResult(
@@ -176,10 +252,13 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     targetPath,
     artifact,
     target,
-    reason(status, reasonCodes, {
+    result(status, reasons, {
       comparison: {
-        currentFailureKeyCount: currentKeys.length,
-        targetFailureKeyCount: target.failureKeys.length,
+        targetManifestKeyCount: target.failureKeys.length,
+        currentFailureKeyCount: currentFailureKeys.length,
+        targetFailureKeyCount: targetFailureKeys.length,
+        targetFailureKeys,
+        newFailureKeyCount: newFailureKeys.length,
         newFailureKeys,
       },
     }),
@@ -189,27 +268,26 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
 function parseArgs(argv) {
   const options = { artifactPath: null, targetPath: null, outputPath: null };
   for (let index = 0; index < argv.length; index += 1) {
-    const value = argv[index];
-    if (value === "--artifact") options.artifactPath = argv[++index];
-    else if (value === "--target") options.targetPath = argv[++index];
-    else if (value === "--output") options.outputPath = argv[++index];
+    if (argv[index] === "--artifact") options.artifactPath = argv[++index];
+    else if (argv[index] === "--target") options.targetPath = argv[++index];
+    else if (argv[index] === "--output") options.outputPath = argv[++index];
   }
   return options;
 }
 
 export function run(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
-  const result = compareFormalDeepV3(options);
-  const serialized = `${JSON.stringify(result, null, 2)}\n`;
+  const output = compareFormalDeepV3(options);
+  const serialized = `${JSON.stringify(output, null, 2)}\n`;
   if (options.outputPath) {
     fs.mkdirSync(path.dirname(options.outputPath), { recursive: true });
     fs.writeFileSync(options.outputPath, serialized);
   }
   process.stdout.write(serialized);
-  return result;
+  return output;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const result = run();
-  process.exitCode = result.status === "PASS" ? 0 : result.status === "FAIL" ? 1 : 2;
+  const output = run();
+  process.exitCode = output.status === "PASS" ? 0 : output.status === "FAIL" ? 1 : 2;
 }
