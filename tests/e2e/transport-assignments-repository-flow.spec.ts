@@ -151,7 +151,10 @@ test.describe('Transport assignments repository flow', () => {
 
   test('detects and handles concurrency conflicts via repository ETags', async ({ page }) => {
     await setupBaseStubs(page);
-    await bootstrapDashboard(page, { initialPath: '/transport/assignments' });
+    await bootstrapDashboard(page, {
+      initialPath: '/transport/assignments',
+      sharePointMode: 'force',
+    });
     
     // Wait for hydration
     await expect(page.getByTestId('transport-assignment-vehicle-card-1')).toBeVisible({ timeout: 60000 });
@@ -216,7 +219,10 @@ test.describe('Transport assignments repository flow', () => {
 
   test('blocks save when coordination errors are present', async ({ page }) => {
     await setupBaseStubs(page);
-    await bootstrapDashboard(page, { initialPath: '/transport/assignments' });
+    await bootstrapDashboard(page, {
+      initialPath: '/transport/assignments',
+      sharePointMode: 'force',
+    });
 
     await expect(page.getByTestId('transport-assignment-vehicle-card-1')).toBeVisible({ timeout: 60000 });
 
