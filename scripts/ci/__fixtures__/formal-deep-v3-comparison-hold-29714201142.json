@@ -3,13 +3,38 @@
   "consumer": "formal-deep-v3-comparison",
   "runId": "29714201142",
   "status": "HOLD",
-  "reasonCodes": ["STATUS_UNKNOWN", "DID_NOT_RUN", "INTEGRATION_JUNIT_MISSING", "MISSING_SOURCES", "NEW_FAILURE_KEYS"],
+  "reasonCodes": ["STATUS_UNKNOWN", "MISSING_SOURCES", "DID_NOT_RUN", "INTEGRATION_JUNIT_MISSING", "NEW_FAILURE_KEYS"],
   "evidence": {
+    "status": "unknown",
+    "trueFlaky": { "status": "pass", "summary": { "count": 0, "testKeys": [] } },
+    "bootstrap": {
+      "status": "pass",
+      "summary": {
+        "normalLanes": ["app-a11y", "fixture-memory", "general", "implementation-hot", "sp-stub", "transport-date-check"],
+        "abnormalLanes": [],
+        "missingLanes": []
+      }
+    },
     "sourceSha": "2e809f7c47040c54ad24d1f2c1ed982be899563f",
     "checkoutSha": "2e809f7c47040c54ad24d1f2c1ed982be899563f",
     "missingSources": ["junit-e2e-integration.xml"],
-    "didNotRun": { "status": "fail", "summary": { "count": 63, "unit": "test", "expected": 331, "executed": 268 } },
-    "integration": { "status": "unknown", "summary": { "jobResult": "success", "junitResult": "unknown" } }
+    "didNotRun": { "status": "fail", "summary": { "count": 63, "unit": "test", "expected": 331, "executed": 268, "testKeys": [] } },
+    "integration": { "status": "unknown", "summary": { "jobResult": "success", "junitResult": "unknown" } },
+    "failureKeys": [
+      "call-logs.usability.spec.ts::01", "call-logs.usability.spec.ts::02", "call-logs.usability.spec.ts::03",
+      "call-logs.usability.spec.ts::04", "call-logs.usability.spec.ts::05", "call-logs.usability.spec.ts::06",
+      "exception-center.usability.spec.ts::01", "exception-center.usability.spec.ts::02", "exception-center.usability.spec.ts::03",
+      "exception-center.usability.spec.ts::04", "users.usability.spec.ts::01", "agenda-happy-path.spec.ts::01",
+      "exception-center.transport-missing-driver-flow.spec.ts::01", "fortress.spec.ts::01", "fortress.spec.ts::02",
+      "irc-reliability.spec.ts::01", "nurse-dashboard-happy-path.spec.ts::01", "users-basic-edit-flow.spec.ts::01",
+      "users-crud.integration.spec.ts::01", "users-dashboard-happy-path.spec.ts::01", "users-search-filter.spec.ts::01",
+      "transport-assignments-repository-flow.spec.ts::01", "transport-assignments-repository-flow.spec.ts::02",
+      "dashboard.sp-lane.error.spec.ts::01", "hub-entry-experience.ssot.spec.ts::01", "hub-entry-experience.ssot.spec.ts::02",
+      "isp-editor.integration.spec.ts::01", "isp-editor.integration.spec.ts::02", "isp-editor.integration.spec.ts::03",
+      "isp-editor.integration.spec.ts::04", "transport-assignments-save-reflects-in-today.spec.ts::01",
+      "transport-assignments-week-bulk-apply-reflects-in-today.spec.ts::01",
+      "transport-course-users-update-reflects-in-transport-assignments.spec.ts::01"
+    ]
   },
   "comparison": {
     "targetManifestKeyCount": 0,
@@ -18,7 +43,7 @@
     "targetFailureKeys": [],
     "newFailureKeyCount": 33,
     "newFailureKeys": [
-      "failure-01", "failure-02", "failure-03", "failure-04", "failure-05", "failure-06", "failure-07", "failure-08", "failure-09", "failure-10", "failure-11", "failure-12", "failure-13", "failure-14", "failure-15", "failure-16", "failure-17", "failure-18", "failure-19", "failure-20", "failure-21", "failure-22", "failure-23", "failure-24", "failure-25", "failure-26", "failure-27", "failure-28", "failure-29", "failure-30", "failure-31", "failure-32", "failure-33"
+      "call-logs.usability.spec.ts::01", "call-logs.usability.spec.ts::02", "call-logs.usability.spec.ts::03", "call-logs.usability.spec.ts::04", "call-logs.usability.spec.ts::05", "call-logs.usability.spec.ts::06", "exception-center.usability.spec.ts::01", "exception-center.usability.spec.ts::02", "exception-center.usability.spec.ts::03", "exception-center.usability.spec.ts::04", "users.usability.spec.ts::01", "agenda-happy-path.spec.ts::01", "exception-center.transport-missing-driver-flow.spec.ts::01", "fortress.spec.ts::01", "fortress.spec.ts::02", "irc-reliability.spec.ts::01", "nurse-dashboard-happy-path.spec.ts::01", "users-basic-edit-flow.spec.ts::01", "users-crud.integration.spec.ts::01", "users-dashboard-happy-path.spec.ts::01", "users-search-filter.spec.ts::01", "transport-assignments-repository-flow.spec.ts::01", "transport-assignments-repository-flow.spec.ts::02", "dashboard.sp-lane.error.spec.ts::01", "hub-entry-experience.ssot.spec.ts::01", "hub-entry-experience.ssot.spec.ts::02", "isp-editor.integration.spec.ts::01", "isp-editor.integration.spec.ts::02", "isp-editor.integration.spec.ts::03", "isp-editor.integration.spec.ts::04", "transport-assignments-save-reflects-in-today.spec.ts::01", "transport-assignments-week-bulk-apply-reflects-in-today.spec.ts::01", "transport-course-users-update-reflects-in-transport-assignments.spec.ts::01"
     ]
   }
 }

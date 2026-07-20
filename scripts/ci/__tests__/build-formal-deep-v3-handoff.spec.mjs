@@ -10,6 +10,7 @@ import {
   exitCodeForHandoffStatus,
   renderFormalDeepV3HandoffMarkdown,
 } from "../build-formal-deep-v3-handoff.mjs";
+import { compareFormalDeepV3 } from "../compare-formal-deep-v3.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const fixturePath = (name) => path.join(root, "__fixtures__", name);
@@ -87,6 +88,20 @@ test("missing comparison file and broken JSON become HOLD without throwing", () 
     assert.equal(broken.output.status, "HOLD");
     assert.equal(broken.output.ready, false);
     assert.ok(broken.output.reasonCodes.includes("COMPARISON_INVALID"));
+  });
+});
+
+test("valid JSON roots that are not objects become HOLD with exit code 2", () => {
+  withTempDir((directory) => {
+    for (const [name, value] of [["null", null], ["array", []], ["string", "text"], ["number", 7], ["boolean", true]]) {
+      const inputPath = path.join(directory, `${name}.json`);
+      fs.writeFileSync(inputPath, JSON.stringify(value));
+      const result = runCli(inputPath, directory);
+      assert.equal(result.status, 2);
+      assert.equal(result.output.status, "HOLD");
+      assert.equal(result.output.ready, false);
+      assert.ok(result.output.reasonCodes.includes("COMPARISON_ROOT_INVALID"));
+    }
   });
 });
 
@@ -175,12 +190,80 @@ test("invalid failure key arrays are HOLD with a dedicated reason", () => {
   assert.ok(result.reasonCodes.includes("FAILURE_KEYS_INVALID"));
 });
 
+test("failure-key partition duplicates and manifest overflow are HOLD", () => {
+  const base = readFixture("formal-deep-v3-comparison-fail.json");
+  const cases = [
+    {
+      ...base.comparison,
+      targetFailureKeyCount: 2,
+      targetFailureKeys: ["target-key", "target-key"],
+      currentFailureKeyCount: 2,
+      newFailureKeyCount: 0,
+      newFailureKeys: [],
+    },
+    {
+      ...base.comparison,
+      targetManifestKeyCount: 1,
+      targetFailureKeyCount: 2,
+      targetFailureKeys: ["target-a", "target-b"],
+      currentFailureKeyCount: 2,
+      newFailureKeyCount: 0,
+      newFailureKeys: [],
+    },
+    {
+      ...base.comparison,
+      targetFailureKeyCount: 1,
+      targetFailureKeys: ["same-key"],
+      currentFailureKeyCount: 2,
+      newFailureKeyCount: 1,
+      newFailureKeys: ["same-key"],
+    },
+    {
+      ...base.comparison,
+      targetManifestKeyCount: 0,
+      targetFailureKeyCount: 1,
+      targetFailureKeys: ["target-key"],
+      currentFailureKeyCount: 1,
+      newFailureKeyCount: 0,
+      newFailureKeys: [],
+    },
+  ];
+  for (const comparison of cases) {
+    const result = buildFormalDeepV3Handoff({ ...base, comparison });
+    assert.equal(result.status, "HOLD");
+    assert.ok(result.reasonCodes.includes("FAILURE_KEY_PARTITION_INVALID"));
+  }
+});
+
 test("HOLD comparison preserves reasons and evidence", () => {
   const input = readFixture("formal-deep-v3-comparison-hold-29714201142.json");
   const result = buildFormalDeepV3Handoff(input);
   for (const reason of input.reasonCodes) assert.ok(result.reasonCodes.includes(reason));
   assert.deepEqual(result.evidence.integration, input.evidence.integration);
   assert.deepEqual(result.evidence.didNotRun, input.evidence.didNotRun);
+  assert.deepEqual(result.evidence.status, input.evidence.status);
+  assert.deepEqual(result.evidence.trueFlaky, input.evidence.trueFlaky);
+  assert.deepEqual(result.evidence.bootstrap, input.evidence.bootstrap);
+  assert.deepEqual(result.evidence.failureKeys, input.evidence.failureKeys);
+});
+
+test("PR 2510 handoff keys exactly match the real comparison consumer output", () => {
+  const rawPath = path.join(root, "__fixtures__", "formal-deep-v3-run-29714201142.json");
+  withTempDir((directory) => {
+    const targetPath = path.join(directory, "target.json");
+    fs.writeFileSync(targetPath, JSON.stringify({ schemaVersion: 1, failureKeys: [] }));
+    const comparison = compareFormalDeepV3({ artifactPath: rawPath, targetPath });
+    const fixture = readFixture("formal-deep-v3-comparison-hold-29714201142.json");
+    assert.deepEqual(fixture.comparison, comparison.comparison);
+    assert.deepEqual(fixture.evidence, comparison.evidence);
+    const handoff = buildFormalDeepV3Handoff(comparison);
+    assert.equal(handoff.status, "HOLD");
+    assert.equal(handoff.targetFailureKeyCount, 0);
+    assert.equal(handoff.newFailureKeyCount, 33);
+    assert.deepEqual(handoff.newFailureKeys, comparison.comparison.newFailureKeys);
+    assert.equal(handoff.sourceSha, handoff.checkoutSha);
+    assert.equal(handoff.evidence.didNotRun.summary.count, 63);
+  });
 });
 
 test("FAIL with a target key remains FAIL when the failure reason is present", () => {
@@ -259,5 +342,5 @@ test("JSON and Markdown are deterministic and derived from one normalized result
   assert.equal(JSON.stringify(first), JSON.stringify(second));
   assert.equal(renderFormalDeepV3HandoffMarkdown(first), renderFormalDeepV3HandoffMarkdown(second));
   assert.match(renderFormalDeepV3HandoffMarkdown(first), /Formal Deep handoff status/);
-  assert.match(renderFormalDeepV3HandoffMarkdown(first), /failure-33/);
+  assert.match(renderFormalDeepV3HandoffMarkdown(first), /transport-course-users-update/);
 });

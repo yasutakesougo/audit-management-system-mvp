@@ -5,6 +5,7 @@ import path from "node:path";
 
 export const HANDOFF_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
 export const HANDOFF_REASONS = Object.freeze({
+  COMPARISON_ROOT_INVALID: "COMPARISON_ROOT_INVALID",
   COMPARISON_MISSING: "COMPARISON_MISSING",
   COMPARISON_INVALID: "COMPARISON_INVALID",
   COMPARISON_SCHEMA_INVALID: "COMPARISON_SCHEMA_INVALID",
@@ -15,6 +16,7 @@ export const HANDOFF_REASONS = Object.freeze({
   EVIDENCE_MISSING: "EVIDENCE_MISSING",
   MISSING_SOURCES_INVALID: "MISSING_SOURCES_INVALID",
   FAILURE_KEYS_INVALID: "FAILURE_KEYS_INVALID",
+  FAILURE_KEY_PARTITION_INVALID: "FAILURE_KEY_PARTITION_INVALID",
   COUNT_MISMATCH: "COUNT_MISMATCH",
   SHA_INVALID: "SHA_INVALID",
   PASS_INCONSISTENT: "PASS_INCONSISTENT",
@@ -87,6 +89,16 @@ function normalizeFailureComparison(input, reasons) {
     newFailureKeys: arraysValid ? comparison.newFailureKeys : [],
   };
 
+  if (arraysValid) {
+    const targetKeysUnique = new Set(normalized.targetFailureKeys).size === normalized.targetFailureKeys.length;
+    const newKeysUnique = new Set(normalized.newFailureKeys).size === normalized.newFailureKeys.length;
+    const partitionsDisjoint = normalized.targetFailureKeys.every((key) => !normalized.newFailureKeys.includes(key));
+    const targetCountWithinManifest = normalized.targetFailureKeyCount <= normalized.targetManifestKeyCount;
+    if (!targetKeysUnique || !newKeysUnique || !partitionsDisjoint || !targetCountWithinManifest) {
+      addReason(reasons, HANDOFF_REASONS.FAILURE_KEY_PARTITION_INVALID);
+    }
+  }
+
   if (
     !validCount(comparison.targetManifestKeyCount) ||
     !validCount(comparison.currentFailureKeyCount) ||
@@ -104,12 +116,13 @@ function normalizeFailureComparison(input, reasons) {
 function normalizeEvidence(input, reasons) {
   if (!isRecord(input.evidence)) {
     addReason(reasons, HANDOFF_REASONS.EVIDENCE_MISSING);
-    return { sourceSha: null, checkoutSha: null, missingSources: [] };
+    return { value: null, sourceSha: null, checkoutSha: null, missingSources: [] };
   }
   const evidence = input.evidence;
   const missingSources = validStringArray(evidence.missingSources) ? evidence.missingSources : [];
   if (!validStringArray(evidence.missingSources)) addReason(reasons, HANDOFF_REASONS.MISSING_SOURCES_INVALID);
   return {
+    value: evidence,
     sourceSha: typeof evidence.sourceSha === "string" ? evidence.sourceSha : null,
     checkoutSha: typeof evidence.checkoutSha === "string" ? evidence.checkoutSha : null,
     missingSources,
@@ -120,6 +133,27 @@ function normalizeEvidence(input, reasons) {
 
 function normalizeInput(input) {
   const reasons = [];
+  if (!isRecord(input)) {
+    return {
+      schemaVersion: 1,
+      consumer: "formal-deep-v3-handoff",
+      sourceConsumer: "formal-deep-v3-comparison",
+      runId: null,
+      status: "HOLD",
+      ready: false,
+      reasonCodes: [HANDOFF_REASONS.COMPARISON_ROOT_INVALID],
+      sourceSha: null,
+      checkoutSha: null,
+      targetManifestKeyCount: 0,
+      currentFailureKeyCount: 0,
+      targetFailureKeyCount: 0,
+      targetFailureKeys: [],
+      newFailureKeyCount: 0,
+      newFailureKeys: [],
+      missingSources: [],
+      evidence: null,
+    };
+  }
   const comparison = normalizeFailureComparison(input, reasons);
   const evidence = normalizeEvidence(input, reasons);
   const sourceConsumer = input?.consumer;
@@ -171,10 +205,7 @@ function normalizeInput(input) {
     newFailureKeyCount: comparison.newFailureKeyCount,
     newFailureKeys: comparison.newFailureKeys,
     missingSources: evidence.missingSources,
-    evidence: {
-      didNotRun: evidence.didNotRun,
-      integration: evidence.integration,
-    },
+    evidence: evidence.value,
   };
 }
 
