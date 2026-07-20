@@ -17,8 +17,20 @@ function filesMatching(root, pattern) {
   return walk(root).filter((file) => pattern.test(path.basename(file))).sort();
 }
 
+function filesMatchingByPath(root, pattern) {
+  return walk(root).filter((file) => pattern.test(file.replace(/\\/g, "/"))).sort();
+}
+
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function safeReadJson(file) {
+  try {
+    return { data: readJson(file), file };
+  } catch (error) {
+    return { error: `${file}: ${error.message}` };
+  }
 }
 
 function assertLaneSet(values, label) {
@@ -79,11 +91,283 @@ function countsFor(failures, field) {
   }, {});
 }
 
+function parseIntegrationResult(rawResult) {
+  if (!rawResult) return "UNKNOWN";
+  const normalized = String(rawResult).toLowerCase();
+  if (normalized === "success") return "PASS";
+  if (normalized === "failure") return "FAIL";
+  if (normalized === "cancelled" || normalized === "skipped") return "NOT_RUN";
+  return "UNKNOWN";
+}
+
+function inferLane(filePath) {
+  const normalized = filePath.replace(/\\/g, "/");
+  for (const lane of DEEP_LANES) {
+    const exact = new RegExp(`(?:^|/)${lane}(?:/|-)`).test(normalized);
+    if (exact) return lane;
+    const bootstrapMatch = new RegExp(`bootstrap-${lane}-artifact`).test(normalized);
+    if (bootstrapMatch) return lane;
+  }
+  return null;
+}
+
+function collectByLane(files) {
+  const grouped = new Map(DEEP_LANES.map((lane) => [lane, []]));
+  const ungrouped = [];
+
+  for (const file of files) {
+    const lane = inferLane(file);
+    if (!lane) {
+      ungrouped.push(file);
+      continue;
+    }
+    grouped.get(lane).push(file);
+  }
+
+  return { grouped, ungrouped };
+}
+
+function assertUniqueLaneArtifacts(grouped, label) {
+  const duplicates = [...grouped.entries()].filter(([, files]) => files.length > 1);
+  if (duplicates.length > 0) {
+    const detail = duplicates
+      .map(([lane, files]) => `${lane}:${files.join(",")}`)
+      .join(";");
+    throw new Error(`${label} contains multiple artifacts per lane: ${detail}`);
+  }
+}
+
+function collectFlakyFromPlaywrightResults(resultJson) {
+  const flakyKeys = new Set();
+
+  function visitSuite(suite, ancestors) {
+    const nextAncestors = suite.file === suite.title
+      ? ancestors
+      : [...ancestors, suite.title].filter(Boolean);
+
+    for (const spec of suite.specs ?? []) {
+      const testName = [...nextAncestors, spec.title].filter(Boolean).join(" › ");
+      const specIdentityFile = spec.file ?? suite.file ?? "unknown";
+      const identity = `${specIdentityFile}::${testName}`;
+
+      for (const test of spec.tests ?? []) {
+        const project = test.projectName ?? test.projectId;
+        if (project && project !== "chromium") continue;
+
+        const results = [...(test.results ?? [])].sort(
+          (a, b) => (a.retry ?? 0) - (b.retry ?? 0),
+        );
+        for (let index = 0; index < results.length - 1; index += 1) {
+          const prev = results[index];
+          const next = results[index + 1];
+          if (prev.status === "failed" && (next.status === "passed" || next.status === "expected")) {
+            flakyKeys.add(identity);
+            break;
+          }
+          if (prev.status === "failed" && (next.status === "cancelled" || next.status === "timedOut")) {
+            break;
+          }
+        }
+      }
+    }
+
+    for (const nested of suite.suites ?? []) {
+      visitSuite(nested, nextAncestors);
+    }
+  }
+
+  for (const suite of resultJson.suites ?? []) {
+    visitSuite(suite, []);
+  }
+
+  return flakyKeys.size;
+}
+
+export function collectTrueFlaky(testResultFilesByLane, { missingSources = null } = {}) {
+  const result = { value: 0, status: "available" };
+  let missingLaneCount = 0;
+  let parseableLaneCount = 0;
+
+  for (const lane of DEEP_LANES) {
+    const files = testResultFilesByLane.get(lane) ?? [];
+    if (files.length === 0) {
+      missingLaneCount += 1;
+      if (missingSources) missingSources.push(`test-results:${lane}`);
+      result.status = "unavailable";
+      continue;
+    }
+    const canonical = files.find((file) =>
+      /\/test-results\/results\.json$/i.test(file.replace(/\\/g, "/")),
+    );
+    const file = canonical ?? files[0];
+    const parsed = safeReadJson(file);
+    if (parsed.error) {
+      missingLaneCount += 1;
+      if (missingSources) missingSources.push(`test-results:${lane}`);
+      result.status = "unavailable";
+      continue;
+    }
+
+    parseableLaneCount += 1;
+    if (result.status === "available") {
+      // aggregate flaky keys, set to number once parseable
+      const flakyCount = collectFlakyFromPlaywrightResults(parsed.data);
+      result.value += flakyCount;
+    }
+  }
+
+  if (parseableLaneCount === 0) {
+    result.value = "unavailable";
+  }
+
+  if (result.status === "unavailable") {
+    result.value = "unavailable";
+  }
+
+  return result;
+}
+
+function collectDidNotRun(cancelAudits, { missingSources = null } = {}) {
+  const result = { value: 0, unit: "lane", status: "available" };
+  const byLane = new Map();
+  const duplicateLanes = new Set();
+
+  for (const audit of cancelAudits) {
+    if (!audit?.lane) continue;
+    if (byLane.has(audit.lane)) {
+      duplicateLanes.add(audit.lane);
+      continue;
+    }
+    byLane.set(audit.lane, audit);
+  }
+
+  if (duplicateLanes.size > 0) {
+    throw new Error(`Duplicate cancellation audit by lane: ${[...duplicateLanes].join(",")}`);
+  }
+
+  for (const lane of DEEP_LANES) {
+    const audit = byLane.get(lane);
+    if (!audit) {
+      result.status = "unavailable";
+      result.value = "unavailable";
+      if (missingSources) missingSources.push(`deep-cancel-audit:${lane}`);
+      return result;
+    }
+    if (audit.deep_tests_outcome === "skipped" || audit.deep_tests_outcome === "cancelled") {
+      result.value += 1;
+    }
+  }
+
+  return result;
+}
+
+function collectIntegrationStatus(root, integrationResultArg, integrationFiles = [], { missingSources = null } = {}) {
+  if (integrationResultArg) {
+    return parseIntegrationResult(integrationResultArg);
+  }
+
+  const files = integrationFiles.length > 0 ? integrationFiles : filesMatchingByPath(root, /\/integration-status\.json$/);
+  if (files.length === 0) {
+    if (missingSources) missingSources.push("integration-status:missing");
+    return "UNKNOWN";
+  }
+
+  const parsed = safeReadJson(files[0]);
+  if (parsed.error) {
+    if (missingSources) missingSources.push("integration-status:unparseable");
+    return "UNKNOWN";
+  }
+
+  return parseIntegrationResult(
+    parsed.data.integration_tests_outcome || parsed.data.job_outcome,
+  );
+}
+
+function evaluateBootstrap(laneDiagnosticsByLane, { missingSources = null } = {}) {
+  let hasUnknown = false;
+  let hasAbnormal = false;
+  const laneStatuses = {};
+
+  for (const lane of DEEP_LANES) {
+    const files = laneDiagnosticsByLane.get(lane) ?? [];
+    if (files.length === 0) {
+      hasUnknown = true;
+      if (missingSources) missingSources.push(`bootstrap-diagnostics:${lane}`);
+      laneStatuses[lane] = "missing";
+      continue;
+    }
+
+    const result = safeReadJson(files[0]);
+    if (result.error) {
+      hasUnknown = true;
+      if (missingSources) missingSources.push(`bootstrap-diagnostics:${lane}`);
+      laneStatuses[lane] = "unparseable";
+      continue;
+    }
+
+    const diagnostics = result.data;
+    const requestFailures = diagnostics.requestFailures ?? [];
+    const expectedSpStubFailures =
+      lane === "sp-stub" &&
+      requestFailures.length > 0 &&
+      requestFailures.every(
+        (failure) =>
+          failure?.url?.startsWith("https://example.sharepoint.com/") &&
+          failure?.errorText === "net::ERR_NAME_NOT_RESOLVED",
+      );
+
+    const requiredRuntimeKeys = [
+      "VITE_DATA_PROVIDER",
+      "VITE_SKIP_SHAREPOINT",
+      "VITE_FORCE_SHAREPOINT",
+      "VITE_E2E",
+    ];
+    const runtimeFlags = diagnostics.runtimeFlags ?? {};
+    const missingRuntimeKeys = requiredRuntimeKeys.filter(
+      (key) => runtimeFlags[key] === undefined || runtimeFlags[key] === null,
+    );
+
+    const hasPageError = (diagnostics.pageErrors ?? []).length > 0;
+    const hasConsoleError = (diagnostics.console ?? []).some((entry) => entry.type === "error");
+    const hasRequestIssue = requestFailures.length > 0 && !expectedSpStubFailures;
+
+    if (diagnostics.error) {
+      hasAbnormal = true;
+      laneStatuses[lane] = "abnormal";
+      continue;
+    }
+    if ((diagnostics.bodyHtml ?? "").length === 0 || missingRuntimeKeys.length > 0) {
+      hasUnknown = true;
+      laneStatuses[lane] = "unknown";
+      continue;
+    }
+    if (hasPageError || hasConsoleError || hasRequestIssue) {
+      hasAbnormal = true;
+      laneStatuses[lane] = "abnormal";
+      continue;
+    }
+    laneStatuses[lane] = "normal";
+  }
+
+  if (hasUnknown) return { value: "unknown", details: laneStatuses };
+  if (hasAbnormal) return { value: "abnormal", details: laneStatuses };
+  return { value: "normal", details: laneStatuses };
+}
+
 export function mergeLaneArtifacts(
   root,
-  { expectedHeadSha, expectedInventory, runId } = {},
+  {
+    expectedHeadSha,
+    expectedInventory,
+    runId,
+    integrationResult,
+    runAttempt,
+  } = {},
 ) {
   if (!expectedHeadSha) throw new Error("expectedHeadSha is required");
+
+  const formalSources = [];
+  const formalMissingSources = [];
 
   const taxonomyFiles = filesMatching(root, /^deep-e2e-taxonomy-.*\.json$/);
   const taxonomies = taxonomyFiles.map(readJson);
@@ -98,10 +382,12 @@ export function mergeLaneArtifacts(
       );
     }
   }
+  formalSources.push(...taxonomyFiles.map((file) => `taxonomy:${file}`));
 
   const coverageFiles = filesMatching(root, /^deep-e2e-coverage-.*\.json$/);
   const coverage = coverageFiles.map(readJson);
   assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
+  formalSources.push(...coverageFiles.map((file) => `coverage:${file}`));
   const coverageDigests = new Set(coverage.map((manifest) => manifest.allSpecsDigest));
   const coverageCounts = new Set(coverage.map((manifest) => manifest.allSpecCount));
   if (coverageDigests.size !== 1 || coverageCounts.size !== 1) {
@@ -132,6 +418,7 @@ export function mergeLaneArtifacts(
   if (junitFiles.length !== DEEP_LANES.length) {
     throw new Error(`Expected ${DEEP_LANES.length} JUnit artifacts, found ${junitFiles.length}`);
   }
+  formalSources.push(...junitFiles.map((file) => `junit:${file}`));
   const junitIdentities = junitFiles.flatMap((file) =>
     junitTestIdentities(fs.readFileSync(file, "utf8")),
   );
@@ -161,9 +448,29 @@ export function mergeLaneArtifacts(
     expectedTestCount = expectedIdentities.length;
   }
 
-  const cancelAudits = filesMatching(root, /^deep-cancel-audit\.json$/).map(readJson);
-  assertLaneSet(cancelAudits.map((audit) => audit.lane), "Cancellation audits");
-  for (const audit of cancelAudits) {
+  const cancelAudits = filesMatching(root, /^deep-cancel-audit\.json$/).map(safeReadJson);
+  const cancellationByLane = new Map(DEEP_LANES.map((lane) => [lane, []]));
+  for (const payload of cancelAudits) {
+    if (payload.error) {
+      throw new Error(`Cancellation audit is not parseable: ${payload.error}`);
+    }
+    const lane = payload.data.lane;
+    if (!DEEP_LANES.includes(lane)) {
+      throw new Error(`Unknown cancel audit lane: ${lane}`);
+    }
+    cancellationByLane.get(lane).push(payload.data);
+  }
+  assertUniqueLaneArtifacts(cancellationByLane, "Cancellation audits");
+  formalSources.push(...cancelAudits.filter((entry) => !entry.error).map((entry) => `cancel-audit:${entry.file}`));
+  const cancellationPayloads = [];
+  for (const lane of DEEP_LANES) {
+    const audits = cancellationByLane.get(lane);
+    if (audits.length === 0) {
+      formalMissingSources.push(`deep-cancel-audit:${lane}`);
+      continue;
+    }
+    const audit = audits[0];
+    cancellationPayloads.push(audit);
     if (audit.head_sha !== expectedHeadSha) {
       throw new Error(`Cancellation audit head mismatch: lane=${audit.lane}`);
     }
@@ -173,36 +480,31 @@ export function mergeLaneArtifacts(
   }
 
   const bootstrapFiles = filesMatching(root, /^bootstrap-diagnostics\.json$/);
-  if (bootstrapFiles.length !== DEEP_LANES.length) {
-    throw new Error(
-      `Expected ${DEEP_LANES.length} bootstrap diagnostics, found ${bootstrapFiles.length}`,
-    );
+  const { grouped: bootstrapByLane, ungrouped: bootstrapUngrouped } = collectByLane(bootstrapFiles);
+  if (bootstrapUngrouped.length > 0) {
+    throw new Error(`Unable to attribute bootstrap diagnostics to lane: ${bootstrapUngrouped[0]}`);
   }
+  assertUniqueLaneArtifacts(bootstrapByLane, "Bootstrap diagnostics");
+  formalSources.push(...bootstrapFiles.map((file) => `bootstrap:${file}`));
+
   let expectedBootstrapRequestFailureCount = 0;
-  for (const file of bootstrapFiles) {
-    const bootstrap = readJson(file);
-    const lane = DEEP_LANES.find((candidate) =>
-      file.split(path.sep).some((part) => part.includes(`-${candidate}-`)),
-    );
-    const requestFailures = bootstrap.requestFailures ?? [];
+  for (const lane of DEEP_LANES) {
+    const files = bootstrapByLane.get(lane);
+    if (!files || files.length === 0) continue;
+    const parsed = safeReadJson(files[0]);
+    if (parsed.error) continue;
+    const requestFailures = parsed.data.requestFailures ?? [];
     const expectedSpStubFailures =
       lane === "sp-stub" &&
+      requestFailures.length > 0 &&
       requestFailures.every(
         (failure) =>
           failure?.url?.startsWith("https://example.sharepoint.com/") &&
           failure?.errorText === "net::ERR_NAME_NOT_RESOLVED",
       );
-    if (expectedSpStubFailures) {
-      expectedBootstrapRequestFailureCount += requestFailures.length;
-    }
-    if (
-      bootstrap.error ||
-      (bootstrap.pageErrors?.length ?? 0) > 0 ||
-      (requestFailures.length > 0 && !expectedSpStubFailures)
-    ) {
-      throw new Error(`Bootstrap diagnostics contain errors: ${file}`);
-    }
+    if (expectedSpStubFailures) expectedBootstrapRequestFailureCount += requestFailures.length;
   }
+  const bootstrapResult = evaluateBootstrap(bootstrapByLane, { missingSources: formalMissingSources });
 
   const failures = taxonomies.flatMap((taxonomy) => taxonomy.failures);
   const failureKeys = failures.map((failure) => failure.failureKey);
@@ -212,6 +514,17 @@ export function mergeLaneArtifacts(
     );
     throw new Error(`Duplicate failure key across lanes: ${duplicate}`);
   }
+
+  const resultsFiles = filesMatchingByPath(root, /\/test-results\/(?!.*-retry-).+\/results\.json$|\/test-results\/results\.json$/);
+  const { grouped: resultByLane } = collectByLane(resultsFiles);
+  const testResults = collectTrueFlaky(resultByLane, { missingSources: formalMissingSources });
+
+  const integrationFiles = filesMatchingByPath(root, /\/integration-status\.json$/);
+  formalSources.push(...integrationFiles.map((file) => `integration-status:${file}`));
+  const integration = collectIntegrationStatus(root, integrationResult, integrationFiles, {
+    missingSources: formalMissingSources,
+  });
+  const didNotRun = collectDidNotRun(cancellationPayloads, { missingSources: formalMissingSources });
 
   return {
     taxonomy: {
@@ -243,6 +556,21 @@ export function mergeLaneArtifacts(
       duplicateSpecCount: 0,
       duplicateTestIdentityCount: 0,
     },
+    formalMetrics: {
+      schemaVersion: 2,
+      status: formalMissingSources.length === 0 ? "available" : "partial",
+      trueFlaky: testResults.value,
+      didNotRun: didNotRun.value,
+      didNotRunUnit: didNotRun.unit,
+      integration,
+      bootstrap: bootstrapResult.value,
+      metadata: {
+        runId: runId ?? null,
+        runAttempt: runAttempt ?? null,
+        sources: formalSources,
+        missingSources: formalMissingSources,
+      },
+    },
   };
 }
 
@@ -251,20 +579,27 @@ function parseArgs(argv) {
     root: null,
     output: "reports/deep-e2e-taxonomy-union.json",
     coverageOutput: "reports/deep-e2e-coverage-union.json",
+    formalMetricsOutput: null,
     expectedHeadSha: process.env.SOURCE_HEAD_SHA ?? null,
     expectedInventory: null,
     runId: process.env.GITHUB_RUN_ID ?? null,
+    integrationResult: null,
+    runAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
   };
+
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (
       [
         "--root",
         "--output",
+        "--formal-metrics-output",
         "--coverage-output",
         "--expected-head-sha",
         "--expected-inventory",
         "--run-id",
+        "--integration-result",
+        "--run-attempt",
       ].includes(
         argument,
       )
@@ -294,6 +629,13 @@ function main() {
     options.coverageOutput,
     `${JSON.stringify(merged.coverage, null, 2)}\n`,
   );
+  if (options.formalMetricsOutput) {
+    fs.mkdirSync(path.dirname(options.formalMetricsOutput), { recursive: true });
+    fs.writeFileSync(
+      options.formalMetricsOutput,
+      `${JSON.stringify(merged.formalMetrics, null, 2)}\n`,
+    );
+  }
   process.stdout.write(`${JSON.stringify(merged.coverage)}\n`);
 }
 

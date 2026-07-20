@@ -558,7 +558,7 @@ jobs:
   deep-lane-union-audit:
     name: Deep Lane Union Audit
     runs-on: ubuntu-latest
-    needs: deep-tests-chromium
+    needs: [deep-tests-chromium, deep-tests-integration]
     if: always()
     permissions:
       contents: read
@@ -618,6 +618,18 @@ jobs:
           pattern: e2e-bootstrap-diagnostics-${{ github.run_id }}-*
           path: lane-artifacts
 
+      - name: Download lane integration status
+        uses: actions/download-artifact@v4
+        with:
+          pattern: integration-status-${{ github.run_id }}-*
+          path: lane-artifacts
+
+      - name: Download lane test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-deep-${{ github.run_id }}-*
+          path: lane-artifacts
+
       - name: Merge and validate lane evidence
         run: |
           node scripts/ci/merge-deep-e2e-lanes.mjs \
@@ -625,21 +637,36 @@ jobs:
             --expected-head-sha "$SOURCE_HEAD_SHA" \
             --expected-inventory expected-deep-inventory.json \
             --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --integration-result "${{ needs.deep-tests-integration.result }}" \
             --output "reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json" \
+            --formal-metrics-output "reports/deep-e2e-formal-metrics-${{ github.run_id }}.json" \
             --coverage-output "reports/deep-e2e-coverage-union-${{ github.run_id }}.json"
-          failed=$(node -p "require('./reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json').failed")
-          specs=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').ownedSpecCount")
-          tests=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').junitTestCount")
-          {
-            echo "## Deep Lane Union Audit"
-            echo ""
-            echo "- Source head: \`$SOURCE_HEAD_SHA\`"
-            echo "- Lanes: 6"
-            echo "- Owned specs: $specs"
-            echo "- JUnit test identities: $tests"
-            echo "- Failure key union: $failed"
-            echo "- Duplicate specs/test identities/failure keys: 0"
-          } >> "$GITHUB_STEP_SUMMARY"
+           failed=$(node -p "require('./reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json').failed")
+           specs=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').ownedSpecCount")
+           tests=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').junitTestCount")
+           true_flaky=$(node -p "require('./reports/deep-e2e-formal-metrics-${{ github.run_id }}.json').trueFlaky")
+           did_not_run=$(node -p "require('./reports/deep-e2e-formal-metrics-${{ github.run_id }}.json').didNotRun")
+           integration=$(node -p "require('./reports/deep-e2e-formal-metrics-${{ github.run_id }}.json').integration")
+           bootstrap=$(node -p "require('./reports/deep-e2e-formal-metrics-${{ github.run_id }}.json').bootstrap")
+           schema=$(node -p "require('./reports/deep-e2e-formal-metrics-${{ github.run_id }}.json').schemaVersion")
+           status=$(node -p "require('./reports/deep-e2e-formal-metrics-${{ github.run_id }}.json').status")
+           {
+             echo "## Deep Lane Union Audit"
+             echo ""
+             echo "- Source head: \`$SOURCE_HEAD_SHA\`"
+             echo "- Lanes: 6"
+             echo "- Metrics schema: $schema"
+             echo "- Metrics status: $status"
+             echo "- true flaky: $true_flaky"
+             echo "- did not run: $did_not_run"
+             echo "- integration: $integration"
+             echo "- bootstrap: $bootstrap"
+             echo "- Owned specs: $specs"
+             echo "- JUnit test identities: $tests"
+             echo "- Failure key union: $failed"
+             echo "- Duplicate specs/test identities/failure keys: 0"
+           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload union taxonomy and coverage
         uses: actions/upload-artifact@v4
@@ -648,6 +675,7 @@ jobs:
           path: |
             reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json
             reports/deep-e2e-coverage-union-${{ github.run_id }}.json
+            reports/deep-e2e-formal-metrics-${{ github.run_id }}.json
           retention-days: 14
           if-no-files-found: error
 
@@ -714,6 +742,28 @@ jobs:
           NODE_ENV: production
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-integration.xml'
         continue-on-error: true
+
+      - name: Record integration status
+        if: always()
+        run: |
+          cat <<EOF > integration-status.json
+          {
+            "run_id": "${{ github.run_id }}",
+            "run_attempt": "${{ github.run_attempt }}",
+            "event_name": "${{ github.event_name }}",
+            "job_outcome": "${{ job.status }}",
+            "integration_tests_outcome": "${{ steps.integration_tests.outcome }}"
+          }
+          EOF
+
+      - name: Upload integration status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-status-${{ github.run_id }}-${{ github.run_attempt }}
+          path: integration-status.json
+          retention-days: 14
+          if-no-files-found: error
       
       - name: Upload integration test artifacts
         if: always()
@@ -721,6 +771,7 @@ jobs:
         with:
           name: integration-results-${{ github.run_number }}
           path: |
+            integration-status.json
             test-results/
             playwright-report/
           retention-days: 14
