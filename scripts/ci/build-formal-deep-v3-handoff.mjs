@@ -14,6 +14,8 @@ export const HANDOFF_REASONS = Object.freeze({
   REASON_CODES_INVALID: "REASON_CODES_INVALID",
   COMPARISON_MISSING_OBJECT: "COMPARISON_MISSING_OBJECT",
   EVIDENCE_MISSING: "EVIDENCE_MISSING",
+  EVIDENCE_INVALID: "EVIDENCE_INVALID",
+  EVIDENCE_FAILURE_KEYS_MISMATCH: "EVIDENCE_FAILURE_KEYS_MISMATCH",
   MISSING_SOURCES_INVALID: "MISSING_SOURCES_INVALID",
   FAILURE_KEYS_INVALID: "FAILURE_KEYS_INVALID",
   FAILURE_KEY_PARTITION_INVALID: "FAILURE_KEY_PARTITION_INVALID",
@@ -24,6 +26,7 @@ export const HANDOFF_REASONS = Object.freeze({
 });
 
 const STATUS_SET = new Set(HANDOFF_STATUSES);
+const EVIDENCE_STATUS_SET = new Set(["pass", "fail", "unknown"]);
 const FAILURE_REASONS = new Set([
   "STATUS_FAILED",
   "TRUE_FLAKY_FAILED",
@@ -120,15 +123,45 @@ function normalizeEvidence(input, reasons) {
   }
   const evidence = input.evidence;
   const missingSources = validStringArray(evidence.missingSources) ? evidence.missingSources : [];
+  const envelopeValid =
+    EVIDENCE_STATUS_SET.has(evidence.status) &&
+    isRecord(evidence.trueFlaky) &&
+    isRecord(evidence.didNotRun) &&
+    isRecord(evidence.integration) &&
+    isRecord(evidence.bootstrap) &&
+    typeof evidence.sourceSha === "string" && evidence.sourceSha.length > 0 &&
+    typeof evidence.checkoutSha === "string" && evidence.checkoutSha.length > 0 &&
+    validStringArray(evidence.missingSources) &&
+    validStringArray(evidence.failureKeys);
+  if (!envelopeValid) addReason(reasons, HANDOFF_REASONS.EVIDENCE_INVALID);
   if (!validStringArray(evidence.missingSources)) addReason(reasons, HANDOFF_REASONS.MISSING_SOURCES_INVALID);
   return {
     value: evidence,
     sourceSha: typeof evidence.sourceSha === "string" ? evidence.sourceSha : null,
     checkoutSha: typeof evidence.checkoutSha === "string" ? evidence.checkoutSha : null,
     missingSources,
+    failureKeys: evidence.failureKeys,
     didNotRun: evidence.didNotRun ?? null,
     integration: evidence.integration ?? null,
   };
+}
+
+function hasSameStringSet(left, right) {
+  return left.length === right.length &&
+    new Set(left).size === new Set(right).size &&
+    left.every((key) => right.includes(key));
+}
+
+function validateEvidenceFailureKeys(evidence, comparison, reasons) {
+  if (!validStringArray(evidence.failureKeys)) return;
+  const comparisonFailureKeys = [...comparison.targetFailureKeys, ...comparison.newFailureKeys];
+  if (
+    evidence.failureKeys.length !== comparison.currentFailureKeyCount ||
+    new Set(evidence.failureKeys).size !== evidence.failureKeys.length ||
+    !hasSameStringSet(evidence.failureKeys, comparisonFailureKeys)
+  ) {
+    addReason(reasons, HANDOFF_REASONS.EVIDENCE_FAILURE_KEYS_MISMATCH);
+  }
 }
 
 function normalizeInput(input) {
@@ -156,6 +189,7 @@ function normalizeInput(input) {
   }
   const comparison = normalizeFailureComparison(input, reasons);
   const evidence = normalizeEvidence(input, reasons);
+  validateEvidenceFailureKeys(evidence, comparison, reasons);
   const sourceConsumer = input?.consumer;
   const status = input?.status;
 

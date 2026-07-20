@@ -180,6 +180,42 @@ test("missing comparison and evidence objects are HOLD", () => {
   assert.ok(missingEvidence.reasonCodes.includes("EVIDENCE_MISSING"));
 });
 
+test("required evidence envelope fields are fail-closed", () => {
+  const base = readFixture("formal-deep-v3-comparison-pass.json");
+  for (const field of ["status", "trueFlaky", "didNotRun", "integration", "bootstrap", "sourceSha", "checkoutSha", "missingSources", "failureKeys"]) {
+    const evidence = { ...base.evidence };
+    delete evidence[field];
+    const result = buildFormalDeepV3Handoff({ ...base, evidence });
+    assert.equal(result.status, "HOLD", field);
+    assert.equal(result.ready, false, field);
+    assert.ok(result.reasonCodes.includes("EVIDENCE_INVALID"), field);
+  }
+});
+
+test("evidence failureKeys require unique, complete, order-independent partition", () => {
+  const base = readFixture("formal-deep-v3-comparison-fail.json");
+  const cases = [
+    ["target-key", "target-key", "new-key"],
+    ["target-key"],
+    ["target-key", "other-key"],
+  ];
+  for (const failureKeys of cases) {
+    const result = buildFormalDeepV3Handoff({
+      ...base,
+      evidence: { ...base.evidence, failureKeys },
+    });
+    assert.equal(result.status, "HOLD");
+    assert.ok(result.reasonCodes.includes("EVIDENCE_FAILURE_KEYS_MISMATCH"));
+  }
+
+  const reordered = buildFormalDeepV3Handoff({
+    ...base,
+    evidence: { ...base.evidence, failureKeys: ["new-key", "target-key"] },
+  });
+  assert.equal(reordered.status, "FAIL");
+  assert.equal(reordered.ready, false);
+});
+
 test("invalid failure key arrays are HOLD with a dedicated reason", () => {
   const base = readFixture("formal-deep-v3-comparison-pass.json");
   const result = buildFormalDeepV3Handoff({
@@ -270,6 +306,7 @@ test("FAIL with a target key remains FAIL when the failure reason is present", (
   const input = readFixture("formal-deep-v3-comparison-fail.json");
   const result = buildFormalDeepV3Handoff({
     ...input,
+    evidence: { ...input.evidence, failureKeys: ["target-key"] },
     reasonCodes: ["TARGET_FAILURE_KEYS_PRESENT"],
     comparison: {
       ...input.comparison,
@@ -289,6 +326,7 @@ test("FAIL with a new key remains FAIL when the failure reason is present", () =
   const input = readFixture("formal-deep-v3-comparison-fail.json");
   const result = buildFormalDeepV3Handoff({
     ...input,
+    evidence: { ...input.evidence, failureKeys: ["new-key"] },
     reasonCodes: ["NEW_FAILURE_KEYS"],
     comparison: {
       ...input.comparison,

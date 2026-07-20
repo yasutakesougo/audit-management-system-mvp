@@ -5,11 +5,15 @@
   "status": "PASS",
   "reasonCodes": [],
   "evidence": {
+    "status": "pass",
+    "trueFlaky": { "status": "pass", "summary": { "count": 0, "testKeys": [] } },
+    "didNotRun": { "status": "pass", "summary": { "count": 0, "unit": "test", "expected": 331, "executed": 331, "testKeys": [] } },
+    "integration": { "status": "pass", "summary": { "jobResult": "success", "junitResult": "pass" } },
+    "bootstrap": { "status": "pass", "summary": { "normalLanes": ["general"], "abnormalLanes": [], "missingLanes": [] } },
     "sourceSha": "same-sha",
     "checkoutSha": "same-sha",
     "missingSources": [],
-    "didNotRun": { "summary": { "count": 0 } },
-    "integration": { "summary": { "junitResult": "pass" } }
+    "failureKeys": []
   },
   "comparison": {
     "targetManifestKeyCount": 0,
