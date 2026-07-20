@@ -2,33 +2,64 @@ import type { Page, TestInfo } from '@playwright/test';
 
 type MatchPattern = string | RegExp;
 
+type StructuredFailureMatch = {
+  method?: string | RegExp;
+  url?: string | RegExp;
+  resourceType?: string | RegExp;
+  errorText?: string | RegExp;
+  operation?: 'requestfailed' | 'response' | 'any';
+};
+
+type FailureMatchPattern = MatchPattern | StructuredFailureMatch;
+
 type KioskReleaseContractOptions = {
-  allowedRequestFailures?: MatchPattern[];
+  allowedRequestFailures?: FailureMatchPattern[];
+};
+
+type RequestFailureRecord = {
+  method: string;
+  url: string;
+  status?: number;
+  resourceType: string;
+  errorText: string;
+  operation: 'requestfailed' | 'response';
 };
 
 type ContractDiagnostics = {
   consoleErrors: string[];
   pageErrors: string[];
-  requestFailures: string[];
+  requestFailures: RequestFailureRecord[];
 };
 
-const DEFAULT_ALLOWED_REQUEST_FAILURES: MatchPattern[] = [
+const DEFAULT_ALLOWED_REQUEST_FAILURES: FailureMatchPattern[] = [
   /__vite_ping/i,
   /__next/i,
   /favicon\.ico$/i,
 ];
 
-function matchesPattern(url: string, patterns: MatchPattern[]): boolean {
-  return patterns.some((pattern) => {
-    if (pattern instanceof RegExp) {
-      return pattern.test(url);
-    }
-    return url.includes(pattern);
-  });
+function testPattern(value: string, pattern?: string | RegExp): boolean {
+  if (pattern == null) {
+    return true;
+  }
+  return pattern instanceof RegExp ? pattern.test(value) : value.includes(pattern);
 }
 
-function describeRequestFailure(url: string, method: string, status: number | undefined, failureText: string | null, resourceType: string): string {
-  return `${method} ${url} status=${String(status ?? '-')} type=${resourceType} failure=${failureText ?? 'unknown'}`;
+function isMatch(record: RequestFailureRecord, pattern: FailureMatchPattern): boolean {
+  if (pattern instanceof RegExp || typeof pattern === 'string') {
+    return testPattern(record.url, pattern);
+  }
+
+  const isMethodMatch = testPattern(record.method, pattern.method);
+  const isUrlMatch = testPattern(record.url, pattern.url);
+  const isResourceTypeMatch = testPattern(record.resourceType, pattern.resourceType);
+  const isErrorTextMatch = testPattern(record.errorText, pattern.errorText);
+  const isOperationMatch = pattern.operation == null || pattern.operation === 'any' || pattern.operation === record.operation;
+
+  return isMethodMatch && isUrlMatch && isResourceTypeMatch && isErrorTextMatch && isOperationMatch;
+}
+
+function hasAllowedFailure(record: RequestFailureRecord, patterns: FailureMatchPattern[]): boolean {
+  return patterns.some((pattern) => isMatch(record, pattern));
 }
 
 function getResponseStatus(response: unknown): number | undefined {
@@ -43,6 +74,10 @@ function getResponseStatus(response: unknown): number | undefined {
     return typeof value === 'number' ? value : undefined;
   }
   return undefined;
+}
+
+function describeRequestFailure(record: RequestFailureRecord): string {
+  return `${record.operation} ${record.method} ${record.url} status=${String(record.status ?? '-')} resourceType=${record.resourceType} error=${record.errorText}`;
 }
 
 export type KioskReleaseContracts = {
@@ -68,22 +103,27 @@ export async function setupKioskReleaseContracts(page: Page, testInfo: TestInfo,
   });
 
   page.on('requestfailed', (request) => {
-    diagnostics.requestFailures.push(
-      describeRequestFailure(
-        request.url(),
-        request.method(),
-        getResponseStatus(request.response()),
-        request.failure()?.errorText ?? null,
-        request.resourceType(),
-      ),
-    );
+    diagnostics.requestFailures.push({
+      method: request.method(),
+      url: request.url(),
+      status: getResponseStatus(request.response()),
+      errorText: request.failure()?.errorText ?? 'unknown',
+      resourceType: request.resourceType(),
+      operation: 'requestfailed',
+    });
   });
 
   page.on('response', (response) => {
-    const url = response.url();
     const status = response.status();
     if (status >= 500) {
-      diagnostics.requestFailures.push(`response-failure ${response.request().method()} ${url} status=${status}`);
+      diagnostics.requestFailures.push({
+        method: response.request().method(),
+        url: response.url(),
+        status,
+        errorText: `status-${status}`,
+        resourceType: response.request().resourceType(),
+        operation: 'response',
+      });
     }
   });
 
@@ -93,7 +133,7 @@ export async function setupKioskReleaseContracts(page: Page, testInfo: TestInfo,
 
     const unexpectedConsoleErrors = diagnostics.consoleErrors;
     const unexpectedPageErrors = diagnostics.pageErrors;
-    const unexpectedRequestFailures = diagnostics.requestFailures.filter((entry) => !matchesPattern(entry, allowedRequestFailures));
+    const unexpectedRequestFailures = diagnostics.requestFailures.filter((entry) => !hasAllowedFailure(entry, allowedRequestFailures));
 
     const contract = await page.evaluate(() => {
       const env = (window as Window & { __ENV__?: Record<string, string> }).__ENV__ ?? {};
@@ -135,10 +175,13 @@ export async function setupKioskReleaseContracts(page: Page, testInfo: TestInfo,
       missingContracts.push('data-provider attribute is missing');
     }
 
+    const requestFailures = unexpectedRequestFailures.map(describeRequestFailure);
+
     const summary = {
       consoleErrors: unexpectedConsoleErrors,
       pageErrors: unexpectedPageErrors,
-      requestFailures: unexpectedRequestFailures,
+      requestFailures,
+      requestFailureRecords: unexpectedRequestFailures,
       missingContracts,
     };
 
@@ -152,15 +195,15 @@ export async function setupKioskReleaseContracts(page: Page, testInfo: TestInfo,
     }
 
     if (summary.consoleErrors.length > 0) {
-      throw new Error(`kiosk release contract: console errors detected\\n${summary.consoleErrors.join('\\n')}`);
+      throw new Error(`kiosk release contract: console errors detected\n${summary.consoleErrors.join('\n')}`);
     }
 
     if (summary.pageErrors.length > 0) {
-      throw new Error(`kiosk release contract: page errors detected\\n${summary.pageErrors.join('\\n')}`);
+      throw new Error(`kiosk release contract: page errors detected\n${summary.pageErrors.join('\n')}`);
     }
 
     if (summary.requestFailures.length > 0) {
-      throw new Error(`kiosk release contract: request failures detected\\n${summary.requestFailures.join('\\n')}`);
+      throw new Error(`kiosk release contract: request failures detected\n${summary.requestFailures.join('\n')}`);
     }
   };
 

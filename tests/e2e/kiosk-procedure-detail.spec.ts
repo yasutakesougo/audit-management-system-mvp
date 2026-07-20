@@ -11,7 +11,15 @@ let contract: KioskReleaseContracts | undefined;
 test.describe('Kiosk Procedure Detail', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     contract = await setupKioskReleaseContracts(page, testInfo, {
-      allowedRequestFailures: [/__vite_ping/i, /net::ERR_ABORTED/i],
+      allowedRequestFailures: [
+        {
+          method: 'POST',
+          operation: 'requestfailed',
+          resourceType: 'fetch',
+          errorText: /net::ERR_ABORTED/i,
+          url: /_api\/web\/lists\/getbytitle\('DailyRecordRows'\)\/items/i,
+        },
+      ],
     });
 
     // 直接 ID: 3 の利用者の最初の手順詳細に遷移する
