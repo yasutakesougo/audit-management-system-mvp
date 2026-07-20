@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "consumer": "formal-deep-v3-comparison",
+  "runId": "fail-run",
+  "status": "FAIL",
+  "reasonCodes": ["NEW_FAILURE_KEYS"],
+  "evidence": { "sourceSha": "same-sha", "checkoutSha": "same-sha", "missingSources": [] },
+  "comparison": {
+    "targetManifestKeyCount": 1,
+    "currentFailureKeyCount": 2,
+    "targetFailureKeyCount": 1,
+    "targetFailureKeys": ["target-key"],
+    "newFailureKeyCount": 1,
+    "newFailureKeys": ["new-key"]
+  }
+}

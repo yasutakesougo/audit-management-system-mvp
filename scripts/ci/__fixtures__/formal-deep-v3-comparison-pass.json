@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 3,
+  "consumer": "formal-deep-v3-comparison",
+  "runId": "pass-run",
+  "status": "PASS",
+  "reasonCodes": [],
+  "evidence": {
+    "sourceSha": "same-sha",
+    "checkoutSha": "same-sha",
+    "missingSources": [],
+    "didNotRun": { "summary": { "count": 0 } },
+    "integration": { "summary": { "junitResult": "pass" } }
+  },
+  "comparison": {
+    "targetManifestKeyCount": 0,
+    "currentFailureKeyCount": 0,
+    "targetFailureKeyCount": 0,
+    "targetFailureKeys": [],
+    "newFailureKeyCount": 0,
+    "newFailureKeys": []
+  }
+}

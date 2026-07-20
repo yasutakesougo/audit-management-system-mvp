@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 3,
+  "consumer": "formal-deep-v3-comparison",
+  "runId": "29714201142",
+  "status": "HOLD",
+  "reasonCodes": ["STATUS_UNKNOWN", "DID_NOT_RUN", "INTEGRATION_JUNIT_MISSING", "MISSING_SOURCES", "NEW_FAILURE_KEYS"],
+  "evidence": {
+    "sourceSha": "2e809f7c47040c54ad24d1f2c1ed982be899563f",
+    "checkoutSha": "2e809f7c47040c54ad24d1f2c1ed982be899563f",
+    "missingSources": ["junit-e2e-integration.xml"],
+    "didNotRun": { "status": "fail", "summary": { "count": 63, "unit": "test", "expected": 331, "executed": 268 } },
+    "integration": { "status": "unknown", "summary": { "jobResult": "success", "junitResult": "unknown" } }
+  },
+  "comparison": {
+    "targetManifestKeyCount": 0,
+    "currentFailureKeyCount": 33,
+    "targetFailureKeyCount": 0,
+    "targetFailureKeys": [],
+    "newFailureKeyCount": 33,
+    "newFailureKeys": [
+      "failure-01", "failure-02", "failure-03", "failure-04", "failure-05", "failure-06", "failure-07", "failure-08", "failure-09", "failure-10", "failure-11", "failure-12", "failure-13", "failure-14", "failure-15", "failure-16", "failure-17", "failure-18", "failure-19", "failure-20", "failure-21", "failure-22", "failure-23", "failure-24", "failure-25", "failure-26", "failure-27", "failure-28", "failure-29", "failure-30", "failure-31", "failure-32", "failure-33"
+    ]
+  }
+}
