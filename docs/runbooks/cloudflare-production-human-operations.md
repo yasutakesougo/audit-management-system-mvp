@@ -370,6 +370,31 @@ storageState: 削除済み
 
 Gate 4AがPASSしても、専用テスト対象への保存・reload後再読込を確認するGate 4Bは別判定とし、安全なテストデータが用意されるまでHOLDとする。PR #2512のdeploy後は、同じsmokeを新しいVersionに対して再実行する。
 
+### 9.4 現在の正式状態
+
+baseline Version `0872ee12` に対する実行結果は次のとおりとする。
+
+```text
+Gate 4A 認証setup: PASS
+Gate 4A 本番read-only smoke: FAIL
+Gate 4B 保存・再読込: HOLD
+Gate 3 revision/SHA対応: 未実施
+
+PR #2512: HOLD
+production deploy: NO-GO
+```
+
+最新runでは、画面遷移やreloadではなく、次のFirebase認証初期化エラーを1回観測した。
+
+```text
+[firebase-auth] initialization failed
+TypeError: Failed to fetch
+```
+
+Firebase失敗の再現性は未確定とし、独立runで2回以上同じ失敗通信を確認するまで「再現性あり」へ昇格しない。次回以降は、request failureとHTTP 400以上のresponseについて、method、host、pathname、resource type、statusまたはerrorText、発生時刻、発生ページだけを診断artifactへ記録する。query、fragment、Authorization、Cookie、token、request body、storageState、利用者情報は記録しない。
+
+失敗通信は、Firebase Identity Toolkit／Secure Token、Workerの`/api/firebase/exchange`、CORS／CSP、DNS／TLS／ブラウザネットワーク、設定値不足、一時的な外部サービス失敗のいずれかへ分類する。原因確定前のSecret変更、設定変更、deploy、保存操作は行わない。
+
 ## 参考資料
 
 - [GitHub: Deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)

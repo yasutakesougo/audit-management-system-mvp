@@ -7,8 +7,26 @@ const productionBaseURL =
 type SmokeDiagnostics = {
   capturedAt: string;
   consoleErrors: string[];
+  firebaseAuthErrors: string[];
   pageErrors: string[];
-  requestFailures: string[];
+  requestFailures: Array<{
+    capturedAt: string;
+    page: string;
+    method: string;
+    host: string;
+    path: string;
+    resourceType: string;
+    errorText: string;
+  }>;
+  httpErrors: Array<{
+    capturedAt: string;
+    page: string;
+    method: string;
+    host: string;
+    path: string;
+    status: number;
+    resourceType: string;
+  }>;
   serverErrors: string[];
 };
 
@@ -22,23 +40,31 @@ function safeUrlPath(rawURL: string): string {
 }
 
 function redactDiagnosticText(value: string): string {
-  return value
+  const redacted = value
     .replace(/Bearer\s+[^\s]+/gi, 'Bearer <redacted>')
     .replace(/\b[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '<redacted-token>');
+
+  return redacted.replace(/https?:\/\/[^\s"'<>]+/gi, (rawURL) => safeUrlPath(rawURL));
 }
 
 function installProductionDiagnostics(page: Page): SmokeDiagnostics {
   const diagnostics: SmokeDiagnostics = {
     capturedAt: new Date().toISOString(),
     consoleErrors: [],
+    firebaseAuthErrors: [],
     pageErrors: [],
     requestFailures: [],
+    httpErrors: [],
     serverErrors: [],
   };
 
   page.on('console', (message) => {
     if (message.type() === 'error') {
-      diagnostics.consoleErrors.push(redactDiagnosticText(message.text()));
+      const errorText = redactDiagnosticText(message.text());
+      diagnostics.consoleErrors.push(errorText);
+      if (errorText.includes('[firebase-auth]')) {
+        diagnostics.firebaseAuthErrors.push(errorText);
+      }
     }
   });
 
@@ -47,14 +73,35 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
   });
 
   page.on('requestfailed', (request) => {
-    diagnostics.requestFailures.push(
-      `${request.method()} ${safeUrlPath(request.url())} ${
-        request.failure()?.errorText ?? 'unknown'
-      }`,
-    );
+    const capturedAt = new Date().toISOString();
+    const url = new URL(request.url());
+    diagnostics.requestFailures.push({
+      capturedAt,
+      page: safeUrlPath(page.url()),
+      method: request.method(),
+      host: url.host,
+      path: url.pathname,
+      resourceType: request.resourceType(),
+      errorText: request.failure()?.errorText ?? 'unknown',
+    });
   });
 
   page.on('response', (response) => {
+    if (response.status() >= 400) {
+      const capturedAt = new Date().toISOString();
+      const request = response.request();
+      const url = new URL(response.url());
+      diagnostics.httpErrors.push({
+        capturedAt,
+        page: safeUrlPath(page.url()),
+        method: request.method(),
+        host: url.host,
+        path: url.pathname,
+        status: response.status(),
+        resourceType: request.resourceType(),
+      });
+    }
+
     if (response.status() >= 500) {
       diagnostics.serverErrors.push(
         `${response.status()} ${response.request().method()} ${safeUrlPath(response.url())}`,
@@ -75,8 +122,10 @@ async function attachDiagnostics(
     finalUrl: safeUrlPath(page.url()),
     counts: {
       consoleErrors: diagnostics.consoleErrors.length,
+      firebaseAuthErrors: diagnostics.firebaseAuthErrors.length,
       pageErrors: diagnostics.pageErrors.length,
       requestFailures: diagnostics.requestFailures.length,
+      httpErrors: diagnostics.httpErrors.length,
       serverErrors: diagnostics.serverErrors.length,
     },
     policy: {
