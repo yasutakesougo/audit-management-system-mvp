@@ -2,14 +2,33 @@ import { test, expect } from '@playwright/test';
 import { bootKiosk } from './_helpers/bootKiosk';
 import { setupSharePointStubs } from './_helpers/setupSharePointStubs';
 import { toLocalDateISO } from '../../src/utils/getNow';
+import { setupKioskReleaseContracts } from './_helpers/kioskReleaseContracts';
+
+type KioskReleaseContracts = Awaited<ReturnType<typeof setupKioskReleaseContracts>>;
+
+let contract: KioskReleaseContracts | undefined;
 
 test.describe('Kiosk Procedure Detail', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    contract = await setupKioskReleaseContracts(page, testInfo, {
+      allowedRequestFailures: [/__vite_ping/i, /net::ERR_ABORTED/i],
+    });
+
     // 直接 ID: 3 の利用者の最初の手順詳細に遷移する
     await bootKiosk(page, { route: '/kiosk/users/3/procedures/0', userId: '3' });
     
     // 詳細画面が表示されるのを待つ
     await expect(page.getByText('本人のすること')).toBeVisible({ timeout: 10000 });
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (!contract) {
+      return;
+    }
+
+    await contract.assertNoFailures();
+    await page.waitForLoadState('load');
+    contract = undefined;
   });
 
   test('should display procedure details and navigate back', async ({ page }) => {
@@ -151,10 +170,9 @@ test.describe('Kiosk Procedure Detail', () => {
 
     // 5. ページをリロードして、再取得後も記録済みが維持されることを確認
     await page.reload();
-    await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 10000 });
-    await expect(firstCard.getByText('記録済み')).toBeVisible();
+    await expect(firstCard.getByText('記録済み')).toBeVisible({ timeout: 10000 });
     await expect(secondCard.getByText('記録済み')).toBeVisible();
-    await expect(page.getByText('実施状況: 2 / 17')).toBeVisible();
+    await expect(page.getByText('実施状況: 2 / 17')).toBeVisible({ timeout: 10000 });
 
     // 6. 保存されたリクエストのTitleが期待通りかアサート
     console.log('Saved Request Payload:', JSON.stringify(savedRequestPayload));

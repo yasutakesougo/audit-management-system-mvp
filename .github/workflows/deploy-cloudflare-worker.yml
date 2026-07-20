@@ -3,6 +3,14 @@ name: deploy-cloudflare-worker
 on:
   workflow_dispatch:
     inputs:
+      release_scope:
+        description: "Deployment scope: full or kiosk"
+        type: choice
+        default: full
+        required: false
+        options:
+          - full
+          - kiosk
       expected_sha:
         description: "Exact origin/main SHA to deploy"
         required: true
@@ -29,6 +37,7 @@ jobs:
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       CONFIRM_PRODUCTION_DEPLOY: ${{ inputs.confirm_production_deploy }}
+      RELEASE_SCOPE: ${{ inputs.release_scope }}
 
     steps:
       - name: Checkout main candidate
@@ -70,6 +79,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ "${RELEASE_SCOPE}" = "kiosk" ]; then
+            if [ "${CONFIRM_PRODUCTION_DEPLOY}" != "DEPLOY_KIOSK" ]; then
+              echo "confirm_production_deploy must be exactly DEPLOY_KIOSK"
+              exit 1
+            fi
+            exit 0
+          fi
+
           if [ "${CONFIRM_PRODUCTION_DEPLOY}" != "DEPLOY" ]; then
             echo "confirm_production_deploy must be exactly DEPLOY"
             exit 1
@@ -94,7 +111,12 @@ jobs:
         run: npm run typecheck
 
       - name: Required regression tests
+        if: env.RELEASE_SCOPE == 'full'
         run: npm run test:ci:required
+
+      - name: Required regression tests (kiosk scope)
+        if: env.RELEASE_SCOPE == 'kiosk'
+        run: npm run test:ci:kiosk-release
 
       - name: Build
         run: npm run build

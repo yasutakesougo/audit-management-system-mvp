@@ -1,13 +1,32 @@
 import { test, expect } from '@playwright/test';
 import { bootKiosk } from './_helpers/bootKiosk';
+import { setupKioskReleaseContracts } from './_helpers/kioskReleaseContracts';
+
+type KioskReleaseContracts = Awaited<ReturnType<typeof setupKioskReleaseContracts>>;
+
+let contract: KioskReleaseContracts | undefined;
 
 test.describe('Kiosk Procedure List', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    contract = await setupKioskReleaseContracts(page, testInfo, {
+      allowedRequestFailures: [/__vite_ping/i],
+    });
+
     // 直接 ID: 1 の利用者の手順一覧に遷移する
     await bootKiosk(page, { route: '/kiosk/users/1/procedures', userId: '1' });
 
     // 手順一覧画面が表示されるのを待つ
     await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 10000 });
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (!contract) {
+      return;
+    }
+
+    await contract.assertNoFailures();
+    await page.waitForLoadState('load');
+    contract = undefined;
   });
 
   test('should display user name and procedure list', async ({ page }) => {
