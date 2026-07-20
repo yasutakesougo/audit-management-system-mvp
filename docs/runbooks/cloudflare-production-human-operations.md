@@ -326,6 +326,50 @@ git status --short clean: yes / no
 - [ ] `git status --short`がclean
 - [ ] `deploy-cloudflare-worker`を起動していない
 
+## 9. Gate 4 本番read-only smoke
+
+本番read-only smokeは、PR #2512および本番deploy workflowとは分離した専用ブランチで実行する。対象は稼働中のbaseline Version `0872ee12`であり、保存・rollback・deployは行わない。
+
+### 9.1 実行前提
+
+- Entra/MFA認証は本番Workers origin上のheadedブラウザで手動完了する
+- `production-auth-setup`が`/auth/callback`または旧`/callback`から離れ、`/kiosk`を表示できた場合だけstorageStateを作成する
+- `tests/.auth/production-storageState.json`はGit管理、artifact、ログ、PR、画面キャプチャへ含めない
+
+### 9.2 実行コマンド
+
+```bash
+rm -f tests/.auth/production-storageState.json
+trap 'rm -f tests/.auth/production-storageState.json' EXIT
+
+npx playwright test \
+  tests/production/production-readonly-smoke.spec.ts \
+  --config=playwright.production-readonly.config.ts \
+  --project=production-readonly \
+  --headed \
+  --workers=1 \
+  --reporter=line
+```
+
+### 9.3 Gate 4A判定
+
+次をすべて満たす場合だけ、read-only部をPASSとする。
+
+```text
+console error: 0
+page error: 0
+request failure: 0
+HTTP 500以上: 0
+/: HTTP 200
+/kiosk: HTTP 200
+/kiosk/toilet: HTTP 200
+30秒待機後reload: 成功
+保存操作: なし
+storageState: 削除済み
+```
+
+Gate 4AがPASSしても、専用テスト対象への保存・reload後再読込を確認するGate 4Bは別判定とし、安全なテストデータが用意されるまでHOLDとする。PR #2512のdeploy後は、同じsmokeを新しいVersionに対して再実行する。
+
 ## 参考資料
 
 - [GitHub: Deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
