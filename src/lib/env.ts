@@ -29,6 +29,7 @@ export type AppConfig = {
   VITE_SP_RETRY_MAX_DELAY_MS: string;
   VITE_MSAL_CLIENT_ID: string;
   VITE_MSAL_TENANT_ID: string;
+  VITE_MSAL_REDIRECT_URI: string;
   VITE_SP_LIST_SCHEDULES?: string;
   VITE_SP_LIST_USERS?: string;
   VITE_SP_LIST_DAILY?: string;
@@ -210,6 +211,7 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
     VITE_SP_RETRY_MAX_DELAY_MS: readEnv('VITE_SP_RETRY_MAX_DELAY_MS', '5000', envOverride),
     VITE_MSAL_CLIENT_ID: readEnv('VITE_MSAL_CLIENT_ID', '', envOverride) || readEnv('VITE_AAD_CLIENT_ID', '', envOverride),
     VITE_MSAL_TENANT_ID: readEnv('VITE_MSAL_TENANT_ID', '', envOverride) || readEnv('VITE_AAD_TENANT_ID', '', envOverride),
+    VITE_MSAL_REDIRECT_URI: readEnv('VITE_MSAL_REDIRECT_URI', '', envOverride) || readEnv('VITE_AZURE_AD_REDIRECT_URI', '', envOverride),
     VITE_MSAL_TOKEN_REFRESH_MIN: readEnv('VITE_MSAL_TOKEN_REFRESH_MIN', '300', envOverride),
     VITE_AUDIT_DEBUG: readEnv('VITE_AUDIT_DEBUG', '', envOverride),
     VITE_AUDIT_BATCH_SIZE: readEnv('VITE_AUDIT_BATCH_SIZE', '', envOverride),
