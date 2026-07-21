@@ -6,7 +6,8 @@ import path from "node:path";
 import { describe, it } from "node:test";
 
 const workflowPath = path.join(process.cwd(), ".github/workflows/deploy-cloudflare-worker.yml");
-const workflow = fs.readFileSync(workflowPath, "utf8");
+const rawWorkflow = fs.readFileSync(workflowPath, "utf8");
+const workflow = rawWorkflow.replace(/\r\n/g, "\n");
 const verifyStart = workflow.indexOf("  verify:");
 const deployStart = workflow.indexOf("  deploy:");
 const verifySection = workflow.slice(verifyStart, deployStart);
