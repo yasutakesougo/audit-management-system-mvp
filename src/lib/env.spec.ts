@@ -20,4 +20,22 @@ describe('getAppConfig MSAL redirect URI', () => {
 
     expect(config.VITE_MSAL_REDIRECT_URI).toBe('https://example.invalid/auth/callback');
   });
+
+  it('prefers the canonical redirect URI when both aliases are configured', () => {
+    const config = getAppConfig({
+      VITE_MSAL_REDIRECT_URI: 'https://canonical.example/auth/callback',
+      VITE_AZURE_AD_REDIRECT_URI: 'https://legacy.example/auth/callback',
+    });
+
+    expect(config.VITE_MSAL_REDIRECT_URI).toBe('https://canonical.example/auth/callback');
+  });
+
+  it('returns an empty redirect URI when neither alias is configured', () => {
+    const config = getAppConfig({
+      VITE_MSAL_REDIRECT_URI: '',
+      VITE_AZURE_AD_REDIRECT_URI: '',
+    });
+
+    expect(config.VITE_MSAL_REDIRECT_URI).toBe('');
+  });
 });
