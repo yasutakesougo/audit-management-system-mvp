@@ -13,6 +13,15 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     vi.unstubAllGlobals();
   });
 
+  const encodeJwtSegment = (value: unknown): string =>
+    Buffer.from(JSON.stringify(value)).toString('base64url');
+
+  const validGraphToken = (): string =>
+    `${encodeJwtSegment({ alg: 'none', typ: 'JWT' })}.${encodeJwtSegment({ tid: 'tenant-1', oid: 'oid-1' })}.signature`;
+
+  const decodeJwtPayload = (token: string): Record<string, unknown> =>
+    JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString('utf8')) as Record<string, unknown>;
+
   it('returns 204 for OPTIONS request without auth', async () => {
     const request = new Request('https://app.example/api/sp-proxy', {
       method: 'OPTIONS',
@@ -156,5 +165,98 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     expect(response.headers.get('Content-Type')).toBe('application/json');
     expect(response.headers.get('ETag')).toBe('W/"1"');
     expect(response.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  it('returns 401 for Firebase exchange without a bearer token', async () => {
+    const request = new Request('https://app.example/api/firebase/exchange', { method: 'POST' });
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'missing_bearer_token' });
+  });
+
+  it('returns 401 for Firebase exchange with an invalid JWT format', async () => {
+    const request = new Request('https://app.example/api/firebase/exchange', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer not-a-jwt' },
+    });
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'invalid_token_format' });
+  });
+
+  it('returns 401 when Graph verification fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 401 })));
+    const request = new Request('https://app.example/api/firebase/exchange', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${validGraphToken()}` },
+    });
+    const response = await worker.fetch(request, {
+      ...defaultEnv,
+      GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+        project_id: 'firebase-project',
+        client_email: 'service@example.iam.gserviceaccount.com',
+        private_key: 'AQID',
+      }),
+    });
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'token_verification_failed' });
+  });
+
+  it('returns 500 when Firebase service account configuration is missing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'graph-id' }), { status: 200 })));
+    const request = new Request('https://app.example/api/firebase/exchange', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${validGraphToken()}` },
+    });
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: 'service_account_not_configured' });
+  });
+
+  it('returns a Firebase custom token when Graph and service account configuration succeed', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 'graph-id',
+      displayName: 'Test User',
+      userPrincipalName: 'test@example.com',
+    }), { status: 200 })));
+    const subtle = {
+      importKey: vi.fn().mockResolvedValue({}),
+      sign: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer),
+    };
+    vi.stubGlobal('crypto', { subtle });
+    const request = new Request('https://app.example/api/firebase/exchange', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${validGraphToken()}` },
+    });
+    const response = await worker.fetch(request, {
+      ...defaultEnv,
+      GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+        project_id: 'firebase-project',
+        client_email: 'service@example.iam.gserviceaccount.com',
+        private_key: 'AQID',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as { firebaseCustomToken?: string; actor?: { id?: string } };
+    expect(body.firebaseCustomToken?.split('.')).toHaveLength(3);
+    expect(body.actor).toEqual({ id: 'aad:oid-1', name: 'Test User' });
+    const tokenPayload = decodeJwtPayload(body.firebaseCustomToken!);
+    expect(tokenPayload.iss).toBe('service@example.iam.gserviceaccount.com');
+    expect(tokenPayload.sub).toBe('service@example.iam.gserviceaccount.com');
+    expect(tokenPayload.aud).toBe('https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit');
+    expect(tokenPayload.uid).toBe('aad:oid-1');
+    expect(tokenPayload.claims).toEqual({
+      orgId: 'tenant-1',
+      actorId: 'aad:oid-1',
+      actorName: 'Test User',
+    });
+    expect(tokenPayload.iat).toEqual(expect.any(Number));
+    expect(tokenPayload.exp).toEqual(expect.any(Number));
+    expect((tokenPayload.exp as number) - (tokenPayload.iat as number)).toBe(3600);
   });
 });
