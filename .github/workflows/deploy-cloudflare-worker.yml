@@ -3,12 +3,20 @@ name: deploy-cloudflare-worker
 on:
   workflow_dispatch:
     inputs:
+      release_scope:
+        description: "Deployment scope: full or kiosk"
+        type: choice
+        default: full
+        required: false
+        options:
+          - full
+          - kiosk
       expected_sha:
         description: "Exact origin/main SHA to deploy"
         required: true
         type: string
       confirm_production_deploy:
-        description: "Type DEPLOY to confirm production deployment"
+        description: "Type DEPLOY (full) or DEPLOY_KIOSK (kiosk) to confirm"
         required: true
         type: string
 
@@ -29,6 +37,7 @@ jobs:
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       CONFIRM_PRODUCTION_DEPLOY: ${{ inputs.confirm_production_deploy }}
+      RELEASE_SCOPE: ${{ inputs.release_scope || 'full' }}
 
     steps:
       - name: Checkout main candidate
@@ -66,14 +75,34 @@ jobs:
             exit 1
           fi
 
-      - name: Validate production confirmation
+      - name: Validate production scope and confirmation
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${CONFIRM_PRODUCTION_DEPLOY}" != "DEPLOY" ]; then
-            echo "confirm_production_deploy must be exactly DEPLOY"
-            exit 1
-          fi
+
+          case "${RELEASE_SCOPE}" in
+            full|kiosk)
+              ;;
+            *)
+              echo "Invalid release_scope: ${RELEASE_SCOPE}. Must be one of: full, kiosk"
+              exit 1
+              ;;
+          esac
+
+          case "${RELEASE_SCOPE}" in
+            full)
+              if [ "${CONFIRM_PRODUCTION_DEPLOY}" != "DEPLOY" ]; then
+                echo "confirm_production_deploy must be exactly DEPLOY"
+                exit 1
+              fi
+              ;;
+            kiosk)
+              if [ "${CONFIRM_PRODUCTION_DEPLOY}" != "DEPLOY_KIOSK" ]; then
+                echo "confirm_production_deploy must be exactly DEPLOY_KIOSK"
+                exit 1
+              fi
+              ;;
+          esac
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -83,6 +112,26 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Cache Playwright browsers (kiosk scope)
+        if: env.RELEASE_SCOPE == 'kiosk'
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers (chromium)
+        if: env.RELEASE_SCOPE == 'kiosk' && steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: env.RELEASE_SCOPE == 'kiosk' && steps.playwright-cache.outputs.cache-hit == 'true'
+        timeout-minutes: 5
+        run: npx playwright install-deps chromium
 
       - name: Show pinned Wrangler version
         run: npx wrangler --version
@@ -94,7 +143,12 @@ jobs:
         run: npm run typecheck
 
       - name: Required regression tests
+        if: env.RELEASE_SCOPE == 'full'
         run: npm run test:ci:required
+
+      - name: Required regression tests (kiosk scope)
+        if: env.RELEASE_SCOPE == 'kiosk'
+        run: npm run test:ci:kiosk-release
 
       - name: Build
         run: npm run build
