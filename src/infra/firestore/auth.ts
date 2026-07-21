@@ -5,6 +5,33 @@ import { getFirebaseApp } from './client';
 
 type FirebaseAuthMode = 'anonymous' | 'customToken';
 
+type FirebaseAuthInitStage =
+  | 'config'
+  | 'msal-account'
+  | 'msal-token'
+  | 'exchange-request'
+  | 'exchange-response'
+  | 'firebase-sign-in';
+
+type FirebaseAuthDiagnostic = {
+  stage: FirebaseAuthInitStage;
+  reason: string;
+  status?: number;
+  host?: string;
+  path?: string;
+};
+
+class FirebaseAuthStageError extends Error {
+  readonly diagnostic: FirebaseAuthDiagnostic;
+
+  constructor(diagnostic: FirebaseAuthDiagnostic, cause?: unknown) {
+    super(diagnostic.reason);
+    this.name = 'FirebaseAuthStageError';
+    this.diagnostic = diagnostic;
+    void cause;
+  }
+}
+
 type CustomTokenExchangeResponse = {
   firebaseCustomToken: string;
   orgId?: string;
@@ -45,6 +72,39 @@ const normalizeAuthMode = (rawMode: string): FirebaseAuthMode => {
   return normalized === 'customtoken' ? 'customToken' : 'anonymous';
 };
 
+const safeEndpoint = (rawURL: string): Pick<FirebaseAuthDiagnostic, 'host' | 'path'> => {
+  try {
+    const url = new URL(rawURL, typeof window === 'undefined' ? 'https://invalid.local' : window.location.origin);
+    return { host: url.host, path: url.pathname };
+  } catch {
+    return {};
+  }
+};
+
+const safeErrorReason = (error: unknown): string => {
+  if (error instanceof TypeError && /fetch/i.test(error.message)) {
+    return 'network-failure';
+  }
+  if (error instanceof Error && error.name === 'FirebaseError') {
+    const code = (error as Error & { code?: unknown }).code;
+    return typeof code === 'string' && code ? code : 'firebase-error';
+  }
+  if (error instanceof Error) {
+    return error.name || 'error';
+  }
+  return 'unknown-error';
+};
+
+const toFirebaseAuthDiagnostic = (error: unknown): FirebaseAuthDiagnostic => {
+  if (error instanceof FirebaseAuthStageError) {
+    return error.diagnostic;
+  }
+  return {
+    stage: 'firebase-sign-in',
+    reason: safeErrorReason(error),
+  };
+};
+
 const resolveAuthMode = (): FirebaseAuthMode => {
   const raw = get('VITE_FIREBASE_AUTH_MODE', 'anonymous');
   return normalizeAuthMode(raw);
@@ -77,16 +137,30 @@ const acquireMsalAccessToken = async (): Promise<string> => {
     getAllAccounts: () => msal.getAllAccounts(),
   });
   if (!account) {
-    throw new Error('MSAL account is not available for token exchange');
+    throw new FirebaseAuthStageError({
+      stage: 'msal-account',
+      reason: 'account-not-available',
+    });
   }
 
-  const token = await msal.acquireTokenSilent({
-    scopes: ['User.Read'],
-    account,
-  });
+  let token: { accessToken?: string };
+  try {
+    token = await msal.acquireTokenSilent({
+      scopes: ['User.Read'],
+      account,
+    });
+  } catch (error) {
+    throw new FirebaseAuthStageError({
+      stage: 'msal-token',
+      reason: safeErrorReason(error),
+    }, error);
+  }
 
   if (!token.accessToken) {
-    throw new Error('MSAL access token acquisition returned empty token');
+    throw new FirebaseAuthStageError({
+      stage: 'msal-token',
+      reason: 'empty-access-token',
+    });
   }
 
   return token.accessToken;
@@ -95,26 +169,71 @@ const acquireMsalAccessToken = async (): Promise<string> => {
 const exchangeFirebaseCustomToken = async (): Promise<CustomTokenExchangeResponse> => {
   const exchangeUrl = get('VITE_FIREBASE_TOKEN_EXCHANGE_URL', '').trim();
   if (!exchangeUrl) {
-    throw new Error('VITE_FIREBASE_TOKEN_EXCHANGE_URL is not configured');
+    throw new FirebaseAuthStageError({
+      stage: 'config',
+      reason: 'exchange-url-not-configured',
+    });
+  }
+
+  const endpoint = safeEndpoint(exchangeUrl);
+  const expectedOrigin = typeof window === 'undefined' ? undefined : window.location.origin;
+  if (
+    expectedOrigin &&
+    (endpoint.host !== window.location.host || endpoint.path !== '/api/firebase/exchange')
+  ) {
+    throw new FirebaseAuthStageError({
+      stage: 'config',
+      reason: 'exchange-url-must-use-worker-origin',
+      ...endpoint,
+    });
   }
 
   const msalAccessToken = await acquireMsalAccessToken();
-  // eslint-disable-next-line no-restricted-globals -- Worker カスタムトークン交換: Graph ではないため graphFetch 対象外。将来的に専用クライアントを検討
-  const response = await fetch(exchangeUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${msalAccessToken}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`custom token exchange failed: ${response.status} ${response.statusText}`);
+  let response: Response;
+  try {
+    // eslint-disable-next-line no-restricted-globals -- Worker カスタムトークン交換: Graph ではないため graphFetch 対象外。
+    response = await fetch(exchangeUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${msalAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  } catch (error) {
+    throw new FirebaseAuthStageError({
+      stage: 'exchange-request',
+      reason: safeErrorReason(error),
+      ...endpoint,
+    }, error);
   }
 
-  const payload = (await response.json()) as Partial<CustomTokenExchangeResponse>;
+  if (!response.ok) {
+    throw new FirebaseAuthStageError({
+      stage: 'exchange-response',
+      reason: 'exchange-http-error',
+      status: response.status,
+      ...endpoint,
+    });
+  }
+
+  let payload: Partial<CustomTokenExchangeResponse>;
+  try {
+    payload = (await response.json()) as Partial<CustomTokenExchangeResponse>;
+  } catch (error) {
+    throw new FirebaseAuthStageError({
+      stage: 'exchange-response',
+      reason: 'exchange-invalid-json',
+      status: response.status,
+      ...endpoint,
+    }, error);
+  }
   if (typeof payload.firebaseCustomToken !== 'string' || payload.firebaseCustomToken.length === 0) {
-    throw new Error('custom token exchange response missing firebaseCustomToken');
+    throw new FirebaseAuthStageError({
+      stage: 'exchange-response',
+      reason: 'exchange-token-missing',
+      status: response.status,
+      ...endpoint,
+    });
   }
 
   return {
@@ -131,7 +250,15 @@ const signInWithConfiguredStrategy = async (
 ): Promise<void> => {
   if (mode === 'customToken') {
     const exchange = await exchangeFirebaseCustomToken();
-    const result = await signInWithCustomToken(auth, exchange.firebaseCustomToken);
+    let result: Awaited<ReturnType<typeof signInWithCustomToken>>;
+    try {
+      result = await signInWithCustomToken(auth, exchange.firebaseCustomToken);
+    } catch (error) {
+      throw new FirebaseAuthStageError({
+        stage: 'firebase-sign-in',
+        reason: safeErrorReason(error),
+      }, error);
+    }
     console.info('[firebase-auth] ✅ custom token sign-in successful', {
       uid: result.user.uid,
       orgId: exchange.orgId ?? null,
@@ -247,6 +374,6 @@ export async function initFirebaseAuth(): Promise<void> {
   } catch (error) {
     // Non-fatal: Log but don't throw
     // App can continue with limited Firestore access or fallback to adapter
-    console.error('[firebase-auth] ❌ initialization failed', error);
+    console.error('[firebase-auth] ❌ initialization failed', toFirebaseAuthDiagnostic(error));
   }
 }
