@@ -44,6 +44,7 @@ type KioskUserSeed = {
 export type BootKioskOptions = {
   route?: string;
   autoNavigate?: boolean;
+  resetLocalStorage?: boolean;
   provider?: 'memory' | 'local';
   userId?: string;
   procedures?: KioskProcedure[];
@@ -168,6 +169,7 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
   }
 
   await setupPlaywrightEnv(page, {
+    resetLocalStorage: options.resetLocalStorage,
     envOverrides: {
       ...FEATURE_ENV,
       ...(options.envOverrides ?? {}),

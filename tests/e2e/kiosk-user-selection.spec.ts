@@ -1,10 +1,29 @@
 import { test, expect } from '@playwright/test';
 import { bootKiosk } from './_helpers/bootKiosk';
+import { setupKioskReleaseContracts } from './_helpers/kioskReleaseContracts';
+
+type KioskReleaseContracts = Awaited<ReturnType<typeof setupKioskReleaseContracts>>;
+
+let contract: KioskReleaseContracts | undefined;
 
 test.describe('Kiosk User Selection', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    contract = await setupKioskReleaseContracts(page, testInfo, {
+      allowedRequestFailures: [/__vite_ping/i],
+    });
+
     await bootKiosk(page, { route: '/kiosk' });
     await expect(page.getByTestId('kiosk-action-execute-steps')).toBeVisible({ timeout: 15000 });
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (!contract) {
+      return;
+    }
+
+    await contract.assertNoFailures();
+    await page.waitForLoadState('load');
+    contract = undefined;
   });
 
   test('should navigate to user selection and show user cards', async ({ page }) => {
