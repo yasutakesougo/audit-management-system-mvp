@@ -76,6 +76,31 @@ export function AppShellV2({
         bgcolor: 'background.default',
       }}
     >
+      <Box
+        component="a"
+        href={`#${mainId}`}
+        data-testid="skip-to-main-link"
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          zIndex: 2000,
+          transform: 'translateY(-150%)',
+          px: 2,
+          py: 1,
+          backgroundColor: 'background.paper',
+          color: 'text.primary',
+          boxShadow: 2,
+          '&:focus': { transform: 'translateY(0)' },
+        }}
+        onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
+          event.preventDefault();
+          document.getElementById(mainId)?.focus();
+        }}
+      >
+        メインコンテンツへ移動
+      </Box>
+
       {/* Header */}
       <Box
         sx={{
