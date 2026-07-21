@@ -19,6 +19,7 @@
 ## `release_scope` 別の必要条件
 - `full`: `npm run test:ci:required`
 - `kiosk`: `npm run test:ci:kiosk-release`
+  - 先頭で`node --test scripts/ci/__tests__/deploy-cloudflare-worker-workflow-contract.spec.mjs`を実行
   - `tests/unit/runtimeEnvOverrides.spec.ts`
   - `tests/unit/env.runtime.spec.ts`
   - `src/app/AppShell.kiosk-route.spec.tsx`
@@ -27,10 +28,15 @@
   - `src/lib/__tests__/dataProviderObservabilityStore.spec.ts`
   - `src/features/kiosk/domain/__tests__/kioskProcedureMemo.spec.ts`
   - `src/features/daily/repositories/sharepoint/__tests__/executionRepositoryFactory.spec.ts`
-  - `tests/e2e/kiosk-home-smoke.spec.ts`
   - `tests/e2e/kiosk-user-selection.spec.ts`
   - `tests/e2e/kiosk-procedure-list.spec.ts`
   - `tests/e2e/kiosk-procedure-detail.spec.ts`
+  - `tests/e2e/kiosk-toilet.spec.ts`
+
+### トイレE2Eの保存区分
+- `kiosk-toilet.spec.ts`はmemory/localStorage providerで実行する。
+- SharePoint stubを経由する場合も、実SharePointまたは本番Workersへの保存証明として扱わない。
+- 保存後の`page.reload()`で記録表示と`RecordDate`が`2026-05-08`のまま再読込されることを確認する。
 
 ## 追加E2E契約
 - console error 0
@@ -42,7 +48,12 @@
 - キオスクルート検知（`/kiosk` または `?kiosk=` または AppShell の `data-kiosk="true"`）
 - data-provider 属性の確認
 
+## 未証明項目
+- タッチ端末専用の`hasTouch`挙動は未証明。
+- タッチスクロール専用のregressionは未証明。
+
 ## 補足
 - 本提案は production 環境への実デプロイ/分岐済み rollback 手順の変更は含まず。
+- 本runbookのkiosk E2Eはmemory/localStorageまたはSharePoint stubの検証であり、production保存証明ではない。
 - branch protection 変更は実施しない。
 - `production` 環境の `secrets`/`approvals` は別途設定が必要。
