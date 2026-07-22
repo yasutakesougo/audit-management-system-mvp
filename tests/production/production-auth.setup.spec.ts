@@ -23,7 +23,9 @@ const authWaitTimeout = Number(process.env.PRODUCTION_AUTH_TIMEOUT_MS ?? 180_000
 type AuthContextDiagnostics = {
   accountCount: number;
   activeAccountPresent: boolean;
-  signOutVisible: boolean;
+  kioskAppShellVisible: boolean;
+  kioskLayoutEnabled: boolean;
+  usersHeadingVisible: boolean;
   callbackRedirectObserved: boolean;
 };
 
@@ -40,6 +42,26 @@ async function isSignInScreenVisible(page: Page): Promise<boolean> {
     .first()
     .isVisible()
     .catch(() => false);
+}
+
+async function assertKioskAuthSurface(page: Page, timeout: number): Promise<{
+  kioskAppShellVisible: boolean;
+  kioskLayoutEnabled: boolean;
+  usersHeadingVisible: boolean;
+}> {
+  const appShell = page.getByTestId('app-shell');
+  await expect(appShell).toBeVisible({ timeout });
+  const kioskLayoutEnabled = (await appShell.getAttribute('data-kiosk')) === 'true';
+  expect(kioskLayoutEnabled).toBe(true);
+
+  const usersHeading = page.getByRole('heading', { name: '利用者を選択してください' });
+  await expect(usersHeading).toBeVisible({ timeout });
+
+  return {
+    kioskAppShellVisible: true,
+    kioskLayoutEnabled,
+    usersHeadingVisible: true,
+  };
 }
 
 function emptyGuardDiagnostics(): ProductionReadOnlyGuardDiagnostics {
@@ -89,13 +111,17 @@ test('create production Workers Entra storage state', async ({ page, context, br
     initial: {
       accountCount: 0,
       activeAccountPresent: false,
-      signOutVisible: false,
+      kioskAppShellVisible: false,
+      kioskLayoutEnabled: false,
+      usersHeadingVisible: false,
       callbackRedirectObserved: false,
     },
     replay: {
       accountCount: 0,
       activeAccountPresent: false,
-      signOutVisible: false,
+      kioskAppShellVisible: false,
+      kioskLayoutEnabled: false,
+      usersHeadingVisible: false,
       callbackRedirectObserved: false,
     },
   };
@@ -121,16 +147,9 @@ test('create production Workers Entra storage state', async ({ page, context, br
     });
     expect(initialResponse?.status()).toBe(200);
 
-    await expect(page.getByRole('button', { name: 'サインアウト' })).toBeVisible({
-      timeout: authWaitTimeout,
-    });
-    authReplay.initial.signOutVisible = true;
-    await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({
-      timeout: authWaitTimeout,
-    });
-
     expect(isAuthRedirect(page.url(), productionOrigin)).toBe(false);
     expect(new URL(page.url()).pathname).toBe('/kiosk');
+    expect(await isSignInScreenVisible(page)).toBe(false);
     const initialSnapshot = await readSafeMsalSnapshot(page);
     authReplay.initial.accountCount = initialSnapshot.accountCount;
     authReplay.initial.activeAccountPresent = initialSnapshot.activeAccountPresent;
@@ -138,6 +157,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(initialSnapshot.accountCount).toBeGreaterThanOrEqual(1);
     expect(initialSnapshot.activeAccountPresent).toBe(true);
     expect(initialCallbackRedirectObserved).toBe(false);
+    Object.assign(
+      authReplay.initial,
+      await assertKioskAuthSurface(page, authWaitTimeout),
+    );
 
     await mkdir(dirname(productionStorageState), { recursive: true });
     await context.storageState({ path: productionStorageState });
@@ -161,13 +184,6 @@ test('create production Workers Entra storage state', async ({ page, context, br
       timeout: 60_000,
     });
     expect(replayResponse?.status()).toBe(200);
-    await expect(replayPage.getByRole('button', { name: 'サインアウト' })).toBeVisible({
-      timeout: 30_000,
-    });
-    authReplay.replay.signOutVisible = true;
-    await expect(replayPage.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({
-      timeout: 30_000,
-    });
     expect(isAuthRedirect(replayPage.url(), productionOrigin)).toBe(false);
     expect(new URL(replayPage.url()).pathname).toBe('/kiosk');
     expect(await isSignInScreenVisible(replayPage)).toBe(false);
@@ -179,6 +195,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(authReplay.replay.accountCount).toBeGreaterThanOrEqual(1);
     expect(authReplay.replay.activeAccountPresent).toBe(true);
     expect(authReplay.replay.callbackRedirectObserved).toBe(false);
+    Object.assign(
+      authReplay.replay,
+      await assertKioskAuthSurface(replayPage, 30_000),
+    );
 
     const initialGuardDiagnostics = initialGuard.getDiagnostics();
     const replayGuardDiagnostics = replayGuard.getDiagnostics();

@@ -10,6 +10,7 @@ import {
 const productionBaseURL =
   process.env.PRODUCTION_BASE_URL ??
   'https://audit-management-system-mvp.momosantanuki.workers.dev';
+const kioskDataReadyTimeout = 60_000;
 
 type SmokePhase =
   | 'authenticated-storage-state-reuse'
@@ -79,11 +80,23 @@ type SmokeDiagnostics = {
     freshContextCreated: boolean;
     accountCount: number;
     activeAccountPresent: boolean;
-    signOutVisible: boolean;
+    kioskAppShellVisible: boolean;
+    kioskLayoutEnabled: boolean;
+    usersHeadingVisible: boolean;
     callbackRedirectObserved: boolean;
   };
+  dataReadiness: {
+    timeoutMs: number;
+    elapsedMs: number;
+    httpStatuses: number[];
+    progressbarVisible: boolean;
+    usersHeadingVisible: boolean;
+    userCardVisible: boolean;
+    loadErrorVisible: boolean;
+  };
   functional: {
-    kioskHeadingVisible: boolean;
+    kioskAppShellVisible: boolean;
+    usersHeadingVisible: boolean;
     toiletHeadingVisible: boolean;
     recordsSectionVisible: boolean;
     reloadToiletHeadingVisible: boolean;
@@ -124,6 +137,40 @@ function isTransitionOrReloadPhase(phase: SmokePhase): boolean {
   return phase.includes('goto') || phase.includes('reload');
 }
 
+async function isSignInScreenVisible(page: Page): Promise<boolean> {
+  return page
+    .locator('input[name="loginfmt"], input[type="email"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+}
+
+async function readKioskDataReadiness(page: Page, startedAt: number): Promise<{
+  elapsedMs: number;
+  progressbarVisible: boolean;
+  usersHeadingVisible: boolean;
+  userCardVisible: boolean;
+  loadErrorVisible: boolean;
+}> {
+  return {
+    elapsedMs: Date.now() - startedAt,
+    progressbarVisible: await page.getByRole('progressbar').first().isVisible().catch(() => false),
+    usersHeadingVisible: await page
+      .getByRole('heading', { name: '利用者を選択してください' })
+      .isVisible()
+      .catch(() => false),
+    userCardVisible: await page
+      .locator('[data-testid^="kiosk-user-card-"]')
+      .first()
+      .isVisible()
+      .catch(() => false),
+    loadErrorVisible: await page
+      .getByText('利用者の読み込みに失敗しました', { exact: true })
+      .isVisible()
+      .catch(() => false),
+  };
+}
+
 function channelKey(channel: Pick<ChannelAttempt, 'method' | 'host' | 'path' | 'resourceType'>): string {
   return [channel.method, channel.host, channel.path, channel.resourceType].join('|');
 }
@@ -145,7 +192,7 @@ function finalizeChannelAttempts(diagnostics: SmokeDiagnostics): void {
       channel.subsequentConnectionSucceeded &&
       diagnostics.firebaseAuthErrors.length === 0 &&
       diagnostics.firebaseAuthSuccessLogs.length > 0 &&
-      diagnostics.functional.kioskHeadingVisible &&
+      diagnostics.functional.usersHeadingVisible &&
       diagnostics.functional.toiletHeadingVisible &&
       diagnostics.functional.recordsSectionVisible &&
       diagnostics.functional.reloadToiletHeadingVisible &&
@@ -172,11 +219,23 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
       freshContextCreated: true,
       accountCount: 0,
       activeAccountPresent: false,
-      signOutVisible: false,
+      kioskAppShellVisible: false,
+      kioskLayoutEnabled: false,
+      usersHeadingVisible: false,
       callbackRedirectObserved: false,
     },
+    dataReadiness: {
+      timeoutMs: kioskDataReadyTimeout,
+      elapsedMs: 0,
+      httpStatuses: [],
+      progressbarVisible: false,
+      usersHeadingVisible: false,
+      userCardVisible: false,
+      loadErrorVisible: false,
+    },
     functional: {
-      kioskHeadingVisible: false,
+      kioskAppShellVisible: false,
+      usersHeadingVisible: false,
       toiletHeadingVisible: false,
       recordsSectionVisible: false,
       reloadToiletHeadingVisible: false,
@@ -389,23 +448,42 @@ test('production read-only kiosk smoke collects all browser failure channels', a
       timeout: 60_000,
     });
     expect(kioskResponse?.status()).toBe(200);
-    await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({
-      timeout: 30_000,
-    });
-    diagnostics.functional.kioskHeadingVisible = true;
-    diagnostics.authReplay.signOutVisible = await page
-      .getByRole('button', { name: 'サインアウト' })
-      .isVisible()
-      .catch(() => false);
+    if (kioskResponse) diagnostics.dataReadiness.httpStatuses.push(kioskResponse.status());
+    expect(new URL(page.url()).pathname).toBe('/kiosk');
     const authSnapshot = await readSafeMsalSnapshot(page);
     diagnostics.authReplay.accountCount = authSnapshot.accountCount;
     diagnostics.authReplay.activeAccountPresent = authSnapshot.activeAccountPresent;
     diagnostics.authReplay.callbackRedirectObserved = callbackRedirectObserved;
-    expect(diagnostics.authReplay.signOutVisible).toBe(true);
     expect(diagnostics.authReplay.accountCount).toBeGreaterThanOrEqual(1);
     expect(diagnostics.authReplay.activeAccountPresent).toBe(true);
     expect(diagnostics.authReplay.callbackRedirectObserved).toBe(false);
-    expect(await page.locator('input[name="loginfmt"], input[type="email"]').first().isVisible().catch(() => false)).toBe(false);
+    expect(await isSignInScreenVisible(page)).toBe(false);
+
+    const appShell = page.getByTestId('app-shell');
+    await expect(appShell).toBeVisible({ timeout: 30_000 });
+    diagnostics.authReplay.kioskAppShellVisible = true;
+    diagnostics.functional.kioskAppShellVisible = true;
+    diagnostics.authReplay.kioskLayoutEnabled = (await appShell.getAttribute('data-kiosk')) === 'true';
+    expect(diagnostics.authReplay.kioskLayoutEnabled).toBe(true);
+    const usersHeading = page.getByRole('heading', { name: '利用者を選択してください' });
+    await expect(usersHeading).toBeVisible({ timeout: 30_000 });
+    diagnostics.authReplay.usersHeadingVisible = true;
+    diagnostics.functional.usersHeadingVisible = true;
+
+    const dataReadyStartedAt = Date.now();
+    await expect
+      .poll(
+        async () => {
+          const readiness = await readKioskDataReadiness(page, dataReadyStartedAt);
+          Object.assign(diagnostics.dataReadiness, readiness);
+          return !readiness.progressbarVisible && (readiness.userCardVisible || readiness.loadErrorVisible);
+        },
+        {
+          timeout: kioskDataReadyTimeout,
+          message: 'kiosk data readiness timeout',
+        },
+      )
+      .toBe(true);
     diagnostics.phase = 'kiosk-goto-after';
 
     diagnostics.phase = 'toilet-goto-before';
@@ -414,6 +492,7 @@ test('production read-only kiosk smoke collects all browser failure channels', a
       timeout: 60_000,
     });
     expect(toiletResponse?.status()).toBe(200);
+    if (toiletResponse) diagnostics.dataReadiness.httpStatuses.push(toiletResponse.status());
     await expect(page.getByRole('heading', { name: '本日のトイレ確認' })).toBeVisible({
       timeout: 30_000,
     });
@@ -428,7 +507,8 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     await page.waitForTimeout(30_000);
     diagnostics.phase = 'wait-30s-after';
     diagnostics.phase = 'reload-before';
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+    const reloadResponse = await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+    if (reloadResponse) diagnostics.dataReadiness.httpStatuses.push(reloadResponse.status());
     await expect(page.getByRole('heading', { name: '本日のトイレ確認' })).toBeVisible({
       timeout: 30_000,
     });
