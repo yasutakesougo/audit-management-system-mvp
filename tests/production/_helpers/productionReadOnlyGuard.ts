@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE']);
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -12,6 +12,8 @@ export type MutationAttemptSummary = {
   path: string;
   xHttpMethodPresent: boolean;
   xHttpMethodType: XHttpMethodType;
+  xHttpMethodOverridePresent: boolean;
+  xHttpMethodOverrideType: XHttpMethodType;
 };
 
 export type ProductionReadOnlyGuardDiagnostics = {
@@ -44,11 +46,21 @@ export function isAuthRedirect(rawURL: string, productionOrigin: string): boolea
 }
 
 function isSharePointHost(host: string): boolean {
-  return host.endsWith('.sharepoint.com');
+  return host.toLowerCase().endsWith('.sharepoint.com');
+}
+
+function normalizePath(pathname: string): string {
+  const normalized = pathname.toLowerCase().replace(/\/+$/, '');
+  return normalized || '/';
 }
 
 function isSpProxy(url: URL, productionOrigin: string): boolean {
-  return url.origin === productionOrigin && url.pathname === '/api/sp-proxy';
+  const pathname = normalizePath(url.pathname);
+  const proxyPath = '/api/sp-proxy';
+  return (
+    url.origin === productionOrigin &&
+    (pathname === proxyPath || pathname.startsWith(`${proxyPath}/`))
+  );
 }
 
 function isFirebaseExchange(url: URL, productionOrigin: string): boolean {
@@ -62,20 +74,38 @@ function isFirestoreReadChannel(url: URL): boolean {
   );
 }
 
-function getXHttpMethodType(headers: Record<string, string>): XHttpMethodType {
-  const value = headers['x-http-method']?.trim().toUpperCase();
-  if (!value) return 'none';
-  if (value === 'MERGE') return 'MERGE';
-  if (value === 'DELETE') return 'DELETE';
-  return 'other';
+export function isProductionSharePointRequest(
+  rawURL: string,
+  productionOrigin: string,
+): boolean {
+  try {
+    const url = new URL(rawURL);
+    return isSpProxy(url, productionOrigin) || isSharePointHost(url.host);
+  } catch {
+    return false;
+  }
 }
 
-function isMutation(method: string, xHttpMethodType: XHttpMethodType): boolean {
-  return MUTATION_METHODS.has(method) || xHttpMethodType === 'MERGE' || xHttpMethodType === 'DELETE';
+type MethodOverride = {
+  present: boolean;
+  type: XHttpMethodType;
+};
+
+function getMethodOverride(headers: Record<string, string>, headerName: string): MethodOverride {
+  const present = Object.prototype.hasOwnProperty.call(headers, headerName);
+  const value = headers[headerName]?.trim().toUpperCase();
+  if (!value) return { present, type: 'none' };
+  if (value === 'MERGE') return { present, type: 'MERGE' };
+  if (value === 'DELETE') return { present, type: 'DELETE' };
+  return { present, type: 'other' };
+}
+
+function isMutation(method: string, ...overrides: MethodOverride[]): boolean {
+  return MUTATION_METHODS.has(method) || overrides.some(({ type }) => type !== 'none');
 }
 
 export async function installProductionReadOnlyGuard(
-  page: Page,
+  context: BrowserContext,
   options: GuardOptions,
 ): Promise<{ getDiagnostics: () => ProductionReadOnlyGuardDiagnostics }> {
   const diagnostics: ProductionReadOnlyGuardDiagnostics = {
@@ -85,12 +115,13 @@ export async function installProductionReadOnlyGuard(
     mutationAttemptSummaries: [],
   };
 
-  await page.route('**/*', async (route) => {
+  await context.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method().toUpperCase();
     const headers = request.headers();
-    const xHttpMethodType = getXHttpMethodType(headers);
+    const xHttpMethod = getMethodOverride(headers, 'x-http-method');
+    const xHttpMethodOverride = getMethodOverride(headers, 'x-http-method-override');
 
     // Authentication and Firebase/Firestore transport are not SharePoint writes.
     if (
@@ -103,14 +134,14 @@ export async function installProductionReadOnlyGuard(
     }
 
     const isSharePointRequest =
-      isSpProxy(url, options.productionOrigin) || isSharePointHost(url.host);
+      isProductionSharePointRequest(url.toString(), options.productionOrigin);
 
     if (!isSharePointRequest) {
       await route.continue();
       return;
     }
 
-    if (isMutation(method, xHttpMethodType)) {
+    if (isMutation(method, xHttpMethod, xHttpMethodOverride)) {
       diagnostics.mutationAttempts += 1;
       diagnostics.mutationAttemptsBlocked += 1;
       diagnostics.mutationAttemptSummaries.push({
@@ -118,14 +149,20 @@ export async function installProductionReadOnlyGuard(
         method,
         host: url.host,
         path: url.pathname,
-        xHttpMethodPresent: xHttpMethodType !== 'none',
-        xHttpMethodType,
+        xHttpMethodPresent: xHttpMethod.present,
+        xHttpMethodType: xHttpMethod.type,
+        xHttpMethodOverridePresent: xHttpMethodOverride.present,
+        xHttpMethodOverrideType: xHttpMethodOverride.type,
       });
       await route.abort('blockedbyclient');
       return;
     }
 
-    if (READ_METHODS.has(method) && xHttpMethodType === 'none') {
+    if (
+      READ_METHODS.has(method) &&
+      xHttpMethod.type === 'none' &&
+      xHttpMethodOverride.type === 'none'
+    ) {
       diagnostics.readRequests += 1;
     }
 
@@ -155,26 +192,4 @@ export async function readSafeMsalSnapshot(page: Page): Promise<SafeMsalSnapshot
       activeAccountPresent: Boolean(instance?.getActiveAccount?.()),
     };
   });
-}
-
-export function mergeProductionReadOnlyGuardDiagnostics(
-  ...snapshots: ProductionReadOnlyGuardDiagnostics[]
-): ProductionReadOnlyGuardDiagnostics {
-  return snapshots.reduce<ProductionReadOnlyGuardDiagnostics>(
-    (merged, snapshot) => ({
-      readRequests: merged.readRequests + snapshot.readRequests,
-      mutationAttempts: merged.mutationAttempts + snapshot.mutationAttempts,
-      mutationAttemptsBlocked: merged.mutationAttemptsBlocked + snapshot.mutationAttemptsBlocked,
-      mutationAttemptSummaries: [
-        ...merged.mutationAttemptSummaries,
-        ...snapshot.mutationAttemptSummaries,
-      ],
-    }),
-    {
-      readRequests: 0,
-      mutationAttempts: 0,
-      mutationAttemptsBlocked: 0,
-      mutationAttemptSummaries: [],
-    },
-  );
 }

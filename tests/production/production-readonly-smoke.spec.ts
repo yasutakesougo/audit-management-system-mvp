@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test';
 import {
   installProductionReadOnlyGuard,
+  isProductionSharePointRequest,
   isAuthRedirect,
   readSafeMsalSnapshot,
   type ProductionReadOnlyGuardDiagnostics,
@@ -311,11 +312,14 @@ async function attachDiagnostics(
   testInfo: TestInfo,
   guardDiagnostics: ProductionReadOnlyGuardDiagnostics,
 ): Promise<void> {
-  const productionHost = new URL(productionBaseURL).host;
+  const productionOrigin = new URL(productionBaseURL).origin;
+  const productionProtocol = new URL(productionBaseURL).protocol;
   const sharePointHttpErrors = diagnostics.httpErrors.filter(
     (error) =>
-      (error.host === productionHost && error.path === '/api/sp-proxy') ||
-      error.host.endsWith('.sharepoint.com'),
+      isProductionSharePointRequest(
+        `${productionProtocol}//${error.host}${error.path}`,
+        productionOrigin,
+      ),
   );
   const payload = {
     ...diagnostics,
@@ -364,7 +368,7 @@ async function attachDiagnostics(
   });
 }
 
-test('production read-only kiosk smoke collects all browser failure channels', async ({ page }, testInfo) => {
+test('production read-only kiosk smoke collects all browser failure channels', async ({ page, context }, testInfo) => {
   const diagnostics = installProductionDiagnostics(page);
   const productionOrigin = new URL(productionBaseURL).origin;
   let callbackRedirectObserved = false;
@@ -373,7 +377,7 @@ test('production read-only kiosk smoke collects all browser failure channels', a
       callbackRedirectObserved = true;
     }
   });
-  const readOnlyGuard = await installProductionReadOnlyGuard(page, {
+  const readOnlyGuard = await installProductionReadOnlyGuard(context, {
     productionOrigin,
     getPhase: () => diagnostics.phase,
   });

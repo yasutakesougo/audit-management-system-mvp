@@ -334,7 +334,10 @@ git status --short clean: yes / no
 
 - Entra/MFA認証は、別途承認された場合だけ本番Workers origin上のheadedブラウザで手動完了する
 - `production-auth-setup`は最初に`/kiosk`へ移動し、`/`を開かない
-- 最初のgoto前にSharePoint mutation guardを設定し、`/api/sp-proxy`および`*.sharepoint.com`の書き込みを遮断する
+- 最初のgoto前にBrowserContext全体へSharePoint mutation guardを設定し、popup・新規page・同一context内の全通信を監視する
+- replay contextでは`newPage()`より前にguardを設定し、Playwright設定の`serviceWorkers: 'block'`でService Worker経由の未捕捉通信を防ぐ
+- `/api/sp-proxy`は大文字小文字、末尾slash、配下pathの表記揺れを正規化して判定する
+- `X-HTTP-Method`と`X-HTTP-Method-Override`のMERGE/DELETEおよび非空の未知値はfail-closedで遮断する
 - `production-auth-setup`が`/auth/callback`または旧`/callback`から離れ、`/kiosk`を表示できた場合だけstorageStateを作成する
 - storageState保存後はfresh contextへ再読込し、account数、active account、サインアウト表示、callback遷移を再確認する
 - `tests/.auth/production-storageState.json`はGit管理、artifact、ログ、PR、画面キャプチャへ含めない
@@ -373,8 +376,10 @@ authReplay.accountCount: 1以上
 authReplay.activeAccountPresent: true
 authReplay.signOutVisible: true
 authReplay.callbackRedirectObserved: false
-sharePoint.mutationAttempts: 0
-sharePoint.mutationAttemptsBlocked: 0
+sharePoint.initial.mutationAttempts: 0
+sharePoint.initial.mutationAttemptsBlocked: 0
+sharePoint.replay.mutationAttempts: 0
+sharePoint.replay.mutationAttemptsBlocked: 0
 storageState: 削除済み
 ```
 
@@ -386,7 +391,7 @@ mutationが1件でも検出された場合は、次の専用failureでFAILとす
 production read-only violation: SharePoint mutation request attempted
 ```
 
-診断artifactにはmethod、host、pathname、phase、X-HTTP-Methodの有無/type、件数だけを記録する。token、Cookie、Authorization、storageState内容、request body、query、fragment、メールアドレス、ユーザーIDは記録しない。
+診断artifactにはphase、method、host、pathname、X-HTTP-MethodおよびX-HTTP-Method-Overrideの有無/type、件数だけを記録する。auth setupではinitial/replayを分離する。token、Cookie、Authorization、storageState内容、request body、query、fragment、メールアドレス、ユーザーIDは記録しない。
 
 Gate 4AがPASSしても、専用テスト対象への保存・reload後再読込を確認するGate 4Bは別判定とし、安全なテストデータが用意されるまでHOLDとする。PR #2514のmerge後も、deploy前に新しいVersionに対するread-only証跡を別途確認する。
 
@@ -401,6 +406,7 @@ Gate 4B 保存・再読込: HOLD
 Gate 3 revision/SHA対応: 未実施
 
 PR #2514: Draft HOLD
+Agent B guard監査: 新headの`RESMOKE-READY-CANDIDATE`待ち
 production deploy: NO-GO
 ```
 

@@ -10,7 +10,6 @@ import {
 import {
   installProductionReadOnlyGuard,
   isAuthRedirect,
-  mergeProductionReadOnlyGuardDiagnostics,
   readSafeMsalSnapshot,
   type ProductionReadOnlyGuardDiagnostics,
 } from './_helpers/productionReadOnlyGuard';
@@ -21,13 +20,18 @@ const productionBaseURL =
 const productionStorageState = 'tests/.auth/production-storageState.json';
 const authWaitTimeout = Number(process.env.PRODUCTION_AUTH_TIMEOUT_MS ?? 180_000);
 
-type AuthReplayDiagnostics = {
-  storageStateCreated: boolean;
-  freshContextCreated: boolean;
+type AuthContextDiagnostics = {
   accountCount: number;
   activeAccountPresent: boolean;
   signOutVisible: boolean;
   callbackRedirectObserved: boolean;
+};
+
+type AuthReplayDiagnostics = {
+  storageStateCreated: boolean;
+  freshContextCreated: boolean;
+  initial: AuthContextDiagnostics;
+  replay: AuthContextDiagnostics;
 };
 
 async function isSignInScreenVisible(page: Page): Promise<boolean> {
@@ -50,13 +54,17 @@ function emptyGuardDiagnostics(): ProductionReadOnlyGuardDiagnostics {
 async function attachAuthDiagnostics(
   testInfo: TestInfo,
   authReplay: AuthReplayDiagnostics,
-  guardDiagnostics: ProductionReadOnlyGuardDiagnostics,
+  initialGuardDiagnostics: ProductionReadOnlyGuardDiagnostics,
+  replayGuardDiagnostics: ProductionReadOnlyGuardDiagnostics,
 ): Promise<void> {
   await testInfo.attach('production-auth-replay.json', {
     body: JSON.stringify(
       {
         authReplay,
-        sharePoint: guardDiagnostics,
+        sharePoint: {
+          initial: initialGuardDiagnostics,
+          replay: replayGuardDiagnostics,
+        },
         policy: {
           accountAttributes: 'not-recorded',
           credentials: 'not-recorded',
@@ -78,10 +86,18 @@ test('create production Workers Entra storage state', async ({ page, context, br
   const authReplay: AuthReplayDiagnostics = {
     storageStateCreated: false,
     freshContextCreated: false,
-    accountCount: 0,
-    activeAccountPresent: false,
-    signOutVisible: false,
-    callbackRedirectObserved: false,
+    initial: {
+      accountCount: 0,
+      activeAccountPresent: false,
+      signOutVisible: false,
+      callbackRedirectObserved: false,
+    },
+    replay: {
+      accountCount: 0,
+      activeAccountPresent: false,
+      signOutVisible: false,
+      callbackRedirectObserved: false,
+    },
   };
   let initialGuard: Awaited<ReturnType<typeof installProductionReadOnlyGuard>> | undefined;
   let replayGuard: Awaited<ReturnType<typeof installProductionReadOnlyGuard>> | undefined;
@@ -89,9 +105,15 @@ test('create production Workers Entra storage state', async ({ page, context, br
 
   try {
     // The headed page remains available for manual Entra/MFA completion. Root is intentionally excluded.
-    initialGuard = await installProductionReadOnlyGuard(page, {
+    initialGuard = await installProductionReadOnlyGuard(context, {
       productionOrigin,
       getPhase: () => 'auth-setup-kiosk',
+    });
+    let initialCallbackRedirectObserved = false;
+    page.on('framenavigated', (frame) => {
+      if (frame === page.mainFrame() && isAuthRedirect(frame.url(), productionOrigin)) {
+        initialCallbackRedirectObserved = true;
+      }
     });
     const initialResponse = await page.goto(`${productionBaseURL}/kiosk`, {
       waitUntil: 'domcontentloaded',
@@ -102,7 +124,7 @@ test('create production Workers Entra storage state', async ({ page, context, br
     await expect(page.getByRole('button', { name: 'サインアウト' })).toBeVisible({
       timeout: authWaitTimeout,
     });
-    authReplay.signOutVisible = true;
+    authReplay.initial.signOutVisible = true;
     await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({
       timeout: authWaitTimeout,
     });
@@ -110,8 +132,12 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(isAuthRedirect(page.url(), productionOrigin)).toBe(false);
     expect(new URL(page.url()).pathname).toBe('/kiosk');
     const initialSnapshot = await readSafeMsalSnapshot(page);
+    authReplay.initial.accountCount = initialSnapshot.accountCount;
+    authReplay.initial.activeAccountPresent = initialSnapshot.activeAccountPresent;
+    authReplay.initial.callbackRedirectObserved = initialCallbackRedirectObserved;
     expect(initialSnapshot.accountCount).toBeGreaterThanOrEqual(1);
     expect(initialSnapshot.activeAccountPresent).toBe(true);
+    expect(initialCallbackRedirectObserved).toBe(false);
 
     await mkdir(dirname(productionStorageState), { recursive: true });
     await context.storageState({ path: productionStorageState });
@@ -119,6 +145,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
 
     replayContext = await browser.newContext({ storageState: productionStorageState });
     authReplay.freshContextCreated = true;
+    replayGuard = await installProductionReadOnlyGuard(replayContext, {
+      productionOrigin,
+      getPhase: () => 'auth-replay-kiosk',
+    });
     const replayPage = await replayContext.newPage();
     let replayCallbackRedirectObserved = false;
     replayPage.on('framenavigated', (frame) => {
@@ -126,11 +156,6 @@ test('create production Workers Entra storage state', async ({ page, context, br
         replayCallbackRedirectObserved = true;
       }
     });
-    replayGuard = await installProductionReadOnlyGuard(replayPage, {
-      productionOrigin,
-      getPhase: () => 'auth-replay-kiosk',
-    });
-
     const replayResponse = await replayPage.goto(`${productionBaseURL}/kiosk`, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
@@ -139,7 +164,7 @@ test('create production Workers Entra storage state', async ({ page, context, br
     await expect(replayPage.getByRole('button', { name: 'サインアウト' })).toBeVisible({
       timeout: 30_000,
     });
-    authReplay.signOutVisible = true;
+    authReplay.replay.signOutVisible = true;
     await expect(replayPage.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({
       timeout: 30_000,
     });
@@ -148,22 +173,30 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(await isSignInScreenVisible(replayPage)).toBe(false);
 
     const replaySnapshot = await readSafeMsalSnapshot(replayPage);
-    authReplay.accountCount = replaySnapshot.accountCount;
-    authReplay.activeAccountPresent = replaySnapshot.activeAccountPresent;
-    authReplay.callbackRedirectObserved = replayCallbackRedirectObserved;
-    expect(authReplay.accountCount).toBeGreaterThanOrEqual(1);
-    expect(authReplay.activeAccountPresent).toBe(true);
-    expect(authReplay.callbackRedirectObserved).toBe(false);
+    authReplay.replay.accountCount = replaySnapshot.accountCount;
+    authReplay.replay.activeAccountPresent = replaySnapshot.activeAccountPresent;
+    authReplay.replay.callbackRedirectObserved = replayCallbackRedirectObserved;
+    expect(authReplay.replay.accountCount).toBeGreaterThanOrEqual(1);
+    expect(authReplay.replay.activeAccountPresent).toBe(true);
+    expect(authReplay.replay.callbackRedirectObserved).toBe(false);
+
+    const initialGuardDiagnostics = initialGuard.getDiagnostics();
+    const replayGuardDiagnostics = replayGuard.getDiagnostics();
+    expect(
+      initialGuardDiagnostics.mutationAttempts,
+      'production read-only violation: SharePoint mutation request attempted',
+    ).toBe(0);
+    expect(
+      replayGuardDiagnostics.mutationAttempts,
+      'production read-only violation: SharePoint mutation request attempted',
+    ).toBe(0);
   } finally {
-    const guardDiagnostics = mergeProductionReadOnlyGuardDiagnostics(
+    await attachAuthDiagnostics(
+      testInfo,
+      authReplay,
       initialGuard?.getDiagnostics() ?? emptyGuardDiagnostics(),
       replayGuard?.getDiagnostics() ?? emptyGuardDiagnostics(),
     );
-    expect(
-      guardDiagnostics.mutationAttempts,
-      'production read-only violation: SharePoint mutation request attempted',
-    ).toBe(0);
-    await attachAuthDiagnostics(testInfo, authReplay, guardDiagnostics);
     await replayContext?.close();
   }
 });
