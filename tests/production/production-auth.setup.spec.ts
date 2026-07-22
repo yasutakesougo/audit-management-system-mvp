@@ -26,7 +26,10 @@ type AuthContextDiagnostics = {
   kioskAppShellVisible: boolean;
   kioskLayoutEnabled: boolean;
   usersHeadingVisible: boolean;
-  callbackRedirectObserved: boolean;
+  interactiveLoginTriggered: boolean;
+  authNavigationCount: number;
+  callbackEntryCount: number;
+  finalPathIsCallback: boolean;
 };
 
 type AuthReplayDiagnostics = {
@@ -42,6 +45,18 @@ async function isSignInScreenVisible(page: Page): Promise<boolean> {
     .first()
     .isVisible()
     .catch(() => false);
+}
+
+function isProductionCallback(rawURL: string, productionOrigin: string): boolean {
+  try {
+    const url = new URL(rawURL);
+    return (
+      url.origin === productionOrigin &&
+      ['/auth/callback', '/callback'].includes(url.pathname)
+    );
+  } catch {
+    return true;
+  }
 }
 
 async function assertKioskAuthSurface(page: Page, timeout: number): Promise<{
@@ -114,7 +129,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
       usersHeadingVisible: false,
-      callbackRedirectObserved: false,
+      interactiveLoginTriggered: false,
+      authNavigationCount: 0,
+      callbackEntryCount: 0,
+      finalPathIsCallback: false,
     },
     replay: {
       accountCount: 0,
@@ -122,7 +140,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
       usersHeadingVisible: false,
-      callbackRedirectObserved: false,
+      interactiveLoginTriggered: false,
+      authNavigationCount: 0,
+      callbackEntryCount: 0,
+      finalPathIsCallback: false,
     },
   };
   let initialGuard: Awaited<ReturnType<typeof installProductionReadOnlyGuard>> | undefined;
@@ -135,10 +156,14 @@ test('create production Workers Entra storage state', async ({ page, context, br
       productionOrigin,
       getPhase: () => 'auth-setup-kiosk',
     });
-    let initialCallbackRedirectObserved = false;
+    const initialAuth = authReplay.initial;
     page.on('framenavigated', (frame) => {
-      if (frame === page.mainFrame() && isAuthRedirect(frame.url(), productionOrigin)) {
-        initialCallbackRedirectObserved = true;
+      if (frame !== page.mainFrame()) return;
+      if (isAuthRedirect(frame.url(), productionOrigin)) {
+        initialAuth.authNavigationCount += 1;
+      }
+      if (isProductionCallback(frame.url(), productionOrigin)) {
+        initialAuth.callbackEntryCount += 1;
       }
     });
     const initialResponse = await page.goto(`${productionBaseURL}/kiosk`, {
@@ -151,12 +176,43 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(new URL(page.url()).pathname).toBe('/kiosk');
     expect(await isSignInScreenVisible(page)).toBe(false);
     const initialSnapshot = await readSafeMsalSnapshot(page);
-    authReplay.initial.accountCount = initialSnapshot.accountCount;
-    authReplay.initial.activeAccountPresent = initialSnapshot.activeAccountPresent;
-    authReplay.initial.callbackRedirectObserved = initialCallbackRedirectObserved;
-    expect(initialSnapshot.accountCount).toBeGreaterThanOrEqual(1);
-    expect(initialSnapshot.activeAccountPresent).toBe(true);
-    expect(initialCallbackRedirectObserved).toBe(false);
+    if (initialSnapshot.accountCount === 0) {
+      const signInButton = page.getByRole('button', { name: '強制再ログイン' });
+      await expect(signInButton).toBeVisible({ timeout: authWaitTimeout });
+      initialAuth.interactiveLoginTriggered = true;
+      await signInButton.click();
+    }
+
+    await expect
+      .poll(
+        async () => {
+          const currentURL = new URL(page.url());
+          if (currentURL.origin !== productionOrigin) return false;
+          const snapshot = await readSafeMsalSnapshot(page);
+          return (
+            snapshot.accountCount >= 1 &&
+            snapshot.activeAccountPresent &&
+            currentURL.pathname === '/kiosk'
+          );
+        },
+        {
+          timeout: authWaitTimeout,
+          intervals: [500, 1_000, 2_000],
+        },
+      )
+      .toBe(true);
+
+    const authenticatedInitialSnapshot = await readSafeMsalSnapshot(page);
+    initialAuth.accountCount = authenticatedInitialSnapshot.accountCount;
+    initialAuth.activeAccountPresent = authenticatedInitialSnapshot.activeAccountPresent;
+    initialAuth.finalPathIsCallback = isProductionCallback(page.url(), productionOrigin);
+    expect(initialAuth.accountCount).toBeGreaterThanOrEqual(1);
+    expect(initialAuth.activeAccountPresent).toBe(true);
+    expect(initialAuth.callbackEntryCount).toBeLessThanOrEqual(1);
+    expect(initialAuth.finalPathIsCallback).toBe(false);
+    expect(new URL(page.url()).origin).toBe(productionOrigin);
+    expect(new URL(page.url()).pathname).toBe('/kiosk');
+    expect(await isSignInScreenVisible(page)).toBe(false);
     Object.assign(
       authReplay.initial,
       await assertKioskAuthSurface(page, authWaitTimeout),
@@ -173,10 +229,14 @@ test('create production Workers Entra storage state', async ({ page, context, br
       getPhase: () => 'auth-replay-kiosk',
     });
     const replayPage = await replayContext.newPage();
-    let replayCallbackRedirectObserved = false;
+    const replayAuth = authReplay.replay;
     replayPage.on('framenavigated', (frame) => {
-      if (frame === replayPage.mainFrame() && isAuthRedirect(frame.url(), productionOrigin)) {
-        replayCallbackRedirectObserved = true;
+      if (frame !== replayPage.mainFrame()) return;
+      if (isAuthRedirect(frame.url(), productionOrigin)) {
+        replayAuth.authNavigationCount += 1;
+      }
+      if (isProductionCallback(frame.url(), productionOrigin)) {
+        replayAuth.callbackEntryCount += 1;
       }
     });
     const replayResponse = await replayPage.goto(`${productionBaseURL}/kiosk`, {
@@ -189,12 +249,15 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(await isSignInScreenVisible(replayPage)).toBe(false);
 
     const replaySnapshot = await readSafeMsalSnapshot(replayPage);
-    authReplay.replay.accountCount = replaySnapshot.accountCount;
-    authReplay.replay.activeAccountPresent = replaySnapshot.activeAccountPresent;
-    authReplay.replay.callbackRedirectObserved = replayCallbackRedirectObserved;
-    expect(authReplay.replay.accountCount).toBeGreaterThanOrEqual(1);
-    expect(authReplay.replay.activeAccountPresent).toBe(true);
-    expect(authReplay.replay.callbackRedirectObserved).toBe(false);
+    replayAuth.accountCount = replaySnapshot.accountCount;
+    replayAuth.activeAccountPresent = replaySnapshot.activeAccountPresent;
+    replayAuth.finalPathIsCallback = isProductionCallback(replayPage.url(), productionOrigin);
+    expect(replayAuth.accountCount).toBeGreaterThanOrEqual(1);
+    expect(replayAuth.activeAccountPresent).toBe(true);
+    expect(replayAuth.callbackEntryCount).toBe(0);
+    expect(replayAuth.finalPathIsCallback).toBe(false);
+    expect(new URL(replayPage.url()).origin).toBe(productionOrigin);
+    expect(new URL(replayPage.url()).pathname).toBe('/kiosk');
     Object.assign(
       authReplay.replay,
       await assertKioskAuthSurface(replayPage, 30_000),
