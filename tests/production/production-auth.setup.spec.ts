@@ -30,7 +30,9 @@ type AuthContextDiagnostics = {
   usersHeadingVisible: boolean;
   interactiveLoginTriggered: boolean;
   authNavigationCount: number;
+  callbackNavigationEventCount: number;
   callbackEntryCount: number;
+  callbackLoopDetected: boolean;
   finalPathIsCallback: boolean;
 };
 
@@ -59,6 +61,69 @@ function isProductionCallback(rawURL: string, productionOrigin: string): boolean
   } catch {
     return true;
   }
+}
+
+type CallbackTracker = {
+  callbackNavigationEventCount: number;
+  callbackEntryCount: number;
+  callbackLoopDetected: boolean;
+  previousWasCallback: boolean;
+  returnedToKioskAfterCallback: boolean;
+};
+
+function createCallbackTracker(): CallbackTracker {
+  return {
+    callbackNavigationEventCount: 0,
+    callbackEntryCount: 0,
+    callbackLoopDetected: false,
+    previousWasCallback: false,
+    returnedToKioskAfterCallback: false,
+  };
+}
+
+function observeMainFrameNavigation(
+  tracker: CallbackTracker,
+  rawURL: string,
+  productionOrigin: string,
+): void {
+  const callback = isProductionCallback(rawURL, productionOrigin);
+
+  if (callback) {
+    tracker.callbackNavigationEventCount += 1;
+
+    if (!tracker.previousWasCallback) {
+      tracker.callbackEntryCount += 1;
+
+      if (tracker.returnedToKioskAfterCallback) {
+        tracker.callbackLoopDetected = true;
+      }
+    }
+  } else {
+    try {
+      const url = new URL(rawURL);
+
+      if (
+        tracker.callbackEntryCount > 0 &&
+        url.origin === productionOrigin &&
+        url.pathname === '/kiosk'
+      ) {
+        tracker.returnedToKioskAfterCallback = true;
+      }
+    } catch {
+      // Keep diagnostics scalar-only; do not retain malformed URLs.
+    }
+  }
+
+  tracker.previousWasCallback = callback;
+}
+
+function syncCallbackDiagnostics(
+  tracker: CallbackTracker,
+  diagnostics: AuthContextDiagnostics,
+): void {
+  diagnostics.callbackNavigationEventCount = tracker.callbackNavigationEventCount;
+  diagnostics.callbackEntryCount = tracker.callbackEntryCount;
+  diagnostics.callbackLoopDetected = tracker.callbackLoopDetected;
 }
 
 async function installProductionRealAuthMode(
@@ -165,7 +230,9 @@ test('create production Workers Entra storage state', async ({ page, context, br
       usersHeadingVisible: false,
       interactiveLoginTriggered: false,
       authNavigationCount: 0,
+      callbackNavigationEventCount: 0,
       callbackEntryCount: 0,
+      callbackLoopDetected: false,
       finalPathIsCallback: false,
     },
     replay: {
@@ -178,7 +245,9 @@ test('create production Workers Entra storage state', async ({ page, context, br
       usersHeadingVisible: false,
       interactiveLoginTriggered: false,
       authNavigationCount: 0,
+      callbackNavigationEventCount: 0,
       callbackEntryCount: 0,
+      callbackLoopDetected: false,
       finalPathIsCallback: false,
     },
   };
@@ -194,14 +263,14 @@ test('create production Workers Entra storage state', async ({ page, context, br
       getPhase: () => 'auth-setup-kiosk',
     });
     const initialAuth = authReplay.initial;
+    const initialCallbackTracker = createCallbackTracker();
     page.on('framenavigated', (frame) => {
       if (frame !== page.mainFrame()) return;
       if (isAuthRedirect(frame.url(), productionOrigin)) {
         initialAuth.authNavigationCount += 1;
       }
-      if (isProductionCallback(frame.url(), productionOrigin)) {
-        initialAuth.callbackEntryCount += 1;
-      }
+      observeMainFrameNavigation(initialCallbackTracker, frame.url(), productionOrigin);
+      syncCallbackDiagnostics(initialCallbackTracker, initialAuth);
     });
     const initialResponse = await page.goto(`${productionBaseURL}/kiosk`, {
       waitUntil: 'domcontentloaded',
@@ -248,9 +317,14 @@ test('create production Workers Entra storage state', async ({ page, context, br
     initialAuth.accountCount = authenticatedInitialSnapshot.accountCount;
     initialAuth.activeAccountPresent = authenticatedInitialSnapshot.activeAccountPresent;
     initialAuth.finalPathIsCallback = isProductionCallback(page.url(), productionOrigin);
+    syncCallbackDiagnostics(initialCallbackTracker, initialAuth);
     expect(initialAuth.accountCount).toBeGreaterThanOrEqual(1);
     expect(initialAuth.activeAccountPresent).toBe(true);
     expect(initialAuth.callbackEntryCount).toBeLessThanOrEqual(1);
+    if (initialAuth.interactiveLoginTriggered) {
+      expect(initialAuth.callbackEntryCount).toBe(1);
+    }
+    expect(initialAuth.callbackLoopDetected).toBe(false);
     expect(initialAuth.finalPathIsCallback).toBe(false);
     expect(new URL(page.url()).origin).toBe(productionOrigin);
     expect(new URL(page.url()).pathname).toBe('/kiosk');
@@ -273,14 +347,14 @@ test('create production Workers Entra storage state', async ({ page, context, br
     });
     const replayPage = await replayContext.newPage();
     const replayAuth = authReplay.replay;
+    const replayCallbackTracker = createCallbackTracker();
     replayPage.on('framenavigated', (frame) => {
       if (frame !== replayPage.mainFrame()) return;
       if (isAuthRedirect(frame.url(), productionOrigin)) {
         replayAuth.authNavigationCount += 1;
       }
-      if (isProductionCallback(frame.url(), productionOrigin)) {
-        replayAuth.callbackEntryCount += 1;
-      }
+      observeMainFrameNavigation(replayCallbackTracker, frame.url(), productionOrigin);
+      syncCallbackDiagnostics(replayCallbackTracker, replayAuth);
     });
     const replayResponse = await replayPage.goto(`${productionBaseURL}/kiosk`, {
       waitUntil: 'domcontentloaded',
@@ -300,9 +374,11 @@ test('create production Workers Entra storage state', async ({ page, context, br
     replayAuth.accountCount = replaySnapshot.accountCount;
     replayAuth.activeAccountPresent = replaySnapshot.activeAccountPresent;
     replayAuth.finalPathIsCallback = isProductionCallback(replayPage.url(), productionOrigin);
+    syncCallbackDiagnostics(replayCallbackTracker, replayAuth);
     expect(replayAuth.accountCount).toBeGreaterThanOrEqual(1);
     expect(replayAuth.activeAccountPresent).toBe(true);
     expect(replayAuth.callbackEntryCount).toBe(0);
+    expect(replayAuth.callbackLoopDetected).toBe(false);
     expect(replayAuth.finalPathIsCallback).toBe(false);
     expect(new URL(replayPage.url()).origin).toBe(productionOrigin);
     expect(new URL(replayPage.url()).pathname).toBe('/kiosk');
