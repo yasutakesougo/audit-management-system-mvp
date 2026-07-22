@@ -23,6 +23,8 @@ const authWaitTimeout = Number(process.env.PRODUCTION_AUTH_TIMEOUT_MS ?? 180_000
 type AuthContextDiagnostics = {
   accountCount: number;
   activeAccountPresent: boolean;
+  webdriver: boolean;
+  playwrightHintPresent: boolean;
   kioskAppShellVisible: boolean;
   kioskLayoutEnabled: boolean;
   usersHeadingVisible: boolean;
@@ -57,6 +59,36 @@ function isProductionCallback(rawURL: string, productionOrigin: string): boolean
   } catch {
     return true;
   }
+}
+
+async function installProductionRealAuthMode(
+  context: BrowserContext,
+  productionOrigin: string,
+): Promise<void> {
+  await context.addInitScript(
+    ({ origin }) => {
+      if (window.location.origin !== origin) return;
+
+      Object.defineProperty(Navigator.prototype, 'webdriver', {
+        configurable: true,
+        get: () => false,
+      });
+    },
+    { origin: productionOrigin },
+  );
+}
+
+async function readAutomationState(page: Page): Promise<{
+  webdriver: boolean;
+  playwrightHintPresent: boolean;
+}> {
+  return page.evaluate(() => {
+    const automationHints = window as Window & { __PLAYWRIGHT__?: unknown };
+    return {
+      webdriver: navigator.webdriver,
+      playwrightHintPresent: Boolean(automationHints.__PLAYWRIGHT__),
+    };
+  });
 }
 
 async function assertKioskAuthSurface(page: Page, timeout: number): Promise<{
@@ -126,6 +158,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
     initial: {
       accountCount: 0,
       activeAccountPresent: false,
+      webdriver: false,
+      playwrightHintPresent: false,
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
       usersHeadingVisible: false,
@@ -137,6 +171,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
     replay: {
       accountCount: 0,
       activeAccountPresent: false,
+      webdriver: false,
+      playwrightHintPresent: false,
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
       usersHeadingVisible: false,
@@ -152,6 +188,7 @@ test('create production Workers Entra storage state', async ({ page, context, br
 
   try {
     // The headed page remains available for manual Entra/MFA completion. Root is intentionally excluded.
+    await installProductionRealAuthMode(context, productionOrigin);
     initialGuard = await installProductionReadOnlyGuard(context, {
       productionOrigin,
       getPhase: () => 'auth-setup-kiosk',
@@ -175,6 +212,11 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(isAuthRedirect(page.url(), productionOrigin)).toBe(false);
     expect(new URL(page.url()).pathname).toBe('/kiosk');
     expect(await isSignInScreenVisible(page)).toBe(false);
+    const initialAutomationState = await readAutomationState(page);
+    authReplay.initial.webdriver = initialAutomationState.webdriver;
+    authReplay.initial.playwrightHintPresent = initialAutomationState.playwrightHintPresent;
+    expect(initialAutomationState.webdriver).toBe(false);
+    expect(initialAutomationState.playwrightHintPresent).toBe(false);
     const initialSnapshot = await readSafeMsalSnapshot(page);
     if (initialSnapshot.accountCount === 0) {
       const signInButton = page.getByRole('button', { name: '強制再ログイン' });
@@ -224,6 +266,7 @@ test('create production Workers Entra storage state', async ({ page, context, br
 
     replayContext = await browser.newContext({ storageState: productionStorageState });
     authReplay.freshContextCreated = true;
+    await installProductionRealAuthMode(replayContext, productionOrigin);
     replayGuard = await installProductionReadOnlyGuard(replayContext, {
       productionOrigin,
       getPhase: () => 'auth-replay-kiosk',
@@ -247,6 +290,11 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(isAuthRedirect(replayPage.url(), productionOrigin)).toBe(false);
     expect(new URL(replayPage.url()).pathname).toBe('/kiosk');
     expect(await isSignInScreenVisible(replayPage)).toBe(false);
+    const replayAutomationState = await readAutomationState(replayPage);
+    authReplay.replay.webdriver = replayAutomationState.webdriver;
+    authReplay.replay.playwrightHintPresent = replayAutomationState.playwrightHintPresent;
+    expect(replayAutomationState.webdriver).toBe(false);
+    expect(replayAutomationState.playwrightHintPresent).toBe(false);
 
     const replaySnapshot = await readSafeMsalSnapshot(replayPage);
     replayAuth.accountCount = replaySnapshot.accountCount;
