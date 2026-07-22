@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import {
   expect,
@@ -21,6 +21,10 @@ const productionStorageState = 'tests/.auth/production-storageState.json';
 const authWaitTimeout = Number(process.env.PRODUCTION_AUTH_TIMEOUT_MS ?? 180_000);
 
 type AuthContextDiagnostics = {
+  lastLocationState: SafeAuthLocation;
+  pollIterationCount: number;
+  authTimedOut: boolean;
+  signInScreenVisible: boolean;
   accountCount: number;
   activeAccountPresent: boolean;
   webdriver: boolean;
@@ -43,6 +47,13 @@ type AuthReplayDiagnostics = {
   replay: AuthContextDiagnostics;
 };
 
+type SafeAuthLocation =
+  | 'production-kiosk'
+  | 'production-callback'
+  | 'production-other'
+  | 'external-auth'
+  | 'unparseable';
+
 async function isSignInScreenVisible(page: Page): Promise<boolean> {
   return page
     .locator('input[name="loginfmt"], input[type="email"]')
@@ -60,6 +71,22 @@ function isProductionCallback(rawURL: string, productionOrigin: string): boolean
     );
   } catch {
     return true;
+  }
+}
+
+function classifySafeAuthLocation(
+  rawURL: string,
+  productionOrigin: string,
+): SafeAuthLocation {
+  try {
+    const url = new URL(rawURL);
+
+    if (url.origin !== productionOrigin) return 'external-auth';
+    if (isProductionCallback(rawURL, productionOrigin)) return 'production-callback';
+    if (url.pathname === '/kiosk') return 'production-kiosk';
+    return 'production-other';
+  } catch {
+    return 'unparseable';
   }
 }
 
@@ -191,28 +218,31 @@ async function attachAuthDiagnostics(
   initialGuardDiagnostics: ProductionReadOnlyGuardDiagnostics,
   replayGuardDiagnostics: ProductionReadOnlyGuardDiagnostics,
 ): Promise<void> {
+  const payload = {
+    authReplay,
+    sharePoint: {
+      initial: initialGuardDiagnostics,
+      replay: replayGuardDiagnostics,
+    },
+    policy: {
+      accountAttributes: 'not-recorded',
+      credentials: 'not-recorded',
+      storageState: 'not-recorded',
+      requestBody: 'not-recorded',
+      queryString: 'not-recorded',
+      fragment: 'not-recorded',
+    },
+  };
+  const body = JSON.stringify(payload, null, 2);
+
   await testInfo.attach('production-auth-replay.json', {
-    body: JSON.stringify(
-      {
-        authReplay,
-        sharePoint: {
-          initial: initialGuardDiagnostics,
-          replay: replayGuardDiagnostics,
-        },
-        policy: {
-          accountAttributes: 'not-recorded',
-          credentials: 'not-recorded',
-          storageState: 'not-recorded',
-          requestBody: 'not-recorded',
-          queryString: 'not-recorded',
-          fragment: 'not-recorded',
-        },
-      },
-      null,
-      2,
-    ),
+    body,
     contentType: 'application/json',
   });
+
+  const diagnosticPath = testInfo.outputPath('production-auth-replay.json');
+  await mkdir(dirname(diagnosticPath), { recursive: true });
+  await writeFile(diagnosticPath, body, 'utf8');
 }
 
 test('create production Workers Entra storage state', async ({ page, context, browser }, testInfo) => {
@@ -221,6 +251,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
     storageStateCreated: false,
     freshContextCreated: false,
     initial: {
+      lastLocationState: 'unparseable',
+      pollIterationCount: 0,
+      authTimedOut: false,
+      signInScreenVisible: false,
       accountCount: 0,
       activeAccountPresent: false,
       webdriver: false,
@@ -236,6 +270,10 @@ test('create production Workers Entra storage state', async ({ page, context, br
       finalPathIsCallback: false,
     },
     replay: {
+      lastLocationState: 'unparseable',
+      pollIterationCount: 0,
+      authTimedOut: false,
+      signInScreenVisible: false,
       accountCount: 0,
       activeAccountPresent: false,
       webdriver: false,
@@ -280,7 +318,9 @@ test('create production Workers Entra storage state', async ({ page, context, br
 
     expect(isAuthRedirect(page.url(), productionOrigin)).toBe(false);
     expect(new URL(page.url()).pathname).toBe('/kiosk');
-    expect(await isSignInScreenVisible(page)).toBe(false);
+    initialAuth.lastLocationState = classifySafeAuthLocation(page.url(), productionOrigin);
+    initialAuth.signInScreenVisible = await isSignInScreenVisible(page);
+    expect(initialAuth.signInScreenVisible).toBe(false);
     const initialAutomationState = await readAutomationState(page);
     authReplay.initial.webdriver = initialAutomationState.webdriver;
     authReplay.initial.playwrightHintPresent = initialAutomationState.playwrightHintPresent;
@@ -294,29 +334,69 @@ test('create production Workers Entra storage state', async ({ page, context, br
       await signInButton.click();
     }
 
-    await expect
-      .poll(
-        async () => {
-          const currentURL = new URL(page.url());
-          if (currentURL.origin !== productionOrigin) return false;
-          const snapshot = await readSafeMsalSnapshot(page);
-          return (
-            snapshot.accountCount >= 1 &&
-            snapshot.activeAccountPresent &&
-            currentURL.pathname === '/kiosk'
-          );
-        },
-        {
-          timeout: authWaitTimeout,
-          intervals: [500, 1_000, 2_000],
-        },
-      )
-      .toBe(true);
+    try {
+      await expect
+        .poll(
+          async () => {
+            initialAuth.pollIterationCount += 1;
+            const rawURL = page.url();
+            const currentURL = new URL(rawURL);
+            const snapshot = await readSafeMsalSnapshot(page).catch(() => ({
+              accountCount: 0,
+              activeAccountPresent: false,
+            }));
+            initialAuth.accountCount = snapshot.accountCount;
+            initialAuth.activeAccountPresent = snapshot.activeAccountPresent;
+            initialAuth.finalPathIsCallback = isProductionCallback(
+              rawURL,
+              productionOrigin,
+            );
+            initialAuth.lastLocationState = classifySafeAuthLocation(
+              rawURL,
+              productionOrigin,
+            );
+            initialAuth.signInScreenVisible = await isSignInScreenVisible(page);
+            syncCallbackDiagnostics(initialCallbackTracker, initialAuth);
+            if (currentURL.origin !== productionOrigin) return false;
+            return (
+              snapshot.accountCount >= 1 &&
+              snapshot.activeAccountPresent &&
+              currentURL.pathname === '/kiosk'
+            );
+          },
+          {
+            timeout: authWaitTimeout,
+            intervals: [500, 1_000, 2_000],
+          },
+        )
+        .toBe(true);
+    } catch (error) {
+      initialAuth.authTimedOut = true;
+      const finalSnapshot = await readSafeMsalSnapshot(page).catch(() => ({
+        accountCount: 0,
+        activeAccountPresent: false,
+      }));
+      initialAuth.accountCount = finalSnapshot.accountCount;
+      initialAuth.activeAccountPresent = finalSnapshot.activeAccountPresent;
+      initialAuth.finalPathIsCallback = isProductionCallback(
+        page.url(),
+        productionOrigin,
+      );
+      initialAuth.signInScreenVisible = await isSignInScreenVisible(page);
+      initialAuth.lastLocationState = classifySafeAuthLocation(
+        page.url(),
+        productionOrigin,
+      );
+      syncCallbackDiagnostics(initialCallbackTracker, initialAuth);
+      throw error;
+    }
 
     const authenticatedInitialSnapshot = await readSafeMsalSnapshot(page);
     initialAuth.accountCount = authenticatedInitialSnapshot.accountCount;
     initialAuth.activeAccountPresent = authenticatedInitialSnapshot.activeAccountPresent;
     initialAuth.finalPathIsCallback = isProductionCallback(page.url(), productionOrigin);
+    initialAuth.lastLocationState = classifySafeAuthLocation(page.url(), productionOrigin);
+    initialAuth.signInScreenVisible = await isSignInScreenVisible(page);
     syncCallbackDiagnostics(initialCallbackTracker, initialAuth);
     expect(initialAuth.accountCount).toBeGreaterThanOrEqual(1);
     expect(initialAuth.activeAccountPresent).toBe(true);
@@ -374,6 +454,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
     replayAuth.accountCount = replaySnapshot.accountCount;
     replayAuth.activeAccountPresent = replaySnapshot.activeAccountPresent;
     replayAuth.finalPathIsCallback = isProductionCallback(replayPage.url(), productionOrigin);
+    replayAuth.lastLocationState = classifySafeAuthLocation(replayPage.url(), productionOrigin);
+    replayAuth.signInScreenVisible = await isSignInScreenVisible(replayPage);
     syncCallbackDiagnostics(replayCallbackTracker, replayAuth);
     expect(replayAuth.accountCount).toBeGreaterThanOrEqual(1);
     expect(replayAuth.activeAccountPresent).toBe(true);
