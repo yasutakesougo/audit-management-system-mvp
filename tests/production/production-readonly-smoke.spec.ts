@@ -1,4 +1,10 @@
 import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test';
+import {
+  installProductionReadOnlyGuard,
+  isAuthRedirect,
+  readSafeMsalSnapshot,
+  type ProductionReadOnlyGuardDiagnostics,
+} from './_helpers/productionReadOnlyGuard';
 
 const productionBaseURL =
   process.env.PRODUCTION_BASE_URL ??
@@ -6,8 +12,6 @@ const productionBaseURL =
 
 type SmokePhase =
   | 'authenticated-storage-state-reuse'
-  | 'root-goto-before'
-  | 'root-goto-after'
   | 'kiosk-goto-before'
   | 'kiosk-goto-after'
   | 'toilet-goto-before'
@@ -69,6 +73,14 @@ type SmokeDiagnostics = {
     resourceType: string;
   }>;
   serverErrors: string[];
+  authReplay: {
+    storageStateCreated: boolean;
+    freshContextCreated: boolean;
+    accountCount: number;
+    activeAccountPresent: boolean;
+    signOutVisible: boolean;
+    callbackRedirectObserved: boolean;
+  };
   functional: {
     kioskHeadingVisible: boolean;
     toiletHeadingVisible: boolean;
@@ -89,12 +101,10 @@ function safeUrlPath(rawURL: string): string {
   }
 }
 
-function redactDiagnosticText(value: string): string {
-  const redacted = value
-    .replace(/Bearer\s+[^\s]+/gi, 'Bearer <redacted>')
-    .replace(/\b[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '<redacted-token>');
-
-  return redacted.replace(/https?:\/\/[^\s"'<>]+/gi, (rawURL) => safeUrlPath(rawURL));
+function safeFailureText(value: string): string {
+  if (value === 'net::ERR_ABORTED') return value;
+  if (/timed? ?out/i.test(value)) return 'timeout';
+  return 'request-failed';
 }
 
 function isFirestoreWriteChannel(rawURL: string): boolean {
@@ -156,6 +166,14 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
     firestoreChannelAttempts: [],
     httpErrors: [],
     serverErrors: [],
+    authReplay: {
+      storageStateCreated: true,
+      freshContextCreated: true,
+      accountCount: 0,
+      activeAccountPresent: false,
+      signOutVisible: false,
+      callbackRedirectObserved: false,
+    },
     functional: {
       kioskHeadingVisible: false,
       toiletHeadingVisible: false,
@@ -171,23 +189,23 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
   let nextChannelId = 1;
 
   page.on('console', (message) => {
-    const errorText = redactDiagnosticText(message.text());
+    const errorText = message.text();
     if (message.type() === 'error') {
-      diagnostics.consoleErrors.push(errorText);
+      diagnostics.consoleErrors.push('console-error');
     }
     if (errorText.includes('[firebase-auth] ✅')) {
-      diagnostics.firebaseAuthSuccessLogs.push(errorText);
+      diagnostics.firebaseAuthSuccessLogs.push('firebase-auth-success');
     }
     if (errorText.includes('[firebase-auth]') && errorText.includes('initialization failed')) {
-      diagnostics.firebaseAuthErrors.push(errorText);
+      diagnostics.firebaseAuthErrors.push('firebase-auth-initialization-failed');
     }
     if (/\[firestore\].*(initialized|connected|ready|success)/i.test(errorText)) {
-      diagnostics.firestoreInitializationSuccessLogs.push(errorText);
+      diagnostics.firestoreInitializationSuccessLogs.push('firestore-initialized');
     }
   });
 
-  page.on('pageerror', (error) => {
-    diagnostics.pageErrors.push(redactDiagnosticText(String(error)));
+  page.on('pageerror', () => {
+    diagnostics.pageErrors.push('page-error');
   });
 
   page.on('requestfailed', (request) => {
@@ -200,12 +218,12 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
       host: url.host,
       path: url.pathname,
       resourceType: request.resourceType(),
-      errorText: request.failure()?.errorText ?? 'unknown',
+      errorText: safeFailureText(request.failure()?.errorText ?? 'unknown'),
     });
 
     const channel = requests.get(request);
     if (channel) {
-      channel.failedErrorText = request.failure()?.errorText ?? 'unknown';
+      channel.failedErrorText = safeFailureText(request.failure()?.errorText ?? 'unknown');
       channel.lifecycle.push({
         capturedAt,
         event: 'failed',
@@ -291,9 +309,21 @@ async function attachDiagnostics(
   page: Page,
   diagnostics: SmokeDiagnostics,
   testInfo: TestInfo,
+  guardDiagnostics: ProductionReadOnlyGuardDiagnostics,
 ): Promise<void> {
+  const productionHost = new URL(productionBaseURL).host;
+  const sharePointHttpErrors = diagnostics.httpErrors.filter(
+    (error) =>
+      (error.host === productionHost && error.path === '/api/sp-proxy') ||
+      error.host.endsWith('.sharepoint.com'),
+  );
   const payload = {
     ...diagnostics,
+    sharePoint: {
+      ...guardDiagnostics,
+      http4xx: sharePointHttpErrors.filter((error) => error.status >= 400 && error.status < 500).length,
+      http5xx: sharePointHttpErrors.filter((error) => error.status >= 500).length,
+    },
     finalUrl: safeUrlPath(page.url()),
     firebaseState: {
       authInitialization: diagnostics.firebaseAuthErrors.length > 0
@@ -314,6 +344,11 @@ async function attachDiagnostics(
       serverErrors: diagnostics.serverErrors.length,
       firestoreChannelAttempts: diagnostics.firestoreChannelAttempts.length,
       allowlistCandidates: diagnostics.firestoreChannelAttempts.filter((channel) => channel.allowlistCandidate).length,
+      sharePointReadRequests: guardDiagnostics.readRequests,
+      sharePointMutationAttempts: guardDiagnostics.mutationAttempts,
+      sharePointMutationAttemptsBlocked: guardDiagnostics.mutationAttemptsBlocked,
+      sharePointHttp4xx: sharePointHttpErrors.filter((error) => error.status >= 400 && error.status < 500).length,
+      sharePointHttp5xx: sharePointHttpErrors.filter((error) => error.status >= 500).length,
     },
     policy: {
       saveOperation: 'none',
@@ -331,16 +366,19 @@ async function attachDiagnostics(
 
 test('production read-only kiosk smoke collects all browser failure channels', async ({ page }, testInfo) => {
   const diagnostics = installProductionDiagnostics(page);
+  const productionOrigin = new URL(productionBaseURL).origin;
+  let callbackRedirectObserved = false;
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame() && isAuthRedirect(frame.url(), productionOrigin)) {
+      callbackRedirectObserved = true;
+    }
+  });
+  const readOnlyGuard = await installProductionReadOnlyGuard(page, {
+    productionOrigin,
+    getPhase: () => diagnostics.phase,
+  });
 
   try {
-    diagnostics.phase = 'root-goto-before';
-    const rootResponse = await page.goto(`${productionBaseURL}/`, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60_000,
-    });
-    expect(rootResponse?.status()).toBe(200);
-    diagnostics.phase = 'root-goto-after';
-
     diagnostics.phase = 'kiosk-goto-before';
     const kioskResponse = await page.goto(`${productionBaseURL}/kiosk`, {
       waitUntil: 'domcontentloaded',
@@ -351,6 +389,19 @@ test('production read-only kiosk smoke collects all browser failure channels', a
       timeout: 30_000,
     });
     diagnostics.functional.kioskHeadingVisible = true;
+    diagnostics.authReplay.signOutVisible = await page
+      .getByRole('button', { name: 'サインアウト' })
+      .isVisible()
+      .catch(() => false);
+    const authSnapshot = await readSafeMsalSnapshot(page);
+    diagnostics.authReplay.accountCount = authSnapshot.accountCount;
+    diagnostics.authReplay.activeAccountPresent = authSnapshot.activeAccountPresent;
+    diagnostics.authReplay.callbackRedirectObserved = callbackRedirectObserved;
+    expect(diagnostics.authReplay.signOutVisible).toBe(true);
+    expect(diagnostics.authReplay.accountCount).toBeGreaterThanOrEqual(1);
+    expect(diagnostics.authReplay.activeAccountPresent).toBe(true);
+    expect(diagnostics.authReplay.callbackRedirectObserved).toBe(false);
+    expect(await page.locator('input[name="loginfmt"], input[type="email"]').first().isVisible().catch(() => false)).toBe(false);
     diagnostics.phase = 'kiosk-goto-after';
 
     diagnostics.phase = 'toilet-goto-before';
@@ -380,6 +431,11 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     diagnostics.functional.reloadToiletHeadingVisible = true;
     diagnostics.phase = 'reload-after';
 
+    const guardDiagnostics = readOnlyGuard.getDiagnostics();
+    expect(
+      guardDiagnostics.mutationAttempts,
+      'production read-only violation: SharePoint mutation request attempted',
+    ).toBe(0);
     expect(diagnostics.consoleErrors).toHaveLength(0);
     expect(diagnostics.pageErrors).toHaveLength(0);
     expect(diagnostics.requestFailures).toHaveLength(0);
@@ -388,6 +444,6 @@ test('production read-only kiosk smoke collects all browser failure channels', a
   } finally {
     diagnostics.phase = 'scenario-end';
     finalizeChannelAttempts(diagnostics);
-    await attachDiagnostics(page, diagnostics, testInfo);
+    await attachDiagnostics(page, diagnostics, testInfo, readOnlyGuard.getDiagnostics());
   }
 });

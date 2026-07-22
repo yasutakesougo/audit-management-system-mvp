@@ -328,12 +328,15 @@ git status --short clean: yes / no
 
 ## 9. Gate 4 本番read-only smoke
 
-本番read-only smokeは、PR #2512および本番deploy workflowとは分離した専用ブランチで実行する。対象は稼働中のbaseline Version `0872ee12`であり、保存・rollback・deployは行わない。
+本番read-only smokeは、PR #2514および本番deploy workflowとは分離した専用ブランチで実行する。対象は稼働中のbaseline Version `0872ee12`であり、保存・rollback・deployは行わない。今回のコード修正後は、CIとread-only監査が完了し、別途実行承認を得るまで本番アクセスを開始しない。
 
 ### 9.1 実行前提
 
-- Entra/MFA認証は本番Workers origin上のheadedブラウザで手動完了する
+- Entra/MFA認証は、別途承認された場合だけ本番Workers origin上のheadedブラウザで手動完了する
+- `production-auth-setup`は最初に`/kiosk`へ移動し、`/`を開かない
+- 最初のgoto前にSharePoint mutation guardを設定し、`/api/sp-proxy`および`*.sharepoint.com`の書き込みを遮断する
 - `production-auth-setup`が`/auth/callback`または旧`/callback`から離れ、`/kiosk`を表示できた場合だけstorageStateを作成する
+- storageState保存後はfresh contextへ再読込し、account数、active account、サインアウト表示、callback遷移を再確認する
 - `tests/.auth/production-storageState.json`はGit管理、artifact、ログ、PR、画面キャプチャへ含めない
 
 ### 9.2 実行コマンド
@@ -360,27 +363,44 @@ console error: 0
 page error: 0
 request failure: 0
 HTTP 500以上: 0
-/: HTTP 200
 /kiosk: HTTP 200
 /kiosk/toilet: HTTP 200
 30秒待機後reload: 成功
 保存操作: なし
+authReplay.storageStateCreated: true
+authReplay.freshContextCreated: true
+authReplay.accountCount: 1以上
+authReplay.activeAccountPresent: true
+authReplay.signOutVisible: true
+authReplay.callbackRedirectObserved: false
+sharePoint.mutationAttempts: 0
+sharePoint.mutationAttemptsBlocked: 0
 storageState: 削除済み
 ```
 
-Gate 4AがPASSしても、専用テスト対象への保存・reload後再読込を確認するGate 4Bは別判定とし、安全なテストデータが用意されるまでHOLDとする。PR #2512のdeploy後は、同じsmokeを新しいVersionに対して再実行する。
+root `/`はGate 4Aの対象外とする。root起動時はSharePoint provisioning bootstrapが開始されるため、root read-only smokeはprovisioningの運用方針を確定した後の別Gateとして実施する。
+
+mutationが1件でも検出された場合は、次の専用failureでFAILとする。`provision_failed`やSharePoint console errorをallowlistしてPASSへ変更してはいけない。
+
+```text
+production read-only violation: SharePoint mutation request attempted
+```
+
+診断artifactにはmethod、host、pathname、phase、X-HTTP-Methodの有無/type、件数だけを記録する。token、Cookie、Authorization、storageState内容、request body、query、fragment、メールアドレス、ユーザーIDは記録しない。
+
+Gate 4AがPASSしても、専用テスト対象への保存・reload後再読込を確認するGate 4Bは別判定とし、安全なテストデータが用意されるまでHOLDとする。PR #2514のmerge後も、deploy前に新しいVersionに対するread-only証跡を別途確認する。
 
 ### 9.4 現在の正式状態
 
-baseline Version `0872ee12` に対する実行結果は次のとおりとする。
+baseline Version `0872ee12` に対する現在の正式状態は次のとおりとする。
 
 ```text
-Gate 4A 認証setup: PASS
-Gate 4A 本番read-only smoke: FAIL
+Gate 4A 認証setup: 修正後未実行・再承認待ち
+Gate 4A 本番read-only smoke: FAIL/HOLD
 Gate 4B 保存・再読込: HOLD
 Gate 3 revision/SHA対応: 未実施
 
-PR #2512: HOLD
+PR #2514: Draft HOLD
 production deploy: NO-GO
 ```
 
