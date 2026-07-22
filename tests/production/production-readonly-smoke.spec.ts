@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test';
 import {
   installProductionReadOnlyGuard,
@@ -428,9 +430,14 @@ async function attachDiagnostics(
       credentials: 'not-recorded',
     },
   };
+  const body = JSON.stringify(payload, null, 2);
+  const diagnosticPath = testInfo.outputPath('production-readonly-smoke.json');
+
+  await mkdir(dirname(diagnosticPath), { recursive: true });
+  await writeFile(diagnosticPath, body, 'utf8');
 
   await testInfo.attach('production-readonly-smoke.json', {
-    body: JSON.stringify(payload, null, 2),
+    body,
     contentType: 'application/json',
   });
 }
