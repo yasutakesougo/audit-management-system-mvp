@@ -31,7 +31,8 @@ type AuthContextDiagnostics = {
   playwrightHintPresent: boolean;
   kioskAppShellVisible: boolean;
   kioskLayoutEnabled: boolean;
-  usersHeadingVisible: boolean;
+  kioskHomeHeadingVisible: boolean;
+  executeStepsActionVisible: boolean;
   interactiveLoginTriggered: boolean;
   authNavigationCount: number;
   callbackNavigationEventCount: number;
@@ -183,23 +184,29 @@ async function readAutomationState(page: Page): Promise<{
   });
 }
 
-async function assertKioskAuthSurface(page: Page, timeout: number): Promise<{
+async function assertKioskHomeSurface(page: Page, timeout: number): Promise<{
   kioskAppShellVisible: boolean;
   kioskLayoutEnabled: boolean;
-  usersHeadingVisible: boolean;
+  kioskHomeHeadingVisible: boolean;
+  executeStepsActionVisible: boolean;
 }> {
   const appShell = page.getByTestId('app-shell');
   await expect(appShell).toBeVisible({ timeout });
   const kioskLayoutEnabled = (await appShell.getAttribute('data-kiosk')) === 'true';
   expect(kioskLayoutEnabled).toBe(true);
 
-  const usersHeading = page.getByRole('heading', { name: '利用者を選択してください' });
-  await expect(usersHeading).toBeVisible({ timeout });
+  await expect(
+    page.getByRole('heading', { name: 'キオスクモード' }),
+  ).toBeVisible({ timeout });
+  await expect(
+    page.getByTestId('kiosk-action-execute-steps'),
+  ).toBeVisible({ timeout });
 
   return {
     kioskAppShellVisible: true,
     kioskLayoutEnabled,
-    usersHeadingVisible: true,
+    kioskHomeHeadingVisible: true,
+    executeStepsActionVisible: true,
   };
 }
 
@@ -261,7 +268,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
       playwrightHintPresent: false,
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
-      usersHeadingVisible: false,
+      kioskHomeHeadingVisible: false,
+      executeStepsActionVisible: false,
       interactiveLoginTriggered: false,
       authNavigationCount: 0,
       callbackNavigationEventCount: 0,
@@ -280,7 +288,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
       playwrightHintPresent: false,
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
-      usersHeadingVisible: false,
+      kioskHomeHeadingVisible: false,
+      executeStepsActionVisible: false,
       interactiveLoginTriggered: false,
       authNavigationCount: 0,
       callbackNavigationEventCount: 0,
@@ -411,7 +420,7 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(await isSignInScreenVisible(page)).toBe(false);
     Object.assign(
       authReplay.initial,
-      await assertKioskAuthSurface(page, authWaitTimeout),
+      await assertKioskHomeSurface(page, authWaitTimeout),
     );
 
     await mkdir(dirname(productionStorageState), { recursive: true });
@@ -466,7 +475,7 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(new URL(replayPage.url()).pathname).toBe('/kiosk');
     Object.assign(
       authReplay.replay,
-      await assertKioskAuthSurface(replayPage, 30_000),
+      await assertKioskHomeSurface(replayPage, 30_000),
     );
 
     const initialGuardDiagnostics = initialGuard.getDiagnostics();

@@ -16,6 +16,8 @@ type SmokePhase =
   | 'authenticated-storage-state-reuse'
   | 'kiosk-goto-before'
   | 'kiosk-goto-after'
+  | 'users-goto-before'
+  | 'users-goto-after'
   | 'toilet-goto-before'
   | 'toilet-goto-after'
   | 'wait-30s-before'
@@ -82,7 +84,8 @@ type SmokeDiagnostics = {
     activeAccountPresent: boolean;
     kioskAppShellVisible: boolean;
     kioskLayoutEnabled: boolean;
-    usersHeadingVisible: boolean;
+    kioskHomeHeadingVisible: boolean;
+    executeStepsActionVisible: boolean;
     callbackRedirectObserved: boolean;
   };
   dataReadiness: {
@@ -96,6 +99,8 @@ type SmokeDiagnostics = {
   };
   functional: {
     kioskAppShellVisible: boolean;
+    kioskHomeHeadingVisible: boolean;
+    executeStepsActionVisible: boolean;
     usersHeadingVisible: boolean;
     toiletHeadingVisible: boolean;
     recordsSectionVisible: boolean;
@@ -221,7 +226,8 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
       activeAccountPresent: false,
       kioskAppShellVisible: false,
       kioskLayoutEnabled: false,
-      usersHeadingVisible: false,
+      kioskHomeHeadingVisible: false,
+      executeStepsActionVisible: false,
       callbackRedirectObserved: false,
     },
     dataReadiness: {
@@ -235,6 +241,8 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
     },
     functional: {
       kioskAppShellVisible: false,
+      kioskHomeHeadingVisible: false,
+      executeStepsActionVisible: false,
       usersHeadingVisible: false,
       toiletHeadingVisible: false,
       recordsSectionVisible: false,
@@ -465,11 +473,32 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     diagnostics.functional.kioskAppShellVisible = true;
     diagnostics.authReplay.kioskLayoutEnabled = (await appShell.getAttribute('data-kiosk')) === 'true';
     expect(diagnostics.authReplay.kioskLayoutEnabled).toBe(true);
-    const usersHeading = page.getByRole('heading', { name: '利用者を選択してください' });
-    await expect(usersHeading).toBeVisible({ timeout: 30_000 });
-    diagnostics.authReplay.usersHeadingVisible = true;
-    diagnostics.functional.usersHeadingVisible = true;
 
+    await expect(
+      page.getByRole('heading', { name: 'キオスクモード' }),
+    ).toBeVisible({ timeout: 30_000 });
+    diagnostics.authReplay.kioskHomeHeadingVisible = true;
+    diagnostics.functional.kioskHomeHeadingVisible = true;
+    await expect(
+      page.getByTestId('kiosk-action-execute-steps'),
+    ).toBeVisible({ timeout: 30_000 });
+    diagnostics.authReplay.executeStepsActionVisible = true;
+    diagnostics.functional.executeStepsActionVisible = true;
+    diagnostics.phase = 'kiosk-goto-after';
+
+    diagnostics.phase = 'users-goto-before';
+    const usersResponse = await page.goto(`${productionBaseURL}/kiosk/users`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 60_000,
+    });
+    expect(usersResponse?.status()).toBe(200);
+    if (usersResponse) diagnostics.dataReadiness.httpStatuses.push(usersResponse.status());
+    expect(new URL(page.url()).pathname).toBe('/kiosk/users');
+    await expect(
+      page.getByRole('heading', { name: '利用者を選択してください' }),
+    ).toBeVisible({ timeout: 30_000 });
+    diagnostics.dataReadiness.usersHeadingVisible = true;
+    diagnostics.functional.usersHeadingVisible = true;
     const dataReadyStartedAt = Date.now();
     await expect
       .poll(
@@ -484,7 +513,7 @@ test('production read-only kiosk smoke collects all browser failure channels', a
         },
       )
       .toBe(true);
-    diagnostics.phase = 'kiosk-goto-after';
+    diagnostics.phase = 'users-goto-after';
 
     diagnostics.phase = 'toilet-goto-before';
     const toiletResponse = await page.goto(`${productionBaseURL}/kiosk/toilet`, {
