@@ -58,6 +58,34 @@ type ChannelAttempt = {
   allowlistCandidate: boolean;
 };
 
+type AllowlistEvidence = {
+  firestoreWriteChannel: boolean;
+  methodAndResourceType: boolean;
+  expectedError: boolean;
+  transitionOrReloadRelated: boolean;
+  subsequentConnectionSucceeded: boolean;
+  firebaseAuthHealthy: boolean;
+  functionalHealthy: boolean;
+  pageAndHttpErrorsClear: boolean;
+  channelLifecycleMatch: boolean;
+};
+
+type RequestFailureDiagnostic = {
+  id: number;
+  capturedAt: string;
+  phase: SmokePhase;
+  page: string;
+  method: string;
+  host: string;
+  path: string;
+  resourceType: string;
+  errorText: string;
+  channelId: number | null;
+  channelLifecycleMatch: boolean;
+  allowlistCandidate: boolean;
+  allowlistEvidence: AllowlistEvidence;
+};
+
 type SmokeDiagnostics = {
   capturedAt: string;
   phase: SmokePhase;
@@ -66,15 +94,7 @@ type SmokeDiagnostics = {
   firebaseAuthSuccessLogs: string[];
   firestoreInitializationSuccessLogs: string[];
   pageErrors: string[];
-  requestFailures: Array<{
-    capturedAt: string;
-    page: string;
-    method: string;
-    host: string;
-    path: string;
-    resourceType: string;
-    errorText: string;
-  }>;
+  requestFailures: RequestFailureDiagnostic[];
   firestoreChannelAttempts: ChannelAttempt[];
   httpErrors: Array<{
     capturedAt: string;
@@ -247,6 +267,50 @@ function finalizeChannelAttempts(diagnostics: SmokeDiagnostics): void {
   }
 }
 
+function finalizeRequestFailures(diagnostics: SmokeDiagnostics): void {
+  const channelsById = new Map(
+    diagnostics.firestoreChannelAttempts.map((channel) => [channel.id, channel]),
+  );
+
+  for (const failure of diagnostics.requestFailures) {
+    const channel = failure.channelId === null ? undefined : channelsById.get(failure.channelId);
+    const channelLifecycleMatch = Boolean(
+      channel?.lifecycle.some(
+        (event) =>
+          event.event === 'failed' &&
+          event.phase === failure.phase &&
+          event.errorText === failure.errorText,
+      ),
+    );
+    const evidence: AllowlistEvidence = {
+      firestoreWriteChannel: Boolean(channel),
+      methodAndResourceType: Boolean(
+        channel &&
+          (channel.method === 'GET' || channel.method === 'POST') &&
+          channel.resourceType === 'fetch',
+      ),
+      expectedError: channel?.failedErrorText === 'net::ERR_ABORTED',
+      transitionOrReloadRelated: channel?.transitionOrReloadRelated ?? false,
+      subsequentConnectionSucceeded: channel?.subsequentConnectionSucceeded ?? false,
+      firebaseAuthHealthy:
+        diagnostics.firebaseAuthErrors.length === 0 &&
+        diagnostics.firebaseAuthSuccessLogs.length > 0,
+      functionalHealthy:
+        diagnostics.functional.usersHeadingVisible &&
+        diagnostics.functional.toiletHeadingVisible &&
+        diagnostics.functional.recordsSectionVisible &&
+        diagnostics.functional.reloadToiletHeadingVisible,
+      pageAndHttpErrorsClear:
+        diagnostics.pageErrors.length === 0 && diagnostics.httpErrors.length === 0,
+      channelLifecycleMatch,
+    };
+
+    failure.channelLifecycleMatch = channelLifecycleMatch;
+    failure.allowlistEvidence = evidence;
+    failure.allowlistCandidate = Object.values(evidence).every(Boolean);
+  }
+}
+
 function installProductionDiagnostics(page: Page): SmokeDiagnostics {
   const diagnostics: SmokeDiagnostics = {
     capturedAt: new Date().toISOString(),
@@ -298,6 +362,7 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
 
   const requests = new Map<Request, ChannelAttempt>();
   let nextChannelId = 1;
+  let nextRequestFailureId = 1;
 
   page.on('console', (message) => {
     const errorText = message.text();
@@ -322,19 +387,36 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
   page.on('requestfailed', (request) => {
     const capturedAt = new Date().toISOString();
     const url = new URL(request.url());
+    const errorText = safeFailureText(request.failure()?.errorText ?? 'unknown');
+    const channel = requests.get(request);
     diagnostics.requestFailures.push({
+      id: nextRequestFailureId++,
       capturedAt,
+      phase: diagnostics.phase,
       page: safeUrlPath(page.url()),
       method: request.method(),
       host: url.host,
       path: url.pathname,
       resourceType: request.resourceType(),
-      errorText: safeFailureText(request.failure()?.errorText ?? 'unknown'),
+      errorText,
+      channelId: channel?.id ?? null,
+      channelLifecycleMatch: false,
+      allowlistCandidate: false,
+      allowlistEvidence: {
+        firestoreWriteChannel: false,
+        methodAndResourceType: false,
+        expectedError: false,
+        transitionOrReloadRelated: false,
+        subsequentConnectionSucceeded: false,
+        firebaseAuthHealthy: false,
+        functionalHealthy: false,
+        pageAndHttpErrorsClear: false,
+        channelLifecycleMatch: false,
+      },
     });
 
-    const channel = requests.get(request);
     if (channel) {
-      channel.failedErrorText = safeFailureText(request.failure()?.errorText ?? 'unknown');
+      channel.failedErrorText = errorText;
       channel.lifecycle.push({
         capturedAt,
         event: 'failed',
@@ -611,6 +693,7 @@ test('production read-only kiosk smoke collects all browser failure channels', a
   } finally {
     diagnostics.phase = 'scenario-end';
     finalizeChannelAttempts(diagnostics);
+    finalizeRequestFailures(diagnostics);
     await attachDiagnostics(page, diagnostics, testInfo, readOnlyGuard.getDiagnostics());
   }
 });
