@@ -23,6 +23,8 @@ const kioskDataReadyTimeout = 60_000;
 
 type SmokePhase =
   | 'authenticated-storage-state-reuse'
+  | 'auth-hydration-wait'
+  | 'auth-hydration-ready'
   | 'kiosk-goto-before'
   | 'kiosk-goto-after'
   | 'users-goto-before'
@@ -118,6 +120,8 @@ type SmokeDiagnostics = {
     kioskHomeHeadingVisible: boolean;
     executeStepsActionVisible: boolean;
     callbackRedirectObserved: boolean;
+    authHydrationPollIterationCount: number;
+    authHydrationTimedOut: boolean;
   };
   dataReadiness: {
     timeoutMs: number;
@@ -336,6 +340,8 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
       kioskHomeHeadingVisible: false,
       executeStepsActionVisible: false,
       callbackRedirectObserved: false,
+      authHydrationPollIterationCount: 0,
+      authHydrationTimedOut: false,
     },
     dataReadiness: {
       timeoutMs: kioskDataReadyTimeout,
@@ -594,9 +600,32 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     diagnostics.authReplay.playwrightHintPresent = automationState.playwrightHintPresent;
     expect(automationState.webdriver).toBe(false);
     expect(automationState.playwrightHintPresent).toBe(false);
-    const authSnapshot = await readSafeMsalSnapshot(page);
-    diagnostics.authReplay.accountCount = authSnapshot.accountCount;
-    diagnostics.authReplay.activeAccountPresent = authSnapshot.activeAccountPresent;
+    diagnostics.phase = 'auth-hydration-wait';
+    try {
+      await expect
+        .poll(
+          async () => {
+            diagnostics.authReplay.authHydrationPollIterationCount += 1;
+            const authSnapshot = await readSafeMsalSnapshot(page).catch(() => ({
+              accountCount: 0,
+              activeAccountPresent: false,
+            }));
+            diagnostics.authReplay.accountCount = authSnapshot.accountCount;
+            diagnostics.authReplay.activeAccountPresent = authSnapshot.activeAccountPresent;
+            return authSnapshot.accountCount >= 1 && authSnapshot.activeAccountPresent;
+          },
+          {
+            timeout: 30_000,
+            intervals: [250, 500, 1_000, 2_000],
+            message: 'production MSAL account hydration timeout',
+          },
+        )
+        .toBe(true);
+      diagnostics.phase = 'auth-hydration-ready';
+    } catch (error) {
+      diagnostics.authReplay.authHydrationTimedOut = true;
+      throw error;
+    }
     diagnostics.authReplay.callbackRedirectObserved = callbackRedirectObserved;
     expect(diagnostics.authReplay.accountCount).toBeGreaterThanOrEqual(1);
     expect(diagnostics.authReplay.activeAccountPresent).toBe(true);
