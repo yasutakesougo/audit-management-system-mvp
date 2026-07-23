@@ -28,7 +28,11 @@ type SmokePhase =
   | 'kiosk-goto-before'
   | 'kiosk-goto-after'
   | 'users-goto-before'
+  | 'users-goto-in-flight'
   | 'users-goto-after'
+  | 'users-data-readiness-before'
+  | 'users-data-readiness-in-flight'
+  | 'users-data-readiness-after'
   | 'toilet-goto-before'
   | 'toilet-goto-after'
   | 'wait-30s-before'
@@ -36,6 +40,16 @@ type SmokePhase =
   | 'reload-before'
   | 'reload-after'
   | 'scenario-end';
+
+type FailureWindow =
+  | 'before-goto'
+  | 'during-goto'
+  | 'after-goto-before-readiness'
+  | 'during-readiness'
+  | 'after-readiness'
+  | 'unknown';
+
+const transitionEvidenceThresholdMs = 5_000;
 
 type ChannelAttempt = {
   id: number;
@@ -46,6 +60,7 @@ type ChannelAttempt = {
   host: string;
   path: string;
   resourceType: string;
+  startedElapsedMs: number;
   lifecycle: Array<{
     capturedAt: string;
     event: 'request' | 'response' | 'finished' | 'failed';
@@ -83,6 +98,17 @@ type RequestFailureDiagnostic = {
   resourceType: string;
   errorText: string;
   channelId: number | null;
+  failureElapsedMs: number;
+  channelStartedSequence: number | null;
+  channelStartedPhase: SmokePhase | null;
+  channelStartedElapsedMs: number | null;
+  routeGotoStartedElapsedMs: number | null;
+  routeGotoCompletedElapsedMs: number | null;
+  dataReadinessStartedElapsedMs: number | null;
+  dataReadinessCompletedElapsedMs: number | null;
+  nearestTransitionDeltaMs: number | null;
+  nearestReloadDeltaMs: number | null;
+  failureWindow: FailureWindow;
   channelLifecycleMatch: boolean;
   allowlistCandidate: boolean;
   allowlistEvidence: AllowlistEvidence;
@@ -97,6 +123,17 @@ type SafeRequestFailureSummary = {
   resourceType: string;
   safeErrorText: string;
   channelId: number | null;
+  channelStartedSequence: number | null;
+  channelStartedPhase: SmokePhase | null;
+  channelStartedElapsedMs: number | null;
+  failureElapsedMs: number;
+  routeGotoStartedElapsedMs: number | null;
+  routeGotoCompletedElapsedMs: number | null;
+  dataReadinessStartedElapsedMs: number | null;
+  dataReadinessCompletedElapsedMs: number | null;
+  nearestTransitionDeltaMs: number | null;
+  nearestReloadDeltaMs: number | null;
+  failureWindow: FailureWindow;
   channelLifecycleMatch: boolean;
   allowlistCandidate: boolean;
   transitionOrReloadRelated: boolean;
@@ -164,6 +201,16 @@ type SmokeDiagnostics = {
   lifecycle: {
     pageCloseOrContextClose: 'not-invoked-by-test';
   };
+  timeline: {
+    routeGotoStartedElapsedMs: number | null;
+    routeGotoCompletedElapsedMs: number | null;
+    dataReadinessStartedElapsedMs: number | null;
+    dataReadinessCompletedElapsedMs: number | null;
+    reloadStartedElapsedMs: number | null;
+    reloadCompletedElapsedMs: number | null;
+    transitionElapsedMs: number[];
+    reloadElapsedMs: number[];
+  };
 };
 
 function safeUrlPath(rawURL: string): string {
@@ -193,8 +240,76 @@ function isFirestoreWriteChannel(rawURL: string): boolean {
   }
 }
 
-function isTransitionOrReloadPhase(phase: SmokePhase): boolean {
-  return phase.includes('goto') || phase.includes('reload');
+const diagnosticsStartedAt = new WeakMap<SmokeDiagnostics, number>();
+
+function elapsedMs(diagnostics: SmokeDiagnostics): number {
+  return Date.now() - (diagnosticsStartedAt.get(diagnostics) ?? Date.now());
+}
+
+function nearestDeltaMs(value: number, candidates: number[]): number | null {
+  if (candidates.length === 0) return null;
+  return Math.min(...candidates.map((candidate) => Math.abs(value - candidate)));
+}
+
+function classifyFailureWindow(
+  failureElapsedMs: number,
+  timeline: SmokeDiagnostics['timeline'],
+): FailureWindow {
+  const {
+    routeGotoStartedElapsedMs,
+    routeGotoCompletedElapsedMs,
+    dataReadinessStartedElapsedMs,
+    dataReadinessCompletedElapsedMs,
+  } = timeline;
+
+  if (routeGotoStartedElapsedMs === null) return 'unknown';
+  if (failureElapsedMs < routeGotoStartedElapsedMs) return 'before-goto';
+  if (routeGotoCompletedElapsedMs === null || failureElapsedMs <= routeGotoCompletedElapsedMs) {
+    return 'during-goto';
+  }
+  if (dataReadinessStartedElapsedMs === null || failureElapsedMs < dataReadinessStartedElapsedMs) {
+    return 'after-goto-before-readiness';
+  }
+  if (dataReadinessCompletedElapsedMs === null || failureElapsedMs <= dataReadinessCompletedElapsedMs) {
+    return 'during-readiness';
+  }
+  return 'after-readiness';
+}
+
+function beginRouteGoto(diagnostics: SmokeDiagnostics): void {
+  const started = elapsedMs(diagnostics);
+  diagnostics.timeline.routeGotoStartedElapsedMs = started;
+  diagnostics.timeline.routeGotoCompletedElapsedMs = null;
+  diagnostics.timeline.dataReadinessStartedElapsedMs = null;
+  diagnostics.timeline.dataReadinessCompletedElapsedMs = null;
+  diagnostics.timeline.transitionElapsedMs.push(started);
+}
+
+function completeRouteGoto(diagnostics: SmokeDiagnostics): void {
+  const completed = elapsedMs(diagnostics);
+  diagnostics.timeline.routeGotoCompletedElapsedMs = completed;
+  diagnostics.timeline.transitionElapsedMs.push(completed);
+}
+
+function beginDataReadiness(diagnostics: SmokeDiagnostics): void {
+  diagnostics.timeline.dataReadinessStartedElapsedMs = elapsedMs(diagnostics);
+}
+
+function completeDataReadiness(diagnostics: SmokeDiagnostics): void {
+  diagnostics.timeline.dataReadinessCompletedElapsedMs = elapsedMs(diagnostics);
+}
+
+function beginReload(diagnostics: SmokeDiagnostics): void {
+  const started = elapsedMs(diagnostics);
+  diagnostics.timeline.reloadStartedElapsedMs = started;
+  diagnostics.timeline.reloadCompletedElapsedMs = null;
+  diagnostics.timeline.reloadElapsedMs.push(started);
+}
+
+function completeReload(diagnostics: SmokeDiagnostics): void {
+  const completed = elapsedMs(diagnostics);
+  diagnostics.timeline.reloadCompletedElapsedMs = completed;
+  diagnostics.timeline.reloadElapsedMs.push(completed);
 }
 
 async function isSignInScreenVisible(page: Page): Promise<boolean> {
@@ -271,23 +386,8 @@ function finalizeChannelAttempts(diagnostics: SmokeDiagnostics): void {
       if (candidate.id <= channel.id || channelKey(candidate) !== channelKey(channel)) return false;
       return candidate.responseStatus !== undefined && candidate.responseStatus >= 200 && candidate.responseStatus < 400;
     });
-    channel.transitionOrReloadRelated = isTransitionOrReloadPhase(channel.phase);
-    channel.allowlistCandidate =
-      channel.host === 'firestore.googleapis.com' &&
-      channel.path === '/google.firestore.v1.Firestore/Write/channel' &&
-      (channel.method === 'GET' || channel.method === 'POST') &&
-      channel.resourceType === 'fetch' &&
-      channel.failedErrorText === 'net::ERR_ABORTED' &&
-      channel.transitionOrReloadRelated &&
-      channel.subsequentConnectionSucceeded &&
-      diagnostics.firebaseAuthErrors.length === 0 &&
-      diagnostics.firebaseAuthSuccessLogs.length > 0 &&
-      diagnostics.functional.usersHeadingVisible &&
-      diagnostics.functional.toiletHeadingVisible &&
-      diagnostics.functional.recordsSectionVisible &&
-      diagnostics.functional.reloadToiletHeadingVisible &&
-      diagnostics.pageErrors.length === 0 &&
-      diagnostics.httpErrors.length === 0;
+    channel.transitionOrReloadRelated = false;
+    channel.allowlistCandidate = false;
   }
 }
 
@@ -298,6 +398,15 @@ function finalizeRequestFailures(diagnostics: SmokeDiagnostics): void {
 
   for (const failure of diagnostics.requestFailures) {
     const channel = failure.channelId === null ? undefined : channelsById.get(failure.channelId);
+    const failureWindow = failure.failureWindow;
+    const nearestTransitionDeltaMs = failure.nearestTransitionDeltaMs;
+    const nearestReloadDeltaMs = failure.nearestReloadDeltaMs;
+    const transitionOrReloadRelated =
+      failureWindow === 'during-goto' ||
+      (failureWindow === 'after-goto-before-readiness' &&
+        nearestTransitionDeltaMs !== null &&
+        nearestTransitionDeltaMs <= transitionEvidenceThresholdMs) ||
+      (nearestReloadDeltaMs !== null && nearestReloadDeltaMs <= transitionEvidenceThresholdMs);
     const channelLifecycleMatch = Boolean(
       channel?.lifecycle.some(
         (event) =>
@@ -314,7 +423,7 @@ function finalizeRequestFailures(diagnostics: SmokeDiagnostics): void {
           channel.resourceType === 'fetch',
       ),
       expectedError: channel?.failedErrorText === 'net::ERR_ABORTED',
-      transitionOrReloadRelated: channel?.transitionOrReloadRelated ?? false,
+      transitionOrReloadRelated,
       subsequentConnectionSucceeded: channel?.subsequentConnectionSucceeded ?? false,
       firebaseAuthHealthy:
         diagnostics.firebaseAuthErrors.length === 0 &&
@@ -332,6 +441,10 @@ function finalizeRequestFailures(diagnostics: SmokeDiagnostics): void {
     failure.channelLifecycleMatch = channelLifecycleMatch;
     failure.allowlistEvidence = evidence;
     failure.allowlistCandidate = Object.values(evidence).every(Boolean);
+    if (channel) {
+      channel.transitionOrReloadRelated = transitionOrReloadRelated;
+      channel.allowlistCandidate = failure.allowlistCandidate;
+    }
   }
 }
 
@@ -351,6 +464,17 @@ function buildSafeRequestFailureSummary(
     resourceType: failure.resourceType,
     safeErrorText: failure.errorText,
     channelId: failure.channelId,
+    channelStartedSequence: failure.channelStartedSequence,
+    channelStartedPhase: failure.channelStartedPhase,
+    channelStartedElapsedMs: failure.channelStartedElapsedMs,
+    failureElapsedMs: failure.failureElapsedMs,
+    routeGotoStartedElapsedMs: failure.routeGotoStartedElapsedMs,
+    routeGotoCompletedElapsedMs: failure.routeGotoCompletedElapsedMs,
+    dataReadinessStartedElapsedMs: failure.dataReadinessStartedElapsedMs,
+    dataReadinessCompletedElapsedMs: failure.dataReadinessCompletedElapsedMs,
+    nearestTransitionDeltaMs: failure.nearestTransitionDeltaMs,
+    nearestReloadDeltaMs: failure.nearestReloadDeltaMs,
+    failureWindow: failure.failureWindow,
     channelLifecycleMatch: failure.channelLifecycleMatch,
     allowlistCandidate: failure.allowlistCandidate,
     transitionOrReloadRelated: failure.allowlistEvidence.transitionOrReloadRelated,
@@ -375,6 +499,27 @@ function isCompleteSafeRequestFailureSummary(
     summary.resourceType.length > 0 &&
     summary.safeErrorText.length > 0 &&
     (summary.channelId === null || Number.isInteger(summary.channelId)) &&
+    (summary.channelStartedSequence === null || Number.isInteger(summary.channelStartedSequence)) &&
+    (summary.channelStartedPhase === null || summary.channelStartedPhase.length > 0) &&
+    Number.isInteger(summary.failureElapsedMs) &&
+    summary.failureElapsedMs >= 0 &&
+    [
+      summary.channelStartedElapsedMs,
+      summary.routeGotoStartedElapsedMs,
+      summary.routeGotoCompletedElapsedMs,
+      summary.dataReadinessStartedElapsedMs,
+      summary.dataReadinessCompletedElapsedMs,
+      summary.nearestTransitionDeltaMs,
+      summary.nearestReloadDeltaMs,
+    ].every((value) => value === null || (Number.isInteger(value) && value >= 0)) &&
+    [
+      'before-goto',
+      'during-goto',
+      'after-goto-before-readiness',
+      'during-readiness',
+      'after-readiness',
+      'unknown',
+    ].includes(summary.failureWindow) &&
     [
       summary.channelLifecycleMatch,
       summary.allowlistCandidate,
@@ -438,7 +583,19 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
     lifecycle: {
       pageCloseOrContextClose: 'not-invoked-by-test',
     },
+    timeline: {
+      routeGotoStartedElapsedMs: null,
+      routeGotoCompletedElapsedMs: null,
+      dataReadinessStartedElapsedMs: null,
+      dataReadinessCompletedElapsedMs: null,
+      reloadStartedElapsedMs: null,
+      reloadCompletedElapsedMs: null,
+      transitionElapsedMs: [],
+      reloadElapsedMs: [],
+    },
   };
+
+  diagnosticsStartedAt.set(diagnostics, Date.now());
 
   const requests = new Map<Request, ChannelAttempt>();
   let nextChannelId = 1;
@@ -466,6 +623,7 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
 
   page.on('requestfailed', (request) => {
     const capturedAt = new Date().toISOString();
+    const failureElapsedMs = elapsedMs(diagnostics);
     const url = new URL(request.url());
     const errorText = safeFailureText(request.failure()?.errorText ?? 'unknown');
     const channel = requests.get(request);
@@ -480,6 +638,23 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
       resourceType: request.resourceType(),
       errorText,
       channelId: channel?.id ?? null,
+      failureElapsedMs,
+      channelStartedSequence: channel?.id ?? null,
+      channelStartedPhase: channel?.phase ?? null,
+      channelStartedElapsedMs: channel?.startedElapsedMs ?? null,
+      routeGotoStartedElapsedMs: diagnostics.timeline.routeGotoStartedElapsedMs,
+      routeGotoCompletedElapsedMs: diagnostics.timeline.routeGotoCompletedElapsedMs,
+      dataReadinessStartedElapsedMs: diagnostics.timeline.dataReadinessStartedElapsedMs,
+      dataReadinessCompletedElapsedMs: diagnostics.timeline.dataReadinessCompletedElapsedMs,
+      nearestTransitionDeltaMs: nearestDeltaMs(
+        failureElapsedMs,
+        diagnostics.timeline.transitionElapsedMs,
+      ),
+      nearestReloadDeltaMs: nearestDeltaMs(
+        failureElapsedMs,
+        diagnostics.timeline.reloadElapsedMs,
+      ),
+      failureWindow: classifyFailureWindow(failureElapsedMs, diagnostics.timeline),
       channelLifecycleMatch: false,
       allowlistCandidate: false,
       allowlistEvidence: {
@@ -519,6 +694,7 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
       host: url.host,
       path: url.pathname,
       resourceType: request.resourceType(),
+      startedElapsedMs: elapsedMs(diagnostics),
       lifecycle: [{ capturedAt, event: 'request', phase: diagnostics.phase }],
       subsequentConnectionSucceeded: false,
       transitionOrReloadRelated: false,
@@ -776,10 +952,14 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     diagnostics.phase = 'kiosk-goto-after';
 
     diagnostics.phase = 'users-goto-before';
+    beginRouteGoto(diagnostics);
+    diagnostics.phase = 'users-goto-in-flight';
     const usersResponse = await page.goto(`${productionBaseURL}/kiosk/users`, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     });
+    completeRouteGoto(diagnostics);
+    diagnostics.phase = 'users-goto-after';
     expect(usersResponse?.status()).toBe(200);
     if (usersResponse) diagnostics.dataReadiness.httpStatuses.push(usersResponse.status());
     expect(new URL(page.url()).pathname).toBe('/kiosk/users');
@@ -788,6 +968,9 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     ).toBeVisible({ timeout: 30_000 });
     diagnostics.dataReadiness.usersHeadingVisible = true;
     diagnostics.functional.usersHeadingVisible = true;
+    diagnostics.phase = 'users-data-readiness-before';
+    beginDataReadiness(diagnostics);
+    diagnostics.phase = 'users-data-readiness-in-flight';
     const dataReadyStartedAt = Date.now();
     await expect
       .poll(
@@ -802,13 +985,17 @@ test('production read-only kiosk smoke collects all browser failure channels', a
         },
       )
       .toBe(true);
-    diagnostics.phase = 'users-goto-after';
+    completeDataReadiness(diagnostics);
+    diagnostics.phase = 'users-data-readiness-after';
 
     diagnostics.phase = 'toilet-goto-before';
+    beginRouteGoto(diagnostics);
     const toiletResponse = await page.goto(`${productionBaseURL}/kiosk/toilet`, {
       waitUntil: 'domcontentloaded',
       timeout: 60_000,
     });
+    completeRouteGoto(diagnostics);
+    diagnostics.phase = 'toilet-goto-after';
     expect(toiletResponse?.status()).toBe(200);
     if (toiletResponse) diagnostics.dataReadiness.httpStatuses.push(toiletResponse.status());
     await expect(page.getByRole('heading', { name: '本日のトイレ確認' })).toBeVisible({
@@ -819,13 +1006,13 @@ test('production read-only kiosk smoke collects all browser failure channels', a
       timeout: 30_000,
     });
     diagnostics.functional.recordsSectionVisible = true;
-    diagnostics.phase = 'toilet-goto-after';
-
     diagnostics.phase = 'wait-30s-before';
     await page.waitForTimeout(30_000);
     diagnostics.phase = 'wait-30s-after';
     diagnostics.phase = 'reload-before';
+    beginReload(diagnostics);
     const reloadResponse = await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+    completeReload(diagnostics);
     if (reloadResponse) diagnostics.dataReadiness.httpStatuses.push(reloadResponse.status());
     await expect(page.getByRole('heading', { name: '本日のトイレ確認' })).toBeVisible({
       timeout: 30_000,
