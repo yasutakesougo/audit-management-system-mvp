@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import {
   expect,
@@ -86,6 +86,26 @@ type RequestFailureDiagnostic = {
   channelLifecycleMatch: boolean;
   allowlistCandidate: boolean;
   allowlistEvidence: AllowlistEvidence;
+};
+
+type SafeRequestFailureSummary = {
+  sequence: number;
+  phase: SmokePhase;
+  method: string;
+  host: string;
+  pathname: string;
+  resourceType: string;
+  safeErrorText: string;
+  channelId: number | null;
+  channelLifecycleMatch: boolean;
+  allowlistCandidate: boolean;
+  transitionOrReloadRelated: boolean;
+  laterConnectionSucceeded: boolean;
+  firebaseAuthHealthy: boolean;
+  functionalHealthPassed: boolean;
+  pageErrorsZero: boolean;
+  httpErrorsZero: boolean;
+  serverErrorsZero: boolean;
 };
 
 type SmokeDiagnostics = {
@@ -315,6 +335,60 @@ function finalizeRequestFailures(diagnostics: SmokeDiagnostics): void {
   }
 }
 
+function buildSafeRequestFailureSummary(
+  diagnostics: SmokeDiagnostics,
+): SafeRequestFailureSummary[] {
+  const pageErrorsZero = diagnostics.pageErrors.length === 0;
+  const httpErrorsZero = diagnostics.httpErrors.length === 0;
+  const serverErrorsZero = diagnostics.serverErrors.length === 0;
+
+  return diagnostics.requestFailures.map((failure) => ({
+    sequence: failure.id,
+    phase: failure.phase,
+    method: failure.method,
+    host: failure.host,
+    pathname: failure.path,
+    resourceType: failure.resourceType,
+    safeErrorText: failure.errorText,
+    channelId: failure.channelId,
+    channelLifecycleMatch: failure.channelLifecycleMatch,
+    allowlistCandidate: failure.allowlistCandidate,
+    transitionOrReloadRelated: failure.allowlistEvidence.transitionOrReloadRelated,
+    laterConnectionSucceeded: failure.allowlistEvidence.subsequentConnectionSucceeded,
+    firebaseAuthHealthy: failure.allowlistEvidence.firebaseAuthHealthy,
+    functionalHealthPassed: failure.allowlistEvidence.functionalHealthy,
+    pageErrorsZero,
+    httpErrorsZero,
+    serverErrorsZero,
+  }));
+}
+
+function isCompleteSafeRequestFailureSummary(
+  summary: SafeRequestFailureSummary,
+): boolean {
+  return (
+    Number.isInteger(summary.sequence) &&
+    summary.phase.length > 0 &&
+    summary.method.length > 0 &&
+    summary.host.length > 0 &&
+    summary.pathname.startsWith('/') &&
+    summary.resourceType.length > 0 &&
+    summary.safeErrorText.length > 0 &&
+    (summary.channelId === null || Number.isInteger(summary.channelId)) &&
+    [
+      summary.channelLifecycleMatch,
+      summary.allowlistCandidate,
+      summary.transitionOrReloadRelated,
+      summary.laterConnectionSucceeded,
+      summary.firebaseAuthHealthy,
+      summary.functionalHealthPassed,
+      summary.pageErrorsZero,
+      summary.httpErrorsZero,
+      summary.serverErrorsZero,
+    ].every((value) => typeof value === 'boolean')
+  );
+}
+
 function installProductionDiagnostics(page: Page): SmokeDiagnostics {
   const diagnostics: SmokeDiagnostics = {
     capturedAt: new Date().toISOString(),
@@ -519,8 +593,23 @@ async function attachDiagnostics(
         productionOrigin,
       ),
   );
+  const requestFailureSummary = buildSafeRequestFailureSummary(diagnostics);
+  const requestFailureSummaryCount = requestFailureSummary.length;
+  const requestFailureCount = diagnostics.requestFailures.length;
+  const summaryCountMatches = requestFailureSummaryCount === requestFailureCount;
+  const allFailuresClassified =
+    summaryCountMatches && requestFailureSummary.every(isCompleteSafeRequestFailureSummary);
+  const allAllowlistCandidates = requestFailureSummary.every(
+    (failure) => failure.allowlistCandidate,
+  );
   const payload = {
     ...diagnostics,
+    requestFailureSummary,
+    requestFailureSummaryCount,
+    requestFailureCount,
+    summaryCountMatches,
+    allFailuresClassified,
+    allAllowlistCandidates,
     sharePoint: {
       ...guardDiagnostics,
       http4xx: sharePointHttpErrors.filter((error) => error.status >= 400 && error.status < 500).length,
@@ -542,6 +631,11 @@ async function attachDiagnostics(
       firebaseAuthErrors: diagnostics.firebaseAuthErrors.length,
       pageErrors: diagnostics.pageErrors.length,
       requestFailures: diagnostics.requestFailures.length,
+      requestFailureSummaryCount,
+      requestFailureCount,
+      summaryCountMatches,
+      allFailuresClassified,
+      allAllowlistCandidates,
       httpErrors: diagnostics.httpErrors.length,
       serverErrors: diagnostics.serverErrors.length,
       firestoreChannelAttempts: diagnostics.firestoreChannelAttempts.length,
@@ -563,12 +657,42 @@ async function attachDiagnostics(
   const diagnosticPath = testInfo.outputPath('production-readonly-smoke.json');
 
   await mkdir(dirname(diagnosticPath), { recursive: true });
-  await writeFile(diagnosticPath, body, 'utf8');
+  try {
+    await writeFile(diagnosticPath, body, 'utf8');
+    const persistedBody = await readFile(diagnosticPath, 'utf8');
+    const parsedPayload: unknown = JSON.parse(persistedBody);
+    if (!parsedPayload || typeof parsedPayload !== 'object') {
+      throw new Error('invalid diagnostics payload');
+    }
+  } catch {
+    throw new Error('production smoke diagnostics persistence failed');
+  }
 
   await testInfo.attach('production-readonly-smoke.json', {
     body,
     contentType: 'application/json',
   });
+
+  console.log(
+    '[production-readonly-safe-summary]',
+    JSON.stringify({
+      requestFailureSummary,
+      requestFailureSummaryCount,
+      requestFailureCount,
+      summaryCountMatches,
+      allFailuresClassified,
+      allAllowlistCandidates,
+    }),
+  );
+
+  expect(summaryCountMatches, 'request failure summary count mismatch').toBe(true);
+  expect(allFailuresClassified, 'request failure summary classification incomplete').toBe(true);
+
+  try {
+    await unlink(diagnosticPath);
+  } catch {
+    throw new Error('production smoke diagnostics cleanup failed');
+  }
 }
 
 test('production read-only kiosk smoke collects all browser failure channels', async ({ page, context }, testInfo) => {
