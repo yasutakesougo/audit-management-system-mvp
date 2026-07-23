@@ -24,6 +24,8 @@ type AuthContextDiagnostics = {
   lastLocationState: SafeAuthLocation;
   pollIterationCount: number;
   authTimedOut: boolean;
+  authHydrationPollIterationCount: number;
+  authHydrationTimedOut: boolean;
   signInScreenVisible: boolean;
   accountCount: number;
   activeAccountPresent: boolean;
@@ -261,6 +263,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
       lastLocationState: 'unparseable',
       pollIterationCount: 0,
       authTimedOut: false,
+      authHydrationPollIterationCount: 0,
+      authHydrationTimedOut: false,
       signInScreenVisible: false,
       accountCount: 0,
       activeAccountPresent: false,
@@ -281,6 +285,8 @@ test('create production Workers Entra storage state', async ({ page, context, br
       lastLocationState: 'unparseable',
       pollIterationCount: 0,
       authTimedOut: false,
+      authHydrationPollIterationCount: 0,
+      authHydrationTimedOut: false,
       signInScreenVisible: false,
       accountCount: 0,
       activeAccountPresent: false,
@@ -459,13 +465,46 @@ test('create production Workers Entra storage state', async ({ page, context, br
     expect(replayAutomationState.webdriver).toBe(false);
     expect(replayAutomationState.playwrightHintPresent).toBe(false);
 
-    const replaySnapshot = await readSafeMsalSnapshot(replayPage);
-    replayAuth.accountCount = replaySnapshot.accountCount;
-    replayAuth.activeAccountPresent = replaySnapshot.activeAccountPresent;
-    replayAuth.finalPathIsCallback = isProductionCallback(replayPage.url(), productionOrigin);
-    replayAuth.lastLocationState = classifySafeAuthLocation(replayPage.url(), productionOrigin);
-    replayAuth.signInScreenVisible = await isSignInScreenVisible(replayPage);
-    syncCallbackDiagnostics(replayCallbackTracker, replayAuth);
+    replayAuth.authHydrationPollIterationCount = 0;
+    replayAuth.authHydrationTimedOut = false;
+    try {
+      await expect
+        .poll(
+          async () => {
+            replayAuth.authHydrationPollIterationCount += 1;
+
+            const snapshot = await readSafeMsalSnapshot(replayPage).catch(() => ({
+              accountCount: 0,
+              activeAccountPresent: false,
+            }));
+
+            replayAuth.accountCount = snapshot.accountCount;
+            replayAuth.activeAccountPresent = snapshot.activeAccountPresent;
+            replayAuth.finalPathIsCallback = isProductionCallback(
+              replayPage.url(),
+              productionOrigin,
+            );
+            replayAuth.lastLocationState = classifySafeAuthLocation(
+              replayPage.url(),
+              productionOrigin,
+            );
+            replayAuth.signInScreenVisible = await isSignInScreenVisible(replayPage);
+            syncCallbackDiagnostics(replayCallbackTracker, replayAuth);
+
+            return snapshot.accountCount >= 1 && snapshot.activeAccountPresent;
+          },
+          {
+            timeout: 30_000,
+            intervals: [250, 500, 1_000, 2_000],
+            message: 'production auth replay MSAL hydration timeout',
+          },
+        )
+        .toBe(true);
+    } catch (error) {
+      replayAuth.authHydrationTimedOut = true;
+      throw error;
+    }
+
     expect(replayAuth.accountCount).toBeGreaterThanOrEqual(1);
     expect(replayAuth.activeAccountPresent).toBe(true);
     expect(replayAuth.callbackEntryCount).toBe(0);
