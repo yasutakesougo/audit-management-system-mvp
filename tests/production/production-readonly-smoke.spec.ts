@@ -1,6 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test';
+import {
+  expect,
+  test,
+  type BrowserContext,
+  type Page,
+  type Request,
+  type TestInfo,
+} from '@playwright/test';
 import {
   installProductionReadOnlyGuard,
   isProductionSharePointRequest,
@@ -82,6 +89,8 @@ type SmokeDiagnostics = {
   authReplay: {
     storageStateCreated: boolean;
     freshContextCreated: boolean;
+    webdriver: boolean;
+    playwrightHintPresent: boolean;
     accountCount: number;
     activeAccountPresent: boolean;
     kioskAppShellVisible: boolean;
@@ -150,6 +159,36 @@ async function isSignInScreenVisible(page: Page): Promise<boolean> {
     .first()
     .isVisible()
     .catch(() => false);
+}
+
+async function installProductionRealAuthMode(
+  context: BrowserContext,
+  productionOrigin: string,
+): Promise<void> {
+  await context.addInitScript(
+    ({ origin }) => {
+      if (window.location.origin !== origin) return;
+
+      Object.defineProperty(Navigator.prototype, 'webdriver', {
+        configurable: true,
+        get: () => false,
+      });
+    },
+    { origin: productionOrigin },
+  );
+}
+
+async function readAutomationState(page: Page): Promise<{
+  webdriver: boolean;
+  playwrightHintPresent: boolean;
+}> {
+  return page.evaluate(() => {
+    const automationHints = window as Window & { __PLAYWRIGHT__?: unknown };
+    return {
+      webdriver: navigator.webdriver,
+      playwrightHintPresent: Boolean(automationHints.__PLAYWRIGHT__),
+    };
+  });
 }
 
 async function readKioskDataReadiness(page: Page, startedAt: number): Promise<{
@@ -224,6 +263,8 @@ function installProductionDiagnostics(page: Page): SmokeDiagnostics {
     authReplay: {
       storageStateCreated: true,
       freshContextCreated: true,
+      webdriver: false,
+      playwrightHintPresent: false,
       accountCount: 0,
       activeAccountPresent: false,
       kioskAppShellVisible: false,
@@ -451,6 +492,7 @@ test('production read-only kiosk smoke collects all browser failure channels', a
       callbackRedirectObserved = true;
     }
   });
+  await installProductionRealAuthMode(context, productionOrigin);
   const readOnlyGuard = await installProductionReadOnlyGuard(context, {
     productionOrigin,
     getPhase: () => diagnostics.phase,
@@ -465,6 +507,11 @@ test('production read-only kiosk smoke collects all browser failure channels', a
     expect(kioskResponse?.status()).toBe(200);
     if (kioskResponse) diagnostics.dataReadiness.httpStatuses.push(kioskResponse.status());
     expect(new URL(page.url()).pathname).toBe('/kiosk');
+    const automationState = await readAutomationState(page);
+    diagnostics.authReplay.webdriver = automationState.webdriver;
+    diagnostics.authReplay.playwrightHintPresent = automationState.playwrightHintPresent;
+    expect(automationState.webdriver).toBe(false);
+    expect(automationState.playwrightHintPresent).toBe(false);
     const authSnapshot = await readSafeMsalSnapshot(page);
     diagnostics.authReplay.accountCount = authSnapshot.accountCount;
     diagnostics.authReplay.activeAccountPresent = authSnapshot.activeAccountPresent;
