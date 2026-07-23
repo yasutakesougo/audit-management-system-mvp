@@ -6,6 +6,7 @@ export const FIRESTORE_TRANSPORT_CLOSE_RESOURCE_TYPE = 'fetch';
 export const FIRESTORE_TRANSPORT_CLOSE_ERROR_TEXT = 'net::ERR_ABORTED';
 export const FIRESTORE_TRANSPORT_CLOSE_MAX_TRANSITION_DELTA_MS = 5_000;
 export const FIRESTORE_TRANSPORT_CLOSE_MIN_RELOAD_OBSERVATION_MS = 10_000;
+export const FIRESTORE_TRANSPORT_CLOSE_RECONNECT_OBSERVATION_WINDOW_MS = 10_000;
 
 export type FirestoreTransportCloseFailureWindow =
   | 'during-goto'
@@ -62,6 +63,13 @@ export type FirestoreTransportCloseResult = {
   acceptedTransportClose: boolean;
   classification: FirestoreTransportCloseClassification;
   reason: FirestoreTransportCloseRejectionReason;
+};
+
+export type FirestoreTransportCloseSummary = {
+  rawRequestFailureCount: number;
+  acceptedTransportCloseCount: number;
+  unclassifiedRequestFailureCount: number;
+  results: FirestoreTransportCloseResult[];
 };
 
 const allowedFailureWindows: readonly FirestoreTransportCloseFailureWindow[] = [
@@ -166,4 +174,20 @@ export function classifyFirestoreTransportClose(
   }
 
   return accepted();
+}
+
+export function summarizeFirestoreTransportClose(
+  evidence: readonly (FirestoreTransportCloseEvidence | null | undefined)[],
+): FirestoreTransportCloseSummary {
+  const results = evidence.map((item) => classifyFirestoreTransportClose(item));
+  const acceptedTransportCloseCount = results.filter(
+    (result) => result.acceptedTransportClose,
+  ).length;
+
+  return {
+    rawRequestFailureCount: evidence.length,
+    acceptedTransportCloseCount,
+    unclassifiedRequestFailureCount: evidence.length - acceptedTransportCloseCount,
+    results,
+  };
 }

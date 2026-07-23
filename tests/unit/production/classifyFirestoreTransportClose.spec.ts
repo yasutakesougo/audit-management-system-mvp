@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyFirestoreTransportClose,
+  summarizeFirestoreTransportClose,
   type FirestoreTransportCloseEvidence,
 } from '../../production/helpers/classifyFirestoreTransportClose';
 
@@ -163,5 +164,37 @@ describe('classifyFirestoreTransportClose', () => {
     expect(expectRejected({ testEndedImmediately: undefined }).reason).toBe(
       'test-ended-immediately',
     );
+  });
+
+  it('preserves raw failures while separating accepted and unclassified counts', () => {
+    const summary = summarizeFirestoreTransportClose([
+      {
+        ...baseEvidence(),
+        failureWindow: 'after-goto-before-readiness',
+      },
+      {
+        ...baseEvidence(),
+        method: 'GET',
+      },
+    ]);
+
+    expect(summary.rawRequestFailureCount).toBe(2);
+    expect(summary.acceptedTransportCloseCount).toBe(1);
+    expect(summary.unclassifiedRequestFailureCount).toBe(1);
+    expect(summary.results.map((result) => result.classification)).toEqual([
+      'acceptedTransportClose',
+      'unclassifiedRequestFailure',
+    ]);
+  });
+
+  it('fails closed when the summary contains missing evidence', () => {
+    const summary = summarizeFirestoreTransportClose([undefined, null]);
+
+    expect(summary).toMatchObject({
+      rawRequestFailureCount: 2,
+      acceptedTransportCloseCount: 0,
+      unclassifiedRequestFailureCount: 2,
+    });
+    expect(summary.results.every((result) => !result.acceptedTransportClose)).toBe(true);
   });
 });
