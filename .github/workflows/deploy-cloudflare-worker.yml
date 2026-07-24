@@ -176,6 +176,7 @@ jobs:
       VITE_APP_ENV: "production"
       VITE_SP_RESOURCE: ${{ secrets.VITE_SP_RESOURCE }}
       VITE_SP_SITE_RELATIVE: ${{ secrets.VITE_SP_SITE_RELATIVE }}
+      VITE_SKIP_PROVISIONING: "1"
       VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID != '' && secrets.VITE_MSAL_CLIENT_ID || secrets.AAD_APP_ID }}
       VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID != '' && secrets.VITE_MSAL_TENANT_ID || secrets.AAD_TENANT_ID }}
       VITE_MSAL_REDIRECT_URI: ${{ secrets.VITE_MSAL_REDIRECT_URI != '' && secrets.VITE_MSAL_REDIRECT_URI || secrets.VITE_AZURE_AD_REDIRECT_URI }}
@@ -280,6 +281,7 @@ jobs:
           const vars = {
             VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE,
             VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE,
+            VITE_SKIP_PROVISIONING: process.env.VITE_SKIP_PROVISIONING,
             VITE_SP_USE_PROXY: process.env.VITE_SP_USE_PROXY,
             VITE_SP_LIST_BILLING_ORDERS: process.env.VITE_SP_LIST_BILLING_ORDERS,
             VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: process.env.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE,
