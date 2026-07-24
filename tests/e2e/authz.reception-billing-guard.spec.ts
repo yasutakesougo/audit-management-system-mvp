@@ -35,6 +35,7 @@ test.describe('billing access guard e2e', () => {
 
     await expect(page.getByTestId('billing-root')).toBeVisible();
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '選択中のタブを一括精算' })).toHaveCount(0);
   });
 
   test('reception can access billing route', async ({ page }) => {
@@ -42,6 +43,7 @@ test.describe('billing access guard e2e', () => {
 
     await expect(page.getByTestId('billing-root')).toBeVisible();
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '選択中のタブを一括精算' })).toBeVisible();
   });
 
   test('admin can access billing route', async ({ page }) => {
@@ -49,5 +51,6 @@ test.describe('billing access guard e2e', () => {
 
     await expect(page.getByTestId('billing-root')).toBeVisible();
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '選択中のタブを一括精算' })).toBeVisible();
   });
 });
