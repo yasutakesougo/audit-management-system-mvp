@@ -307,6 +307,10 @@ describe('useBillingSummary', () => {
     mockAuthz.ready = false;
     const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
 
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+
     await expect(result.current.togglePaymentStatus('U-001')).rejects.toBeInstanceOf(
       BillingPaymentAuthorizationError
     );
