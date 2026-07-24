@@ -85,6 +85,24 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     expect(body.error).toBe('target_not_allowed');
   });
 
+  it('injects the production provisioning policy into the runtime environment', async () => {
+    const assetsFetch = vi.fn().mockResolvedValue(
+      new Response('<!doctype html><html><head></head><body></body></html>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      }),
+    );
+
+    const response = await worker.fetch(new Request('https://app.example/billing'), {
+      ...defaultEnv,
+      ASSETS: { fetch: assetsFetch },
+      VITE_SKIP_PROVISIONING: '1',
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('"VITE_SKIP_PROVISIONING":"1"');
+  });
+
   it('allows request targeting VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE if configured', async () => {
     const targetResponse = new Response('{"d":[]}', {
       status: 200,
