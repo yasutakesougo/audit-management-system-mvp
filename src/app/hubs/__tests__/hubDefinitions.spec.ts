@@ -78,7 +78,7 @@ describe('hubDefinitions', () => {
     expect(billingReception.comingSoon.map((entry) => entry.id)).toEqual([]);
 
     const billingViewer = resolveHubVisibleEntries('billing', 'viewer');
-    expect(billingViewer.primary).toHaveLength(0);
+    expect(billingViewer.primary.map((entry) => entry.id)).toEqual(['billing-main']);
     expect(billingViewer.secondary).toHaveLength(0);
     expect(billingViewer.comingSoon).toHaveLength(0);
   });

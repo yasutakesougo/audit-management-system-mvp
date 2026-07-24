@@ -86,6 +86,7 @@ export default function BillingPage({ repository }: BillingPageProps) {
     isMutating,
     isPersistenceMissing,
     isPaymentAuditMissing,
+    canEditPayment,
     hasLocalPaymentState,
     localPaymentStateCount,
     persistenceWarningReason,
@@ -560,32 +561,34 @@ export default function BillingPage({ repository }: BillingPageProps) {
             <Tab label="すべて" value="すべて" />
           </Tabs>
 
-          <Button
-            variant="outlined"
-            color="success"
-            size="small"
-            startIcon={<CheckIcon />}
-            disabled={filteredRecords.length === 0 || isMutating}
-            onClick={() => {
-              if (window.confirm(`「${activeTab}」の未精算データをすべて精算済みにしますか？`)) {
-                bulkSettle(activeTab);
-              }
-            }}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              px: 2,
-              borderColor: 'rgba(16, 185, 129, 0.4)',
-              color: '#059669',
-              '&:hover': {
-                borderColor: '#10b981',
-                bgcolor: 'rgba(16, 185, 129, 0.05)',
-              },
-            }}
-          >
-            選択中のタブを一括精算
-          </Button>
+          {canEditPayment && (
+            <Button
+              variant="outlined"
+              color="success"
+              size="small"
+              startIcon={<CheckIcon />}
+              disabled={filteredRecords.length === 0 || isMutating}
+              onClick={() => {
+                if (window.confirm(`「${activeTab}」の未精算データをすべて精算済みにしますか？`)) {
+                  bulkSettle(activeTab);
+                }
+              }}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 2,
+                borderColor: 'rgba(16, 185, 129, 0.4)',
+                color: '#059669',
+                '&:hover': {
+                  borderColor: '#10b981',
+                  bgcolor: 'rgba(16, 185, 129, 0.05)',
+                },
+              }}
+            >
+              選択中のタブを一括精算
+            </Button>
+          )}
         </Box>
 
         {/* 集計テーブル */}
@@ -644,6 +647,31 @@ export default function BillingPage({ repository }: BillingPageProps) {
                       : record.category === '職員'
                       ? 'secondary'
                       : 'default';
+                  const paymentStatusChip = record.isPaid ? (
+                    <Chip
+                      icon={<CheckCircleIcon sx={{ color: '#10b981 !important' }} />}
+                      label="精算済み"
+                      size="small"
+                      sx={{
+                        bgcolor: 'rgba(16, 185, 129, 0.1)',
+                        color: '#047857',
+                        fontWeight: 600,
+                        cursor: canEditPayment ? 'pointer' : 'default',
+                      }}
+                    />
+                  ) : (
+                    <Chip
+                      icon={<UncheckedIcon sx={{ color: '#ef4444 !important' }} />}
+                      label="未精算"
+                      size="small"
+                      sx={{
+                        bgcolor: 'rgba(239, 68, 68, 0.08)',
+                        color: '#b91c1c',
+                        fontWeight: 600,
+                        cursor: canEditPayment ? 'pointer' : 'default',
+                      }}
+                    />
+                  );
 
                   return (
                     <TableRow
@@ -700,44 +728,24 @@ export default function BillingPage({ repository }: BillingPageProps) {
 
                       {/* アクション (画面用精算トグル) */}
                       <TableCell align="center" sx={{ '@media print': { display: 'none' } }}>
-                        <Button
-                          variant="text"
-                          disabled={isMutating}
-                          onClick={() => togglePaymentStatus(record.ordererCode)}
-                          sx={{
-                            textTransform: 'none',
-                            py: 0.5,
-                            px: 1.5,
-                            borderRadius: 2,
-                            transition: 'all 0.2s',
-                          }}
-                        >
-                          {record.isPaid ? (
-                            <Chip
-                              icon={<CheckCircleIcon sx={{ color: '#10b981 !important' }} />}
-                              label="精算済み"
-                              size="small"
-                              sx={{
-                                bgcolor: 'rgba(16, 185, 129, 0.1)',
-                                color: '#047857',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            />
-                          ) : (
-                            <Chip
-                              icon={<UncheckedIcon sx={{ color: '#ef4444 !important' }} />}
-                              label="未精算"
-                              size="small"
-                              sx={{
-                                bgcolor: 'rgba(239, 68, 68, 0.08)',
-                                color: '#b91c1c',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            />
-                          )}
-                        </Button>
+                        {canEditPayment ? (
+                          <Button
+                            variant="text"
+                            disabled={isMutating}
+                            onClick={() => togglePaymentStatus(record.ordererCode)}
+                            sx={{
+                              textTransform: 'none',
+                              py: 0.5,
+                              px: 1.5,
+                              borderRadius: 2,
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            {paymentStatusChip}
+                          </Button>
+                        ) : (
+                          paymentStatusChip
+                        )}
                       </TableCell>
 
                       {/* 印刷用受領欄 (紙で署名・確認するための列) */}

@@ -3,8 +3,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useBillingOrders, billingOrdersQueryKey } from '../useBillingOrders';
 import { useUsersStore } from '@/features/users/store';
 import { useStaffStore } from '@/features/staff/store';
+import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import type { BillingOrderRepository, BillingPersistenceDiagnostics } from '../ports/billingOrderRepository';
+
+export class BillingPaymentAuthorizationError extends Error {
+  constructor() {
+    super('請求の精算状態を更新するには受付以上の権限が必要です。');
+    this.name = 'BillingPaymentAuthorizationError';
+  }
+}
 
 export interface AggregatedBillingRecord {
   ordererCode: string;
@@ -28,6 +37,7 @@ export interface BillingSummary {
   isMutating: boolean;
   isPersistenceMissing: boolean;
   isPaymentAuditMissing: boolean;
+  canEditPayment: boolean;
   hasLocalPaymentState: boolean;
   localPaymentStateCount: number;
   persistenceDiagnostics: BillingPersistenceDiagnostics | null;
@@ -52,6 +62,8 @@ export function useBillingSummary(
 ): BillingSummary {
   const queryClient = useQueryClient();
   const { account } = useAuth();
+  const { role, ready } = useUserAuthz();
+  const canEditPayment = ready && canAccess(role, 'reception');
   
   const { data: rawOrders = [], isLoading: ordersLoading, isError: ordersError } = useBillingOrders(repository);
   const { data: users = [], isLoading: usersLoading } = useUsersStore();
@@ -289,6 +301,10 @@ export function useBillingSummary(
 
   // 個別精算トグル
   const togglePaymentStatus = useCallback(async (ordererCode: string) => {
+    if (!canEditPayment) {
+      throw new BillingPaymentAuthorizationError();
+    }
+
     const targetRecord = records.find(r => r.ordererCode === ordererCode);
     if (!targetRecord) return;
 
@@ -317,10 +333,14 @@ export function useBillingSummary(
     } finally {
       setIsMutating(false);
     }
-  }, [records, isPersistenceMissing, repository, queryClient, selectedMonth, paidByActor]);
+  }, [canEditPayment, records, isPersistenceMissing, repository, queryClient, selectedMonth, paidByActor]);
 
   // 一括精算 (対象カテゴリ・対象月のみ)
   const bulkSettle = useCallback(async (targetCategory: '利用者' | '職員' | 'ゲスト' | 'すべて') => {
+    if (!canEditPayment) {
+      throw new BillingPaymentAuthorizationError();
+    }
+
     const filtered = records.filter(
       (r) => targetCategory === 'すべて' || r.category === targetCategory
     );
@@ -360,7 +380,7 @@ export function useBillingSummary(
     } finally {
       setIsMutating(false);
     }
-  }, [records, isPersistenceMissing, repository, queryClient, selectedMonth, fallbackPaymentStates, paidByActor]);
+  }, [canEditPayment, records, isPersistenceMissing, repository, queryClient, selectedMonth, fallbackPaymentStates, paidByActor]);
 
   // 日本語 Excel 対応 CSV 出力 (BOM 付き)
   const exportCsv = useCallback((targetCategory: '利用者' | '職員' | 'ゲスト' | 'すべて') => {
@@ -404,6 +424,7 @@ export function useBillingSummary(
     isMutating,
     isPersistenceMissing,
     isPaymentAuditMissing,
+    canEditPayment,
     hasLocalPaymentState,
     localPaymentStateCount,
     persistenceDiagnostics,

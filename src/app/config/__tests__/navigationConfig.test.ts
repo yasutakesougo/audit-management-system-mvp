@@ -72,6 +72,7 @@ describe("Navigation Configuration", () => {
     const items = createNavItems(baseConfig);
     const labels = items.map((item) => item.label);
 
+    expect(labels).toContain('請求処理');
     expect(labels).not.toContain('個別支援計画更新・前回比較');
     expect(labels).not.toContain('職員勤怠');
   });

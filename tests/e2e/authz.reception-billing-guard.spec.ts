@@ -25,16 +25,17 @@ async function bootstrapRole(page: Page, role: TestRole, path = '/dashboard') {
 
 const accessDeniedHeading = /アクセス権がありません|設定エラー/;
 
-test.describe('reception billing guard e2e', () => {
+test.describe('billing access guard e2e', () => {
   test.use({
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173',
   });
 
-  test('viewer is blocked on billing route', async ({ page }) => {
+  test('viewer can access billing route', async ({ page }) => {
     await bootstrapRole(page, 'viewer', '/billing');
 
-    await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
-    await expect(page.getByTestId('billing-root')).toHaveCount(0);
+    await expect(page.getByTestId('billing-root')).toBeVisible();
+    await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '選択中のタブを一括精算' })).toHaveCount(0);
   });
 
   test('reception can access billing route', async ({ page }) => {
@@ -42,6 +43,7 @@ test.describe('reception billing guard e2e', () => {
 
     await expect(page.getByTestId('billing-root')).toBeVisible();
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '選択中のタブを一括精算' })).toBeVisible();
   });
 
   test('admin can access billing route', async ({ page }) => {
@@ -49,5 +51,6 @@ test.describe('reception billing guard e2e', () => {
 
     await expect(page.getByTestId('billing-root')).toBeVisible();
     await expect(page.getByRole('heading', { name: accessDeniedHeading })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '選択中のタブを一括精算' })).toBeVisible();
   });
 });

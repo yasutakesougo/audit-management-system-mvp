@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useBillingSummary } from '../useBillingSummary';
+import { BillingPaymentAuthorizationError, useBillingSummary } from '../useBillingSummary';
 import type { BillingOrderRepository } from '../../ports/billingOrderRepository';
 
 const { mockUseBillingOrders } = vi.hoisted(() => ({
@@ -28,10 +28,19 @@ const mockAuthAccount: { name?: string; username?: string } = {
   username: 'billing@example.com',
 };
 
+const mockAuthz = vi.hoisted(() => ({
+  role: 'reception' as 'viewer' | 'reception' | 'admin',
+  ready: true,
+}));
+
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
     account: mockAuthAccount,
   }),
+}));
+
+vi.mock('@/auth/useUserAuthz', () => ({
+  useUserAuthz: () => mockAuthz,
 }));
 
 const mockOrders = [
@@ -166,6 +175,8 @@ describe('useBillingSummary', () => {
     localStorage.clear();
     mockAuthAccount.name = '請求 太郎';
     mockAuthAccount.username = 'billing@example.com';
+    mockAuthz.role = 'reception';
+    mockAuthz.ready = true;
     vi.spyOn(window, 'alert').mockImplementation(() => {});
     mockBulkUpdatePaymentStatus.mockClear();
     mockInvalidateQueries.mockClear();
@@ -246,6 +257,84 @@ describe('useBillingSummary', () => {
 
     // キャッシュクリアが呼ばれたこと
     expect(mockInvalidateQueries).toHaveBeenCalled();
+  });
+
+  it('viewerはSharePoint精算更新をForbiddenで拒否し、repositoryを呼び出さないこと', async () => {
+    mockAuthz.role = 'viewer';
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+
+    await expect(result.current.togglePaymentStatus('U-001')).rejects.toBeInstanceOf(
+      BillingPaymentAuthorizationError
+    );
+    await expect(result.current.bulkSettle('すべて')).rejects.toBeInstanceOf(
+      BillingPaymentAuthorizationError
+    );
+    expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
+  });
+
+  it('viewerはLocalStorageフォールバックへの精算更新もForbiddenで拒否すること', async () => {
+    mockAuthz.role = 'viewer';
+    mockGetPersistenceDiagnostics.mockResolvedValue({
+      status: 'missing_payment_status',
+      listId: 'billing',
+      missingFields: ['PaymentStatus'],
+      resolvedFields: {},
+      usesList3Fallback: false,
+    });
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.isPersistenceMissing).toBe(true);
+    });
+
+    await expect(result.current.bulkSettle('職員')).rejects.toBeInstanceOf(
+      BillingPaymentAuthorizationError
+    );
+    expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
+    expect(setItemSpy).not.toHaveBeenCalledWith(
+      'app:billing:payment_states',
+      expect.any(String)
+    );
+  });
+
+  it('authz未確定時は受付ロールでも精算更新を拒否すること', async () => {
+    mockAuthz.role = 'reception';
+    mockAuthz.ready = false;
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+
+    await expect(result.current.togglePaymentStatus('U-001')).rejects.toBeInstanceOf(
+      BillingPaymentAuthorizationError
+    );
+    expect(mockBulkUpdatePaymentStatus).not.toHaveBeenCalled();
+  });
+
+  it('adminは従来どおり精算更新できること', async () => {
+    mockAuthz.role = 'admin';
+    const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+
+    await act(async () => {
+      await result.current.togglePaymentStatus('U-001');
+    });
+
+    expect(mockBulkUpdatePaymentStatus).toHaveBeenCalledWith(
+      [1, 2],
+      '精算済み',
+      expect.any(String),
+      '請求 太郎'
+    );
   });
 
   it('PaymentStatus 解決済みの場合、既存 LocalStorage 値があっても SharePoint の精算状態を正本にし、新規保存しないこと', async () => {
