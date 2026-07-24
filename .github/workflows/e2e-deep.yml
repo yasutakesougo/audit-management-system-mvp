@@ -423,7 +423,8 @@ jobs:
             "deep_tests_outcome": "${{ steps.deep_tests.outcome }}",
             "concurrency_group": "e2e-deep-${{ github.ref }}",
             "event_name": "${{ github.event_name }}",
-            "head_sha": "${{ env.SOURCE_HEAD_SHA }}"
+            "head_sha": "${{ env.SOURCE_HEAD_SHA }}",
+            "checkout_sha": "$(git rev-parse HEAD)"
           }
           EOF
 
@@ -475,6 +476,15 @@ jobs:
         with:
           name: junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload lane Playwright JSON results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-json-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
+          path: test-results/results.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -558,7 +568,9 @@ jobs:
   deep-lane-union-audit:
     name: Deep Lane Union Audit
     runs-on: ubuntu-latest
-    needs: deep-tests-chromium
+    needs:
+      - deep-tests-chromium
+      - deep-tests-integration
     if: always()
     permissions:
       contents: read
@@ -588,6 +600,18 @@ jobs:
             --reporter=json \
             > expected-deep-inventory.json
 
+      - name: Generate expected Integration identity inventory
+        run: |
+          npx playwright test \
+            tests/e2e/dashboard-logic-integration.spec.ts \
+            tests/e2e/cross-module-navigation.spec.ts \
+            tests/e2e/integrated-resource-calendar.spec.ts \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --list \
+            --reporter=json \
+            > expected-integration-inventory.json
+
       - name: Download lane taxonomies
         uses: actions/download-artifact@v4
         with:
@@ -606,6 +630,13 @@ jobs:
           pattern: junit-e2e-deep-${{ github.run_id }}-*
           path: lane-artifacts
 
+      - name: Download lane Playwright JSON results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: results-json-deep-${{ github.run_id }}-*
+          path: lane-artifacts
+
       - name: Download lane cancellation audits
         uses: actions/download-artifact@v4
         with:
@@ -618,14 +649,31 @@ jobs:
           pattern: e2e-bootstrap-diagnostics-${{ github.run_id }}-*
           path: lane-artifacts
 
+      - name: Download Integration evidence
+        if: needs.deep-tests-integration.result != 'skipped'
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: integration-results-${{ github.run_number }}
+          path: integration-artifacts
+
       - name: Merge and validate lane evidence
+        env:
+          INTEGRATION_JOB_RESULT: ${{ needs.deep-tests-integration.result }}
         run: |
           node scripts/ci/merge-deep-e2e-lanes.mjs \
             --root lane-artifacts \
             --expected-head-sha "$SOURCE_HEAD_SHA" \
             --expected-inventory expected-deep-inventory.json \
+            --integration-root integration-artifacts \
+            --integration-expected-inventory expected-integration-inventory.json \
+            --integration-artifact-name "integration-results-${{ github.run_number }}" \
+            --integration-job-result "$INTEGRATION_JOB_RESULT" \
+            --event-name "${{ github.event_name }}" \
             --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
             --output "reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json" \
+            --v3-output "reports/deep-e2e-taxonomy-union-v3-${{ github.run_id }}.json" \
             --coverage-output "reports/deep-e2e-coverage-union-${{ github.run_id }}.json"
           failed=$(node -p "require('./reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json').failed")
           specs=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').ownedSpecCount")
@@ -642,12 +690,16 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload union taxonomy and coverage
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: taxonomy-deep-union-${{ github.run_id }}
           path: |
             reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json
+            reports/deep-e2e-taxonomy-union-v3-${{ github.run_id }}.json
             reports/deep-e2e-coverage-union-${{ github.run_id }}.json
+            expected-deep-inventory.json
+            expected-integration-inventory.json
           retention-days: 14
           if-no-files-found: error
 
@@ -714,6 +766,28 @@ jobs:
           NODE_ENV: production
           PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-integration.xml'
         continue-on-error: true
+
+      - name: Capture Integration execution audit
+        if: always()
+        env:
+          INTEGRATION_TEST_OUTCOME: ${{ steps.integration_tests.outcome }}
+        run: |
+          checkout_sha="$(git rev-parse HEAD 2>/dev/null || true)"
+          export CHECKOUT_SHA="$checkout_sha"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const payload = {
+            run_id: process.env.GITHUB_RUN_ID,
+            event_name: process.env.GITHUB_EVENT_NAME,
+            source_head_sha: process.env.SOURCE_HEAD_SHA,
+            checkout_sha: process.env.CHECKOUT_SHA || null,
+            test_outcome: process.env.INTEGRATION_TEST_OUTCOME,
+          };
+          fs.writeFileSync(
+            'integration-execution-audit.json',
+            `${JSON.stringify(payload, null, 2)}\n`,
+          );
+          NODE
       
       - name: Upload integration test artifacts
         if: always()
@@ -723,6 +797,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            integration-execution-audit.json
           retention-days: 14
           if-no-files-found: warn
       
