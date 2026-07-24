@@ -158,7 +158,9 @@ test.describe('Transport assignments repository flow', () => {
 
     // 1. Initial setup: Assign a driver
     await page.getByTestId('transport-assignment-driver-select-1').click();
-    await page.getByRole('option', { name: /佐藤/ }).click();
+    const conflictDriverOption = page.getByRole('option', { name: /佐藤/ });
+    await expect(conflictDriverOption).toBeVisible({ timeout: 30_000 });
+    await conflictDriverOption.click();
 
     // 2. Inject conflict
     await page.route(/.*Schedules.*items.*/, async (route) => {
@@ -222,7 +224,9 @@ test.describe('Transport assignments repository flow', () => {
 
     const driverSelect = page.getByTestId('transport-assignment-driver-select-1');
     await driverSelect.click();
-    await page.getByRole('option', { name: /佐藤/ }).click();
+    const coordinationDriverOption = page.getByRole('option', { name: /佐藤/ });
+    await expect(coordinationDriverOption).toBeVisible({ timeout: 30_000 });
+    await coordinationDriverOption.click();
     
     const saveButton = page.getByTestId('transport-assignment-save-button');
     await expect(saveButton).toBeEnabled();
