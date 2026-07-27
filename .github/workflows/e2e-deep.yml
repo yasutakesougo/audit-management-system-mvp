@@ -94,10 +94,10 @@ jobs:
             preview_env: e2e-deep-transport-date
             timezone: Asia/Tokyo
             artifact_suffix: transport-date-check
-            skip_sharepoint: '1'
-            force_sharepoint: '0'
-            demo_mode: '1'
-            data_provider: memory
+            skip_sharepoint: '0'
+            force_sharepoint: '1'
+            demo_mode: '0'
+            data_provider: sharepoint
             feature_users_sp: '1'
           - lane: implementation-hot
             runtime_mode: demo
@@ -563,6 +563,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+    env:
+      FORMAL_DEEP_TARGET_MANIFEST: scripts/ci/__fixtures__/formal-deep-v3-target-empty.json
     steps:
       - name: Checkout exact source head
         uses: actions/checkout@v4
@@ -626,6 +628,7 @@ jobs:
             --expected-inventory expected-deep-inventory.json \
             --run-id "${{ github.run_id }}" \
             --output "reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json" \
+            --v3-output "reports/deep-e2e-taxonomy-union-v3-${{ github.run_id }}.json" \
             --coverage-output "reports/deep-e2e-coverage-union-${{ github.run_id }}.json"
           failed=$(node -p "require('./reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json').failed")
           specs=$(node -p "require('./reports/deep-e2e-coverage-union-${{ github.run_id }}.json').ownedSpecCount")
@@ -641,6 +644,45 @@ jobs:
             echo "- Duplicate specs/test identities/failure keys: 0"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Compare Formal Deep v3 with target manifest
+        if: always()
+        run: |
+          node scripts/ci/compare-formal-deep-v3.mjs \
+            --artifact "reports/deep-e2e-taxonomy-union-v3-${{ github.run_id }}.json" \
+            --target "$FORMAL_DEEP_TARGET_MANIFEST" \
+            --output "reports/formal-deep-v3-comparison-${{ github.run_id }}.json"
+
+      - name: Build Formal Deep v3 handoff envelope
+        if: always()
+        run: |
+          node scripts/ci/build-formal-deep-v3-handoff.mjs \
+            --input "reports/formal-deep-v3-comparison-${{ github.run_id }}.json" \
+            --output "reports/formal-deep-v3-handoff-${{ github.run_id }}.json" \
+            --markdown-output "reports/formal-deep-v3-handoff-${{ github.run_id }}.md"
+
+      - name: Append Formal Deep v3 handoff status to summary
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const handoff = JSON.parse(
+            fs.readFileSync(
+              `reports/formal-deep-v3-handoff-${process.env.GITHUB_RUN_ID}.json`,
+              "utf8",
+            ),
+          );
+          const lines = [
+            "## Formal Deep v3 handoff",
+            `- status: ${handoff.status}`,
+            `- ready: ${handoff.ready}`,
+            `- run ID: ${handoff.runId ?? "(none)"}`,
+            `- target failure key count: ${handoff.targetFailureKeyCount}`,
+            `- new failure key count: ${handoff.newFailureKeyCount}`,
+            `- reason codes: ${handoff.reasonCodes.join(", ") || "(none)"}`,
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join("\n")}\n`);
+          NODE
+
       - name: Upload union taxonomy and coverage
         uses: actions/upload-artifact@v4
         with:
@@ -648,6 +690,10 @@ jobs:
           path: |
             reports/deep-e2e-taxonomy-union-${{ github.run_id }}.json
             reports/deep-e2e-coverage-union-${{ github.run_id }}.json
+            reports/deep-e2e-taxonomy-union-v3-${{ github.run_id }}.json
+            reports/formal-deep-v3-comparison-${{ github.run_id }}.json
+            reports/formal-deep-v3-handoff-${{ github.run_id }}.json
+            reports/formal-deep-v3-handoff-${{ github.run_id }}.md
           retention-days: 14
           if-no-files-found: error
 
