@@ -38,6 +38,12 @@ describe("E2E Deep workflow evidence contract", () => {
       /if: needs\.deep-tests-integration\.result != 'skipped'/,
     );
     expect(workflow).toMatch(/integration-execution-audit\.json/);
+    expect(workflow).toMatch(
+      /PLAYWRIGHT_JUNIT_OUTPUT_FILE: 'test-results\/junit-e2e-integration\.xml'/,
+    );
+    expect(workflow).not.toMatch(
+      /PLAYWRIGHT_JUNIT_OUTPUT: 'test-results\/junit-e2e-integration\.xml'/,
+    );
     expect(workflow).toMatch(/source_head_sha: process\.env\.SOURCE_HEAD_SHA/);
     expect(workflow).toMatch(/checkout_sha: process\.env\.CHECKOUT_SHA/);
     expect(workflow).toMatch(
