@@ -98,12 +98,16 @@ export function playwrightExpectedIdentities(report) {
 
 function playwrightTests(report) {
   const tests = [];
-  function visit(suites = []) {
+  function visit(suites = [], ancestors = []) {
     for (const suite of suites) {
+      const nextAncestors = suite.file === suite.title
+        ? ancestors
+        : [...ancestors, suite.title].filter(Boolean);
       for (const spec of suite.specs ?? []) {
-        for (const test of spec.tests ?? []) tests.push({ spec, test });
+        const title = [...nextAncestors, spec.title].filter(Boolean).join(" › ");
+        for (const test of spec.tests ?? []) tests.push({ spec, test, title });
       }
-      visit(suite.suites ?? []);
+      visit(suite.suites ?? [], nextAncestors);
     }
   }
   visit(report?.suites ?? []);
@@ -188,7 +192,7 @@ function buildTrueFlakyEvidence(root, cancelAudits, runId) {
     if (error || !Array.isArray(report?.suites)) {
       return { ...unknownTrueFlaky(source), missingSources };
     }
-    for (const { spec, test } of playwrightTests(report)) {
+    for (const { spec, test, title } of playwrightTests(report)) {
       evaluatedTests += 1;
       const results = Array.isArray(test.results) ? test.results : [];
       retryAttempts += results.filter((result) => Number(result?.retry) > 0).length;
@@ -201,7 +205,7 @@ function buildTrueFlakyEvidence(root, cancelAudits, runId) {
         return { ...unknownTrueFlaky(source), missingSources };
       }
       flakyTests += 1;
-      testKeys.push(`${spec.file}::${spec.title}`);
+      testKeys.push(`${spec.file}::${title}`);
     }
   }
 
@@ -554,15 +558,26 @@ export function mergeLaneArtifacts(
 ) {
   if (!expectedHeadSha) throw new Error("expectedHeadSha is required");
 
+  const legacyValidationErrors = [];
+  let laneArtifactIncomplete = false;
+  const recordLegacyError = (error) => {
+    laneArtifactIncomplete = true;
+    legacyValidationErrors.push(error instanceof Error ? error.message : String(error));
+  };
+
   const taxonomyFiles = filesMatching(root, /^deep-e2e-taxonomy-.*\.json$/);
   const taxonomies = taxonomyFiles.map(readJson);
-  assertLaneSet(taxonomies.map((taxonomy) => taxonomy.metadata?.lane), "Taxonomy artifacts");
+  try {
+    assertLaneSet(taxonomies.map((taxonomy) => taxonomy.metadata?.lane), "Taxonomy artifacts");
+  } catch (error) {
+    recordLegacyError(error);
+  }
   for (const taxonomy of taxonomies) {
     if (taxonomy.schemaVersion !== 2 || taxonomy.status !== "available") {
-      throw new Error(`Lane taxonomy is unavailable: ${taxonomy.metadata?.lane ?? "unknown"}`);
+      recordLegacyError(`Lane taxonomy is unavailable: ${taxonomy.metadata?.lane ?? "unknown"}`);
     }
     if (taxonomy.metadata?.headSha !== expectedHeadSha) {
-      throw new Error(
+      recordLegacyError(
         `Lane taxonomy head mismatch: lane=${taxonomy.metadata?.lane} expected=${expectedHeadSha} actual=${taxonomy.metadata?.headSha}`,
       );
     }
@@ -570,15 +585,19 @@ export function mergeLaneArtifacts(
 
   const coverageFiles = filesMatching(root, /^deep-e2e-coverage-.*\.json$/);
   const coverage = coverageFiles.map(readJson);
-  assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
+  try {
+    assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
+  } catch (error) {
+    recordLegacyError(error);
+  }
   const coverageDigests = new Set(coverage.map((manifest) => manifest.allSpecsDigest));
   const coverageCounts = new Set(coverage.map((manifest) => manifest.allSpecCount));
   if (coverageDigests.size !== 1 || coverageCounts.size !== 1) {
-    throw new Error("Coverage manifests do not describe the same spec inventory");
+    recordLegacyError("Coverage manifests do not describe the same spec inventory");
   }
   for (const manifest of coverage) {
     if (manifest.sourceHeadSha !== expectedHeadSha) {
-      throw new Error(`Coverage head mismatch: lane=${manifest.lane}`);
+      recordLegacyError(`Coverage head mismatch: lane=${manifest.lane}`);
     }
   }
   const ownedSpecs = coverage.flatMap((manifest) =>
@@ -588,11 +607,11 @@ export function mergeLaneArtifacts(
     ({ file }, index) => ownedSpecs.findIndex((entry) => entry.file === file) !== index,
   );
   if (duplicateSpecs.length > 0) {
-    throw new Error(`Duplicate lane spec ownership: ${duplicateSpecs[0].file}`);
+    recordLegacyError(`Duplicate lane spec ownership: ${duplicateSpecs[0].file}`);
   }
   const expectedSpecCount = coverage[0]?.allSpecCount ?? 0;
   if (ownedSpecs.length !== expectedSpecCount) {
-    throw new Error(
+    recordLegacyError(
       `Deep spec coverage incomplete: owned=${ownedSpecs.length} expected=${expectedSpecCount}`,
     );
   }
@@ -607,7 +626,6 @@ export function mergeLaneArtifacts(
   if (duplicateTests.length > 0) {
     throw new Error(`Duplicate JUnit test identity across lanes: ${duplicateTests[0]}`);
   }
-  const legacyValidationErrors = [];
   if (junitFiles.length !== DEEP_LANES.length) {
     legacyValidationErrors.push(
       `Expected ${DEEP_LANES.length} JUnit artifacts, found ${junitFiles.length}`,
@@ -632,12 +650,20 @@ export function mergeLaneArtifacts(
     runId,
   });
   const sourceSha = expectedHeadSha;
-  const checkoutShas = [
-    ...bootstrap.cancelAudits.map((audit) => audit?.checkout_sha).filter(Boolean),
-    integration.summary.checkoutSha,
-  ].filter(Boolean);
-  const uniqueCheckoutShas = [...new Set(checkoutShas)];
-  const checkoutSha = uniqueCheckoutShas.length === 1 ? uniqueCheckoutShas[0] : null;
+  const laneCheckoutShas = DEEP_LANES.map((lane) => {
+    const laneAudits = bootstrap.cancelAudits.filter((audit) => audit?.lane === lane);
+    return laneAudits.length === 1 && laneAudits[0]?.checkout_sha
+      ? laneAudits[0].checkout_sha
+      : null;
+  });
+  const missingCheckoutLanes = DEEP_LANES.filter(
+    (_, index) => !laneCheckoutShas[index],
+  );
+  const uniqueCheckoutShas = [...new Set(laneCheckoutShas.filter(Boolean))];
+  const checkoutSha =
+    missingCheckoutLanes.length === 0 && uniqueCheckoutShas.length === 1
+      ? uniqueCheckoutShas[0]
+      : null;
   const sourceMismatch = checkoutSha !== expectedHeadSha;
   if (
     didNotRun.status === "unknown" ||
@@ -654,7 +680,7 @@ export function mergeLaneArtifacts(
     );
   }
 
-  const failures = taxonomies.flatMap((taxonomy) => taxonomy.failures);
+  const failures = taxonomies.flatMap((taxonomy) => taxonomy.failures ?? []);
   const failureKeys = failures.map((failure) => failure.failureKey);
   if (new Set(failureKeys).size !== failureKeys.length) {
     const duplicate = failureKeys.find(
@@ -684,7 +710,7 @@ export function mergeLaneArtifacts(
     taxonomyV3: {
       ...taxonomy,
       schemaVersion: 3,
-      status: sourceMismatch || [trueFlaky, didNotRun, integration, bootstrap.evidence]
+      status: laneArtifactIncomplete || sourceMismatch || [trueFlaky, didNotRun, integration, bootstrap.evidence]
         .some((evidence) => evidence.status === "unknown")
         ? "unknown"
         : [trueFlaky, didNotRun, integration, bootstrap.evidence]
@@ -706,6 +732,7 @@ export function mergeLaneArtifacts(
         ...didNotRun.missingSources,
         ...integration.missingSources,
         ...bootstrap.evidence.missingSources,
+        ...missingCheckoutLanes.map((lane) => `checkout-sha-deep-${lane}`),
         ...(sourceMismatch ? ["sourceSha/checkoutSha"] : []),
       ],
       trueFlaky,
