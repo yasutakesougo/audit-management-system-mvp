@@ -134,6 +134,9 @@ test("artifact status is fail-closed", () => {
   const invalid = validArtifact();
   invalid.status = "available";
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, invalid), targetPath }), "HOLD", REASONS.STATUS_INVALID);
+  const notRun = validArtifact();
+  notRun.status = "not_run";
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, notRun), targetPath }), "HOLD", REASONS.STATUS_INVALID);
   const unknown = validArtifact();
   unknown.status = "unknown";
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, unknown), targetPath }), "HOLD", REASONS.STATUS_UNKNOWN);
@@ -165,7 +168,8 @@ test("didNotRun unknown, malformed, count mismatch, and expected mismatch never 
   for (const [mutation, expectedReason] of [
     [(artifact) => { artifact.didNotRun.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
     [(artifact) => { artifact.didNotRun = "bad"; }, REASONS.DID_NOT_RUN_INVALID],
-    [(artifact) => { artifact.didNotRun.summary.count = 1; }, REASONS.DID_NOT_RUN_INVALID],
+    [ (artifact) => { artifact.didNotRun.summary.count = 1; }, REASONS.DID_NOT_RUN_INVALID],
+    [(artifact) => { artifact.didNotRun.summary.testKeys = ["skipped-test"]; }, REASONS.DID_NOT_RUN_INVALID],
     [(artifact) => { artifact.didNotRun.summary.expected = 2; }, REASONS.DID_NOT_RUN_INVALID],
   ]) {
     const artifact = validArtifact();
@@ -195,11 +199,14 @@ test("integration unknown, malformed, job mismatch, junit mismatch, and missing 
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.INTEGRATION_FAILED);
 });
 
-test("integration status not_run is accepted as a valid non-failing contract", () => {
+test("integration status not_run validates skipped/unknown contract", () => {
   const { root, targetPath } = tempCase();
   const artifact = validArtifact();
   artifact.integration.status = "not_run";
-  assert.equal(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }).status, "PASS");
+  artifact.integration.summary = { jobResult: "skipped", junitResult: "unknown" };
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "PASS");
+  artifact.integration.summary.junitResult = "pass";
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", REASONS.INTEGRATION_INVALID);
 });
 
 test("bootstrap requires all DEEP lanes in normalLanes", () => {
