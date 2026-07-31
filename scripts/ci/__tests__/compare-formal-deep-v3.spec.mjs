@@ -142,14 +142,21 @@ test("artifact status is fail-closed", () => {
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.STATUS_FAILED);
 });
 
+test("top-level status does not accept not_run", () => {
+  const { root, targetPath } = tempCase();
+  const artifact = validArtifact();
+  artifact.status = "not_run";
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", REASONS.STATUS_INVALID);
+});
+
 test("trueFlaky unknown, malformed, and pass/count mismatch never PASS", () => {
   const { root, targetPath } = tempCase();
   for (const [mutation, expectedReason] of [
     [(artifact) => { artifact.trueFlaky.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
     [(artifact) => { artifact.trueFlaky = "bad"; }, REASONS.TRUE_FLAKY_INVALID],
     [(artifact) => { artifact.trueFlaky.summary.count = 1; }, REASONS.TRUE_FLAKY_INVALID],
-    [(artifact) => { artifact.trueFlaky.summary = { ...artifact.trueFlaky.summary, testKeys: undefined }; }, REASONS.TRUE_FLAKY_INVALID],
-    [(artifact) => { artifact.trueFlaky.summary = { ...artifact.trueFlaky.summary, count: 2, testKeys: [] }; }, REASONS.TRUE_FLAKY_INVALID],
+    [(artifact) => { artifact.trueFlaky.summary.testKeys = undefined; }, REASONS.TRUE_FLAKY_INVALID],
+    [(artifact) => { artifact.trueFlaky.summary.testKeys = ["flaky"]; }, REASONS.TRUE_FLAKY_INVALID],
   ]) {
     const artifact = validArtifact();
     mutation(artifact);
@@ -166,6 +173,7 @@ test("didNotRun unknown, malformed, count mismatch, and expected mismatch never 
     [(artifact) => { artifact.didNotRun.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
     [(artifact) => { artifact.didNotRun = "bad"; }, REASONS.DID_NOT_RUN_INVALID],
     [(artifact) => { artifact.didNotRun.summary.count = 1; }, REASONS.DID_NOT_RUN_INVALID],
+    [(artifact) => { artifact.didNotRun.summary = { ...artifact.didNotRun.summary, testKeys: ["not-run-test"] }; }, REASONS.DID_NOT_RUN_INVALID],
     [(artifact) => { artifact.didNotRun.summary.expected = 2; }, REASONS.DID_NOT_RUN_INVALID],
   ]) {
     const artifact = validArtifact();
@@ -184,6 +192,7 @@ test("integration unknown, malformed, job mismatch, junit mismatch, and missing 
     [(artifact) => { artifact.integration = "bad"; }, REASONS.INTEGRATION_INVALID],
     [(artifact) => { artifact.integration.summary.jobResult = "failure"; }, REASONS.INTEGRATION_INVALID],
     [(artifact) => { artifact.integration.summary.junitResult = "unknown"; }, REASONS.INTEGRATION_INVALID],
+    [(artifact) => { artifact.integration.status = "not_run"; artifact.integration.summary = { jobResult: "failure", junitResult: "unknown" }; }, REASONS.INTEGRATION_INVALID],
     [(artifact) => { artifact.missingSources = ["junit-e2e-integration.xml"]; }, REASONS.MISSING_SOURCES],
   ]) {
     const artifact = validArtifact();
@@ -195,11 +204,12 @@ test("integration unknown, malformed, job mismatch, junit mismatch, and missing 
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.INTEGRATION_FAILED);
 });
 
-test("integration status not_run is accepted as a valid non-failing contract", () => {
+test("integration status not_run accepts skipped/unknown summary", () => {
   const { root, targetPath } = tempCase();
   const artifact = validArtifact();
   artifact.integration.status = "not_run";
-  assert.equal(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }).status, "PASS");
+  artifact.integration.summary = { jobResult: "skipped", junitResult: "unknown" };
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "PASS");
 });
 
 test("bootstrap requires all DEEP lanes in normalLanes", () => {

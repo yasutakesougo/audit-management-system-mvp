@@ -5,7 +5,8 @@ import path from "node:path";
 import { DEEP_LANES } from "./resolve-deep-e2e-lane.mjs";
 
 export const COMPARISON_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
-export const EVIDENCE_STATUSES = Object.freeze(["pass", "fail", "not_run", "unknown"]);
+const ARTIFACT_STATUSES = Object.freeze(["pass", "fail", "unknown"]);
+const EVIDENCE_STATUSES = Object.freeze(["pass", "fail", "not_run", "unknown"]);
 
 const EXPECTED_BOOTSTRAP_LANES = [...DEEP_LANES].sort();
 
@@ -33,7 +34,8 @@ export const REASONS = Object.freeze({
   NEW_FAILURE_KEYS: "NEW_FAILURE_KEYS",
 });
 
-const STATUS_SET = new Set(EVIDENCE_STATUSES);
+const ARTIFACT_STATUS_SET = new Set(ARTIFACT_STATUSES);
+const EVIDENCE_STATUS_SET = new Set(EVIDENCE_STATUSES);
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -69,8 +71,8 @@ function validateTarget(target) {
   );
 }
 
-function validateStatus(value, invalidReason, reasons) {
-  if (!STATUS_SET.has(value)) {
+function validateStatus(value, invalidReason, reasons, validStatuses) {
+  if (!validStatuses.has(value)) {
     addReason(reasons, invalidReason);
     return "invalid";
   }
@@ -82,9 +84,13 @@ function validateEvidenceShape(value, invalidReason, reasons) {
     addReason(reasons, invalidReason);
     return "invalid";
   }
-  const status = validateStatus(value.status, invalidReason, reasons);
+  const status = validateStatus(value.status, invalidReason, reasons, EVIDENCE_STATUS_SET);
   if (status === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
   return status;
+}
+
+function validateArtifactStatus(value, invalidReason, reasons) {
+  return validateStatus(value, invalidReason, reasons, ARTIFACT_STATUS_SET);
 }
 
 function isStringArray(value) {
@@ -167,7 +173,7 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
   }
 
   const reasons = [];
-  const artifactStatus = validateStatus(artifact.status, REASONS.STATUS_INVALID, reasons);
+  const artifactStatus = validateArtifactStatus(artifact.status, REASONS.STATUS_INVALID, reasons);
   if (artifactStatus === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
 
   const missingSourcesValid =
@@ -193,7 +199,7 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     if (
       !isRecord(summary) ||
       !Number.isInteger(summary.count) ||
-      summary.count < 0 ||
+      summary.count !== 0 ||
       !isStringArray(summary.testKeys) ||
       summary.testKeys.length !== summary.count
     ) {
@@ -209,7 +215,9 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
       summary.unit !== "test" ||
       !Number.isInteger(summary.expected) ||
       !Number.isInteger(summary.executed) ||
-      summary.expected !== summary.executed
+      summary.expected !== summary.executed ||
+      !isStringArray(summary.testKeys) ||
+      summary.testKeys.length !== summary.count
     ) {
       addReason(reasons, REASONS.DID_NOT_RUN_INVALID);
     }
@@ -225,6 +233,11 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     }
     if (missingSources.includes("junit-e2e-integration.xml")) {
       addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
+    }
+  } else if (integrationStatus === "not_run") {
+    const summary = artifact.integration.summary;
+    if (!isRecord(summary) || summary.jobResult !== "skipped" || summary.junitResult !== "unknown") {
+      addReason(reasons, REASONS.INTEGRATION_INVALID);
     }
   } else if (integrationStatus === "unknown") {
     addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
