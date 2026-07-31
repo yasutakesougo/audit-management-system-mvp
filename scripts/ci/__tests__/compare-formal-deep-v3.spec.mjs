@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { compareFormalDeepV3, REASONS } from "../compare-formal-deep-v3.mjs";
+import { DEEP_LANES } from "../resolve-deep-e2e-lane.mjs";
 
 const fixturePath = path.resolve("scripts/ci/__fixtures__/formal-deep-v3-run-29714201142.json");
 
@@ -33,7 +34,11 @@ function validArtifact() {
   artifact.integration = { status: "pass", summary: { jobResult: "success", junitResult: "pass" } };
   artifact.bootstrap = {
     status: "pass",
-    summary: { normalLanes: ["general"], abnormalLanes: [], missingLanes: [] },
+    summary: {
+      normalLanes: [...DEEP_LANES],
+      abnormalLanes: [],
+      missingLanes: [],
+    },
   };
   artifact.missingSources = [];
   artifact.failureKeys = [];
@@ -143,6 +148,8 @@ test("trueFlaky unknown, malformed, and pass/count mismatch never PASS", () => {
     [(artifact) => { artifact.trueFlaky.status = "unknown"; }, REASONS.STATUS_UNKNOWN],
     [(artifact) => { artifact.trueFlaky = "bad"; }, REASONS.TRUE_FLAKY_INVALID],
     [(artifact) => { artifact.trueFlaky.summary.count = 1; }, REASONS.TRUE_FLAKY_INVALID],
+    [(artifact) => { artifact.trueFlaky.summary = { ...artifact.trueFlaky.summary, testKeys: undefined }; }, REASONS.TRUE_FLAKY_INVALID],
+    [(artifact) => { artifact.trueFlaky.summary = { ...artifact.trueFlaky.summary, count: 2, testKeys: [] }; }, REASONS.TRUE_FLAKY_INVALID],
   ]) {
     const artifact = validArtifact();
     mutation(artifact);
@@ -186,6 +193,22 @@ test("integration unknown, malformed, job mismatch, junit mismatch, and missing 
   const failed = validArtifact();
   failed.integration.status = "fail";
   assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, failed), targetPath }), "FAIL", REASONS.INTEGRATION_FAILED);
+});
+
+test("integration status not_run is accepted as a valid non-failing contract", () => {
+  const { root, targetPath } = tempCase();
+  const artifact = validArtifact();
+  artifact.integration.status = "not_run";
+  assert.equal(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }).status, "PASS");
+});
+
+test("bootstrap requires all DEEP lanes in normalLanes", () => {
+  const { root, targetPath } = tempCase();
+  const artifact = validArtifact();
+  artifact.bootstrap.summary.normalLanes = ["general"];
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", REASONS.BOOTSTRAP_INVALID);
+  artifact.bootstrap.summary.normalLanes = [...DEEP_LANES.slice(0, 3)];
+  assertStatus(compareFormalDeepV3({ artifactPath: writeArtifact(root, artifact), targetPath }), "HOLD", REASONS.BOOTSTRAP_INVALID);
 });
 
 test("bootstrap unknown, malformed, abnormal, and missing lanes never PASS", () => {
