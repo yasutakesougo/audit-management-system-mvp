@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 export const HANDOFF_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
 export const HANDOFF_REASONS = Object.freeze({
@@ -306,6 +307,6 @@ export function run(argv = process.argv.slice(2)) {
   return normalized;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = exitCodeForHandoffStatus(run().status);
 }
