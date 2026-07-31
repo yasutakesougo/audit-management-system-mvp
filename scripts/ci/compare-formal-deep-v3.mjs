@@ -6,6 +6,7 @@ import { DEEP_LANES } from "./resolve-deep-e2e-lane.mjs";
 
 export const COMPARISON_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
 export const EVIDENCE_STATUSES = Object.freeze(["pass", "fail", "not_run", "unknown"]);
+const ARTIFACT_STATUSES = Object.freeze(["pass", "fail", "unknown"]);
 
 const EXPECTED_BOOTSTRAP_LANES = [...DEEP_LANES].sort();
 
@@ -74,6 +75,15 @@ function validateStatus(value, invalidReason, reasons) {
     addReason(reasons, invalidReason);
     return "invalid";
   }
+  return value;
+}
+
+function validateArtifactStatus(value, reasons) {
+  if (!STATUS_SET.has(value) || !ARTIFACT_STATUSES.includes(value)) {
+    addReason(reasons, REASONS.STATUS_INVALID);
+    return "invalid";
+  }
+  if (value === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
   return value;
 }
 
@@ -167,7 +177,7 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
   }
 
   const reasons = [];
-  const artifactStatus = validateStatus(artifact.status, REASONS.STATUS_INVALID, reasons);
+  const artifactStatus = validateArtifactStatus(artifact.status, reasons);
   if (artifactStatus === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
 
   const missingSourcesValid =
@@ -192,6 +202,7 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     const summary = artifact.trueFlaky.summary;
     if (
       !isRecord(summary) ||
+      summary.count !== 0 ||
       !Number.isInteger(summary.count) ||
       summary.count < 0 ||
       !isStringArray(summary.testKeys) ||
@@ -205,6 +216,8 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     const summary = artifact.didNotRun.summary;
     if (
       !isRecord(summary) ||
+      !isStringArray(summary.testKeys) ||
+      summary.testKeys.length !== summary.count ||
       summary.count !== 0 ||
       summary.unit !== "test" ||
       !Number.isInteger(summary.expected) ||
@@ -225,6 +238,11 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
     }
     if (missingSources.includes("junit-e2e-integration.xml")) {
       addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
+    }
+  } else if (integrationStatus === "not_run") {
+    const summary = artifact.integration.summary;
+    if (!isRecord(summary) || summary.jobResult !== "skipped" || summary.junitResult !== "unknown") {
+      addReason(reasons, REASONS.INTEGRATION_INVALID);
     }
   } else if (integrationStatus === "unknown") {
     addReason(reasons, REASONS.INTEGRATION_JUNIT_MISSING);
