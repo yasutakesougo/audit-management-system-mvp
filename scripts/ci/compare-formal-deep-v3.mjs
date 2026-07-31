@@ -2,9 +2,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { DEEP_LANES } from "./resolve-deep-e2e-lane.mjs";
 
 export const COMPARISON_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
-export const EVIDENCE_STATUSES = Object.freeze(["pass", "fail", "unknown"]);
+export const EVIDENCE_STATUSES = Object.freeze(["pass", "fail", "not_run", "unknown"]);
+
+const EXPECTED_BOOTSTRAP_LANES = [...DEEP_LANES].sort();
 
 export const REASONS = Object.freeze({
   ARTIFACT_MISSING: "ARTIFACT_MISSING",
@@ -82,6 +85,20 @@ function validateEvidenceShape(value, invalidReason, reasons) {
   const status = validateStatus(value.status, invalidReason, reasons);
   if (status === "unknown") addReason(reasons, REASONS.STATUS_UNKNOWN);
   return status;
+}
+
+function isStringArray(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function hasSameSet(values, expected) {
+  if (!isStringArray(values)) return false;
+  if (values.length !== expected.length) return false;
+  const normalizedValues = [...values].sort();
+  for (let index = 0; index < normalizedValues.length; index += 1) {
+    if (normalizedValues[index] !== expected[index]) return false;
+  }
+  return true;
 }
 
 function buildResult(artifactPath, targetPath, artifact, target, evaluation) {
@@ -173,7 +190,15 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
 
   if (trueFlakyStatus === "pass") {
     const summary = artifact.trueFlaky.summary;
-    if (!isRecord(summary) || summary.count !== 0) addReason(reasons, REASONS.TRUE_FLAKY_INVALID);
+    if (
+      !isRecord(summary) ||
+      !Number.isInteger(summary.count) ||
+      summary.count < 0 ||
+      !isStringArray(summary.testKeys) ||
+      summary.testKeys.length !== summary.count
+    ) {
+      addReason(reasons, REASONS.TRUE_FLAKY_INVALID);
+    }
   }
 
   if (didNotRunStatus === "pass") {
@@ -213,7 +238,8 @@ export function compareFormalDeepV3({ artifactPath, targetPath }) {
       !Array.isArray(summary.abnormalLanes) ||
       !Array.isArray(summary.missingLanes) ||
       summary.abnormalLanes.length !== 0 ||
-      summary.missingLanes.length !== 0
+      summary.missingLanes.length !== 0 ||
+      !hasSameSet(summary.normalLanes, EXPECTED_BOOTSTRAP_LANES)
     ) {
       addReason(reasons, REASONS.BOOTSTRAP_INVALID);
     }
