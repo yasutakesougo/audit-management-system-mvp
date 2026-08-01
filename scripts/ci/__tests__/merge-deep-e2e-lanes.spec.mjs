@@ -583,6 +583,7 @@ describe("mergeLaneArtifacts", () => {
     assert.equal(merged.coverage.ownedSpecCount, DEEP_LANES.length - 1);
     assert.equal(merged.coverage.allSpecsDigest, "digest");
     assert.equal(merged.coverage.allSpecCount, DEEP_LANES.length);
+    assert.deepEqual(merged.fatalValidationErrors, []);
     assert.ok(merged.taxonomyV3.missingSources.includes("coverage-deep-general"));
     assert.match(
       merged.legacyValidationErrors.join("\n"),
@@ -608,10 +609,87 @@ describe("mergeLaneArtifacts", () => {
     assert.equal(merged.coverage.ownedSpecCount, 0);
     assert.equal(merged.coverage.allSpecsDigest, null);
     assert.equal(merged.coverage.allSpecCount, 0);
+    assert.deepEqual(merged.fatalValidationErrors, []);
     assert.ok(merged.taxonomyV3.missingSources.includes("coverage-deep-general"));
     assert.match(
       merged.legacyValidationErrors.join("\n"),
       /Coverage manifests must contain each Deep lane exactly once/,
+    );
+  });
+
+  it("treats coverage head mismatch as fatal", () => {
+    const root = artifactFixture();
+    write(root, "expected-inventory.json", expectedInventoryPayload());
+    const coverage = path.join(
+      root,
+      "general",
+      "deep-e2e-coverage-run-general.json",
+    );
+    const payload = JSON.parse(fs.readFileSync(coverage, "utf8"));
+    payload.sourceHeadSha = "other";
+    write(root, "general/deep-e2e-coverage-run-general.json", payload);
+
+    const merged = mergeLaneArtifacts(root, {
+      expectedHeadSha: "head",
+      expectedInventory: path.join(root, "expected-inventory.json"),
+      integrationJobResult: "skipped",
+      eventName: "pull_request",
+    });
+
+    assert.equal(merged.taxonomyV3.status, "unknown");
+    assert.match(
+      merged.fatalValidationErrors.join("\n"),
+      /Coverage head mismatch: lane=general/,
+    );
+    assert.match(
+      merged.legacyValidationErrors.join("\n"),
+      /Coverage head mismatch: lane=general/,
+    );
+  });
+
+  it("treats coverage inventory mismatch as fatal", () => {
+    const root = artifactFixture();
+    write(root, "expected-inventory.json", expectedInventoryPayload());
+    const coverage = path.join(root, "general", "deep-e2e-coverage-run-general.json");
+    const payload = JSON.parse(fs.readFileSync(coverage, "utf8"));
+    payload.allSpecCount = 7;
+    write(root, "general/deep-e2e-coverage-run-general.json", payload);
+
+    const merged = mergeLaneArtifacts(root, {
+      expectedHeadSha: "head",
+      expectedInventory: path.join(root, "expected-inventory.json"),
+      integrationJobResult: "skipped",
+      eventName: "pull_request",
+    });
+
+    assert.match(
+      merged.fatalValidationErrors.join("\n"),
+      /Coverage manifests do not describe the same spec inventory/,
+    );
+  });
+
+  it("treats duplicate coverage spec ownership as fatal", () => {
+    const root = artifactFixture();
+    write(root, "expected-inventory.json", expectedInventoryPayload());
+    const duplicate = path.join(
+      root,
+      "general",
+      "deep-e2e-coverage-run-general.json",
+    );
+    const payload = JSON.parse(fs.readFileSync(duplicate, "utf8"));
+    payload.files = ["tests/e2e/sp-stub.spec.ts"];
+    write(root, "general/deep-e2e-coverage-run-general.json", payload);
+
+    const merged = mergeLaneArtifacts(root, {
+      expectedHeadSha: "head",
+      expectedInventory: path.join(root, "expected-inventory.json"),
+      integrationJobResult: "skipped",
+      eventName: "pull_request",
+    });
+
+    assert.match(
+      merged.fatalValidationErrors.join("\n"),
+      /Duplicate lane spec ownership: tests\/e2e\/sp-stub\.spec\.ts/,
     );
   });
 

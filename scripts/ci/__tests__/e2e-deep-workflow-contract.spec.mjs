@@ -46,6 +46,11 @@ describe("E2E Deep workflow evidence contract", () => {
     expect(workflow).toMatch(
       /--integration-artifact-name "integration-results-\$\{\{ github\.run_number \}\}"/,
     );
+    expect(
+      workflow,
+    ).toMatch(
+      /name: Run integration tests[\s\S]{0,1000}PLAYWRIGHT_JUNIT_OUTPUT_FILE: 'test-results\/junit-e2e-integration\.xml'/,
+    );
   });
 
   it("retains lane and Integration evidence for 14 days", () => {

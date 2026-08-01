@@ -588,26 +588,31 @@ export function mergeLaneArtifacts(
 
   const coverageFiles = filesMatching(root, /^deep-e2e-coverage-.*\.json$/);
   const coverage = coverageFiles.map(readJson);
-  try {
-    assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
-  } catch (error) {
-    recordLegacyError(error, { fatal: false });
-  }
   const missingCoverageLanes = DEEP_LANES.filter(
     (lane) => !coverage.some((manifest) => manifest?.lane === lane),
   ).map((lane) => `coverage-deep-${lane}`);
+  if (missingCoverageLanes.length > 0) {
+    recordLegacyError(
+      `Coverage manifests must contain each Deep lane exactly once: actual=${[
+        ...new Set(coverage.map((manifest) => manifest.lane)),
+      ].sort().join(",") || "none"}`,
+      { fatal: false },
+    );
+  } else {
+    try {
+      assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
+    } catch (error) {
+      recordLegacyError(error);
+    }
+  }
   const coverageDigests = new Set(coverage.map((manifest) => manifest.allSpecsDigest));
   const coverageCounts = new Set(coverage.map((manifest) => manifest.allSpecCount));
-  if (coverageDigests.size !== 1 || coverageCounts.size !== 1) {
-    recordLegacyError("Coverage manifests do not describe the same spec inventory", {
-      fatal: false,
-    });
+  if (missingCoverageLanes.length === 0 && (coverageDigests.size !== 1 || coverageCounts.size !== 1)) {
+    recordLegacyError("Coverage manifests do not describe the same spec inventory");
   }
   for (const manifest of coverage) {
     if (manifest.sourceHeadSha !== expectedHeadSha) {
-      recordLegacyError(`Coverage head mismatch: lane=${manifest.lane}`, {
-        fatal: false,
-      });
+      recordLegacyError(`Coverage head mismatch: lane=${manifest.lane}`);
     }
   }
   const ownedSpecs = coverage.flatMap((manifest) =>
@@ -617,15 +622,12 @@ export function mergeLaneArtifacts(
     ({ file }, index) => ownedSpecs.findIndex((entry) => entry.file === file) !== index,
   );
   if (duplicateSpecs.length > 0) {
-    recordLegacyError(`Duplicate lane spec ownership: ${duplicateSpecs[0].file}`, {
-      fatal: false,
-    });
+    recordLegacyError(`Duplicate lane spec ownership: ${duplicateSpecs[0].file}`);
   }
   const expectedSpecCount = coverage[0]?.allSpecCount ?? 0;
-  if (ownedSpecs.length !== expectedSpecCount) {
+  if (missingCoverageLanes.length === 0 && ownedSpecs.length !== expectedSpecCount) {
     recordLegacyError(
       `Deep spec coverage incomplete: owned=${ownedSpecs.length} expected=${expectedSpecCount}`,
-      { fatal: false },
     );
   }
 
