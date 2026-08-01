@@ -764,7 +764,7 @@ jobs:
             --retries=1
         env:
           NODE_ENV: production
-          PLAYWRIGHT_JUNIT_OUTPUT_FILE: 'test-results/junit-e2e-integration.xml'
+          PLAYWRIGHT_JUNIT_OUTPUT: 'test-results/junit-e2e-integration.xml'
         continue-on-error: true
 
       - name: Capture Integration execution audit
