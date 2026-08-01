@@ -668,6 +668,33 @@ describe("mergeLaneArtifacts", () => {
     );
   });
 
+  it("treats coverage spec count mismatch as fatal", () => {
+    const root = artifactFixture();
+    write(root, "expected-inventory.json", expectedInventoryPayload());
+    const coverage = path.join(root, "general", "deep-e2e-coverage-run-general.json");
+    const payload = JSON.parse(fs.readFileSync(coverage, "utf8"));
+    payload.files = [];
+    write(root, "general/deep-e2e-coverage-run-general.json", payload);
+
+    const merged = mergeLaneArtifacts(root, {
+      expectedHeadSha: "head",
+      expectedInventory: path.join(root, "expected-inventory.json"),
+      integrationJobResult: "skipped",
+      eventName: "pull_request",
+    });
+
+    assert.equal(merged.taxonomyV3.status, "unknown");
+    assert.equal(merged.taxonomyV3.sourceSha, "head");
+    assert.match(
+      merged.fatalValidationErrors.join("\n"),
+      /Deep spec coverage incomplete: owned=5 expected=6/,
+    );
+    assert.match(
+      merged.legacyValidationErrors.join("\n"),
+      /Deep spec coverage incomplete: owned=5 expected=6/,
+    );
+  });
+
   it("treats duplicate coverage spec ownership as fatal", () => {
     const root = artifactFixture();
     write(root, "expected-inventory.json", expectedInventoryPayload());
