@@ -559,10 +559,13 @@ export function mergeLaneArtifacts(
   if (!expectedHeadSha) throw new Error("expectedHeadSha is required");
 
   const legacyValidationErrors = [];
+  const fatalValidationErrors = [];
   let laneArtifactIncomplete = false;
-  const recordLegacyError = (error) => {
+  const recordLegacyError = (error, { fatal = true } = {}) => {
     laneArtifactIncomplete = true;
-    legacyValidationErrors.push(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    legacyValidationErrors.push(message);
+    if (fatal) fatalValidationErrors.push(message);
   };
 
   const taxonomyFiles = filesMatching(root, /^deep-e2e-taxonomy-.*\.json$/);
@@ -585,14 +588,26 @@ export function mergeLaneArtifacts(
 
   const coverageFiles = filesMatching(root, /^deep-e2e-coverage-.*\.json$/);
   const coverage = coverageFiles.map(readJson);
-  try {
-    assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
-  } catch (error) {
-    recordLegacyError(error);
+  const missingCoverageLanes = DEEP_LANES.filter(
+    (lane) => !coverage.some((manifest) => manifest?.lane === lane),
+  ).map((lane) => `coverage-deep-${lane}`);
+  if (missingCoverageLanes.length > 0) {
+    recordLegacyError(
+      `Coverage manifests must contain each Deep lane exactly once: actual=${[
+        ...new Set(coverage.map((manifest) => manifest.lane)),
+      ].sort().join(",") || "none"}`,
+      { fatal: false },
+    );
+  } else {
+    try {
+      assertLaneSet(coverage.map((manifest) => manifest.lane), "Coverage manifests");
+    } catch (error) {
+      recordLegacyError(error);
+    }
   }
   const coverageDigests = new Set(coverage.map((manifest) => manifest.allSpecsDigest));
   const coverageCounts = new Set(coverage.map((manifest) => manifest.allSpecCount));
-  if (coverageDigests.size !== 1 || coverageCounts.size !== 1) {
+  if (missingCoverageLanes.length === 0 && (coverageDigests.size !== 1 || coverageCounts.size !== 1)) {
     recordLegacyError("Coverage manifests do not describe the same spec inventory");
   }
   for (const manifest of coverage) {
@@ -610,7 +625,7 @@ export function mergeLaneArtifacts(
     recordLegacyError(`Duplicate lane spec ownership: ${duplicateSpecs[0].file}`);
   }
   const expectedSpecCount = coverage[0]?.allSpecCount ?? 0;
-  if (ownedSpecs.length !== expectedSpecCount) {
+  if (missingCoverageLanes.length === 0 && ownedSpecs.length !== expectedSpecCount) {
     recordLegacyError(
       `Deep spec coverage incomplete: owned=${ownedSpecs.length} expected=${expectedSpecCount}`,
     );
@@ -732,6 +747,7 @@ export function mergeLaneArtifacts(
         ...didNotRun.missingSources,
         ...integration.missingSources,
         ...bootstrap.evidence.missingSources,
+        ...missingCoverageLanes,
         ...missingCheckoutLanes.map((lane) => `checkout-sha-deep-${lane}`),
         ...(sourceMismatch ? ["sourceSha/checkoutSha"] : []),
       ],
@@ -762,6 +778,7 @@ export function mergeLaneArtifacts(
       duplicateTestIdentityCount: 0,
     },
     legacyValidationErrors,
+    fatalValidationErrors,
   };
 }
 
@@ -827,8 +844,8 @@ function main() {
   writeJson(options.v3Output, merged.taxonomyV3);
   writeJson(options.coverageOutput, merged.coverage);
   process.stdout.write(`${JSON.stringify(merged.coverage)}\n`);
-  if (merged.legacyValidationErrors.length > 0) {
-    for (const error of merged.legacyValidationErrors) {
+  if (merged.fatalValidationErrors.length > 0) {
+    for (const error of merged.fatalValidationErrors) {
       process.stderr.write(`${error}\n`);
     }
     process.exitCode = 1;
