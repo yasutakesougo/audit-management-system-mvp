@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 3,
+  "consumer": "formal-deep-v3-comparison",
+  "runId": "fail-run",
+  "status": "FAIL",
+  "reasonCodes": ["NEW_FAILURE_KEYS"],
+  "evidence": {
+    "status": "fail",
+    "trueFlaky": { "status": "pass", "summary": { "count": 0, "testKeys": [] } },
+    "didNotRun": { "status": "pass", "summary": { "count": 0, "unit": "test", "expected": 331, "executed": 331, "testKeys": [] } },
+    "integration": { "status": "pass", "summary": { "jobResult": "success", "junitResult": "pass" } },
+    "bootstrap": { "status": "pass", "summary": { "normalLanes": ["general"], "abnormalLanes": [], "missingLanes": [] } },
+    "sourceSha": "same-sha",
+    "checkoutSha": "same-sha",
+    "missingSources": [],
+    "failureKeys": ["target-key", "new-key"]
+  },
+  "comparison": {
+    "targetManifestKeyCount": 1,
+    "currentFailureKeyCount": 2,
+    "targetFailureKeyCount": 1,
+    "targetFailureKeys": ["target-key"],
+    "newFailureKeyCount": 1,
+    "newFailureKeys": ["new-key"]
+  }
+}
