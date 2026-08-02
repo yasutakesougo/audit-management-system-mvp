@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const HANDOFF_STATUSES = Object.freeze(["PASS", "FAIL", "HOLD"]);
 export const HANDOFF_REASONS = Object.freeze({
@@ -65,6 +65,23 @@ function validCount(value) {
 
 function validStringArray(value) {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function normalizeTargetFailureManifest(input, reasons) {
+  if (!Object.hasOwn(input, "targetManifest")) return null;
+  const targetManifest = input.targetManifest;
+  if (!isRecord(targetManifest) || !validStringArray(targetManifest.failureKeys)) {
+    addReason(reasons, HANDOFF_REASONS.FAILURE_KEY_PARTITION_INVALID);
+    return null;
+  }
+  return targetManifest.failureKeys;
+}
+
+function validateTargetKeyManifest(comparison, targetFailureManifest, reasons) {
+  if (!Array.isArray(targetFailureManifest)) return;
+  const manifestSet = new Set(targetFailureManifest);
+  const unknownTargets = comparison.targetFailureKeys.filter((key) => !manifestSet.has(key));
+  if (unknownTargets.length > 0) addReason(reasons, HANDOFF_REASONS.FAILURE_KEY_PARTITION_INVALID);
 }
 
 function normalizeFailureComparison(input, reasons) {
@@ -142,8 +159,10 @@ function normalizeEvidence(input, reasons) {
     checkoutSha: typeof evidence.checkoutSha === "string" ? evidence.checkoutSha : null,
     missingSources,
     failureKeys: evidence.failureKeys,
+    trueFlaky: evidence.trueFlaky ?? null,
     didNotRun: evidence.didNotRun ?? null,
     integration: evidence.integration ?? null,
+    bootstrap: evidence.bootstrap ?? null,
   };
 }
 
@@ -156,13 +175,28 @@ function hasSameStringSet(left, right) {
 function validateEvidenceFailureKeys(evidence, comparison, reasons) {
   if (!validStringArray(evidence.failureKeys)) return;
   const comparisonFailureKeys = [...comparison.targetFailureKeys, ...comparison.newFailureKeys];
-  if (
-    evidence.failureKeys.length !== comparison.currentFailureKeyCount ||
-    new Set(evidence.failureKeys).size !== evidence.failureKeys.length ||
-    !hasSameStringSet(evidence.failureKeys, comparisonFailureKeys)
-  ) {
-    addReason(reasons, HANDOFF_REASONS.EVIDENCE_FAILURE_KEYS_MISMATCH);
+    if (
+      evidence.failureKeys.length !== comparison.currentFailureKeyCount ||
+      new Set(evidence.failureKeys).size !== evidence.failureKeys.length ||
+      !hasSameStringSet(evidence.failureKeys, comparisonFailureKeys)
+    ) {
+      addReason(reasons, HANDOFF_REASONS.EVIDENCE_FAILURE_KEYS_MISMATCH);
   }
+}
+
+function evidenceIsPass(evidence) {
+  return (
+    isRecord(evidence.value) &&
+    evidence.value.status === "pass" &&
+    isRecord(evidence.trueFlaky) &&
+    evidence.trueFlaky.status === "pass" &&
+    isRecord(evidence.didNotRun) &&
+    evidence.didNotRun.status === "pass" &&
+    isRecord(evidence.integration) &&
+    evidence.integration.status === "pass" &&
+    isRecord(evidence.bootstrap) &&
+    evidence.bootstrap.status === "pass"
+  );
 }
 
 function normalizeInput(input) {
@@ -190,9 +224,11 @@ function normalizeInput(input) {
   }
   const comparison = normalizeFailureComparison(input, reasons);
   const evidence = normalizeEvidence(input, reasons);
+  const targetFailureManifest = normalizeTargetFailureManifest(input, reasons);
   validateEvidenceFailureKeys(evidence, comparison, reasons);
   const sourceConsumer = input?.consumer;
   const status = input?.status;
+  validateTargetKeyManifest(comparison, targetFailureManifest, reasons);
 
   if (input?.schemaVersion !== 3) addReason(reasons, HANDOFF_REASONS.COMPARISON_SCHEMA_INVALID);
   if (sourceConsumer !== "formal-deep-v3-comparison") addReason(reasons, HANDOFF_REASONS.SOURCE_CONSUMER_INVALID);
@@ -209,7 +245,14 @@ function normalizeInput(input) {
   if (!shaValid) addReason(reasons, HANDOFF_REASONS.SHA_INVALID);
 
   if (status === "PASS") {
-    if (inputReasons.length > 0 || comparison.targetFailureKeyCount > 0 || comparison.newFailureKeyCount > 0 || !isRecord(input.comparison) || !shaValid) {
+    if (
+      inputReasons.length > 0 ||
+      comparison.targetFailureKeyCount > 0 ||
+      comparison.newFailureKeyCount > 0 ||
+      !isRecord(input.comparison) ||
+      !shaValid ||
+      !evidenceIsPass(evidence)
+    ) {
       addReason(reasons, HANDOFF_REASONS.PASS_INCONSISTENT);
     }
   }
@@ -217,7 +260,7 @@ function normalizeInput(input) {
     const hasFailureReason = inputReasons.some((code) => FAILURE_REASONS.has(code));
     const hasFailureKeys = comparison.targetFailureKeyCount > 0 || comparison.newFailureKeyCount > 0;
     if (!hasFailureReason && !hasFailureKeys) addReason(reasons, HANDOFF_REASONS.FAIL_REASON_MISSING);
-    if ((hasFailureKeys && !hasFailureReason) || !shaValid) addReason(reasons, HANDOFF_REASONS.FAIL_REASON_MISSING);
+    if (hasFailureKeys && !hasFailureReason) addReason(reasons, HANDOFF_REASONS.FAIL_REASON_MISSING);
   }
 
   const structurallyInvalid = reasons.length > 0;
@@ -307,6 +350,16 @@ export function run(argv = process.argv.slice(2)) {
   return normalized;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isInvokedAsScript() {
+  if (!process.argv[1]) return false;
+  try {
+    const currentScriptPath = fileURLToPath(import.meta.url);
+    return fs.realpathSync(path.resolve(process.argv[1])) === fs.realpathSync(path.resolve(currentScriptPath));
+  } catch {
+    return import.meta.url === pathToFileURL(process.argv[1]).href;
+  }
+}
+
+if (isInvokedAsScript()) {
   process.exitCode = exitCodeForHandoffStatus(run().status);
 }

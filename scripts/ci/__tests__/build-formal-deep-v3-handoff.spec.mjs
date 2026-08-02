@@ -127,6 +127,75 @@ test("invalid source consumer, SHA mismatch, and PASS inconsistencies are HOLD",
     comparison: { ...base.comparison, currentFailureKeyCount: 1, newFailureKeyCount: 1, newFailureKeys: ["new-key"] },
   });
   assert.equal(passKey.status, "HOLD");
+  assert.ok(passKey.reasonCodes.includes("PASS_INCONSISTENT"), "PASS with failure keys should not be PASS");
+});
+
+test("FAIL with SHA mismatch does not inject FAIL_REASON_MISSING", () => {
+  const base = readFixture("formal-deep-v3-comparison-pass.json");
+  const shaOnlyMismatch = buildFormalDeepV3Handoff({
+    ...base,
+    status: "FAIL",
+    reasonCodes: ["NEW_FAILURE_KEYS"],
+    comparison: {
+      ...base.comparison,
+      targetManifestKeyCount: 0,
+      currentFailureKeyCount: 0,
+      targetFailureKeyCount: 0,
+      targetFailureKeys: [],
+      newFailureKeyCount: 0,
+      newFailureKeys: [],
+    },
+    evidence: {
+      ...base.evidence,
+      failureKeys: [],
+      checkoutSha: "different-sha",
+    },
+  });
+  assert.equal(shaOnlyMismatch.status, "HOLD");
+  assert.ok(shaOnlyMismatch.reasonCodes.includes("SHA_INVALID"));
+  assert.ok(!shaOnlyMismatch.reasonCodes.includes("FAIL_REASON_MISSING"), shaOnlyMismatch.reasonCodes.join(","));
+});
+
+test("PASS requires pass-state evidence envelope", () => {
+  const base = readFixture("formal-deep-v3-comparison-pass.json");
+  const evidenceKeys = ["status", "trueFlaky", "didNotRun", "integration", "bootstrap"];
+  for (const key of evidenceKeys) {
+    const mismatchedEvidence = { ...base.evidence };
+    if (key === "status") mismatchedEvidence.status = "fail";
+    else mismatchedEvidence[key] = { ...base.evidence[key], status: "fail" };
+    const result = buildFormalDeepV3Handoff({ ...base, evidence: mismatchedEvidence });
+    assert.equal(result.status, "HOLD");
+    assert.equal(result.ready, false);
+    assert.ok(result.reasonCodes.includes("PASS_INCONSISTENT"), key);
+  }
+});
+
+test("target failure keys are validated against provided target manifest keys", () => {
+  const base = readFixture("formal-deep-v3-comparison-fail.json");
+  const invalidManifestTarget = buildFormalDeepV3Handoff({
+    ...base,
+    status: "FAIL",
+    reasonCodes: ["TARGET_FAILURE_KEYS_PRESENT"],
+    comparison: {
+      ...base.comparison,
+      targetManifestKeyCount: 2,
+      currentFailureKeyCount: 1,
+      targetFailureKeyCount: 1,
+      targetFailureKeys: ["ghost-target-key"],
+      newFailureKeyCount: 0,
+      newFailureKeys: [],
+    },
+    targetManifest: {
+      schemaVersion: 1,
+      failureKeys: ["known-target-key"],
+    },
+    evidence: {
+      ...base.evidence,
+      failureKeys: ["ghost-target-key"],
+    },
+  });
+  assert.equal(invalidManifestTarget.status, "HOLD");
+  assert.ok(invalidManifestTarget.reasonCodes.includes("FAILURE_KEY_PARTITION_INVALID"));
 });
 
 test("count mismatch and missing FAIL reason are HOLD", () => {
