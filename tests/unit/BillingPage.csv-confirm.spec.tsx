@@ -7,6 +7,10 @@ const billingSummaryState = vi.hoisted(() => ({
   hasLocalPaymentState: false,
   localPaymentStateCount: 0,
   canEditPayment: true,
+  fetchedOrderCount: 0,
+  targetMonthOrderCount: 0,
+  servedOrderCount: 0,
+  unservedOrderCount: 0,
   records: [] as Array<{
     ordererCode: string;
     ordererName: string;
@@ -26,6 +30,10 @@ vi.mock('@/features/billing/hooks/useBillingSummary', () => ({
   useBillingSummary: () => ({
     records: billingSummaryState.records,
     availableMonths: ['2026-05'],
+    fetchedOrderCount: billingSummaryState.fetchedOrderCount,
+    targetMonthOrderCount: billingSummaryState.targetMonthOrderCount,
+    servedOrderCount: billingSummaryState.servedOrderCount,
+    unservedOrderCount: billingSummaryState.unservedOrderCount,
     totalServedCount: 0,
     totalServedAmount: 0,
     totalPaidCount: 0,
@@ -53,6 +61,10 @@ describe('BillingPage CSV export confirmation', () => {
     billingSummaryState.hasLocalPaymentState = false;
     billingSummaryState.localPaymentStateCount = 0;
     billingSummaryState.canEditPayment = true;
+    billingSummaryState.fetchedOrderCount = 0;
+    billingSummaryState.targetMonthOrderCount = 0;
+    billingSummaryState.servedOrderCount = 0;
+    billingSummaryState.unservedOrderCount = 0;
     billingSummaryState.records = [];
     exportCsvMock.mockReset();
     togglePaymentStatusMock.mockReset();
@@ -169,5 +181,17 @@ describe('BillingPage CSV export confirmation', () => {
 
     expect(screen.getByRole('button', { name: '選択中のタブを一括精算' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '未精算' })).toBeInTheDocument();
+  });
+
+  it('shows auditable row counts and the build commit SHA', () => {
+    billingSummaryState.fetchedOrderCount = 600;
+    billingSummaryState.targetMonthOrderCount = 543;
+    billingSummaryState.servedOrderCount = 540;
+    billingSummaryState.unservedOrderCount = 3;
+
+    render(<BillingPage repository={repository} />);
+
+    expect(screen.getByText('全取得: 600件 / 対象月: 543件 / 提供済み: 540件 / 未提供: 3件')).toBeInTheDocument();
+    expect(screen.getByTestId('billing-commit-sha')).toHaveTextContent(/^Commit: (?:[0-9a-f]{40}|unknown)$/);
   });
 });

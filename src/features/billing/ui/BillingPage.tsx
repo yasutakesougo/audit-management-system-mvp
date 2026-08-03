@@ -39,6 +39,7 @@ import { useBillingSummary } from '../hooks/useBillingSummary';
 import type { BillingOrderRepository } from '../ports/billingOrderRepository';
 
 type ActiveTab = '利用者' | '職員' | 'ゲスト' | 'すべて';
+const APP_COMMIT_SHA = typeof __APP_COMMIT_SHA__ === 'string' ? __APP_COMMIT_SHA__ : 'unknown';
 
 const toMonthKey = (date: Date): string => {
   const year = date.getFullYear();
@@ -77,6 +78,10 @@ export default function BillingPage({ repository }: BillingPageProps) {
   const {
     records,
     availableMonths,
+    fetchedOrderCount,
+    targetMonthOrderCount,
+    servedOrderCount,
+    unservedOrderCount,
     totalServedCount,
     totalServedAmount,
     totalPaidCount,
@@ -266,6 +271,22 @@ export default function BillingPage({ repository }: BillingPageProps) {
               </Typography>
             )}
           </Stack>
+        </Stack>
+
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', md: 'center' }}
+          spacing={1}
+          sx={{ mb: 3, color: '#475569' }}
+          data-testid="billing-audit-summary"
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            全取得: {fetchedOrderCount}件 / 対象月: {targetMonthOrderCount}件 / 提供済み: {servedOrderCount}件 / 未提供: {unservedOrderCount}件
+          </Typography>
+          <Typography variant="caption" data-testid="billing-commit-sha" sx={{ fontFamily: 'monospace' }}>
+            Commit: {APP_COMMIT_SHA}
+          </Typography>
         </Stack>
 
         {/* グラスモルフィズム KPI サマリーカード */}

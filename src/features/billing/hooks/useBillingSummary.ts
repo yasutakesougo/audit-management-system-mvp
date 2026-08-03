@@ -28,6 +28,10 @@ export interface AggregatedBillingRecord {
 export interface BillingSummary {
   records: AggregatedBillingRecord[];
   availableMonths: string[];
+  fetchedOrderCount: number;
+  targetMonthOrderCount: number;
+  servedOrderCount: number;
+  unservedOrderCount: number;
   totalServedCount: number;
   totalServedAmount: number;
   totalPaidCount: number;
@@ -54,6 +58,42 @@ export const isServedOrder = (served: unknown): boolean => {
 
   const normalized = served.trim().toLowerCase();
   return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'served' || normalized === '提供済み';
+};
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const MONTH_KEY_PATTERN = /^(\d{4})-(\d{2})$/;
+
+const parseMonthKey = (monthKey: string): { year: number; monthIndex: number } | null => {
+  const match = MONTH_KEY_PATTERN.exec(monthKey);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+
+  return { year, monthIndex: month - 1 };
+};
+
+export const toJstMonthKey = (orderDate: string): string | null => {
+  const timestamp = Date.parse(orderDate);
+  if (!Number.isFinite(timestamp)) return null;
+
+  const jstDate = new Date(timestamp + JST_OFFSET_MS);
+  const year = jstDate.getUTCFullYear();
+  const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+export const isOrderDateInJstMonth = (orderDate: string, monthKey: string): boolean => {
+  const parsedMonth = parseMonthKey(monthKey);
+  if (!parsedMonth) return false;
+
+  const timestamp = Date.parse(orderDate);
+  if (!Number.isFinite(timestamp)) return false;
+
+  const startUtc = Date.UTC(parsedMonth.year, parsedMonth.monthIndex, 1) - JST_OFFSET_MS;
+  const endUtc = Date.UTC(parsedMonth.year, parsedMonth.monthIndex + 1, 1) - JST_OFFSET_MS;
+  return timestamp >= startUtc && timestamp < endUtc;
 };
 
 export function useBillingSummary(
@@ -85,13 +125,28 @@ export function useBillingSummary(
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
     rawOrders.forEach((order) => {
-      const month = order.orderDate?.slice(0, 7);
-      if (/^\d{4}-\d{2}$/.test(month)) {
+      const month = toJstMonthKey(order.orderDate);
+      if (month) {
         months.add(month);
       }
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a));
   }, [rawOrders]);
+
+  const targetMonthOrders = useMemo(
+    () => rawOrders.filter((order) => isOrderDateInJstMonth(order.orderDate, selectedMonth)),
+    [rawOrders, selectedMonth]
+  );
+
+  const orderCounts = useMemo(() => {
+    const servedOrderCount = targetMonthOrders.filter((order) => isServedOrder(order.served)).length;
+    return {
+      fetchedOrderCount: rawOrders.length,
+      targetMonthOrderCount: targetMonthOrders.length,
+      servedOrderCount,
+      unservedOrderCount: targetMonthOrders.length - servedOrderCount,
+    };
+  }, [rawOrders.length, targetMonthOrders]);
 
   // 1. スキーマ存在チェック
   useEffect(() => {
@@ -190,13 +245,10 @@ export function useBillingSummary(
 
   // 個人ごとの集計およびカテゴリ判別
   const records = useMemo((): AggregatedBillingRecord[] => {
-    if (rawOrders.length === 0) return [];
+    if (targetMonthOrders.length === 0) return [];
 
-    // 1. 月フィルタ & 提供済みフィルタ
-    const filtered = rawOrders.filter((order) => {
-      const orderMonth = order.orderDate.slice(0, 7);
-      return orderMonth === selectedMonth && isServedOrder(order.served);
-    });
+    // 1. JST 対象月のうち提供済みだけを請求集計へ含める
+    const filtered = targetMonthOrders.filter((order) => isServedOrder(order.served));
 
     // 2. 個人ごとに集計
     const groups: Record<string, { 
@@ -272,7 +324,7 @@ export function useBillingSummary(
         orderIds: group.orderIds,
       };
     });
-  }, [rawOrders, selectedMonth, users, staff, isPersistenceMissing, fallbackPaymentStates]);
+  }, [targetMonthOrders, selectedMonth, users, staff, isPersistenceMissing, fallbackPaymentStates]);
 
   // KPI集計
   const summary = useMemo(() => {
@@ -418,6 +470,7 @@ export function useBillingSummary(
   return {
     records,
     availableMonths,
+    ...orderCounts,
     ...summary,
     isLoading,
     isError: !!ordersError,

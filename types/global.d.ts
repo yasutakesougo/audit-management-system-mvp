@@ -1,4 +1,6 @@
 declare global {
+  const __APP_COMMIT_SHA__: string;
+
   interface Window {
     __USERS_DEMO_PRESET__?: 'normal' | 'empty' | 'error';
     __USERS_DEMO__?: {
