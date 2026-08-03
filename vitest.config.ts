@@ -36,6 +36,7 @@ export default defineConfig({
       'scripts/ci/__tests__/resolve-deep-e2e-lane.spec.mjs',
       'scripts/ci/__tests__/deploy-cloudflare-worker-workflow-contract.spec.mjs',
       'scripts/ci/__tests__/compare-formal-deep-v3.spec.mjs',
+      'scripts/ci/__tests__/e2e-deep-workflow-contract.spec.mjs',
       'playwright.config.ts',
       'playwright.*.config.ts'
     ],
