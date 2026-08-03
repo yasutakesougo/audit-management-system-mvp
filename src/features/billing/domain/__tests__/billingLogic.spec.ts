@@ -51,9 +51,9 @@ describe('billingLogic', () => {
 
   // ─── parseBillingDrinkPrice ───────────────────────────────
   describe('parseBillingDrinkPrice', () => {
-    it('有効な価格はそのまま使うこと', () => {
-      expect(parseBillingDrinkPrice(100)).toBe(100);
-      expect(parseBillingDrinkPrice('150')).toBe(150);
+    it('List3 の DRINK_PRICE に値があっても固定50円として扱うこと', () => {
+      expect(parseBillingDrinkPrice(500)).toBe(BILLING_DEFAULT_DRINK_PRICE);
+      expect(parseBillingDrinkPrice('150')).toBe(BILLING_DEFAULT_DRINK_PRICE);
     });
 
     it('List3 の DRINK_PRICE が未設定の場合は固定50円へフォールバックすること', () => {
@@ -92,7 +92,7 @@ describe('billingLogic', () => {
       expect(result.item).toBe('コーヒー');
       expect(result.sugar).toBe('多め');
       expect(result.milk).toBe('なし');
-      expect(result.drinkPrice).toBe(100);
+      expect(result.drinkPrice).toBe(BILLING_DEFAULT_DRINK_PRICE);
     });
 
     it('SharePoint特有のプロパティ揺らぎ(Id, ID, Titleフォールバック)を吸収できること', () => {

@@ -246,7 +246,7 @@ describe('useBillingSummary', () => {
           item: 'sample',
           sugar: 'none',
           milk: 'none',
-          drinkPrice: 500,
+          drinkPrice: 50,
           paymentStatus: '',
           paidAt: '',
           paidBy: '',
@@ -261,7 +261,7 @@ describe('useBillingSummary', () => {
           item: 'sample',
           sugar: 'none',
           milk: 'none',
-          drinkPrice: 500,
+          drinkPrice: 50,
           paymentStatus: '',
           paidAt: '',
           paidBy: '',
@@ -276,7 +276,7 @@ describe('useBillingSummary', () => {
           item: 'sample',
           sugar: 'none',
           milk: 'none',
-          drinkPrice: 500,
+          drinkPrice: 50,
           paymentStatus: '',
           paidAt: '',
           paidBy: '',
@@ -291,7 +291,7 @@ describe('useBillingSummary', () => {
           item: 'sample',
           sugar: 'none',
           milk: 'none',
-          drinkPrice: 500,
+          drinkPrice: 50,
           paymentStatus: '',
           paidAt: '',
           paidBy: '',
@@ -306,7 +306,7 @@ describe('useBillingSummary', () => {
           item: 'sample',
           sugar: 'none',
           milk: 'none',
-          drinkPrice: 500,
+          drinkPrice: 50,
           paymentStatus: '',
           paidAt: '',
           paidBy: '',
@@ -328,17 +328,17 @@ describe('useBillingSummary', () => {
     expect(i019).toMatchObject({
       category: '利用者',
       totalCount: 1,
-      totalAmount: 500,
+      totalAmount: 50,
       orderIds: [5642],
     });
     expect(i030).toMatchObject({
       category: '利用者',
       totalCount: 3,
-      totalAmount: 1500,
+      totalAmount: 150,
       orderIds: [5563, 5689, 5733],
     });
     expect(result.current.totalServedCount).toBe(4);
-    expect(result.current.totalServedAmount).toBe(2000);
+    expect(result.current.totalServedAmount).toBe(200);
     expect(result.current.records.flatMap((record) => record.orderIds)).not.toContain(5412);
   });
 
