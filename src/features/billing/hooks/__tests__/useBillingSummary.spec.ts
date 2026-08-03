@@ -1,6 +1,12 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { BillingPaymentAuthorizationError, useBillingSummary } from '../useBillingSummary';
+import {
+  BillingPaymentAuthorizationError,
+  getBillingServedState,
+  getFallbackPaymentState,
+  isOrderDateInJstMonth,
+  useBillingSummary,
+} from '../useBillingSummary';
 import type { BillingOrderRepository } from '../../ports/billingOrderRepository';
 
 const { mockUseBillingOrders } = vi.hoisted(() => ({
@@ -136,6 +142,29 @@ const mockOrders = [
   },
 ];
 
+type MockBillingOrder = (typeof mockOrders)[number];
+
+const makeMockOrder = (
+  id: number,
+  orderDate: string,
+  overrides: Partial<MockBillingOrder> = {}
+): MockBillingOrder => ({
+  id,
+  orderDate,
+  ordererCode: 'U-001',
+  ordererName: 'テスト利用者',
+  orderCount: 1,
+  served: true,
+  item: 'コーヒー',
+  sugar: 'なし',
+  milk: 'なし',
+  drinkPrice: 50,
+  paymentStatus: '',
+  paidAt: '',
+  paidBy: '',
+  ...overrides,
+});
+
 vi.mock('../../useBillingOrders', () => ({
   useBillingOrders: mockUseBillingOrders,
   billingOrdersQueryKey: ['billingOrders', 'list'],
@@ -233,24 +262,165 @@ describe('useBillingSummary', () => {
     expect(mockUseBillingOrders).toHaveBeenCalledWith(mockRepository);
   });
 
-  it('2026年7月のページ境界後もI019・I030を利用者として請求集計し、未提供注文を除外すること', async () => {
+  it('JST月初を含み翌月月初を含まない半開区間で対象月を判定すること', () => {
+    expect(isOrderDateInJstMonth('2026-06-30T14:59:59.999Z', '2026-07')).toBe(false);
+    expect(isOrderDateInJstMonth('2026-06-30T15:00:00.000Z', '2026-07')).toBe(true);
+    expect(isOrderDateInJstMonth('2026-07-31T14:59:59.999Z', '2026-07')).toBe(true);
+    expect(isOrderDateInJstMonth('2026-07-31T15:00:00.000Z', '2026-07')).toBe(false);
+  });
+
+  it('利用可能月をUTC文字列の先頭ではなくJSTの年月から生成すること', async () => {
     mockUseBillingOrders.mockReturnValue({
       data: [
-        {
-          id: 5412,
-          orderDate: '2026-07-13T04:26:00Z',
-          ordererCode: 'I019',
-          ordererName: '匿名利用者019',
-          orderCount: 1,
-          served: false,
-          item: 'sample',
-          sugar: 'none',
-          milk: 'none',
-          drinkPrice: 50,
-          paymentStatus: '',
-          paidAt: '',
-          paidBy: '',
-        },
+        makeMockOrder(1, '2026-06-30T14:59:59.999Z'),
+        makeMockOrder(2, '2026-06-30T15:00:00.000Z'),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(result.current.availableMonths).toEqual(['2026-07', '2026-06']);
+  });
+
+  it('全取得・対象月・提供済み・未提供を行数で数え、杯数とは区別すること', async () => {
+    mockUseBillingOrders.mockReturnValue({
+      data: [
+        makeMockOrder(1, '2026-07-01T00:00:00Z', { orderCount: 3, served: true }),
+        makeMockOrder(2, '2026-07-02T00:00:00Z', { orderCount: 2, served: true }),
+        makeMockOrder(3, '2026-07-03T00:00:00Z', { orderCount: 4, served: false }),
+        makeMockOrder(4, '2026-08-01T00:00:00Z', { served: true }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(result.current.fetchedOrderCount).toBe(4);
+    expect(result.current.targetMonthOrderCount).toBe(3);
+    expect(result.current.servedOrderCount).toBe(2);
+    expect(result.current.unservedOrderCount).toBe(1);
+    expect(result.current.unknownOrderCount).toBe(0);
+    expect(result.current.totalServedCount).toBe(5);
+  });
+
+  it('空文字・欠損・未知のServed値を不明として未提供件数から分離すること', async () => {
+    mockUseBillingOrders.mockReturnValue({
+      data: [
+        makeMockOrder(1, '2026-07-01T00:00:00Z', { served: true }),
+        makeMockOrder(2, '2026-07-02T00:00:00Z', { served: false }),
+        makeMockOrder(3, '2026-07-03T00:00:00Z', { served: '' }),
+        makeMockOrder(4, '2026-07-04T00:00:00Z', { served: 'pending' }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(getBillingServedState(true)).toBe('served');
+    expect(getBillingServedState(false)).toBe('unserved');
+    expect(getBillingServedState(undefined)).toBe('unknown');
+    expect(result.current.servedOrderCount).toBe(1);
+    expect(result.current.unservedOrderCount).toBe(1);
+    expect(result.current.unknownOrderCount).toBe(2);
+  });
+
+  it('JSTキーを正本にし、JST境界の旧raw年月キーだけを互換読み取りすること', () => {
+    const legacyStates = { '2026-07:U-001': true };
+    expect(getFallbackPaymentState(
+      legacyStates,
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z'],
+      'U-001'
+    )).toBe(true);
+    expect(getFallbackPaymentState(
+      legacyStates,
+      '2026-08',
+      ['2026-08-02T00:00:00.000Z'],
+      'U-001'
+    )).toBe(false);
+    expect(getFallbackPaymentState(
+      { '2026-08:U-001': false, '2026-07:U-001': true },
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z'],
+      'U-001'
+    )).toBe(false);
+    expect(getFallbackPaymentState(
+      { '2026-07:U-001': true, '2026-08:U-001': true },
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z', '2026-08-01T16:00:00.000Z'],
+      'U-001'
+    )).toBe(true);
+    expect(getFallbackPaymentState(
+      { '2026-07:U-001': true },
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z', '2026-08-01T16:00:00.000Z'],
+      'U-001'
+    )).toBe(false);
+  });
+
+  it('不正な日時も全取得件数には含めるが対象月件数には含めないこと', async () => {
+    mockUseBillingOrders.mockReturnValue({
+      data: [
+        makeMockOrder(1, 'not-a-date'),
+        makeMockOrder(2, '2026-07-01T00:00:00Z'),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(result.current.fetchedOrderCount).toBe(2);
+    expect(result.current.targetMonthOrderCount).toBe(1);
+    expect(result.current.availableMonths).toEqual(['2026-07']);
+  });
+
+  it('2026年7月全体を543行・提供済み540杯27000円・未提供3行として回帰確認すること', async () => {
+    const julyOrders = Array.from({ length: 543 }, (_, index) =>
+      makeMockOrder(index + 1, '2026-07-15T03:00:00Z', {
+        served: index < 540,
+        orderCount: 1,
+        drinkPrice: 50,
+      })
+    );
+    mockUseBillingOrders.mockReturnValue({
+      data: julyOrders,
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(result.current.fetchedOrderCount).toBe(543);
+    expect(result.current.targetMonthOrderCount).toBe(543);
+    expect(result.current.servedOrderCount).toBe(540);
+    expect(result.current.unservedOrderCount).toBe(3);
+    expect(result.current.totalServedCount).toBe(540);
+    expect(result.current.totalServedAmount).toBe(27_000);
+  });
+
+  it('I019・I030の5行250円を月次全体とは別の部分集計兼ページング境界回帰として扱うこと', async () => {
+    mockUseBillingOrders.mockReturnValue({
+      data: [
         {
           id: 5563,
           orderDate: '2026-07-22T04:11:00Z',
@@ -311,6 +481,21 @@ describe('useBillingSummary', () => {
           paidAt: '',
           paidBy: '',
         },
+        {
+          id: 5750,
+          orderDate: '2026-07-31T04:10:00Z',
+          ordererCode: 'I019',
+          ordererName: '匿名利用者019',
+          orderCount: 1,
+          served: true,
+          item: 'sample',
+          sugar: 'none',
+          milk: 'none',
+          drinkPrice: 50,
+          paymentStatus: '',
+          paidAt: '',
+          paidBy: '',
+        },
       ],
       isLoading: false,
       isError: false,
@@ -327,9 +512,9 @@ describe('useBillingSummary', () => {
 
     expect(i019).toMatchObject({
       category: '利用者',
-      totalCount: 1,
-      totalAmount: 50,
-      orderIds: [5642],
+      totalCount: 2,
+      totalAmount: 100,
+      orderIds: [5642, 5750],
     });
     expect(i030).toMatchObject({
       category: '利用者',
@@ -337,9 +522,12 @@ describe('useBillingSummary', () => {
       totalAmount: 150,
       orderIds: [5563, 5689, 5733],
     });
-    expect(result.current.totalServedCount).toBe(4);
-    expect(result.current.totalServedAmount).toBe(200);
-    expect(result.current.records.flatMap((record) => record.orderIds)).not.toContain(5412);
+    expect(result.current.fetchedOrderCount).toBe(5);
+    expect(result.current.targetMonthOrderCount).toBe(5);
+    expect(result.current.servedOrderCount).toBe(5);
+    expect(result.current.unservedOrderCount).toBe(0);
+    expect(result.current.totalServedCount).toBe(5);
+    expect(result.current.totalServedAmount).toBe(250);
   });
 
   it('個別の精算トグル状態が SharePoint の repository に送られ、query invalidation が走ること', async () => {

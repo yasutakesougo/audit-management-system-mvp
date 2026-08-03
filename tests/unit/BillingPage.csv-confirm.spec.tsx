@@ -1,12 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BillingPage, type BillingOrderRepository } from '@/features/billing';
+import { toJstMonthKey } from '@/features/billing/ui/BillingPage';
 
 const billingSummaryState = vi.hoisted(() => ({
   isPersistenceMissing: false,
   hasLocalPaymentState: false,
   localPaymentStateCount: 0,
   canEditPayment: true,
+  fetchedOrderCount: 0,
+  targetMonthOrderCount: 0,
+  servedOrderCount: 0,
+  unservedOrderCount: 0,
+  unknownOrderCount: 0,
+  availableMonths: ['2026-05'],
   records: [] as Array<{
     ordererCode: string;
     ordererName: string;
@@ -25,7 +32,12 @@ const bulkSettleMock = vi.hoisted(() => vi.fn());
 vi.mock('@/features/billing/hooks/useBillingSummary', () => ({
   useBillingSummary: () => ({
     records: billingSummaryState.records,
-    availableMonths: ['2026-05'],
+    availableMonths: billingSummaryState.availableMonths,
+    fetchedOrderCount: billingSummaryState.fetchedOrderCount,
+    targetMonthOrderCount: billingSummaryState.targetMonthOrderCount,
+    servedOrderCount: billingSummaryState.servedOrderCount,
+    unservedOrderCount: billingSummaryState.unservedOrderCount,
+    unknownOrderCount: billingSummaryState.unknownOrderCount,
     totalServedCount: 0,
     totalServedAmount: 0,
     totalPaidCount: 0,
@@ -53,11 +65,36 @@ describe('BillingPage CSV export confirmation', () => {
     billingSummaryState.hasLocalPaymentState = false;
     billingSummaryState.localPaymentStateCount = 0;
     billingSummaryState.canEditPayment = true;
+    billingSummaryState.fetchedOrderCount = 0;
+    billingSummaryState.targetMonthOrderCount = 0;
+    billingSummaryState.servedOrderCount = 0;
+    billingSummaryState.unservedOrderCount = 0;
+    billingSummaryState.unknownOrderCount = 0;
+    billingSummaryState.availableMonths = ['2026-05'];
     billingSummaryState.records = [];
     exportCsvMock.mockReset();
     togglePaymentStatusMock.mockReset();
     bulkSettleMock.mockReset();
     vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('ブラウザがロサンゼルスでも初期対象月をJST年月で生成すること', () => {
+    const previousTz = process.env.TZ;
+    process.env.TZ = 'America/Los_Angeles';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-31T15:30:00.000Z'));
+    billingSummaryState.availableMonths = ['2026-08', '2026-07'];
+
+    try {
+      expect(toJstMonthKey(new Date())).toBe('2026-08');
+      render(<BillingPage repository={repository} />);
+      expect(screen.getByRole('combobox')).toHaveTextContent('2026年8月');
+    } finally {
+      if (previousTz === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTz;
+      vi.useRealTimers();
+    }
   });
 
   it('exports CSV without confirmation when payment persistence is available', () => {
@@ -169,5 +206,18 @@ describe('BillingPage CSV export confirmation', () => {
 
     expect(screen.getByRole('button', { name: '選択中のタブを一括精算' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '未精算' })).toBeInTheDocument();
+  });
+
+  it('shows auditable row counts and the build commit SHA', () => {
+    billingSummaryState.fetchedOrderCount = 600;
+    billingSummaryState.targetMonthOrderCount = 543;
+    billingSummaryState.servedOrderCount = 540;
+    billingSummaryState.unservedOrderCount = 3;
+    billingSummaryState.unknownOrderCount = 0;
+
+    render(<BillingPage repository={repository} />);
+
+    expect(screen.getByText('全取得: 600件 / 対象月: 543件 / 提供済み: 540件 / 未提供: 3件 / 不明: 0件')).toBeInTheDocument();
+    expect(screen.getByTestId('billing-commit-sha')).toHaveTextContent(/^Commit: (?:[0-9a-f]{40}|unknown)$/);
   });
 });

@@ -1,5 +1,6 @@
 import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path, { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
@@ -16,6 +17,20 @@ const fluentStub = fileURLToPath(new URL('./src/stubs/fluentui-react.tsx', impor
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error -- import.meta is supported in the Vite Node runtime
 const emptyShim = fileURLToPath(new URL('./src/shims/empty.ts', import.meta.url))
+
+const resolveCommitSha = (): string => {
+  const environmentSha = process.env.GITHUB_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? process.env.VITE_COMMIT_SHA;
+  if (environmentSha?.trim()) return environmentSha.trim();
+
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+};
 
 export default defineConfig(({ mode }) => {
   // Load environment variables (.env.test.local will override .env.local in test mode)
@@ -57,6 +72,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
+      __APP_COMMIT_SHA__: JSON.stringify(resolveCommitSha()),
     },
     plugins: [
       react(),
