@@ -45,11 +45,10 @@ import { AuthRequiredError } from '@/lib/errors';
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
 import type { SevereAddonBulkInput, SevereAddonCheckInput } from '@/domain/regulatory/severeAddonFindings';
-import { isDefinitelyIneligibleSupportLevel } from '@/domain/regulatory/severeDisabilityAddon';
 import {
-  resolveBehaviorScore,
-  type BehaviorScoreIndeterminateReason,
-} from '@/domain/regulatory/behaviorScoreResolution';
+  resolveSevereAddonUserResolution,
+  type SevereAddonIndeterminateReason,
+} from '@/domain/regulatory/severeAddonUserResolution';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 import type { PlanningSheetRepository } from '@/domain/isp/port';
 import type {
@@ -161,7 +160,7 @@ export interface SevereAddonRealDataResult {
   uncalculableUsers: Array<{
     userId: string;
     userName: string;
-    reason: BehaviorScoreIndeterminateReason;
+    reason: SevereAddonIndeterminateReason;
   }>;
 }
 
@@ -496,9 +495,11 @@ export function useSevereAddonRealData(
   const uncalculableUsers = useMemo(() => users
     .filter(u => u.IsActive !== false)
     .map(user => {
-      if (isDefinitelyIneligibleSupportLevel(user.DisabilitySupportLevel)) return null;
-      const resolution = resolveBehaviorScore(user.BehaviorScore);
-      if (resolution.status === 'valid') return null;
+      const resolution = resolveSevereAddonUserResolution({
+        supportLevel: user.DisabilitySupportLevel,
+        behaviorScore: user.BehaviorScore,
+      });
+      if (resolution.status !== 'indeterminate') return null;
       return {
         userId: user.UserID ?? `user-${user.Id}`,
         userName: user.FullName ?? '利用者名未設定',
@@ -508,7 +509,7 @@ export function useSevereAddonRealData(
     .filter((user): user is {
       userId: string;
       userName: string;
-      reason: BehaviorScoreIndeterminateReason;
+      reason: SevereAddonIndeterminateReason;
     } => user !== null), [users]);
 
   const input = useMemo<SevereAddonBulkInput | null>(() => {
@@ -526,11 +527,14 @@ export function useSevereAddonRealData(
     const addonUsers: SevereAddonCheckInput[] = users
       .filter(u => u.IsActive !== false)
       .map(u => {
-        const behaviorScore = resolveBehaviorScore(u.BehaviorScore);
-        if (behaviorScore.status !== 'valid') return null;
+        const resolution = resolveSevereAddonUserResolution({
+          supportLevel: u.DisabilitySupportLevel,
+          behaviorScore: u.BehaviorScore,
+        });
+        if (resolution.status !== 'valid') return null;
         const userId = u.UserID ?? `user-${u.Id}`;
         const sheetIds = planningSheetIdsByUser.get(userId) ?? [];
-        return toAddonCheckInput(u, sheetIds, behaviorScore.value);
+        return toAddonCheckInput(u, sheetIds, resolution.behaviorScore);
       })
       .filter((user): user is SevereAddonCheckInput => user !== null);
 

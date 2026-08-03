@@ -60,6 +60,7 @@ import { unifyFindings } from './regulatory-dashboard/types';
 import { generateDemoFindings, generateDemoSevereAddonFindings, generateDemoIcebergEvidence } from './regulatory-dashboard/demoData';
 import { createAddonPresentation } from './regulatory-dashboard/addonPresentation';
 import { resolveRegulatoryAddonDemoMode, type AddonCalculationState } from './regulatory-dashboard/addonSummaryState';
+import { SEVERE_ADDON_INDETERMINATE_REASON_LABELS } from '@/domain/regulatory/severeAddonUserResolution';
 import { SummaryCard, TypeBreakdown, DomainSummary } from './regulatory-dashboard/SummaryPanel';
 import { SevereAddonSummaryPanel } from './regulatory-dashboard/SevereAddonPanel';
 import { FindingsTable } from './regulatory-dashboard/FindingsTable';
@@ -286,11 +287,10 @@ const RegulatoryDashboardPage: React.FC = () => {
       {!isAddonDemoMode && uncalculableUsers.length > 0 && (
         <Alert severity="warning" sx={{ mb: 3 }} data-testid="severe-addon-uncalculable">
           <Typography variant="body2" fontWeight={700}>
-            行動関連点数を確認できないため、強度行動障害に関する加算判定を実行できません。
+            強度行動障害に関する加算判定を実行できない利用者があります。
           </Typography>
           <Typography variant="body2">
-            利用者マスターの行動関連点数を確認してください。
-            {' '}{uncalculableUsers.map(user => user.userName).join('、')}
+            {uncalculableUsers.map(user => `${user.userName}: ${SEVERE_ADDON_INDETERMINATE_REASON_LABELS[user.reason]}`).join('、')}
           </Typography>
         </Alert>
       )}
