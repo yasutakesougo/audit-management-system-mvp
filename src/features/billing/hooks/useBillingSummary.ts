@@ -32,6 +32,7 @@ export interface BillingSummary {
   targetMonthOrderCount: number;
   servedOrderCount: number;
   unservedOrderCount: number;
+  unknownOrderCount: number;
   totalServedCount: number;
   totalServedAmount: number;
   totalPaidCount: number;
@@ -51,13 +52,34 @@ export interface BillingSummary {
   exportCsv: (category: '利用者' | '職員' | 'ゲスト' | 'すべて') => void;
 }
 
-export const isServedOrder = (served: unknown): boolean => {
-  if (served === true) return true;
-  if (typeof served === 'number') return served === 1;
-  if (typeof served !== 'string') return false;
+export type BillingServedState = 'served' | 'unserved' | 'unknown';
+
+export const getBillingServedState = (served: unknown): BillingServedState => {
+  if (served === true) return 'served';
+  if (served === false) return 'unserved';
+  if (typeof served === 'number') {
+    if (served === 1) return 'served';
+    if (served === 0) return 'unserved';
+    return 'unknown';
+  }
+  if (typeof served !== 'string') return 'unknown';
 
   const normalized = served.trim().toLowerCase();
-  return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'served' || normalized === '提供済み';
+  if (!normalized) return 'unknown';
+  if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'served' || normalized === '提供済' || normalized === '提供済み') {
+    return 'served';
+  }
+  if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'unserved' || normalized === '未提供') {
+    return 'unserved';
+  }
+  return 'unknown';
+};
+
+export const isServedOrder = (served: unknown): boolean => getBillingServedState(served) === 'served';
+
+export const toLegacyRawMonthKey = (orderDate: string): string | null => {
+  const rawMonth = orderDate.slice(0, 7);
+  return /^\d{4}-\d{2}$/.test(rawMonth) ? rawMonth : null;
 };
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -94,6 +116,31 @@ export const isOrderDateInJstMonth = (orderDate: string, monthKey: string): bool
   const startUtc = Date.UTC(parsedMonth.year, parsedMonth.monthIndex, 1) - JST_OFFSET_MS;
   const endUtc = Date.UTC(parsedMonth.year, parsedMonth.monthIndex + 1, 1) - JST_OFFSET_MS;
   return timestamp >= startUtc && timestamp < endUtc;
+};
+
+/**
+ * JSTキーを正本とし、JST境界で再分類された注文だけ旧raw年月キーを読む。
+ * 旧キーの状態は次回の操作でJSTキーへ書き込まれるため、読み取り時の破壊的移行は行わない。
+ */
+export const getFallbackPaymentState = (
+  states: Record<string, boolean>,
+  selectedMonth: string,
+  orderDates: string[],
+  ordererCode: string,
+): boolean => {
+  const canonicalKey = `${selectedMonth}:${ordererCode}`;
+  if (Object.prototype.hasOwnProperty.call(states, canonicalKey)) {
+    return states[canonicalKey] === true;
+  }
+
+  const legacyMonths = Array.from(new Set(
+    orderDates
+      .map(toLegacyRawMonthKey)
+      .filter((month): month is string => month !== null)
+  ));
+  if (legacyMonths.length === 0) return false;
+
+  return legacyMonths.every((month) => states[`${month}:${ordererCode}`] === true);
 };
 
 export function useBillingSummary(
@@ -139,12 +186,15 @@ export function useBillingSummary(
   );
 
   const orderCounts = useMemo(() => {
-    const servedOrderCount = targetMonthOrders.filter((order) => isServedOrder(order.served)).length;
+    const servedOrderCount = targetMonthOrders.filter((order) => getBillingServedState(order.served) === 'served').length;
+    const unservedOrderCount = targetMonthOrders.filter((order) => getBillingServedState(order.served) === 'unserved').length;
+    const unknownOrderCount = targetMonthOrders.length - servedOrderCount - unservedOrderCount;
     return {
       fetchedOrderCount: rawOrders.length,
       targetMonthOrderCount: targetMonthOrders.length,
       servedOrderCount,
-      unservedOrderCount: targetMonthOrders.length - servedOrderCount,
+      unservedOrderCount,
+      unknownOrderCount,
     };
   }, [rawOrders.length, targetMonthOrders]);
 
@@ -248,7 +298,7 @@ export function useBillingSummary(
     if (targetMonthOrders.length === 0) return [];
 
     // 1. JST 対象月のうち提供済みだけを請求集計へ含める
-    const filtered = targetMonthOrders.filter((order) => isServedOrder(order.served));
+    const filtered = targetMonthOrders.filter((order) => getBillingServedState(order.served) === 'served');
 
     // 2. 個人ごとに集計
     const groups: Record<string, { 
@@ -257,6 +307,7 @@ export function useBillingSummary(
       count: number; 
       amount: number;
       orderIds: number[];
+      orderDates: string[];
       spPaidCount: number;
       totalOrdersCount: number;
     }> = {};
@@ -271,6 +322,7 @@ export function useBillingSummary(
           count: 0, 
           amount: 0, 
           orderIds: [],
+          orderDates: [],
           spPaidCount: 0,
           totalOrdersCount: 0
         };
@@ -278,6 +330,7 @@ export function useBillingSummary(
       groups[code].count += order.orderCount;
       groups[code].amount += order.orderCount * order.drinkPrice;
       groups[code].orderIds.push(order.id);
+      groups[code].orderDates.push(order.orderDate);
       groups[code].totalOrdersCount++;
       if (order.paymentStatus === '精算済み') {
         groups[code].spPaidCount++;
@@ -310,8 +363,7 @@ export function useBillingSummary(
       if (!isPersistenceMissing && group.totalOrdersCount > 0) {
         isPaid = group.spPaidCount === group.totalOrdersCount;
       } else {
-        const stateKey = `${selectedMonth}:${group.code}`;
-        isPaid = !!fallbackPaymentStates[stateKey];
+        isPaid = getFallbackPaymentState(fallbackPaymentStates, selectedMonth, group.orderDates, group.code);
       }
 
       return {

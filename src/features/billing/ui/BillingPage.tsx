@@ -41,19 +41,23 @@ import type { BillingOrderRepository } from '../ports/billingOrderRepository';
 type ActiveTab = '利用者' | '職員' | 'ゲスト' | 'すべて';
 const APP_COMMIT_SHA = typeof __APP_COMMIT_SHA__ === 'string' ? __APP_COMMIT_SHA__ : 'unknown';
 
-const toMonthKey = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+export const toJstMonthKey = (date: Date): string => {
+  const jstDate = new Date(date.getTime() + JST_OFFSET_MS);
+  const year = jstDate.getUTCFullYear();
+  const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 };
 
 const addMonths = (monthKey: string, offset: number): string => {
   const [year, month] = monthKey.split('-').map(Number);
-  return toMonthKey(new Date(year, month - 1 + offset, 1));
+  const shifted = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
 const buildMonthOptions = (availableMonths: string[], selectedMonth: string): string[] => {
-  const currentMonth = toMonthKey(new Date());
+  const currentMonth = toJstMonthKey(new Date());
   const months = new Set([selectedMonth, currentMonth, ...availableMonths]);
 
   for (let offset = -24; offset <= 3; offset += 1) {
@@ -70,7 +74,7 @@ export type BillingPageProps = {
 };
 
 export default function BillingPage({ repository }: BillingPageProps) {
-  const [selectedMonth, setSelectedMonth] = useState(() => toMonthKey(new Date()));
+  const [selectedMonth, setSelectedMonth] = useState(() => toJstMonthKey(new Date()));
   const [hasUserSelectedMonth, setHasUserSelectedMonth] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('利用者');
 
@@ -82,6 +86,7 @@ export default function BillingPage({ repository }: BillingPageProps) {
     targetMonthOrderCount,
     servedOrderCount,
     unservedOrderCount,
+    unknownOrderCount,
     totalServedCount,
     totalServedAmount,
     totalPaidCount,
@@ -282,7 +287,7 @@ export default function BillingPage({ repository }: BillingPageProps) {
           data-testid="billing-audit-summary"
         >
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            全取得: {fetchedOrderCount}件 / 対象月: {targetMonthOrderCount}件 / 提供済み: {servedOrderCount}件 / 未提供: {unservedOrderCount}件
+            全取得: {fetchedOrderCount}件 / 対象月: {targetMonthOrderCount}件 / 提供済み: {servedOrderCount}件 / 未提供: {unservedOrderCount}件 / 不明: {unknownOrderCount}件
           </Typography>
           <Typography variant="caption" data-testid="billing-commit-sha" sx={{ fontFamily: 'monospace' }}>
             Commit: {APP_COMMIT_SHA}

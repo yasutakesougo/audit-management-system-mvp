@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import {
   BillingPaymentAuthorizationError,
+  getBillingServedState,
+  getFallbackPaymentState,
   isOrderDateInJstMonth,
   useBillingSummary,
 } from '../useBillingSummary';
@@ -306,7 +308,67 @@ describe('useBillingSummary', () => {
     expect(result.current.targetMonthOrderCount).toBe(3);
     expect(result.current.servedOrderCount).toBe(2);
     expect(result.current.unservedOrderCount).toBe(1);
+    expect(result.current.unknownOrderCount).toBe(0);
     expect(result.current.totalServedCount).toBe(5);
+  });
+
+  it('空文字・欠損・未知のServed値を不明として未提供件数から分離すること', async () => {
+    mockUseBillingOrders.mockReturnValue({
+      data: [
+        makeMockOrder(1, '2026-07-01T00:00:00Z', { served: true }),
+        makeMockOrder(2, '2026-07-02T00:00:00Z', { served: false }),
+        makeMockOrder(3, '2026-07-03T00:00:00Z', { served: '' }),
+        makeMockOrder(4, '2026-07-04T00:00:00Z', { served: 'pending' }),
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+    expect(getBillingServedState(true)).toBe('served');
+    expect(getBillingServedState(false)).toBe('unserved');
+    expect(getBillingServedState(undefined)).toBe('unknown');
+    expect(result.current.servedOrderCount).toBe(1);
+    expect(result.current.unservedOrderCount).toBe(1);
+    expect(result.current.unknownOrderCount).toBe(2);
+  });
+
+  it('JSTキーを正本にし、JST境界の旧raw年月キーだけを互換読み取りすること', () => {
+    const legacyStates = { '2026-07:U-001': true };
+    expect(getFallbackPaymentState(
+      legacyStates,
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z'],
+      'U-001'
+    )).toBe(true);
+    expect(getFallbackPaymentState(
+      legacyStates,
+      '2026-08',
+      ['2026-08-02T00:00:00.000Z'],
+      'U-001'
+    )).toBe(false);
+    expect(getFallbackPaymentState(
+      { '2026-08:U-001': false, '2026-07:U-001': true },
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z'],
+      'U-001'
+    )).toBe(false);
+    expect(getFallbackPaymentState(
+      { '2026-07:U-001': true, '2026-08:U-001': true },
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z', '2026-08-01T16:00:00.000Z'],
+      'U-001'
+    )).toBe(true);
+    expect(getFallbackPaymentState(
+      { '2026-07:U-001': true },
+      '2026-08',
+      ['2026-07-31T16:00:00.000Z', '2026-08-01T16:00:00.000Z'],
+      'U-001'
+    )).toBe(false);
   });
 
   it('不正な日時も全取得件数には含めるが対象月件数には含めないこと', async () => {
