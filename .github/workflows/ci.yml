@@ -215,7 +215,7 @@ jobs:
             npm run test:ci:required -- --shard=${{ matrix.shard }}/3 2>&1 | tee /tmp/vitest-ci.log
           else
             echo "Push lane: running full unit suite (test:ci) with shard"
-            npm run test:ci -- --shard=${{ matrix.shard }}/3 2>&1 | tee /tmp/vitest-ci.log
+            TEST_SHARD=${{ matrix.shard }}/3 npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
           fi
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-ci.log --json --json-output /tmp/act-warnings-ci.json
           echo "✅ Tests completed successfully"

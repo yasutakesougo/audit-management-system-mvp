@@ -94,7 +94,9 @@ describe('useTodayExceptions - Signal Governance RBV', () => {
 
     const { result } = renderHook(() => useTodayExceptions({ role: 'admin' }));
     
-    const setupSignal = result.current.items.find(i => i.kind === 'setup-incomplete');
+    const setupSignal = result.current.items.find(
+      i => i.sourceExceptionId === 'analysis-setup-inconsistent',
+    );
     expect(setupSignal).toBeDefined();
     expect(setupSignal?.title).toBe('分析対象者の設定漏れ');
     expect(setupSignal?.description).toContain('強度行動障害');
