@@ -32,7 +32,7 @@ describe('DataProviderBillingOrderRepository', () => {
     expect(BILLING_ORDERS_PAGE_SIZE).toBe(5000);
   });
 
-  it('maps List3 rows with null DRINK_PRICE to the fixed billing price', async () => {
+  it('maps List3 rows with DRINK_PRICE 500 to the fixed billing price', async () => {
     const provider = createProvider();
     vi.mocked(provider.getFieldInternalNames).mockResolvedValue(new Set([
       'ID',
@@ -56,7 +56,7 @@ describe('DataProviderBillingOrderRepository', () => {
         Count: 1,
         Served: true,
         Item: 'コーヒー',
-        DRINK_PRICE: null,
+        DRINK_PRICE: 500,
         PaymentStatus: null,
         PaidAt: null,
         PaidBy: null,

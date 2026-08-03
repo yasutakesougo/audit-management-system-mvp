@@ -233,6 +233,115 @@ describe('useBillingSummary', () => {
     expect(mockUseBillingOrders).toHaveBeenCalledWith(mockRepository);
   });
 
+  it('2026年7月のページ境界後もI019・I030を利用者として請求集計し、未提供注文を除外すること', async () => {
+    mockUseBillingOrders.mockReturnValue({
+      data: [
+        {
+          id: 5412,
+          orderDate: '2026-07-13T04:26:00Z',
+          ordererCode: 'I019',
+          ordererName: '匿名利用者019',
+          orderCount: 1,
+          served: false,
+          item: 'sample',
+          sugar: 'none',
+          milk: 'none',
+          drinkPrice: 50,
+          paymentStatus: '',
+          paidAt: '',
+          paidBy: '',
+        },
+        {
+          id: 5563,
+          orderDate: '2026-07-22T04:11:00Z',
+          ordererCode: 'I030',
+          ordererName: '匿名利用者030',
+          orderCount: 1,
+          served: true,
+          item: 'sample',
+          sugar: 'none',
+          milk: 'none',
+          drinkPrice: 50,
+          paymentStatus: '',
+          paidAt: '',
+          paidBy: '',
+        },
+        {
+          id: 5642,
+          orderDate: '2026-07-27T04:25:00Z',
+          ordererCode: 'I019',
+          ordererName: '匿名利用者019',
+          orderCount: 1,
+          served: true,
+          item: 'sample',
+          sugar: 'none',
+          milk: 'none',
+          drinkPrice: 50,
+          paymentStatus: '',
+          paidAt: '',
+          paidBy: '',
+        },
+        {
+          id: 5689,
+          orderDate: '2026-07-29T03:55:00Z',
+          ordererCode: 'I030',
+          ordererName: '匿名利用者030',
+          orderCount: 1,
+          served: true,
+          item: 'sample',
+          sugar: 'none',
+          milk: 'none',
+          drinkPrice: 50,
+          paymentStatus: '',
+          paidAt: '',
+          paidBy: '',
+        },
+        {
+          id: 5733,
+          orderDate: '2026-07-31T03:49:00Z',
+          ordererCode: 'I030',
+          ordererName: '匿名利用者030',
+          orderCount: 1,
+          served: true,
+          item: 'sample',
+          sugar: 'none',
+          milk: 'none',
+          drinkPrice: 50,
+          paymentStatus: '',
+          paidAt: '',
+          paidBy: '',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => useBillingSummary('2026-07', mockRepository));
+
+    await waitFor(() => {
+      expect(result.current.persistenceDiagnostics?.status).toBe('resolved');
+    });
+
+    const i019 = result.current.records.find((record) => record.ordererCode === 'I019');
+    const i030 = result.current.records.find((record) => record.ordererCode === 'I030');
+
+    expect(i019).toMatchObject({
+      category: '利用者',
+      totalCount: 1,
+      totalAmount: 50,
+      orderIds: [5642],
+    });
+    expect(i030).toMatchObject({
+      category: '利用者',
+      totalCount: 3,
+      totalAmount: 150,
+      orderIds: [5563, 5689, 5733],
+    });
+    expect(result.current.totalServedCount).toBe(4);
+    expect(result.current.totalServedAmount).toBe(200);
+    expect(result.current.records.flatMap((record) => record.orderIds)).not.toContain(5412);
+  });
+
   it('個別の精算トグル状態が SharePoint の repository に送られ、query invalidation が走ること', async () => {
     mockIsPersistenceColumnsResolved.mockResolvedValue(true);
     const { result } = renderHook(() => useBillingSummary('2026-05', mockRepository));
