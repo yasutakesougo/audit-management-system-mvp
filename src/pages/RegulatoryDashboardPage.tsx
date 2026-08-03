@@ -21,7 +21,7 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useNavigate } from 'react-router-dom';
-import { isDemoModeEnabled } from '@/lib/env';
+import { isDemo, isDemoModeEnabled } from '@/lib/env';
 
 import { summarizeFindings } from '@/domain/regulatory';
 import {
@@ -59,6 +59,7 @@ import type { AuditFindingSeverity, UnifiedFindingRow } from './regulatory-dashb
 import { unifyFindings } from './regulatory-dashboard/types';
 import { generateDemoFindings, generateDemoSevereAddonFindings, generateDemoIcebergEvidence } from './regulatory-dashboard/demoData';
 import { createAddonPresentation } from './regulatory-dashboard/addonPresentation';
+import { resolveRegulatoryAddonDemoMode, type AddonCalculationState } from './regulatory-dashboard/addonSummaryState';
 import { SummaryCard, TypeBreakdown, DomainSummary } from './regulatory-dashboard/SummaryPanel';
 import { SevereAddonSummaryPanel } from './regulatory-dashboard/SevereAddonPanel';
 import { FindingsTable } from './regulatory-dashboard/FindingsTable';
@@ -124,7 +125,10 @@ const RegulatoryDashboardPage: React.FC = () => {
     localWeeklyObservationRepository,
     localQualificationAssignmentRepository,
   );
-  const isAddonDemoMode = isDemoModeEnabled();
+  const isAddonDemoMode = resolveRegulatoryAddonDemoMode({
+    demoModeEnabled: isDemoModeEnabled(),
+    legacyDemo: isDemo(),
+  });
   const addonPresentation = useMemo(() => createAddonPresentation({
     isDemoMode: isAddonDemoMode,
     input: realAddonInput,
@@ -136,6 +140,11 @@ const RegulatoryDashboardPage: React.FC = () => {
   }), [isAddonDemoMode, realAddonInput]);
   const addonFindings = addonPresentation.liveFindings;
   const demoAddonFindings = addonPresentation.demoFindings;
+  const addonCalculationState: AddonCalculationState = isAddonDemoMode
+    ? 'demo'
+    : addonLoading || addonError || !realAddonInput || uncalculableUsers.length > 0
+      ? 'indeterminate'
+      : 'complete';
   const addonSummary = useMemo(() => summarizeSevereAddonFindings(addonFindings), [addonFindings]);
   const demoAddonSummary = useMemo(() => summarizeSevereAddonFindings(demoAddonFindings), [demoAddonFindings]);
 
@@ -319,6 +328,7 @@ const RegulatoryDashboardPage: React.FC = () => {
         <SevereAddonSummaryPanel
           addonSummary={isAddonDemoMode ? demoAddonSummary : addonSummary}
           isDemo={isAddonDemoMode}
+          calculationState={addonCalculationState}
           onNavigate={(url) => navigate(url)}
           onFilterAddon={() => {
             setFilterSource('addon');

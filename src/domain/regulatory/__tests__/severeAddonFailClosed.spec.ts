@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildHandoffFromAddonFinding } from '../findingToHandoff';
-import { checkUserEligibility } from '../severeDisabilityAddon';
+import { checkUserEligibility, isDefinitelyIneligibleSupportLevel } from '../severeDisabilityAddon';
 
 describe('severe add-on fail-closed behavior', () => {
   it.each([null, undefined, NaN, Infinity, -Infinity, -1, '12'] as const)(
@@ -17,6 +17,14 @@ describe('severe add-on fail-closed behavior', () => {
     const result = checkUserEligibility('6', 0);
     expect(result.tier2).toBe(false);
     expect(result.tier3).toBe(false);
+  });
+
+  it.each(['1', '2', '3'])('recognizes support level %s as definitely ineligible', level => {
+    expect(isDefinitelyIneligibleSupportLevel(level)).toBe(true);
+  });
+
+  it.each([null, undefined, '', 'unknown', '4', '6'])('does not classify support level %s as definitely ineligible', level => {
+    expect(isDefinitelyIneligibleSupportLevel(level)).toBe(false);
   });
 
   it('rejects demo findings at the handoff conversion boundary', () => {

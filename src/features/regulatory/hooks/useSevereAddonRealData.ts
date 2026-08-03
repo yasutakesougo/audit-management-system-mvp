@@ -45,6 +45,7 @@ import { AuthRequiredError } from '@/lib/errors';
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
 import type { SevereAddonBulkInput, SevereAddonCheckInput } from '@/domain/regulatory/severeAddonFindings';
+import { isDefinitelyIneligibleSupportLevel } from '@/domain/regulatory/severeDisabilityAddon';
 import {
   resolveBehaviorScore,
   type BehaviorScoreIndeterminateReason,
@@ -495,6 +496,7 @@ export function useSevereAddonRealData(
   const uncalculableUsers = useMemo(() => users
     .filter(u => u.IsActive !== false)
     .map(user => {
+      if (isDefinitelyIneligibleSupportLevel(user.DisabilitySupportLevel)) return null;
       const resolution = resolveBehaviorScore(user.BehaviorScore);
       if (resolution.status === 'valid') return null;
       return {

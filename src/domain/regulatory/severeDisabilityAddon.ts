@@ -319,8 +319,13 @@ export function evaluateSevereDisabilityAddOn(params: {
  * 障害支援区分（文字列）を数値に変換する
  * 無効値は 0 を返す（どの要件も満たさない）
  */
-function parseSupportLevel(level: string | null | undefined): number {
+export function parseSupportLevel(level: string | null | undefined): number {
   if (level == null) return 0;
   const num = parseInt(level, 10);
   return isNaN(num) ? 0 : num;
+}
+
+export function isDefinitelyIneligibleSupportLevel(level: string | null | undefined): boolean {
+  const parsed = parseSupportLevel(level);
+  return parsed >= 1 && parsed <= 3;
 }

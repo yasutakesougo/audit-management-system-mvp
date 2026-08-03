@@ -21,6 +21,7 @@ import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 
 import type { summarizeSevereAddonFindings } from '@/domain/regulatory/severeAddonFindings';
+import { resolveAddonSummaryState, type AddonCalculationState } from './addonSummaryState';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -84,15 +85,32 @@ interface SevereAddonSummaryPanelProps {
   onNavigate: (url: string) => void;
   onFilterAddon: () => void;
   isDemo?: boolean;
+  calculationState?: AddonCalculationState;
 }
 
-export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addonSummary, onNavigate, onFilterAddon, isDemo = false }) => {
+export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addonSummary, onNavigate, onFilterAddon, isDemo = false, calculationState = 'complete' }) => {
   const hasIssues =
     addonSummary.trainingRatioInsufficientCount > 0 ||
     addonSummary.reassessmentOverdueCount > 0 ||
     addonSummary.weeklyObservationShortageCount > 0 ||
     addonSummary.authoringRequirementUnmetCount > 0 ||
     addonSummary.assignmentWithoutQualificationCount > 0;
+  const summaryState = resolveAddonSummaryState({ calculationState: isDemo ? 'demo' : calculationState, hasIssues });
+  const isIndeterminate = summaryState === 'indeterminate' || summaryState === 'partial';
+  const statusLabel = summaryState === 'demo'
+    ? 'デモ'
+    : summaryState === 'partial'
+      ? '一部算定不能'
+      : summaryState === 'indeterminate'
+        ? '算定不能'
+        : summaryState === 'issues'
+          ? '要対応あり'
+          : '充足';
+  const statusColor: 'default' | 'warning' | 'success' = summaryState === 'demo'
+    ? 'default'
+    : isIndeterminate || hasIssues
+      ? 'warning'
+      : 'success';
 
   return (
     <Card
@@ -100,18 +118,18 @@ export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = (
       data-testid="severe-addon-summary-panel"
       sx={{
         p: 2.5,
-        borderLeft: `4px solid ${hasIssues ? '#ed6c02' : '#2e7d32'}`,
+        borderLeft: `4px solid ${isIndeterminate || hasIssues ? '#ed6c02' : '#2e7d32'}`,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <AccessibilityNewRoundedIcon sx={{ color: hasIssues ? 'warning.main' : 'success.main' }} />
+        <AccessibilityNewRoundedIcon sx={{ color: isIndeterminate || hasIssues ? 'warning.main' : 'success.main' }} />
         <Typography variant="subtitle1" fontWeight={700}>
           重度障害者支援加算
         </Typography>
         <Chip
-          label={hasIssues ? '要対応あり' : '充足'}
+          label={statusLabel}
           size="small"
-          color={hasIssues ? 'warning' : 'success'}
+          color={statusColor}
           variant="filled"
           sx={{ fontWeight: 700, fontSize: '0.7rem', ml: 'auto' }}
         />
