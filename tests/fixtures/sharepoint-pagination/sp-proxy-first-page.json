@@ -1,0 +1,22 @@
+{
+  "odata.nextLink": "https://example.invalid/sites/2/_api/web/lists(guid%2700000000-0000-0000-0000-000000000000%27)/items?%24skiptoken=Paged%3dTRUE%26p_ID%3d5508&%24select=Id%2cTitle%2cID%2cOrderDateTime%2cRequesterCode%2cRequesterName%2cCount%2cServed%2cItem%2cSugarOption%2cMilkOption%2cDRINK_PRICE%2cPaymentStatus%2cPaidAt%2cPaidBy&%24orderby=ID+asc&%24top=4999",
+  "value": [
+    {
+      "Id": 1001,
+      "Title": "sample",
+      "OrderDateTime": "2026-07-01T00:00:00Z",
+      "Count": 1,
+      "RequesterCode": "U001",
+      "Served": false,
+      "Item": "sample",
+      "RequesterName": "匿名利用者",
+      "SugarOption": "none",
+      "MilkOption": "none",
+      "DRINK_PRICE": 500,
+      "PaymentStatus": "unsettled",
+      "PaidBy": "",
+      "PaidAt": "",
+      "ID": 1001
+    }
+  ]
+}

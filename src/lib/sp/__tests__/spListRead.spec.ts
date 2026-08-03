@@ -2,9 +2,145 @@
 import { describe, it, expect, vi } from 'vitest';
 import { listItems } from '../spListRead';
 import type { SpFetchFn } from '../spLists';
+import firstPageFixture from '../../../../tests/fixtures/sharepoint-pagination/sp-proxy-first-page.json';
+
+const firstPage = firstPageFixture as {
+  'odata.nextLink': string;
+  value: Array<Record<string, unknown>>;
+};
 
 describe('listItems - Multi-stage Granular Fallback', () => {
   const mockNormalize = (p: string) => p;
+  const normalizeFixturePath = (p: string) => {
+    const url = new URL(p);
+    return `${url.pathname}${url.search}`;
+  };
+
+  it('follows the proxied SharePoint odata.nextLink fixture and merges the next page', async () => {
+    const spFetch = vi.fn<SpFetchFn>();
+    const lastPage = {
+      value: [{ Id: 1002, Title: 'sample-page-2' }],
+    };
+
+    spFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(firstPage), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(lastPage), { status: 200 }));
+
+    const result = await listItems(spFetch, normalizeFixturePath, 'TestList', {
+      select: ['Id', 'Title'],
+    });
+
+    expect(spFetch).toHaveBeenCalledTimes(2);
+    expect(spFetch.mock.calls[1]?.[0]).toBe(
+      `${new URL(firstPage['odata.nextLink']).pathname}${new URL(firstPage['odata.nextLink']).search}`
+    );
+    expect(result).toHaveLength(2);
+    expect(result.at(-1)).toMatchObject({ Id: 1002, Title: 'sample-page-2' });
+  });
+
+  it.each(['@odata.nextLink', 'nextLink'] as const)(
+    'preserves the existing %s continuation format',
+    async (continuationKey) => {
+      const spFetch = vi.fn<SpFetchFn>();
+      spFetch
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ value: [{ Id: 1 }], [continuationKey]: '/page-2' }), {
+            status: 200,
+          })
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify({ value: [{ Id: 2 }] }), { status: 200 }));
+
+      const result = await listItems(spFetch, mockNormalize, 'TestList');
+
+      expect(result.map((row) => row.Id)).toEqual([1, 2]);
+      expect(spFetch.mock.calls[1]?.[0]).toBe('/page-2');
+    }
+  );
+
+  it('rejects a repeated continuation URL instead of returning partial rows', async () => {
+    const spFetch = vi.fn<SpFetchFn>();
+    spFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: [{ Id: 1 }], nextLink: '/cycle' }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: [{ Id: 2 }], nextLink: '/cycle' }), { status: 200 })
+      );
+
+    await expect(listItems(spFetch, mockNormalize, 'TestList')).rejects.toThrow(/pagination cycle/i);
+    expect(spFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects an HTTP error on a continuation page as a whole-request failure', async () => {
+    const spFetch = vi.fn<SpFetchFn>();
+    spFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: [{ Id: 1 }], nextLink: '/page-2' }), { status: 200 })
+      )
+      .mockRejectedValueOnce({ status: 500, message: 'upstream failure' });
+
+    await expect(
+      listItems(spFetch, mockNormalize, 'TestList', {
+        select: ['Id', 'Title', 'OrderDateTime'],
+      })
+    ).rejects.toMatchObject({ status: 500 });
+    expect(spFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects malformed JSON on a continuation page instead of treating it as an empty page', async () => {
+    const spFetch = vi.fn<SpFetchFn>();
+    spFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: [{ Id: 1 }], nextLink: '/page-2' }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response('{not-json', { status: 200 }));
+
+    await expect(listItems(spFetch, mockNormalize, 'TestList')).rejects.toThrow();
+  });
+
+  it('rejects a continuation response with an invalid list shape', async () => {
+    const spFetch = vi.fn<SpFetchFn>();
+    spFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: [{ Id: 1 }], nextLink: '/page-2' }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+
+    await expect(listItems(spFetch, mockNormalize, 'TestList')).rejects.toThrow(/value array/i);
+  });
+
+  it('rejects a continuation URL that remains outside the configured SharePoint origin', async () => {
+    const spFetch = vi.fn<SpFetchFn>().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          value: [{ Id: 1 }],
+          nextLink: 'https://external.invalid/sites/other/items?$skiptoken=2',
+        }),
+        { status: 200 }
+      )
+    );
+
+    await expect(listItems(spFetch, mockNormalize, 'TestList')).rejects.toThrow(/outside the configured/i);
+    expect(spFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('honors AbortSignal while fetching a continuation page', async () => {
+    const controller = new AbortController();
+    const spFetch = vi.fn<SpFetchFn>();
+    spFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ value: [{ Id: 1 }], nextLink: '/page-2' }), { status: 200 })
+      )
+      .mockImplementationOnce(async (_path, init) => {
+        controller.abort();
+        init?.signal?.throwIfAborted();
+        return new Response(JSON.stringify({ value: [{ Id: 2 }] }), { status: 200 });
+      });
+
+    await expect(
+      listItems(spFetch, mockNormalize, 'TestList', { signal: controller.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
 
   it('SHOULD recover from multiple drifted fields by removing them one by one', async () => {
     const spFetch = vi.fn() as unknown as SpFetchFn;

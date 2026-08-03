@@ -1,0 +1,42 @@
+{
+  "source": "/api/sp-proxy",
+  "httpStatus": 200,
+  "contentType": "absent",
+  "contentTypeEvidence": "Chrome DevTools Network response-header options exposed no Content-Type before adding a custom column; the added Content-Type column remained blank for the 200 response.",
+  "bodyFormat": "json",
+  "continuationLocation": "top-level object key",
+  "continuationKey": "odata.nextLink",
+  "continuationUrlKind": "absolute",
+  "sharePointDirectFormat": "atom-xml",
+  "proxyFormat": "json",
+  "proxyDifference": "JSON response; continuation key is odata.nextLink (without @); no Content-Type response header was observed.",
+  "continuationQueryParameterNames": [
+    "$orderby",
+    "$select",
+    "$skiptoken",
+    "$top"
+  ],
+  "skiptokenParameterNames": [
+    "Paged",
+    "p_ID"
+  ],
+  "responseHeaderNamesObserved": [
+    "cache-control",
+    "connection",
+    "content-encoding",
+    "content-length",
+    "etag",
+    "keep-alive",
+    "last-modified",
+    "server",
+    "vary"
+  ],
+  "sanitization": {
+    "host": "https://example.invalid",
+    "listGuid": "zero UUID placeholder",
+    "itemsKept": 1,
+    "realNamesCodesOrdersRemoved": true,
+    "cookiesAuthorizationTokensRemoved": true,
+    "rawResponseStored": false
+  }
+}

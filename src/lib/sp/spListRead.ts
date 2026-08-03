@@ -135,6 +135,7 @@ export async function listItems<TRow = JsonRecord>(
   const rows: TRow[] = [];
   let nextPath: string | null = initialPath;
   let pages = 0;
+  const visitedPaths = new Set<string>();
   const maxPages =
     typeof pageCap === 'number' && pageCap > 0
       ? Math.floor(pageCap)
@@ -147,6 +148,10 @@ export async function listItems<TRow = JsonRecord>(
   try {
     while (nextPath && pages < maxPages) {
       signal?.throwIfAborted();
+      if (visitedPaths.has(nextPath)) {
+        throw new Error(`SharePoint list pagination cycle detected at ${nextPath}`);
+      }
+      visitedPaths.add(nextPath);
       if (AUDIT_DEBUG) {
         auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
       }
@@ -163,6 +168,12 @@ export async function listItems<TRow = JsonRecord>(
         } catch (error) {
           const spError = error as { status?: number; message?: string };
           const status = spError?.status;
+
+          // Once pagination has started, never retry a failed continuation with a
+          // different projection: returning the first page would be a partial result.
+          if (pages > 0) {
+            throw error;
+          }
 
           // 400 (Bad Request) または 500 (Internal Server Error) の場合にフィールド除去を試行
           if ((status === 400 || status === 500) && sanitized.select && sanitized.select.length > 2) {
@@ -230,9 +241,24 @@ export async function listItems<TRow = JsonRecord>(
 
       finalResponse = res;
       
-      const payload = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {
+      if (res.ok === false || (typeof res.status === 'number' && res.status >= 400)) {
+        throw new Error(`SharePoint list request failed with HTTP ${res.status}`);
+      }
+
+      const parsedPayload: unknown = await res.json();
+      if (
+        parsedPayload === null ||
+        typeof parsedPayload !== 'object' ||
+        Array.isArray(parsedPayload) ||
+        !Array.isArray((parsedPayload as { value?: unknown }).value)
+      ) {
+        throw new Error('SharePoint list response is missing a value array');
+      }
+
+      const payload = parsedPayload as {
         value?: unknown[];
         '@odata.nextLink'?: string;
+        'odata.nextLink'?: string;
         nextLink?: string;
       };
       
@@ -243,14 +269,20 @@ export async function listItems<TRow = JsonRecord>(
       const nextLinkRaw =
         typeof payload['@odata.nextLink'] === 'string'
           ? payload['@odata.nextLink']
-          : typeof payload.nextLink === 'string'
-            ? payload.nextLink
-            : null;
+          : typeof payload['odata.nextLink'] === 'string'
+            ? payload['odata.nextLink']
+            : typeof payload.nextLink === 'string'
+              ? payload.nextLink
+              : null;
       if (!nextLinkRaw) {
         nextPath = null;
         continue;
       }
-      nextPath = normalizePath(nextLinkRaw);
+      const normalizedNextPath = normalizePath(nextLinkRaw);
+      if (/^https?:\/\//i.test(normalizedNextPath)) {
+        throw new Error('SharePoint list pagination link resolved outside the configured SharePoint origin');
+      }
+      nextPath = normalizedNextPath;
     }
   } catch (err) {
     finalError = err;
