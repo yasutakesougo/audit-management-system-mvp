@@ -136,6 +136,9 @@ export function buildHandoffFromRegularFinding(finding: AuditFinding): HandoffFr
  * 加算系 finding から handoff 作成入力を生成する。
  */
 export function buildHandoffFromAddonFinding(finding: SevereAddonFinding): HandoffFromFindingInput {
+  if (finding.dataOrigin === 'demo') {
+    throw new Error('Demo finding cannot be handed off');
+  }
   const typeLabel = SEVERE_ADDON_FINDING_TYPE_LABELS[finding.type];
   const template = ADDON_FINDING_TEMPLATES[finding.type];
   const body = template(finding);

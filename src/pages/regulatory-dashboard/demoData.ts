@@ -86,7 +86,7 @@ export function generateDemoSevereAddonFindings(): SevereAddonFinding[] {
     usersWithoutAuthoringQualification: ['U001'],
     usersWithoutAssignmentQualification: ['U003'],
     today,
-  });
+  }).map(finding => ({ ...finding, dataOrigin: 'demo' as const }));
 }
 
 /**

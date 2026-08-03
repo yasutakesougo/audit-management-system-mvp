@@ -20,6 +20,8 @@
  * @see src/domain/regulatory/userRegulatoryProfile.ts
  */
 import type { StaffQualificationProfile } from './staffQualificationProfile';
+import { resolveBehaviorScore } from './behaviorScoreResolution';
+import { resolveSupportLevel } from './severeAddonUserResolution';
 
 // ─────────────────────────────────────────────
 // 定数
@@ -116,15 +118,19 @@ export function checkUserEligibility(
   supportLevel: string | null | undefined,
   behaviorScore: number | null | undefined,
 ): UserEligibilityResult {
-  const level = parseSupportLevel(supportLevel);
-  const score = behaviorScore ?? 0;
+  const supportResolution = resolveSupportLevel(supportLevel);
+  const level = supportResolution.status === 'valid' || supportResolution.status === 'ineligible'
+    ? supportResolution.value
+    : 0;
+  const scoreResolution = resolveBehaviorScore(behaviorScore);
+  const score = scoreResolution.status === 'valid' ? scoreResolution.value : null;
 
-  const meetsScore = score >= ADDON_THRESHOLDS.MIN_BEHAVIOR_SCORE;
+  const meetsScore = score !== null && score >= ADDON_THRESHOLDS.MIN_BEHAVIOR_SCORE;
 
   return {
     tier2: meetsScore && level >= ADDON_THRESHOLDS.TIER2_MIN_SUPPORT_LEVEL,
     tier3: meetsScore && level >= ADDON_THRESHOLDS.TIER3_MIN_SUPPORT_LEVEL,
-    isUpperTier: score >= ADDON_THRESHOLDS.UPPER_TIER_BEHAVIOR_SCORE,
+    isUpperTier: score !== null && score >= ADDON_THRESHOLDS.UPPER_TIER_BEHAVIOR_SCORE,
   };
 }
 
@@ -313,12 +319,6 @@ export function evaluateSevereDisabilityAddOn(params: {
 // 内部ヘルパー
 // ─────────────────────────────────────────────
 
-/**
- * 障害支援区分（文字列）を数値に変換する
- * 無効値は 0 を返す（どの要件も満たさない）
- */
-function parseSupportLevel(level: string | null | undefined): number {
-  if (level == null) return 0;
-  const num = parseInt(level, 10);
-  return isNaN(num) ? 0 : num;
+export function isDefinitelyIneligibleSupportLevel(level: unknown): boolean {
+  return resolveSupportLevel(level).status === 'ineligible';
 }

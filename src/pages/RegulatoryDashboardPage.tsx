@@ -21,6 +21,7 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useNavigate } from 'react-router-dom';
+import { isDemo, isDemoModeEnabled } from '@/lib/env';
 
 import { summarizeFindings } from '@/domain/regulatory';
 import {
@@ -57,6 +58,9 @@ import { usePdcaStopRanking } from '@/features/regulatory/hooks/usePdcaStopRanki
 import type { AuditFindingSeverity, UnifiedFindingRow } from './regulatory-dashboard/types';
 import { unifyFindings } from './regulatory-dashboard/types';
 import { generateDemoFindings, generateDemoSevereAddonFindings, generateDemoIcebergEvidence } from './regulatory-dashboard/demoData';
+import { createAddonPresentation } from './regulatory-dashboard/addonPresentation';
+import { resolveRegulatoryAddonDemoMode, type AddonCalculationState } from './regulatory-dashboard/addonSummaryState';
+import { SEVERE_ADDON_INDETERMINATE_REASON_LABELS } from '@/domain/regulatory/severeAddonUserResolution';
 import { SummaryCard, TypeBreakdown, DomainSummary } from './regulatory-dashboard/SummaryPanel';
 import { SevereAddonSummaryPanel } from './regulatory-dashboard/SevereAddonPanel';
 import { FindingsTable } from './regulatory-dashboard/FindingsTable';
@@ -107,7 +111,13 @@ const RegulatoryDashboardPage: React.FC = () => {
   const summary = useMemo(() => summarizeFindings(findings), [findings]);
 
   // 加算系 findings — 実データ / デモフォールバック
-  const { input: realAddonInput, dataSourceLabel: addonDataSource } = useSevereAddonRealData(
+  const {
+    input: realAddonInput,
+    isLoading: addonLoading,
+    error: addonError,
+    dataSourceLabel: addonDataSource,
+    uncalculableUsers,
+  } = useSevereAddonRealData(
     spUsers,
     spStaff,
     dataLoading,
@@ -116,14 +126,28 @@ const RegulatoryDashboardPage: React.FC = () => {
     localWeeklyObservationRepository,
     localQualificationAssignmentRepository,
   );
-  const addonFindings = useMemo(() => {
-    if (realAddonInput) {
+  const isAddonDemoMode = resolveRegulatoryAddonDemoMode({
+    demoModeEnabled: isDemoModeEnabled(),
+    legacyDemo: isDemo(),
+  });
+  const addonPresentation = useMemo(() => createAddonPresentation({
+    isDemoMode: isAddonDemoMode,
+    input: realAddonInput,
+    buildLiveFindings: input => {
       _resetAddonFindingCounter();
-      return buildSevereAddonFindings(realAddonInput);
-    }
-    return generateDemoSevereAddonFindings();
-  }, [realAddonInput]);
+      return buildSevereAddonFindings(input);
+    },
+    buildDemoFindings: generateDemoSevereAddonFindings,
+  }), [isAddonDemoMode, realAddonInput]);
+  const addonFindings = addonPresentation.liveFindings;
+  const demoAddonFindings = addonPresentation.demoFindings;
+  const addonCalculationState: AddonCalculationState = isAddonDemoMode
+    ? 'demo'
+    : addonLoading || addonError || !realAddonInput || uncalculableUsers.length > 0
+      ? 'indeterminate'
+      : 'complete';
   const addonSummary = useMemo(() => summarizeSevereAddonFindings(addonFindings), [addonFindings]);
+  const demoAddonSummary = useMemo(() => summarizeSevereAddonFindings(demoAddonFindings), [demoAddonFindings]);
 
   const {
     ranking: pdcaStopRanking,
@@ -245,13 +269,31 @@ const RegulatoryDashboardPage: React.FC = () => {
           sx={{ fontWeight: 600, fontSize: '0.7rem' }}
         />
         <Chip
-          label={`加算: ${addonDataSource}`}
+          label={`加算: ${isAddonDemoMode ? 'デモ' : addonDataSource}`}
           size="small"
           color={addonDataSource === '実データ' ? 'success' : 'default'}
           variant={addonDataSource === '実データ' ? 'filled' : 'outlined'}
           sx={{ fontWeight: 600, fontSize: '0.7rem' }}
         />
       </Box>
+
+      {!isAddonDemoMode && !addonLoading && !realAddonInput && (
+        <Alert severity="error" sx={{ mb: 3 }} data-testid="severe-addon-data-error">
+          {addonError
+            ? '加算判定に必要な実データを取得できないため、判定を実行できません。'
+            : '加算判定に必要な実データを確認できないため、判定を実行できません。'}
+        </Alert>
+      )}
+      {!isAddonDemoMode && uncalculableUsers.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 3 }} data-testid="severe-addon-uncalculable">
+          <Typography variant="body2" fontWeight={700}>
+            強度行動障害に関する加算判定を実行できない利用者があります。
+          </Typography>
+          <Typography variant="body2">
+            {uncalculableUsers.map(user => `${user.userName}: ${SEVERE_ADDON_INDETERMINATE_REASON_LABELS[user.reason]}`).join('、')}
+          </Typography>
+        </Alert>
+      )}
 
       {/* 統合集計カード */}
       <Box
@@ -284,7 +326,9 @@ const RegulatoryDashboardPage: React.FC = () => {
       >
         <TypeBreakdown summary={summary} addonSummary={addonSummary} />
         <SevereAddonSummaryPanel
-          addonSummary={addonSummary}
+          addonSummary={isAddonDemoMode ? demoAddonSummary : addonSummary}
+          isDemo={isAddonDemoMode}
+          calculationState={addonCalculationState}
           onNavigate={(url) => navigate(url)}
           onFilterAddon={() => {
             setFilterSource('addon');

@@ -45,6 +45,10 @@ import { AuthRequiredError } from '@/lib/errors';
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
 import type { SevereAddonBulkInput, SevereAddonCheckInput } from '@/domain/regulatory/severeAddonFindings';
+import {
+  resolveSevereAddonUserResolution,
+  type SevereAddonIndeterminateReason,
+} from '@/domain/regulatory/severeAddonUserResolution';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 import type { PlanningSheetRepository } from '@/domain/isp/port';
 import type {
@@ -126,12 +130,13 @@ function computeStaffMetrics(staffList: Staff[]): StaffAddonMetrics {
 function toAddonCheckInput(
   user: IUserMaster,
   planningSheetIds: string[],
+  behaviorScore: number,
 ): SevereAddonCheckInput {
   return {
     userId: user.UserID ?? `user-${user.Id}`,
     userName: user.FullName ?? undefined,
     supportLevel: user.DisabilitySupportLevel ?? null,
-    behaviorScore: user.BehaviorScore ?? null,
+    behaviorScore,
     planningSheetIds,
   };
 }
@@ -152,6 +157,11 @@ export interface SevereAddonRealDataResult {
   error: Error | null;
   /** データソースの説明（UI 表示用） */
   dataSourceLabel: string;
+  uncalculableUsers: Array<{
+    userId: string;
+    userName: string;
+    reason: SevereAddonIndeterminateReason;
+  }>;
 }
 
 /**
@@ -482,6 +492,25 @@ export function useSevereAddonRealData(
   // ── メイン BulkInput 構築 ──
   const combinedLoading = enabled && (isLoading || (authReady && (sheetsLoading || obsLoading || assignLoading)));
   const combinedError = enabled ? (error || sheetsError || obsError || assignError) : null;
+  const uncalculableUsers = useMemo(() => users
+    .filter(u => u.IsActive !== false)
+    .map(user => {
+      const resolution = resolveSevereAddonUserResolution({
+        supportLevel: user.DisabilitySupportLevel,
+        behaviorScore: user.BehaviorScore,
+      });
+      if (resolution.status !== 'indeterminate') return null;
+      return {
+        userId: user.UserID ?? `user-${user.Id}`,
+        userName: user.FullName ?? '利用者名未設定',
+        reason: resolution.reason,
+      };
+    })
+    .filter((user): user is {
+      userId: string;
+      userName: string;
+      reason: SevereAddonIndeterminateReason;
+    } => user !== null), [users]);
 
   const input = useMemo<SevereAddonBulkInput | null>(() => {
     if (!enabled || combinedLoading || combinedError) return null;
@@ -498,10 +527,16 @@ export function useSevereAddonRealData(
     const addonUsers: SevereAddonCheckInput[] = users
       .filter(u => u.IsActive !== false)
       .map(u => {
+        const resolution = resolveSevereAddonUserResolution({
+          supportLevel: u.DisabilitySupportLevel,
+          behaviorScore: u.BehaviorScore,
+        });
+        if (resolution.status !== 'valid') return null;
         const userId = u.UserID ?? `user-${u.Id}`;
         const sheetIds = planningSheetIdsByUser.get(userId) ?? [];
-        return toAddonCheckInput(u, sheetIds);
-      });
+        return toAddonCheckInput(u, sheetIds, resolution.behaviorScore);
+      })
+      .filter((user): user is SevereAddonCheckInput => user !== null);
 
     // 候補者のユーザーID
     const candidateUserIds = addonUsers.map(u => u.userId);
@@ -546,6 +581,7 @@ export function useSevereAddonRealData(
     input,
     isLoading: combinedLoading,
     error: combinedError,
-    dataSourceLabel: input ? '実データ' : (enabled ? 'デモデータ' : '無効'),
+    dataSourceLabel: input ? '実データ' : (enabled ? '算定不能' : '無効'),
+    uncalculableUsers,
   };
 }
