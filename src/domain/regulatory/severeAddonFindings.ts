@@ -25,6 +25,7 @@ import {
   checkBasicTrainingRatio,
   type UserEligibilityResult,
 } from './severeDisabilityAddon';
+import { resolveBehaviorScore } from './behaviorScoreResolution';
 import {
   isQuarterlyReassessmentOverdue,
   DEFAULT_REASSESSMENT_CYCLE_DAYS,
@@ -74,6 +75,7 @@ export interface SevereAddonFinding {
   overdueDays?: number;
   dueDate?: string;
   detectedAt: string;
+  dataOrigin?: 'live' | 'demo';
 }
 
 // ─────────────────────────────────────────────
@@ -190,6 +192,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
 
   // 2. 利用者ごとのチェック
   for (const user of users) {
+    if (resolveBehaviorScore(user.behaviorScore).status !== 'valid') continue;
     const eligibility = checkUserEligibility(user.supportLevel, user.behaviorScore);
 
     // 加算候補

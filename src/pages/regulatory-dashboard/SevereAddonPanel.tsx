@@ -83,9 +83,10 @@ interface SevereAddonSummaryPanelProps {
   addonSummary: ReturnType<typeof summarizeSevereAddonFindings>;
   onNavigate: (url: string) => void;
   onFilterAddon: () => void;
+  isDemo?: boolean;
 }
 
-export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addonSummary, onNavigate, onFilterAddon }) => {
+export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addonSummary, onNavigate, onFilterAddon, isDemo = false }) => {
   const hasIssues =
     addonSummary.trainingRatioInsufficientCount > 0 ||
     addonSummary.reassessmentOverdueCount > 0 ||
@@ -146,16 +147,16 @@ export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = (
 
       {/* 要件チェック状況 */}
       <Stack spacing={0.75}>
-        <AddonRequirementRow icon={<SchoolRoundedIcon sx={{ fontSize: 16 }} />} label="基礎研修比率" count={addonSummary.trainingRatioInsufficientCount} okText="20%以上を充足" ngText={`${addonSummary.trainingRatioInsufficientCount}件の不足`} onAction={addonSummary.trainingRatioInsufficientCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.training.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.training.label} />
-        <AddonRequirementRow icon={<EventRepeatRoundedIcon sx={{ fontSize: 16 }} />} label="3か月再評価" count={addonSummary.reassessmentOverdueCount} okText="全員期限内" ngText={`${addonSummary.reassessmentOverdueCount}件超過`} onAction={addonSummary.reassessmentOverdueCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.reassessment.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.reassessment.label} />
-        <AddonRequirementRow icon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />} label="週次観察" count={addonSummary.weeklyObservationShortageCount} okText="全員実施済" ngText={`${addonSummary.weeklyObservationShortageCount}件不足`} onAction={addonSummary.weeklyObservationShortageCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.observation.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.observation.label} />
-        <AddonRequirementRow icon={<EditNoteRoundedIcon sx={{ fontSize: 16 }} />} label="作成者要件" count={addonSummary.authoringRequirementUnmetCount} okText="全員実践研修修了" ngText={`${addonSummary.authoringRequirementUnmetCount}件不備`} onAction={addonSummary.authoringRequirementUnmetCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.authoring.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.authoring.label} />
-        <AddonRequirementRow icon={<PersonOffRoundedIcon sx={{ fontSize: 16 }} />} label="配置資格" count={addonSummary.assignmentWithoutQualificationCount} okText="全員資格あり" ngText={`${addonSummary.assignmentWithoutQualificationCount}件不備`} onAction={addonSummary.assignmentWithoutQualificationCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.assignment.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.assignment.label} />
+        <AddonRequirementRow icon={<SchoolRoundedIcon sx={{ fontSize: 16 }} />} label="基礎研修比率" count={addonSummary.trainingRatioInsufficientCount} okText="20%以上を充足" ngText={`${addonSummary.trainingRatioInsufficientCount}件の不足`} onAction={!isDemo && addonSummary.trainingRatioInsufficientCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.training.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.training.label} />
+        <AddonRequirementRow icon={<EventRepeatRoundedIcon sx={{ fontSize: 16 }} />} label="3か月再評価" count={addonSummary.reassessmentOverdueCount} okText="全員期限内" ngText={`${addonSummary.reassessmentOverdueCount}件超過`} onAction={!isDemo && addonSummary.reassessmentOverdueCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.reassessment.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.reassessment.label} />
+        <AddonRequirementRow icon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />} label="週次観察" count={addonSummary.weeklyObservationShortageCount} okText="全員実施済" ngText={`${addonSummary.weeklyObservationShortageCount}件不足`} onAction={!isDemo && addonSummary.weeklyObservationShortageCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.observation.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.observation.label} />
+        <AddonRequirementRow icon={<EditNoteRoundedIcon sx={{ fontSize: 16 }} />} label="作成者要件" count={addonSummary.authoringRequirementUnmetCount} okText="全員実践研修修了" ngText={`${addonSummary.authoringRequirementUnmetCount}件不備`} onAction={!isDemo && addonSummary.authoringRequirementUnmetCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.authoring.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.authoring.label} />
+        <AddonRequirementRow icon={<PersonOffRoundedIcon sx={{ fontSize: 16 }} />} label="配置資格" count={addonSummary.assignmentWithoutQualificationCount} okText="全員資格あり" ngText={`${addonSummary.assignmentWithoutQualificationCount}件不備`} onAction={!isDemo && addonSummary.assignmentWithoutQualificationCount > 0 ? () => onNavigate(ADDON_REQUIREMENT_LINKS.assignment.path) : undefined} actionLabel={ADDON_REQUIREMENT_LINKS.assignment.label} />
       </Stack>
 
       {/* 加算 finding 一覧へ導線 */}
-      <Divider sx={{ my: 1.5 }} />
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      {!isDemo && <Divider sx={{ my: 1.5 }} />}
+      {!isDemo && <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           size="small"
           variant="text"
@@ -167,7 +168,7 @@ export const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = (
         >
           加算チェック結果を一覧で見る
         </Button>
-      </Box>
+      </Box>}
     </Card>
   );
 };

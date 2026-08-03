@@ -20,6 +20,7 @@
  * @see src/domain/regulatory/userRegulatoryProfile.ts
  */
 import type { StaffQualificationProfile } from './staffQualificationProfile';
+import { resolveBehaviorScore } from './behaviorScoreResolution';
 
 // ─────────────────────────────────────────────
 // 定数
@@ -117,14 +118,15 @@ export function checkUserEligibility(
   behaviorScore: number | null | undefined,
 ): UserEligibilityResult {
   const level = parseSupportLevel(supportLevel);
-  const score = behaviorScore ?? 0;
+  const scoreResolution = resolveBehaviorScore(behaviorScore);
+  const score = scoreResolution.status === 'valid' ? scoreResolution.value : null;
 
-  const meetsScore = score >= ADDON_THRESHOLDS.MIN_BEHAVIOR_SCORE;
+  const meetsScore = score !== null && score >= ADDON_THRESHOLDS.MIN_BEHAVIOR_SCORE;
 
   return {
     tier2: meetsScore && level >= ADDON_THRESHOLDS.TIER2_MIN_SUPPORT_LEVEL,
     tier3: meetsScore && level >= ADDON_THRESHOLDS.TIER3_MIN_SUPPORT_LEVEL,
-    isUpperTier: score >= ADDON_THRESHOLDS.UPPER_TIER_BEHAVIOR_SCORE,
+    isUpperTier: score !== null && score >= ADDON_THRESHOLDS.UPPER_TIER_BEHAVIOR_SCORE,
   };
 }
 
