@@ -13,6 +13,8 @@ test.describe('Dashboard - SP Lane Error Classification', () => {
       envOverrides: {
         VITE_FEATURE_SCHEDULES: '1',
         VITE_FEATURE_SCHEDULES_SP: '1',
+        VITE_FORCE_SHAREPOINT: '1',
+        VITE_SKIP_SHAREPOINT: '0',
       },
       storageOverrides: { 'feature:schedulesP': '1', 'feature:schedulesSp': '1' },
     });

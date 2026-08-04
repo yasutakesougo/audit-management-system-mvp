@@ -8,6 +8,8 @@ const TARGET_DATE = '2026-03-25';
 const TARGET_USER_ID = 'U002';
 const TARGET_USER_NAME = '鈴木 美子';
 
+test.use({ timezoneId: 'Asia/Tokyo' });
+
 test.describe('Users TransportCourse update reflects in transport assignments', () => {
   test('updating TransportCourse on /users is reflected as fixed-course default on /transport/assignments', async ({ page }) => {
     await setupSharePointStubs(page, {
