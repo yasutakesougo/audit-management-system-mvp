@@ -1,7 +1,7 @@
 
 import { afterEach, describe, it, expect } from 'vitest';
 import { resolveInternalNamesDetailed, raiseHttpError } from '../helpers';
-import { _resetSpHealthSignalStore, getSpHealthSignal } from '@/features/sp/health/spHealthSignalStore';
+import { _resetSpHealthSignalStore, getSpHealthSignal } from '@/features/sp';
 
 afterEach(() => {
   _resetSpHealthSignalStore();
