@@ -403,6 +403,7 @@ type ProxyDiagnostic = {
   requestId?: string;
   cfRay?: string;
   sprequestguid?: string;
+  durationMs?: number;
   safeErrorCode: string;
   retryClass: ProxyRetryClass;
 };
@@ -449,11 +450,14 @@ const safeTargetDetails = (target: URL): Pick<ProxyDiagnostic, 'targetOrigin' | 
   };
 };
 
-const logProxyDiagnostic = (env: Env, diagnostic: ProxyDiagnostic): void => {
+const logProxyDiagnostic = (env: Env, diagnostic: ProxyDiagnostic, startedAt: number | undefined): void => {
   if (!proxyDiagnosticsEnabled(env)) return;
   // JSON is intentionally limited to non-secret routing and response metadata.
   // Do not add request headers, query values, response bodies, or exception text.
-  console.log(JSON.stringify(diagnostic));
+  const timedDiagnostic = startedAt === undefined
+    ? diagnostic
+    : { ...diagnostic, durationMs: Math.max(0, Date.now() - startedAt) };
+  console.log(JSON.stringify(timedDiagnostic));
 };
 
 const requestProxyContext = (request: Request): Pick<ProxyDiagnostic, 'method' | 'cfRay'> => ({
@@ -481,18 +485,19 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
     return new Response(null, { status: 204 });
   }
 
-  const diagnosticId = proxyDiagnosticsEnabled(env) ? createProxyDiagnosticId() : '';
+  const diagnosticsStartedAt = proxyDiagnosticsEnabled(env) ? Date.now() : undefined;
+  const diagnosticId = diagnosticsStartedAt === undefined ? '' : createProxyDiagnosticId();
 
   const authHeader = request.headers.get('Authorization') ?? '';
   if (!authHeader.startsWith('Bearer ')) {
-    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'missing_bearer_token', { status: 401, statusText: 'Unauthorized' }));
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'missing_bearer_token', { status: 401, statusText: 'Unauthorized' }), diagnosticsStartedAt);
     return jsonResponse(401, { error: 'missing_bearer_token' });
   }
 
   const configuredResource = env.VITE_SP_RESOURCE?.trim().replace(/\/+$/, '');
   const configuredSiteRelative = normalizeSiteRelative(env.VITE_SP_SITE_RELATIVE ?? '');
   if (!configuredResource || !configuredSiteRelative) {
-    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'sp_proxy_not_configured', { status: 500, statusText: 'Internal Server Error' }));
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'sp_proxy_not_configured', { status: 500, statusText: 'Internal Server Error' }), diagnosticsStartedAt);
     return jsonResponse(500, { error: 'sp_proxy_not_configured' });
   }
 
@@ -501,7 +506,7 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
     const sourceUrl = new URL(request.url);
     target = new URL(sourceUrl.searchParams.get('url') ?? '');
   } catch {
-    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'invalid_target_url', { status: 400, statusText: 'Bad Request' }));
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'invalid_target_url', { status: 400, statusText: 'Bad Request' }), diagnosticsStartedAt);
     return jsonResponse(400, { error: 'invalid_target_url' });
   }
 
@@ -527,7 +532,7 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
       diagnosticId,
       'target_not_allowed',
       { status: 403, statusText: 'Forbidden', ...safeTargetDetails(target) },
-    ));
+    ), diagnosticsStartedAt);
     return jsonResponse(403, { 
       error: 'target_not_allowed',
       details: {
@@ -562,7 +567,7 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
       sprequestguid: response.headers.get('sprequestguid') ?? undefined,
       safeErrorCode: response.ok ? 'ok' : `http_${response.status}`,
       retryClass: retryClassForStatus(response.status),
-    });
+    }, diagnosticsStartedAt);
 
     return new Response(response.body, {
       status: response.status,
@@ -578,7 +583,7 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
       ...safeTargetDetails(target),
       safeErrorCode: 'sharepoint_fetch_failed',
       retryClass: 'server',
-    });
+    }, diagnosticsStartedAt);
     console.error('[sp-proxy] fetch failed', error);
     return jsonResponse(502, { error: 'sharepoint_fetch_failed' });
   }

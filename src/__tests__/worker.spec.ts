@@ -230,6 +230,8 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
       status,
       retryClass: 'none',
     });
+    expect(diagnostic.durationMs).toEqual(expect.any(Number));
+    expect(diagnostic.durationMs as number).toBeGreaterThanOrEqual(0);
     expect(JSON.stringify(diagnostic)).not.toContain('not-logged');
     expect(JSON.stringify(diagnostic)).not.toContain('secret-token');
   });
@@ -288,6 +290,8 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
       retryClass: 'none',
     });
     expect(diagnostic.diagnosticId).toEqual(expect.any(String));
+    expect(diagnostic.durationMs).toEqual(expect.any(Number));
+    expect(diagnostic.durationMs as number).toBeGreaterThanOrEqual(0);
 
     const serialized = JSON.stringify(diagnostic);
     expect(serialized).not.toContain('secret-token');
@@ -317,6 +321,8 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     await expect(response.text()).resolves.toBe('{"ok":true}');
     const diagnostic = JSON.parse(logSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
     expect(diagnostic).toMatchObject({ outcome: 'upstream_response', status, safeErrorCode, retryClass });
+    expect(diagnostic.durationMs).toEqual(expect.any(Number));
+    expect(diagnostic.durationMs as number).toBeGreaterThanOrEqual(0);
   });
 
   it('classifies proxy rejection and upstream fetch failure without logging request secrets', async () => {
@@ -339,6 +345,8 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
       targetPath: '/sites/other/_api/web/lists',
       queryKeys: ['secret'],
     });
+    expect(rejection.durationMs).toEqual(expect.any(Number));
+    expect(rejection.durationMs as number).toBeGreaterThanOrEqual(0);
 
     const fetchMock = vi.fn().mockRejectedValue(new Error('upstream URL and token must not be logged'));
     vi.stubGlobal('fetch', fetchMock);
@@ -358,6 +366,8 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
       retryClass: 'server',
       queryKeys: ['secret'],
     });
+    expect(fetchFailure.durationMs).toEqual(expect.any(Number));
+    expect(fetchFailure.durationMs as number).toBeGreaterThanOrEqual(0);
 
     const serialized = JSON.stringify(logSpy.mock.calls);
     expect(serialized).not.toContain('secret-token');
