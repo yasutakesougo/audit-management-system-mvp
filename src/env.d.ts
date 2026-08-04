@@ -58,6 +58,8 @@ interface ImportMetaEnv {
   readonly VITE_SP_SITE_ID?: string;
   readonly VITE_SP_SITE_URL?: string;
   readonly VITE_SP_USE_PROXY?: string;
+  /** Opt-in client-side correlation for SharePoint proxy diagnostics. */
+  readonly VITE_SP_PROXY_CORRELATION?: string;
   readonly VITE_WRITE_ENABLED?: string;
   readonly VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX?: string;
 

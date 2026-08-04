@@ -12,6 +12,8 @@ interface Env {
   VITE_SKIP_PROVISIONING?: string;
   VITE_SP_LIST_BILLING_ORDERS?: string;
   VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE?: string;
+  /** Client-side correlation flag. Safe non-secret runtime setting. */
+  VITE_SP_PROXY_CORRELATION?: string;
   /** Server-only, opt-in proxy diagnostics. Never injected into client runtime. */
   SP_PROXY_DIAGNOSTICS?: string;
   ALLOWED_TENANT_ID?: string;
@@ -78,6 +80,7 @@ const RUNTIME_ENV_ALLOWLIST = new Set([
   'VITE_SP_SITE_RELATIVE',
   'VITE_SKIP_PROVISIONING',
   'VITE_SP_USE_PROXY',
+  'VITE_SP_PROXY_CORRELATION',
   'VITE_SP_LIST_BILLING_ORDERS',
   'VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE',
 ]);
@@ -418,6 +421,11 @@ const createProxyDiagnosticId = (): string => {
   }
 };
 
+const incomingProxyDiagnosticId = (request: Request): string | undefined => {
+  const value = request.headers.get('x-sp-diagnostic-id')?.trim();
+  return value && /^[A-Za-z0-9_-]{8,128}$/.test(value) ? value : undefined;
+};
+
 const retryClassForStatus = (status?: number): ProxyRetryClass => {
   if (status === 408) return 'timeout';
   if (status === 429) return 'throttle';
@@ -486,7 +494,9 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
   }
 
   const diagnosticsStartedAt = proxyDiagnosticsEnabled(env) ? Date.now() : undefined;
-  const diagnosticId = diagnosticsStartedAt === undefined ? '' : createProxyDiagnosticId();
+  const diagnosticId = diagnosticsStartedAt === undefined
+    ? ''
+    : incomingProxyDiagnosticId(request) ?? createProxyDiagnosticId();
 
   const authHeader = request.headers.get('Authorization') ?? '';
   if (!authHeader.startsWith('Bearer ')) {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSpFetch, __clearSharePointThrottleCircuitBreakerForTests } from '../spFetch';
 import type { EnvRecord } from '@/lib/env';
+import { clearSpProxyCorrelation, getSpProxyCorrelationSnapshot } from '@/lib/telemetry/spProxyCorrelation';
 
 function createTestEnv(): EnvRecord {
   return {
@@ -32,6 +33,7 @@ function createProxyFetcher() {
     config: {
       ...createTestEnv(),
       VITE_SP_USE_PROXY: '1',
+      VITE_SP_PROXY_CORRELATION: '1',
     },
     retrySettings: { maxAttempts: 4, baseDelay: 2000, capDelay: 30000 },
     debugEnabled: false,
@@ -44,6 +46,7 @@ describe('spFetch retry guard for SharePoint throttle/cors', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     __clearSharePointThrottleCircuitBreakerForTests();
+    clearSpProxyCorrelation();
   });
 
   afterEach(() => {
@@ -110,5 +113,10 @@ describe('spFetch retry guard for SharePoint throttle/cors', () => {
     );
     const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
     expect(headers.get('Authorization')).toBe('Bearer test-token');
+    expect(headers.get('X-SP-Diagnostic-ID')).toMatch(/^[A-Za-z0-9_-]{8,128}$/);
+    expect(getSpProxyCorrelationSnapshot().records.map((entry) => entry.event)).toEqual([
+      'request_start',
+      'http_response',
+    ]);
   });
 });

@@ -107,6 +107,8 @@ export const envSchema = z.object({
   VITE_FORCE_SHAREPOINT: zBoolFromString.optional().default(false),
   VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: zBoolFromString.optional().default(false),
   VITE_SP_USE_PROXY: zBoolFromString.optional().default(false),
+  // Opt-in only; this exposes safe correlation metadata, never credentials.
+  VITE_SP_PROXY_CORRELATION: zBoolFromString.optional().default(false),
   VITE_SKIP_SHAREPOINT: zBoolFromString.optional().default(false),
   VITE_SKIP_LOGIN: zBoolFromString.optional().default(false),
   VITE_SP_ENABLED: z.string().optional().default('false'),

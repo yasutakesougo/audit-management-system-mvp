@@ -359,19 +359,39 @@ export const coerceResult = async <T>(res: Response): Promise<T> => {
   return undefined as unknown as T;
 };
 
-import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
+import {
+  reportSpHealthEvent,
+  type SpHealthFailureClass,
+  type SpHealthRetryClass,
+} from '@/features/sp/health/spHealthSignalStore';
 
 export const raiseHttpError = async (
   res: Response,
   options: {
     url?: string;
     method?: string;
+    diagnosticId?: string;
     spOptions?: { quietStatuses?: number[]; silent?: boolean };
   } = {},
 ): Promise<never> => {
   const detail = await readErrorPayload(res);
   const AUDIT_DEBUG = isDebugFlag(getAppConfig().VITE_AUDIT_DEBUG);
   const { quietStatuses, silent } = options.spOptions || {};
+  const retryClass: SpHealthRetryClass = res.status === 408
+    ? 'timeout'
+    : res.status === 429
+      ? 'throttle'
+      : [500, 502, 503, 504].includes(res.status)
+        ? 'server'
+        : 'none';
+  const healthMetadata = {
+    diagnosticId: options.diagnosticId,
+    httpStatus: res.status,
+    httpStatusClass: `${Math.floor(res.status / 100)}xx`,
+    safeErrorCode: `http_${res.status}`,
+    failureClass: 'http' as SpHealthFailureClass,
+    retryClass,
+  };
 
   // 1. Report to Global Health Store (Realtime Signal)
   if (res.status === 401 || res.status === 403) {
@@ -381,6 +401,7 @@ export const raiseHttpError = async (
       message: 'SharePoint 認証に失敗しました。MSAL構成またはサイト権限を確認してください。',
       occurredAt: new Date().toISOString(),
       source: 'realtime',
+      ...healthMetadata,
     });
   } else if (res.status === 404) {
     reportSpHealthEvent({
@@ -389,6 +410,7 @@ export const raiseHttpError = async (
       message: 'リストまたはリソースが見つかりません。セットアップが未完了の可能性があります。',
       occurredAt: new Date().toISOString(),
       source: 'realtime',
+      ...healthMetadata,
     });
   }
 

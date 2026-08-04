@@ -14,6 +14,13 @@ import { startFetchSpan } from '@/telemetry/fetchSpan';
 import { raiseHttpError } from './helpers';
 import type { SpClientOptions } from './types';
 import { spTelemetryStore, type SpFetchTelemetryEvent, type SpMetric } from '@/lib/telemetry/spTelemetryStore';
+import {
+  createSpProxyDiagnosticId,
+  isSpProxyCorrelationEnabled,
+  recordSpProxyCorrelation,
+  type SpProxyFailureClass,
+  type SpProxyRetryClass,
+} from '@/lib/telemetry/spProxyCorrelation';
 
 export type SpLane = 'read' | 'write' | 'provisioning';
 
@@ -208,6 +215,21 @@ function isLikelyCorsOrRedirectFailure(error: unknown): boolean {
     message.includes('networkerror') ||
     message.includes('cors')
   );
+}
+
+function correlationRetryClassForStatus(status?: number): SpProxyRetryClass {
+  if (status === 408) return 'timeout';
+  if (status === 429) return 'throttle';
+  if (status !== undefined && [500, 502, 503, 504].includes(status)) return 'server';
+  return 'none';
+}
+
+function correlationFailureClass(error: unknown): SpProxyFailureClass {
+  if (error instanceof SpThrottleRedirectError) return 'throttle_redirect';
+  if (isAbortError(error)) return 'abort';
+  if (isLikelyCorsOrRedirectFailure(error)) return 'cors_redirect';
+  if (error instanceof Error || error instanceof TypeError) return 'network';
+  return 'unknown';
 }
 
 export class SpThrottleRedirectError extends Error {
@@ -415,6 +437,9 @@ export function createSpFetch(deps: SpFetchDeps) {
     }
 
     const url = resolveUrl(resolvedPath);
+    const isProxyRequest = url.startsWith('/api/sp-proxy');
+    const correlationEnabled = isProxyRequest && isSpProxyCorrelationEnabled(config);
+    const diagnosticId = correlationEnabled ? createSpProxyDiagnosticId() : undefined;
     const queuedAt = Date.now();
 
     // Observability span
@@ -450,6 +475,13 @@ export function createSpFetch(deps: SpFetchDeps) {
       const queuedMs = startedAt - queuedAt;
 
       recordTelemetry('sp:request_start', { url: url.split('?')[0], method, lane, queuedMs });
+      recordSpProxyCorrelation({
+        diagnosticId,
+        event: 'request_start',
+        occurredAt: new Date().toISOString(),
+        method,
+        targetPath: resolvedPath,
+      }, config);
 
       for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
         const attemptStartedAt = Date.now();
@@ -462,6 +494,7 @@ export function createSpFetch(deps: SpFetchDeps) {
 
         const headers = toHeaders(init.headers);
         if (token) headers.set('Authorization', `Bearer ${token}`);
+        if (diagnosticId) headers.set('X-SP-Diagnostic-ID', diagnosticId);
 
         if (isUpdate) {
           const accept = headers.get('Accept');
@@ -506,6 +539,20 @@ export function createSpFetch(deps: SpFetchDeps) {
           }
 
           const retryAfterMs = parseRetryAfterMs(response);
+
+          recordSpProxyCorrelation({
+            diagnosticId,
+            event: 'http_response',
+            occurredAt: new Date().toISOString(),
+            method,
+            targetPath: resolvedPath,
+            status: response.status,
+            safeErrorCode: response.ok ? 'ok' : `http_${response.status}`,
+            failureClass: 'http',
+            retryClass: correlationRetryClassForStatus(response.status),
+            retryable: !skipRetry && isRetryableStatus(response.status),
+            durationMs: Date.now() - attemptStartedAt,
+          }, config);
 
           if (response.ok) {
             recordTelemetry('sp:request_end', {
@@ -557,6 +604,20 @@ export function createSpFetch(deps: SpFetchDeps) {
               durationMs: Date.now() - attemptStartedAt,
             });
 
+            recordSpProxyCorrelation({
+              diagnosticId,
+              event: 'retry',
+              occurredAt: new Date().toISOString(),
+              method,
+              targetPath: resolvedPath,
+              status: response.status,
+              safeErrorCode: `http_${response.status}`,
+              failureClass: 'http',
+              retryClass: correlationRetryClassForStatus(response.status),
+              retryable: true,
+              durationMs: Date.now() - attemptStartedAt,
+            }, config);
+
             if (onRetry) {
               const reason = response.status === 429 ? 'throttle' : 'server';
               try { onRetry(response, { attempt, status: response.status, reason, delayMs }); }
@@ -591,7 +652,7 @@ export function createSpFetch(deps: SpFetchDeps) {
           span.fail(response.status, 'SpHttpError', attempt - 1);
 
           if (throwOnError) {
-             await raiseHttpError(response, { url, method, spOptions });
+             await raiseHttpError(response, { url, method, diagnosticId, spOptions });
           }
           return response;
 
@@ -611,6 +672,18 @@ export function createSpFetch(deps: SpFetchDeps) {
               durationMs: Date.now() - attemptStartedAt,
               message: error.message,
             });
+            recordSpProxyCorrelation({
+              diagnosticId,
+              event: 'non_http_failure',
+              occurredAt: new Date().toISOString(),
+              method,
+              targetPath: resolvedPath,
+              safeErrorCode: 'throttle_redirect',
+              failureClass: correlationFailureClass(error),
+              retryClass: 'throttle',
+              retryable: false,
+              durationMs: Date.now() - attemptStartedAt,
+            }, config);
             span.error('SpThrottleRedirectError', attempt - 1);
             throw error;
           }
@@ -624,6 +697,18 @@ export function createSpFetch(deps: SpFetchDeps) {
               durationMs: Date.now() - attemptStartedAt,
               message: 'aborted',
             });
+            recordSpProxyCorrelation({
+              diagnosticId,
+              event: 'non_http_failure',
+              occurredAt: new Date().toISOString(),
+              method,
+              targetPath: resolvedPath,
+              safeErrorCode: 'aborted',
+              failureClass: correlationFailureClass(error),
+              retryClass: 'timeout',
+              retryable: false,
+              durationMs: Date.now() - attemptStartedAt,
+            }, config);
             span.error('AbortError', attempt - 1);
             throw error;
           }
@@ -650,6 +735,18 @@ export function createSpFetch(deps: SpFetchDeps) {
               durationMs: Date.now() - attemptStartedAt,
               message: error instanceof Error ? error.message : 'NetworkError',
             });
+            recordSpProxyCorrelation({
+              diagnosticId,
+              event: 'non_http_failure',
+              occurredAt: new Date().toISOString(),
+              method,
+              targetPath: resolvedPath,
+              safeErrorCode: 'cors_or_redirect_failure',
+              failureClass: correlationFailureClass(error),
+              retryClass: 'throttle',
+              retryable: false,
+              durationMs: Date.now() - attemptStartedAt,
+            }, config);
             span.error('SpThrottleRedirectError', attempt - 1);
             openThrottleCircuit();
             throw new SpThrottleRedirectError(url);
@@ -667,6 +764,18 @@ export function createSpFetch(deps: SpFetchDeps) {
               durationMs: Date.now() - attemptStartedAt,
               message: error instanceof Error ? error.message : 'NetworkError',
             });
+            recordSpProxyCorrelation({
+              diagnosticId,
+              event: 'retry',
+              occurredAt: new Date().toISOString(),
+              method,
+              targetPath: resolvedPath,
+              safeErrorCode: 'network_error',
+              failureClass: correlationFailureClass(error),
+              retryClass: 'network',
+              retryable: true,
+              durationMs: Date.now() - attemptStartedAt,
+            }, config);
             await sleep(delayMs, mergedSignal);
             continue;
           }
@@ -679,6 +788,18 @@ export function createSpFetch(deps: SpFetchDeps) {
             durationMs: Date.now() - attemptStartedAt,
             message: error instanceof Error ? error.message : 'NetworkError',
           });
+          recordSpProxyCorrelation({
+            diagnosticId,
+            event: 'non_http_failure',
+            occurredAt: new Date().toISOString(),
+            method,
+            targetPath: resolvedPath,
+            safeErrorCode: 'network_error',
+            failureClass: correlationFailureClass(error),
+            retryClass: 'network',
+            retryable: false,
+            durationMs: Date.now() - attemptStartedAt,
+          }, config);
           span.error('NetworkError', attempt - 1);
           throw error;
         }

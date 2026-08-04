@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useConnectionStatus } from '../useConnectionStatus';
 import * as signalStore from '../../spHealthSignalStore';
+import * as correlation from '@/lib/telemetry/spProxyCorrelation';
 
 // Mock dependencies
 vi.mock('../../spHealthSignalStore', () => ({
@@ -21,9 +22,50 @@ vi.mock('@/lib/env', () => ({
   })),
 }));
 
+vi.mock('@/lib/telemetry/spProxyCorrelation', () => ({
+  recordSpProxyCorrelation: vi.fn(),
+}));
+
 describe('useConnectionStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('records safe health-signal correlation metadata when a signal is observed', () => {
+    vi.spyOn(signalStore, 'getSpHealthSignal').mockReturnValue({
+      severity: 'critical',
+      reasonCode: 'sp_list_unreachable',
+      listName: 'Users_Master',
+      message: 'List not found',
+      occurredAt: '2026-08-04T02:33:00.000Z',
+      firstOccurredAt: '2026-08-04T02:30:00.000Z',
+      lastOccurredAt: '2026-08-04T02:33:00.000Z',
+      source: 'realtime',
+      occurrenceCount: 2,
+      diagnosticId: 'diag-12345678',
+      httpStatus: 404,
+      httpStatusClass: '4xx',
+      safeErrorCode: 'http_404',
+      failureClass: 'http',
+      retryClass: 'none',
+    });
+
+    renderHook(() => useConnectionStatus());
+
+    expect(correlation.recordSpProxyCorrelation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        diagnosticId: 'diag-12345678',
+        event: 'health_signal',
+        reasonCode: 'sp_list_unreachable',
+        listName: 'Users_Master',
+        occurrenceCount: 2,
+        status: 404,
+        statusClass: '4xx',
+        safeErrorCode: 'http_404',
+        firstOccurredAt: '2026-08-04T02:30:00.000Z',
+        lastOccurredAt: '2026-08-04T02:33:00.000Z',
+      }),
+    );
   });
 
   it('returns connected when there is no health signal', () => {
