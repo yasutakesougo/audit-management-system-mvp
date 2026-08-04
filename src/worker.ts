@@ -12,6 +12,8 @@ interface Env {
   VITE_SKIP_PROVISIONING?: string;
   VITE_SP_LIST_BILLING_ORDERS?: string;
   VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE?: string;
+  /** Server-only, opt-in proxy diagnostics. Never injected into client runtime. */
+  SP_PROXY_DIAGNOSTICS?: string;
   ALLOWED_TENANT_ID?: string;
   ORG_ID_OVERRIDE?: string;
   GOOGLE_SERVICE_ACCOUNT_JSON?: string;
@@ -383,19 +385,119 @@ const pickSharePointResponseHeaders = (response: Response): Headers => {
   return headers;
 };
 
+type ProxyRetryClass = 'none' | 'timeout' | 'throttle' | 'server';
+
+type ProxyDiagnostic = {
+  event: 'sp-proxy';
+  diagnosticId: string;
+  outcome: 'proxy_rejection' | 'upstream_response' | 'upstream_fetch_error';
+  method: string;
+  targetOrigin?: string;
+  targetPath?: string;
+  targetList?: string;
+  queryKeys?: string[];
+  status?: number;
+  statusText?: string;
+  contentType?: string;
+  contentLength?: number;
+  requestId?: string;
+  cfRay?: string;
+  sprequestguid?: string;
+  durationMs?: number;
+  safeErrorCode: string;
+  retryClass: ProxyRetryClass;
+};
+
+const proxyDiagnosticsEnabled = (env: Env): boolean => env.SP_PROXY_DIAGNOSTICS === '1';
+
+const createProxyDiagnosticId = (): string => {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `sp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+};
+
+const retryClassForStatus = (status?: number): ProxyRetryClass => {
+  if (status === 408) return 'timeout';
+  if (status === 429) return 'throttle';
+  if (status !== undefined && [500, 502, 503, 504].includes(status)) return 'server';
+  return 'none';
+};
+
+const sanitizeTargetPath = (pathname: string): string =>
+  pathname
+    .replace(/\/items\([^/)]*\)/gi, '/items(?)')
+    .replace(/\/attachments\([^/)]*\)/gi, '/attachments(?)');
+
+const safeTargetDetails = (target: URL): Pick<ProxyDiagnostic, 'targetOrigin' | 'targetPath' | 'targetList' | 'queryKeys'> => {
+  const targetPath = sanitizeTargetPath(target.pathname);
+  const titleMatch = target.pathname.match(/\/lists\/getbytitle\('([^']+)'\)/i);
+  const guidMatch = target.pathname.match(/\/lists\(guid'([^']+)'\)/i);
+  let targetList = guidMatch?.[1];
+  if (titleMatch?.[1]) {
+    try {
+      targetList = decodeURIComponent(titleMatch[1]);
+    } catch {
+      targetList = titleMatch[1];
+    }
+  }
+  return {
+    targetOrigin: target.origin,
+    targetPath,
+    targetList,
+    queryKeys: [...new Set([...target.searchParams.keys()])].sort(),
+  };
+};
+
+const logProxyDiagnostic = (env: Env, diagnostic: ProxyDiagnostic, startedAt: number | undefined): void => {
+  if (!proxyDiagnosticsEnabled(env)) return;
+  // JSON is intentionally limited to non-secret routing and response metadata.
+  // Do not add request headers, query values, response bodies, or exception text.
+  const timedDiagnostic = startedAt === undefined
+    ? diagnostic
+    : { ...diagnostic, durationMs: Math.max(0, Date.now() - startedAt) };
+  console.log(JSON.stringify(timedDiagnostic));
+};
+
+const requestProxyContext = (request: Request): Pick<ProxyDiagnostic, 'method' | 'cfRay'> => ({
+  method: request.method,
+  cfRay: request.headers.get('cf-ray') ?? undefined,
+});
+
+const proxyRejectionDiagnostic = (
+  request: Request,
+  diagnosticId: string,
+  safeErrorCode: string,
+  extra: Pick<ProxyDiagnostic, 'targetOrigin' | 'targetPath' | 'targetList' | 'queryKeys' | 'status' | 'statusText'> = {},
+): ProxyDiagnostic => ({
+  event: 'sp-proxy',
+  diagnosticId,
+  outcome: 'proxy_rejection',
+  ...requestProxyContext(request),
+  ...extra,
+  safeErrorCode,
+  retryClass: retryClassForStatus(extra.status),
+});
+
 const handleSharePointProxy = async (request: Request, env: Env): Promise<Response> => {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
   }
 
+  const diagnosticsStartedAt = proxyDiagnosticsEnabled(env) ? Date.now() : undefined;
+  const diagnosticId = diagnosticsStartedAt === undefined ? '' : createProxyDiagnosticId();
+
   const authHeader = request.headers.get('Authorization') ?? '';
   if (!authHeader.startsWith('Bearer ')) {
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'missing_bearer_token', { status: 401, statusText: 'Unauthorized' }), diagnosticsStartedAt);
     return jsonResponse(401, { error: 'missing_bearer_token' });
   }
 
   const configuredResource = env.VITE_SP_RESOURCE?.trim().replace(/\/+$/, '');
   const configuredSiteRelative = normalizeSiteRelative(env.VITE_SP_SITE_RELATIVE ?? '');
   if (!configuredResource || !configuredSiteRelative) {
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'sp_proxy_not_configured', { status: 500, statusText: 'Internal Server Error' }), diagnosticsStartedAt);
     return jsonResponse(500, { error: 'sp_proxy_not_configured' });
   }
 
@@ -404,6 +506,7 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
     const sourceUrl = new URL(request.url);
     target = new URL(sourceUrl.searchParams.get('url') ?? '');
   } catch {
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(request, diagnosticId, 'invalid_target_url', { status: 400, statusText: 'Bad Request' }), diagnosticsStartedAt);
     return jsonResponse(400, { error: 'invalid_target_url' });
   }
 
@@ -424,6 +527,12 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
     (billingApiPathLower !== '' && targetPathLower.startsWith(billingApiPathLower));
 
   if (targetOriginLower !== allowedOriginLower || !pathAllowed) {
+    logProxyDiagnostic(env, proxyRejectionDiagnostic(
+      request,
+      diagnosticId,
+      'target_not_allowed',
+      { status: 403, statusText: 'Forbidden', ...safeTargetDetails(target) },
+    ), diagnosticsStartedAt);
     return jsonResponse(403, { 
       error: 'target_not_allowed',
       details: {
@@ -443,12 +552,38 @@ const handleSharePointProxy = async (request: Request, env: Env): Promise<Respon
       redirect: 'manual',
     }));
 
+    const responseHeaders = pickSharePointResponseHeaders(response);
+    logProxyDiagnostic(env, {
+      event: 'sp-proxy',
+      diagnosticId,
+      outcome: 'upstream_response',
+      ...requestProxyContext(request),
+      ...safeTargetDetails(target),
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type') ?? undefined,
+      contentLength: Number(response.headers.get('content-length') ?? '') || undefined,
+      requestId: response.headers.get('request-id') ?? undefined,
+      sprequestguid: response.headers.get('sprequestguid') ?? undefined,
+      safeErrorCode: response.ok ? 'ok' : `http_${response.status}`,
+      retryClass: retryClassForStatus(response.status),
+    }, diagnosticsStartedAt);
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
-      headers: pickSharePointResponseHeaders(response),
+      headers: responseHeaders,
     });
   } catch (error) {
+    logProxyDiagnostic(env, {
+      event: 'sp-proxy',
+      diagnosticId,
+      outcome: 'upstream_fetch_error',
+      ...requestProxyContext(request),
+      ...safeTargetDetails(target),
+      safeErrorCode: 'sharepoint_fetch_failed',
+      retryClass: 'server',
+    }, diagnosticsStartedAt);
     console.error('[sp-proxy] fetch failed', error);
     return jsonResponse(502, { error: 'sharepoint_fetch_failed' });
   }

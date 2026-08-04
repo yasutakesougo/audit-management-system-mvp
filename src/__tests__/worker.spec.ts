@@ -97,10 +97,13 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
       ...defaultEnv,
       ASSETS: { fetch: assetsFetch },
       VITE_SKIP_PROVISIONING: '1',
+      SP_PROXY_DIAGNOSTICS: '1',
     });
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('"VITE_SKIP_PROVISIONING":"1"');
+    const html = await response.text();
+    expect(html).toContain('"VITE_SKIP_PROVISIONING":"1"');
+    expect(html).not.toContain('SP_PROXY_DIAGNOSTICS');
   });
 
   it('allows request targeting VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE if configured', async () => {
@@ -183,6 +186,194 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
     expect(response.headers.get('Content-Type')).toBe('application/json');
     expect(response.headers.get('ETag')).toBe('W/"1"');
     expect(response.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  it('keeps proxy diagnostics disabled by default', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"d":[]}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = new Request(
+      'https://app.example/api/sp-proxy?url=' +
+        encodeURIComponent('https://example.sharepoint.com/sites/welfare/_api/web/lists'),
+      { headers: { Authorization: 'Bearer secret-token', Cookie: 'session=secret-cookie' } },
+    );
+
+    await worker.fetch(request, defaultEnv);
+
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'missing bearer token',
+      request: () => new Request('https://app.example/api/sp-proxy?url=not-logged', { method: 'GET' }),
+      status: 401,
+      safeErrorCode: 'missing_bearer_token',
+    },
+    {
+      name: 'invalid target URL',
+      request: () => new Request('https://app.example/api/sp-proxy?url=not-a-url', { headers: { Authorization: 'Bearer secret-token' } }),
+      status: 400,
+      safeErrorCode: 'invalid_target_url',
+    },
+  ])('classifies $name without logging target values', async ({ request, status, safeErrorCode }) => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    const response = await worker.fetch(request(), { ...defaultEnv, SP_PROXY_DIAGNOSTICS: '1' });
+
+    expect(response.status).toBe(status);
+    const diagnostic = JSON.parse(logSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(diagnostic).toMatchObject({
+      outcome: 'proxy_rejection',
+      safeErrorCode,
+      status,
+      retryClass: 'none',
+    });
+    expect(diagnostic.durationMs).toEqual(expect.any(Number));
+    expect(diagnostic.durationMs as number).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(diagnostic)).not.toContain('not-logged');
+    expect(JSON.stringify(diagnostic)).not.toContain('secret-token');
+  });
+
+  it('emits sanitized diagnostics for an upstream response', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('{"error":{"code":"-1, Microsoft.SharePoint.Client.ResourceNotFoundException"}}', {
+        status: 404,
+        statusText: 'Not Found',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': '72',
+          'request-id': 'request-123',
+          sprequestguid: 'sp-123',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = new Request(
+      'https://app.example/api/sp-proxy?url=' +
+        encodeURIComponent(
+          "https://example.sharepoint.com/sites/welfare/_api/web/lists/getbytitle('Users_Master')/items(123)?$filter=UserID%20eq%20'I019'&token=do-not-log",
+        ),
+      {
+        headers: {
+          Authorization: 'Bearer secret-token',
+          Cookie: 'session=secret-cookie',
+          'cf-ray': 'cf-ray-123',
+        },
+      },
+    );
+
+    const response = await worker.fetch(request, { ...defaultEnv, SP_PROXY_DIAGNOSTICS: '1' });
+    expect(response.status).toBe(404);
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const diagnostic = JSON.parse(logSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(diagnostic).toMatchObject({
+      event: 'sp-proxy',
+      outcome: 'upstream_response',
+      method: 'GET',
+      targetOrigin: 'https://example.sharepoint.com',
+      targetList: 'Users_Master',
+      targetPath: "/sites/welfare/_api/web/lists/getbytitle('Users_Master')/items(?)",
+      queryKeys: ['$filter', 'token'],
+      status: 404,
+      statusText: 'Not Found',
+      contentType: 'application/json',
+      contentLength: 72,
+      requestId: 'request-123',
+      cfRay: 'cf-ray-123',
+      sprequestguid: 'sp-123',
+      safeErrorCode: 'http_404',
+      retryClass: 'none',
+    });
+    expect(diagnostic.diagnosticId).toEqual(expect.any(String));
+    expect(diagnostic.durationMs).toEqual(expect.any(Number));
+    expect(diagnostic.durationMs as number).toBeGreaterThanOrEqual(0);
+
+    const serialized = JSON.stringify(diagnostic);
+    expect(serialized).not.toContain('secret-token');
+    expect(serialized).not.toContain('secret-cookie');
+    expect(serialized).not.toContain('I019');
+    expect(serialized).not.toContain('do-not-log');
+    expect(serialized).not.toContain('ResourceNotFoundException');
+  });
+
+  it.each([
+    { status: 200, safeErrorCode: 'ok', retryClass: 'none' },
+    { status: 429, safeErrorCode: 'http_429', retryClass: 'throttle' },
+    { status: 500, safeErrorCode: 'http_500', retryClass: 'server' },
+  ])('classifies upstream status $status without changing the response', async ({ status, safeErrorCode, retryClass }) => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}', { status }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = new Request(
+      'https://app.example/api/sp-proxy?url=' +
+        encodeURIComponent('https://example.sharepoint.com/sites/welfare/_api/web/lists'),
+      { headers: { Authorization: 'Bearer secret-token' } },
+    );
+    const response = await worker.fetch(request, { ...defaultEnv, SP_PROXY_DIAGNOSTICS: '1' });
+
+    expect(response.status).toBe(status);
+    await expect(response.text()).resolves.toBe('{"ok":true}');
+    const diagnostic = JSON.parse(logSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(diagnostic).toMatchObject({ outcome: 'upstream_response', status, safeErrorCode, retryClass });
+    expect(diagnostic.durationMs).toEqual(expect.any(Number));
+    expect(diagnostic.durationMs as number).toBeGreaterThanOrEqual(0);
+  });
+
+  it('classifies proxy rejection and upstream fetch failure without logging request secrets', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const request = new Request(
+      'https://app.example/api/sp-proxy?url=' +
+        encodeURIComponent('https://malicious.example/sites/other/_api/web/lists?secret=do-not-log'),
+      { headers: { Authorization: 'Bearer secret-token', Cookie: 'session=secret-cookie' } },
+    );
+
+    const rejected = await worker.fetch(request, { ...defaultEnv, SP_PROXY_DIAGNOSTICS: '1' });
+    expect(rejected.status).toBe(403);
+    const rejection = JSON.parse(logSpy.mock.calls[0]?.[0] as string) as Record<string, unknown>;
+    expect(rejection).toMatchObject({
+      outcome: 'proxy_rejection',
+      safeErrorCode: 'target_not_allowed',
+      status: 403,
+      retryClass: 'none',
+      targetOrigin: 'https://malicious.example',
+      targetPath: '/sites/other/_api/web/lists',
+      queryKeys: ['secret'],
+    });
+    expect(rejection.durationMs).toEqual(expect.any(Number));
+    expect(rejection.durationMs as number).toBeGreaterThanOrEqual(0);
+
+    const fetchMock = vi.fn().mockRejectedValue(new Error('upstream URL and token must not be logged'));
+    vi.stubGlobal('fetch', fetchMock);
+    const fetchFailed = await worker.fetch(
+      new Request(
+        'https://app.example/api/sp-proxy?url=' +
+          encodeURIComponent('https://example.sharepoint.com/sites/welfare/_api/web/lists?secret=do-not-log'),
+        { headers: { Authorization: 'Bearer secret-token' } },
+      ),
+      { ...defaultEnv, SP_PROXY_DIAGNOSTICS: '1' },
+    );
+    expect(fetchFailed.status).toBe(502);
+    const fetchFailure = JSON.parse(logSpy.mock.calls[1]?.[0] as string) as Record<string, unknown>;
+    expect(fetchFailure).toMatchObject({
+      outcome: 'upstream_fetch_error',
+      safeErrorCode: 'sharepoint_fetch_failed',
+      retryClass: 'server',
+      queryKeys: ['secret'],
+    });
+    expect(fetchFailure.durationMs).toEqual(expect.any(Number));
+    expect(fetchFailure.durationMs as number).toBeGreaterThanOrEqual(0);
+
+    const serialized = JSON.stringify(logSpy.mock.calls);
+    expect(serialized).not.toContain('secret-token');
+    expect(serialized).not.toContain('secret-cookie');
+    expect(serialized).not.toContain('do-not-log');
+    expect(serialized).not.toContain('upstream URL and token');
   });
 
   it('returns 401 for Firebase exchange without a bearer token', async () => {
