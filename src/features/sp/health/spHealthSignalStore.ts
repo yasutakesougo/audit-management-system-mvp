@@ -31,6 +31,16 @@ export type SpHealthReasonCode =
 
 export type SpHealthSignalSource = 'nightly_patrol' | 'realtime';
 
+export type SpHealthFailureClass =
+  | 'http'
+  | 'network'
+  | 'abort'
+  | 'cors_redirect'
+  | 'throttle_redirect'
+  | 'unknown';
+
+export type SpHealthRetryClass = 'none' | 'timeout' | 'throttle' | 'server' | 'network';
+
 /**
  * actionUrl の種別
  * - internal : アプリ内ルート（RouterLink で遷移）
@@ -66,6 +76,15 @@ export interface SpHealthSignal {
   occurrenceCount: number;
   occurredAt: string;
   source: SpHealthSignalSource;
+  /** Safe correlation metadata; never contains headers, tokens, query values, or bodies. */
+  diagnosticId?: string;
+  httpStatus?: number;
+  httpStatusClass?: string;
+  safeErrorCode?: string;
+  failureClass?: SpHealthFailureClass;
+  retryClass?: SpHealthRetryClass;
+  firstOccurredAt?: string;
+  lastOccurredAt?: string;
 }
 
 // ─── reasonCode → Action mapping ──────────────────────────────────────────────
@@ -133,6 +152,8 @@ function enrichWithAction(signal: Omit<SpHealthSignal, 'occurrenceCount'>): SpHe
     actionType: signal.actionType ?? spec?.actionType,
     actionGuide: signal.actionGuide ?? spec?.actionGuide,
     occurrenceCount: 1,
+    firstOccurredAt: signal.firstOccurredAt ?? signal.occurredAt,
+    lastOccurredAt: signal.lastOccurredAt ?? signal.occurredAt,
   };
 }
 
@@ -218,14 +239,29 @@ export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCoun
         finalSeverity = 'action_required';
       }
 
+      const correlationMetadata = signal.diagnosticId
+        ? {
+            diagnosticId: signal.diagnosticId,
+            httpStatus: signal.httpStatus,
+            httpStatusClass: signal.httpStatusClass,
+            safeErrorCode: signal.safeErrorCode,
+            failureClass: signal.failureClass,
+            retryClass: signal.retryClass,
+          }
+        : {};
+      const firstOccurredAt = _current.firstOccurredAt ?? _current.occurredAt;
+      const lastOccurredAt = signal.occurredAt;
+
       if (incomingIsHigher || isRealtimeOverNightly || finalSeverity !== signal.severity) {
         _current = { 
           ...enriched, 
           severity: finalSeverity as SpHealthSeverity, 
-          occurrenceCount: nextCount 
+          occurrenceCount: nextCount,
+          firstOccurredAt,
+          lastOccurredAt,
         };
       } else {
-        _current = { ..._current, occurrenceCount: nextCount };
+        _current = { ..._current, ...correlationMetadata, occurrenceCount: nextCount, firstOccurredAt, lastOccurredAt };
       }
       _notify();
       return;

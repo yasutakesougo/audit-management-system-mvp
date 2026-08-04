@@ -1,6 +1,11 @@
 
-import { describe, it, expect } from 'vitest';
-import { resolveInternalNamesDetailed } from '../helpers';
+import { afterEach, describe, it, expect } from 'vitest';
+import { resolveInternalNamesDetailed, raiseHttpError } from '../helpers';
+import { _resetSpHealthSignalStore, getSpHealthSignal } from '@/features/sp';
+
+afterEach(() => {
+  _resetSpHealthSignalStore();
+});
 
 describe('resolveInternalNamesDetailed - Hardened Drift Resolution', () => {
   const candidates = {
@@ -63,6 +68,25 @@ describe('resolveInternalNamesDetailed - Hardened Drift Resolution', () => {
       const available = new Set(['Reci']);
       const { resolved } = resolveInternalNamesDetailed(available, candidates);
       expect(resolved.recipientCertNumber).toBeUndefined();
+    });
+  });
+
+  it('attaches safe proxy correlation metadata to HTTP health signals', async () => {
+    await expect(
+      raiseHttpError(
+        new Response('', { status: 404, statusText: 'Not Found' }),
+        { method: 'GET', diagnosticId: 'diag-12345678' },
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+
+    expect(getSpHealthSignal()).toMatchObject({
+      reasonCode: 'sp_list_unreachable',
+      diagnosticId: 'diag-12345678',
+      httpStatus: 404,
+      httpStatusClass: '4xx',
+      safeErrorCode: 'http_404',
+      failureClass: 'http',
+      retryClass: 'none',
     });
   });
 });

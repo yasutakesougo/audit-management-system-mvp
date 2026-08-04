@@ -262,6 +262,7 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
           Authorization: 'Bearer secret-token',
           Cookie: 'session=secret-cookie',
           'cf-ray': 'cf-ray-123',
+          'x-sp-diagnostic-id': 'diag-12345678',
         },
       },
     );
@@ -288,6 +289,7 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
       sprequestguid: 'sp-123',
       safeErrorCode: 'http_404',
       retryClass: 'none',
+      diagnosticId: 'diag-12345678',
     });
     expect(diagnostic.diagnosticId).toEqual(expect.any(String));
     expect(diagnostic.durationMs).toEqual(expect.any(Number));

@@ -4,6 +4,7 @@ import { isDemoModeEnabled } from '@/lib/env';
 import { getAppConfig } from '@/lib/env';
 import { auditLog } from '@/lib/debugLogger';
 import { findListEntry } from '@/sharepoint/spListRegistry';
+import { recordSpProxyCorrelation } from '@/lib/telemetry/spProxyCorrelation';
 
 export type ConnectionStatusKind = 'connected' | 'demo' | 'degraded' | 'checking';
 export type ConnectionReason = 
@@ -35,6 +36,32 @@ export const useConnectionStatus = (): ConnectionStatus => {
       setHealthSignal(signal);
     });
   }, []);
+
+  useEffect(() => {
+    if (!healthSignal) return;
+    const lastOccurredAt = healthSignal.lastOccurredAt ?? healthSignal.occurredAt;
+    const lastOccurredMs = Date.parse(lastOccurredAt);
+    recordSpProxyCorrelation({
+      diagnosticId: healthSignal.diagnosticId,
+      event: 'health_signal',
+      occurredAt: new Date().toISOString(),
+      route: typeof window !== 'undefined' ? window.location.pathname : undefined,
+      targetList: healthSignal.listName,
+      reasonCode: healthSignal.reasonCode,
+      listName: healthSignal.listName,
+      severity: healthSignal.severity,
+      source: healthSignal.source,
+      occurrenceCount: healthSignal.occurrenceCount,
+      firstOccurredAt: healthSignal.firstOccurredAt ?? healthSignal.occurredAt,
+      lastOccurredAt,
+      signalAgeMs: Number.isNaN(lastOccurredMs) ? undefined : Math.max(0, Date.now() - lastOccurredMs),
+      status: healthSignal.httpStatus,
+      statusClass: healthSignal.httpStatusClass,
+      safeErrorCode: healthSignal.safeErrorCode,
+      failureClass: healthSignal.failureClass,
+      retryClass: healthSignal.retryClass,
+    });
+  }, [healthSignal]);
 
   const reset = useCallback(() => {
     clearSpHealthSignal();
