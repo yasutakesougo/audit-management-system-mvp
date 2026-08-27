@@ -70,7 +70,7 @@ export class DailyRecordDataAccess {
             const res = await this.spFetch(
                 `${rowsListPath}/items?$filter=${encodeURIComponent(filter)}&$select=${selectFields.join(',')}`,
             );
-            if (!res.ok) {
+            if (res.ok === false) {
                 throw new Error(`Current-version child read failed with HTTP ${res.status}`);
             }
 
@@ -125,7 +125,7 @@ export class DailyRecordDataAccess {
         ].join(','));
 
         const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`, { signal: params.signal });
-        if (!response.ok) {
+        if (response.ok === false) {
             throw new Error(`Daily record list read failed with HTTP ${response.status}`);
         }
 
@@ -161,7 +161,7 @@ export class DailyRecordDataAccess {
                 `${rowsListPath}/items?$filter=${encodeURIComponent(childFilter)}&$select=${selectFields.join(',')}`,
                 { signal: params.signal },
             );
-            if (!childResponse.ok) {
+            if (childResponse.ok === false) {
                 throw new Error(`Current-version child list read failed with HTTP ${childResponse.status}`);
             }
 
