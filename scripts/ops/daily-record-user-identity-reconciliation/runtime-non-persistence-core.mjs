@@ -1,5 +1,6 @@
 const FORBIDDEN_FIELD = /(observation|memo|full_?name|fullname|display_?name|email|e-?mail|phone|address|comment|notes?)/i;
 const FORBIDDEN_ENDPOINT = /(\$batch|contextinfo|validateupdatelistitem|renderlistdataasstream|recycle|recyclebin)/i;
+const DIAGNOSTIC_ARG = /(^|=)(--inspect(?:-brk)?|--prof|--cpu-prof|--heap-prof|--heapsnapshot-signal|--report(?:-on-fatalerror|-uncaught-exception|-on-signal)?|--experimental-report|--trace-event-categories|--trace-event-file-pattern|--diagnostic-dir|--report-dir|--cpu-prof-dir|--heap-prof-dir)(=|$)/i;
 
 const SAFE_ERROR_CODES = new Set([
   'LIVE_READ_DISABLED',
@@ -9,6 +10,10 @@ const SAFE_ERROR_CODES = new Set([
   'NON_GET_BLOCKED',
   'UNSAFE_ENDPOINT_BLOCKED',
   'UNSAFE_FIELD_BLOCKED',
+  'FIELD_ALLOWLIST_BLOCKED',
+  'CONTINUATION_SCOPE_BLOCKED',
+  'REDIRECT_BLOCKED',
+  'DIAGNOSTIC_MODE_BLOCKED',
   'SHAREPOINT_READ_FAILED',
   'SHAREPOINT_INVALID_JSON',
   'PAGINATION_LIMIT_EXCEEDED',
@@ -45,11 +50,10 @@ export function assertGetOnlyMethod(method) {
   }
 }
 
-export function assertSafeFieldProjection(fields) {
+function normalizeFieldList(fields) {
   if (!Array.isArray(fields) || fields.length === 0) {
     throw new RuntimeGuardError('INVALID_RUNTIME_CONFIG');
   }
-
   const output = [];
   const seen = new Set();
   for (const raw of fields) {
@@ -68,8 +72,45 @@ export function assertSafeFieldProjection(fields) {
   return output;
 }
 
+export function assertSafeFieldProjection(fields) {
+  return normalizeFieldList(fields);
+}
+
+export function assertExactFieldAllowlist(fields, allowlist) {
+  const requested = normalizeFieldList(fields);
+  const allowed = normalizeFieldList(allowlist);
+  if (requested.length !== allowed.length) {
+    throw new RuntimeGuardError('FIELD_ALLOWLIST_BLOCKED');
+  }
+  const allowedSet = new Set(allowed);
+  for (const field of requested) {
+    if (!allowedSet.has(field)) throw new RuntimeGuardError('FIELD_ALLOWLIST_BLOCKED');
+  }
+  return requested;
+}
+
+export function assertDiagnosticSafe({ execArgv = [], nodeOptions = '', env = {} } = {}) {
+  const args = [
+    ...(Array.isArray(execArgv) ? execArgv : []),
+    ...String(nodeOptions || '').split(/\s+/).filter(Boolean),
+  ];
+  if (args.some((arg) => DIAGNOSTIC_ARG.test(String(arg)))) {
+    throw new RuntimeGuardError('DIAGNOSTIC_MODE_BLOCKED');
+  }
+  for (const key of [
+    'NODE_V8_COVERAGE',
+    'NODE_REDIRECT_WARNINGS',
+    'NODE_DEBUG_NATIVE',
+  ]) {
+    if (String(env?.[key] || '').trim()) {
+      throw new RuntimeGuardError('DIAGNOSTIC_MODE_BLOCKED');
+    }
+  }
+}
+
 function normalizeSiteUrl(siteUrl) {
   const parsed = new URL(siteUrl);
+  if (parsed.protocol !== 'https:') throw new RuntimeGuardError('INVALID_RUNTIME_CONFIG');
   parsed.hash = '';
   parsed.search = '';
   return parsed.toString().replace(/\/$/, '');
@@ -82,10 +123,11 @@ function resolveEndpoint(siteUrl, endpoint) {
     ? new URL(raw)
     : new URL(`${site.toString().replace(/\/$/, '')}${raw.startsWith('/') ? raw : `/${raw}`}`);
   const prefix = `${site.pathname.replace(/\/$/, '')}/_api/web/lists`.toLowerCase();
+  const path = url.pathname.toLowerCase();
 
   if (
     url.origin !== site.origin ||
-    !url.pathname.toLowerCase().startsWith(prefix) ||
+    !(path === prefix || path.startsWith(`${prefix}/`)) ||
     FORBIDDEN_ENDPOINT.test(`${url.pathname}${url.search}`)
   ) {
     throw new RuntimeGuardError('UNSAFE_ENDPOINT_BLOCKED');
@@ -93,11 +135,30 @@ function resolveEndpoint(siteUrl, endpoint) {
   return url;
 }
 
+function listItemsPath(url) {
+  const marker = '/items';
+  const lower = url.pathname.toLowerCase();
+  const index = lower.indexOf(marker);
+  if (index < 0) return null;
+  return lower.slice(0, index + marker.length);
+}
+
 export function createGetOnlyTransport({ fetchImpl = globalThis.fetch, siteUrl, accessToken = '' }) {
   if (typeof fetchImpl !== 'function') throw new RuntimeGuardError('INVALID_RUNTIME_CONFIG');
   const normalizedSite = normalizeSiteUrl(siteUrl);
 
   return {
+    validateContinuation(initialEndpoint, nextEndpoint) {
+      const initial = resolveEndpoint(normalizedSite, initialEndpoint);
+      const next = resolveEndpoint(normalizedSite, nextEndpoint);
+      const initialItemsPath = listItemsPath(initial);
+      const nextItemsPath = listItemsPath(next);
+      if (!initialItemsPath || !nextItemsPath || initialItemsPath !== nextItemsPath) {
+        throw new RuntimeGuardError('CONTINUATION_SCOPE_BLOCKED');
+      }
+      return next.toString();
+    },
+
     async getJson(endpoint) {
       assertGetOnlyMethod('GET');
       const url = resolveEndpoint(normalizedSite, endpoint);
@@ -106,9 +167,12 @@ export function createGetOnlyTransport({ fetchImpl = globalThis.fetch, siteUrl, 
 
       let response;
       try {
-        response = await fetchImpl(url.toString(), { method: 'GET', headers, redirect: 'follow' });
+        response = await fetchImpl(url.toString(), { method: 'GET', headers, redirect: 'manual' });
       } catch {
         throw new RuntimeGuardError('SHAREPOINT_READ_FAILED');
+      }
+      if (response?.status >= 300 && response?.status < 400) {
+        throw new RuntimeGuardError('REDIRECT_BLOCKED', response.status);
       }
       if (!response?.ok) {
         throw new RuntimeGuardError(
@@ -152,7 +216,7 @@ function highWaterEndpoint(title) {
 }
 
 function boundedItemsEndpoint(title, fields, highWaterId) {
-  const safeFields = assertSafeFieldProjection(fields);
+  const safeFields = normalizeFieldList(fields);
   if (!Number.isInteger(highWaterId) || highWaterId < 0) {
     throw new RuntimeGuardError('INVALID_RUNTIME_CONFIG');
   }
@@ -195,7 +259,16 @@ export async function enumerateAllItems({ transport, initialEndpoint, maxPages =
     }
     const payload = await transport.getJson(endpoint);
     rows.push(...values(payload));
-    endpoint = payload?.['@odata.nextLink'] || payload?.['odata.nextLink'] || null;
+    const next = payload?.['@odata.nextLink'] || payload?.['odata.nextLink'] || null;
+    if (next) {
+      if (typeof transport.validateContinuation !== 'function') {
+        rows.length = 0;
+        throw new RuntimeGuardError('CONTINUATION_SCOPE_BLOCKED');
+      }
+      endpoint = transport.validateContinuation(initialEndpoint, next);
+    } else {
+      endpoint = null;
+    }
   }
   return rows;
 }
@@ -213,7 +286,7 @@ function fingerprint(row, fields) {
 
 export function snapshotsMatch(rowsA, rowsB, fields) {
   if (!Array.isArray(rowsA) || !Array.isArray(rowsB) || rowsA.length !== rowsB.length) return false;
-  const safeFields = assertSafeFieldProjection(fields);
+  const safeFields = normalizeFieldList(fields);
   const a = new Map();
   const b = new Map();
 
@@ -233,7 +306,7 @@ export function snapshotsMatch(rowsA, rowsB, fields) {
 }
 
 export function assessMasterCanonicalIntegrity(rows, userIdField) {
-  assertSafeFieldProjection(['Id', userIdField]);
+  normalizeFieldList(['Id', userIdField]);
   const counts = new Map();
   let empty = 0;
 
@@ -349,39 +422,41 @@ export function blockedAggregate(code = 'RUNTIME_FAILURE') {
   });
 }
 
+function assertSourceIdentity(meta, expectedGuid) {
+  if (normalizeGuid(meta.id) !== normalizeGuid(expectedGuid)) {
+    throw new RuntimeGuardError('SOURCE_IDENTITY_MISMATCH');
+  }
+}
+
 export async function runSnapshotPhase({ transport, config }) {
-  const dailyFields = assertSafeFieldProjection(config.dailyFields);
-  const masterFields = assertSafeFieldProjection(config.masterFields);
+  const dailyFields = assertExactFieldAllowlist(config.dailyFields, config.dailyAllowedFields);
+  const masterFields = assertExactFieldAllowlist(config.masterFields, config.masterAllowedFields);
   if (!dailyFields.includes('Id') || !masterFields.includes('Id')) {
     throw new RuntimeGuardError('INVALID_RUNTIME_CONFIG');
   }
 
   const dailyA = [];
-  const dailyB = [];
   const masterA = [];
+  const dailyB = [];
   const masterB = [];
+  const dailyFinal = [];
+  const masterFinal = [];
 
   try {
-    const [dailyMeta, masterMeta] = await Promise.all([
-      listMetadata(transport, config.dailyListTitle),
-      listMetadata(transport, config.masterListTitle),
-    ]);
-    if (
-      normalizeGuid(dailyMeta.id) !== normalizeGuid(config.expectedDailyListGuid) ||
-      normalizeGuid(masterMeta.id) !== normalizeGuid(config.expectedMasterListGuid)
-    ) throw new RuntimeGuardError('SOURCE_IDENTITY_MISMATCH');
+    const dailyMeta = await listMetadata(transport, config.dailyListTitle);
+    const masterMeta = await listMetadata(transport, config.masterListTitle);
+    assertSourceIdentity(dailyMeta, config.expectedDailyListGuid);
+    assertSourceIdentity(masterMeta, config.expectedMasterListGuid);
 
-    const [dailyHighWater, masterHighWater] = await Promise.all([
-      highWaterId(transport, config.dailyListTitle),
-      highWaterId(transport, config.masterListTitle),
-    ]);
-
+    const dailyHighWater = await highWaterId(transport, config.dailyListTitle);
+    const masterHighWater = await highWaterId(transport, config.masterListTitle);
     const dailyEndpoint = boundedItemsEndpoint(config.dailyListTitle, dailyFields, dailyHighWater);
     const masterEndpoint = boundedItemsEndpoint(config.masterListTitle, masterFields, masterHighWater);
 
+    // Required deterministic order: Daily A -> Master A -> Daily B -> Master B.
     dailyA.push(...await enumerateAllItems({ transport, initialEndpoint: dailyEndpoint }));
-    dailyB.push(...await enumerateAllItems({ transport, initialEndpoint: dailyEndpoint }));
     masterA.push(...await enumerateAllItems({ transport, initialEndpoint: masterEndpoint }));
+    dailyB.push(...await enumerateAllItems({ transport, initialEndpoint: dailyEndpoint }));
     masterB.push(...await enumerateAllItems({ transport, initialEndpoint: masterEndpoint }));
 
     const dailyStable = snapshotsMatch(dailyA, dailyB, dailyFields);
@@ -398,6 +473,29 @@ export async function runSnapshotPhase({ transport, config }) {
     }
 
     const masterIntegrity = assessMasterCanonicalIntegrity(masterB, config.masterUserIdField);
+
+    // Final stability check: re-read the bounded populations and source identities.
+    const finalDailyMeta = await listMetadata(transport, config.dailyListTitle);
+    const finalMasterMeta = await listMetadata(transport, config.masterListTitle);
+    assertSourceIdentity(finalDailyMeta, config.expectedDailyListGuid);
+    assertSourceIdentity(finalMasterMeta, config.expectedMasterListGuid);
+
+    dailyFinal.push(...await enumerateAllItems({ transport, initialEndpoint: dailyEndpoint }));
+    masterFinal.push(...await enumerateAllItems({ transport, initialEndpoint: masterEndpoint }));
+    const dailyFinalStable = snapshotsMatch(dailyB, dailyFinal, dailyFields);
+    const masterFinalStable = snapshotsMatch(masterB, masterFinal, masterFields);
+    if (!dailyFinalStable || !masterFinalStable) {
+      return createSafeAggregate({
+        runtimeStatus: 'FAILED',
+        runtimeErrorCode: 'SNAPSHOT_UNSTABLE',
+        runCoverage: 'INCOMPLETE',
+        dailySnapshotStable: dailyFinalStable,
+        masterSnapshotStable: masterFinalStable,
+        masterCanonicalIntegrity: masterIntegrity.status,
+        reconciliation: 'HOLD',
+      });
+    }
+
     return createSafeAggregate({
       runtimeStatus: 'READY',
       runCoverage: 'INCOMPLETE',
@@ -417,8 +515,10 @@ export async function runSnapshotPhase({ transport, config }) {
     });
   } finally {
     dailyA.length = 0;
-    dailyB.length = 0;
     masterA.length = 0;
+    dailyB.length = 0;
     masterB.length = 0;
+    dailyFinal.length = 0;
+    masterFinal.length = 0;
   }
 }
