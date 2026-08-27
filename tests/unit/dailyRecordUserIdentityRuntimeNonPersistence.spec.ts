@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+// @ts-ignore -- the production runtime is intentionally plain ESM and is verified behaviorally here.
 import {
   RuntimeGuardError,
   assertGetOnlyMethod,
@@ -10,6 +11,7 @@ import {
   createSafeReporter,
   runSnapshotPhase,
 } from '../../scripts/ops/daily-record-user-identity-reconciliation/runtime-non-persistence-core.mjs';
+// @ts-ignore -- the production runner is intentionally plain ESM and is verified behaviorally here.
 import {
   main,
   productionReadEnabled,
