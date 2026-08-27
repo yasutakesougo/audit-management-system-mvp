@@ -139,6 +139,57 @@ describe('DailyRecordDataAccess DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(record?.userRows.map((row) => row.userId)).toEqual(['U001', 'U002', 'U003']);
   });
 
+  it('Test A / AC-10: list() also hydrates only retry CommitId after partial failure + retry', async () => {
+    const childRequests: string[] = [];
+    const spFetch = vi.fn<SpFetchFn>(async (url) => {
+      const target = String(url);
+      if (target.includes('DailyRecordRows')) {
+        const decoded = decodeURIComponent(target);
+        childRequests.push(decoded);
+        expect(decoded).toContain("CommitId eq 'retry-B'");
+        expect(decoded).not.toContain('failed-A');
+        return jsonResponse({
+          value: [
+            {
+              Parent_x0020_ID: 1,
+              Version: 5,
+              CommitId: 'retry-B',
+              Payload: JSON.stringify(userRow('U001')),
+              RowNo: 1,
+            },
+            {
+              Parent_x0020_ID: 1,
+              Version: 5,
+              CommitId: 'retry-B',
+              Payload: JSON.stringify(userRow('U002')),
+              RowNo: 2,
+            },
+            {
+              Parent_x0020_ID: 1,
+              Version: 5,
+              CommitId: 'retry-B',
+              Payload: JSON.stringify(userRow('U003')),
+              RowNo: 3,
+            },
+          ],
+        });
+      }
+      return jsonResponse({ value: [parent(1, '2026-08-27', 5, 'retry-B')] });
+    });
+
+    const data = new DailyRecordDataAccess(spFetch);
+    const records = await data.list(
+      { range: { startDate: '2026-08-27', endDate: '2026-08-27' } },
+      "lists/getbytitle('SupportRecord_Daily')",
+      'DailyRecordRows',
+      resolvedRowsFields,
+    );
+
+    expect(childRequests).toHaveLength(1);
+    expect(records).toHaveLength(1);
+    expect(records[0].userRows.map((row) => row.userId)).toEqual(['U001', 'U002', 'U003']);
+  });
+
   it('Test 2 / AC-11 / AC-12: concurrent same-version keeps only winning LatestCommitId current', async () => {
     const spFetch = vi.fn<SpFetchFn>(async (url) => {
       const target = String(url);

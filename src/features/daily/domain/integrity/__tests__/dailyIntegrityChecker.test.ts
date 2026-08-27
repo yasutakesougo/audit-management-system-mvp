@@ -110,6 +110,31 @@ describe('dailyIntegrityChecker', () => {
       expect(results[0].severity).toBe('warning');
     });
 
+    it('Test E / AC-14: current count uses LatestVersion+LatestCommitId only (ignores commit/version ghosts)', () => {
+      const parents: ScanSourceParent[] = [
+        { id: '1', date: '2026-03-30', latestVersion: 5, latestCommitId: 'A', userCount: 2 }
+      ];
+      const children: ScanSourceChild[] = [
+        { parentId: '1', userId: 'U1', version: 5, commitId: 'A', status: 'completed', recordedAt: '2026-03-30T09:10:00Z' },
+        { parentId: '1', userId: 'U2', version: 5, commitId: 'A', status: 'completed', recordedAt: '2026-03-30T09:10:00Z' },
+        { parentId: '1', userId: 'U1', version: 5, commitId: 'B', status: 'completed', recordedAt: '2026-03-30T09:09:00Z' },
+        { parentId: '1', userId: 'U2', version: 5, commitId: 'B', status: 'completed', recordedAt: '2026-03-30T09:09:00Z' },
+        { parentId: '1', userId: 'U1', version: 4, commitId: 'X', status: 'completed', recordedAt: '2026-03-30T09:00:00Z' },
+      ];
+
+      const accessories = [
+        { type: 'transport' as const, userId: 'U1' },
+        { type: 'transport' as const, userId: 'U2' },
+      ];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
+
+      // Current identity count = 2 → no count_mismatch. CommitId B rows are ghosts.
+      expect(results.map((item) => item.type)).not.toContain('count_mismatch');
+      expect(results.map((item) => item.type)).not.toContain('orphan_parent');
+      expect(results.find((item) => item.type === 'version_mismatch')?.details).toContain('CommitId ghost');
+      expect(results.find((item) => item.type === 'version_mismatch')?.details).toContain('B');
+    });
+
     it('should detect count_mismatch against current Version+CommitId children only', () => {
       const parents: ScanSourceParent[] = [
         { id: '1', date: '2026-03-30', latestVersion: 2, latestCommitId: 'commit-2', userCount: 1 }
