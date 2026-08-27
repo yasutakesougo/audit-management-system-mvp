@@ -131,6 +131,7 @@ Version だけでは失敗再試行や同時保存で同じ番号が再利用さ
 - **AC-15** 通常保存で既存 DailyRecordRows を DELETE しない
 - **AC-16** 既存の Version-only / unversioned データを勝手に migration しない
 - **AC-17** 同一日付 Parent は高々1件。create-race で複数親が観測されたら child を書かず abort。load/list も duplicate parent を fail closed。losing Parent は DELETE しない
+- **AC-18** save 経路の Parent 解決は atomic contract（list → pre-create gate re-list → optional POST → post-create re-verify）。pre-create gate で既存1件なら POST せず update へ。Repository 初期 lookup の stale null に依存しない
 
 ## 対象外
 

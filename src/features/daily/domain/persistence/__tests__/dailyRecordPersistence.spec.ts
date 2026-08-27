@@ -7,6 +7,7 @@ import {
   nextDailyRecordVersion,
   normalizeDailyRecordCommitId,
   requireCommittedCurrentIdentity,
+  resolveOrCreateParentForSave,
   resolveUniqueParentForDate,
 } from '../dailyRecordPersistence';
 
@@ -65,9 +66,11 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(normalizeDailyRecordCommitId('retry-B')).toBe('retry-B');
   });
 
-  it('enforces one parent per date and post-create sole ownership (AC-17)', () => {
+  it('enforces one parent per date and atomic resolve-or-create (AC-17, AC-18)', () => {
     expect(DAILY_RECORD_PERSISTENCE_V1.parentUniqueness).toBe('ONE_PARENT_PER_DATE');
-    expect(DAILY_RECORD_PERSISTENCE_V1.parentCreateRace).toBe('POST_CREATE_REVERIFY_FAIL_CLOSED');
+    expect(DAILY_RECORD_PERSISTENCE_V1.parentCreateRace).toBe(
+      'ATOMIC_PRE_CREATE_GATE_POST_CREATE_REVERIFY_FAIL_CLOSED',
+    );
     expect(resolveUniqueParentForDate('2026-08-27', [])).toBeNull();
     expect(resolveUniqueParentForDate('2026-08-27', [{ id: 10 }])?.id).toBe(10);
     expect(() => resolveUniqueParentForDate('2026-08-27', [{ id: 10 }, { id: 11 }]))
@@ -75,5 +78,42 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(() => assertCreatedParentIsSoleOwner('2026-08-27', 11, [{ id: 10 }, { id: 11 }]))
       .toThrow(/Parent create-race/);
     expect(() => assertCreatedParentIsSoleOwner('2026-08-27', 10, [{ id: 10 }])).not.toThrow();
+  });
+
+  it('resolveOrCreateParentForSave uses pre-create gate before POST (AC-18)', async () => {
+    let listCalls = 0;
+    let createCalls = 0;
+
+    const result = await resolveOrCreateParentForSave('2026-08-27', {
+      listParents: async () => {
+        listCalls += 1;
+        if (listCalls === 1) return [];
+        return [{ id: 10 }];
+      },
+      createParent: async () => {
+        createCalls += 1;
+        return { id: 99 };
+      },
+    });
+
+    expect(result).toEqual({ parent: { id: 10 }, created: false });
+    expect(listCalls).toBe(2);
+    expect(createCalls).toBe(0);
+  });
+
+  it('resolveOrCreateParentForSave POSTs only when pre-create gate still empty', async () => {
+    let listCalls = 0;
+
+    const result = await resolveOrCreateParentForSave('2026-08-27', {
+      listParents: async () => {
+        listCalls += 1;
+        if (listCalls <= 2) return [];
+        return [{ id: 55 }];
+      },
+      createParent: async () => ({ id: 55 }),
+    });
+
+    expect(result).toEqual({ parent: { id: 55 }, created: true });
+    expect(listCalls).toBe(3);
   });
 });

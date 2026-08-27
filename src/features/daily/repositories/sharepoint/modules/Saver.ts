@@ -3,7 +3,6 @@ import {
     type SharePointItem,
     type ResolvedRowsFields,
     type ResolvedParentFields,
-    type SharePointResponse,
     type RawSharePointItem,
 } from '../constants';
 import { 
@@ -15,44 +14,51 @@ import {
 import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import {
-    assertCreatedParentIsSoleOwner,
     createDailyRecordCommitId,
     nextDailyRecordVersion,
+    resolveOrCreateParentForSave,
 } from '../../../domain/persistence/dailyRecordPersistence';
+import { DailyRecordDataAccess } from './DataAccess';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
 
-export class DailyRecordSaver {
-    constructor(private readonly spFetch: SpFetchFn) {}
+type ResolvedParent = {
+    id: number;
+    item: SharePointItem;
+};
 
-    private async listParentIdsByDate(
-        listPath: string,
-        date: string,
-        titleField: string,
-    ): Promise<Array<{ id: number }>> {
-        const queryParams = new URLSearchParams();
-        queryParams.set('$filter', `${titleField} eq '${date}'`);
-        queryParams.set('$orderby', 'Id asc');
-        queryParams.set('$select', 'Id');
-        const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`);
-        if (response.ok === false) {
-            throw new Error(
-                `[DAILY-RECORD-PERSISTENCE-V1] Post-create parent uniqueness probe failed with HTTP ${response.status}.`,
-            );
-        }
-        const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
-        return (payload.value ?? []).map((item) => ({ id: item.Id }));
+export class DailyRecordSaver {
+    constructor(
+        private readonly spFetch: SpFetchFn,
+        private readonly dataAccess: DailyRecordDataAccess,
+    ) {}
+
+    private toSharePointItem(raw: RawSharePointItem): SharePointItem {
+        return {
+            Id: raw.Id,
+            Title: raw.Title,
+            RecordDate: raw.RecordDate,
+            ReporterName: raw.ReporterName,
+            ReporterRole: raw.ReporterRole,
+            UserRowsJSON: raw.User_x0020_Rows_x0020_JSON,
+            UserCount: raw.UserCount,
+            LatestVersion: raw.LatestVersion,
+            LatestCommitId: raw.LatestCommitId,
+            IsDeleted: raw.IsDeleted,
+            Created: raw.Created,
+            Modified: raw.Modified,
+            __metadata: raw.__metadata,
+        };
     }
 
     public async save(
         input: SaveDailyRecordInput, 
         listPath: string, 
         rowsListPath: string,
-        existingItem: SharePointItem | null,
         resolvedRowsFields: ResolvedRowsFields,
         resolvedParentFields: ResolvedParentFields,
-        _params?: DailyRecordRepositoryMutationParams
+        params?: DailyRecordRepositoryMutationParams
     ): Promise<void> {
         const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, {
             date: input.date,
@@ -60,11 +66,7 @@ export class DailyRecordSaver {
         });
 
         try {
-            const mode = existingItem ? 'update' : 'create';
             const itemData: SharePointDailyRecordPayload = buildDailyRecordPayload(input);
-            const currentVersion = existingItem?.LatestVersion ?? 0;
-            const nextVersion = nextDailyRecordVersion(currentVersion);
-            // Unique per save attempt. Retries and concurrent saves must not share CommitId.
             const commitId = createDailyRecordCommitId();
 
             const parentMetadata: Record<string, unknown> = {
@@ -75,42 +77,59 @@ export class DailyRecordSaver {
                 [resolvedParentFields.userRowsJSON]: '',
                 [resolvedParentFields.userCount]: itemData.UserCount,
             };
-            
-            let parentId: number;
-            if (existingItem) {
-                parentId = existingItem.Id;
-            } else {
-                const createUrl = `${listPath}/items`;
-                const res = await this.spFetch(createUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json;odata=nometadata',
-                        'Accept': 'application/json;odata=nometadata',
+
+            const { parent: resolvedParent, created } = await resolveOrCreateParentForSave<ResolvedParent>(
+                input.date,
+                {
+                    listParents: async () => {
+                        const items = await this.dataAccess.listParentsByDate(
+                            input.date,
+                            listPath,
+                            params?.signal,
+                        );
+                        return items.map((raw) => ({
+                            id: raw.Id,
+                            item: this.toSharePointItem(raw),
+                        }));
                     },
-                    body: JSON.stringify({
-                        ...parentMetadata,
-                        [resolvedParentFields.latestVersion]: 0,
-                    }),
-                });
-                if (res.ok === false) {
-                    throw new Error(
-                        `[DAILY-RECORD-PERSISTENCE-V1] Parent create failed with HTTP ${res.status}.`,
-                    );
-                }
-                const created = await res.json();
-                parentId = created.d?.Id || created.Id;
+                    createParent: async () => {
+                        const createUrl = `${listPath}/items`;
+                        const res = await this.spFetch(createUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json;odata=nometadata',
+                                'Accept': 'application/json;odata=nometadata',
+                            },
+                            body: JSON.stringify({
+                                ...parentMetadata,
+                                [resolvedParentFields.latestVersion]: 0,
+                            }),
+                            signal: params?.signal,
+                        });
+                        if (res.ok === false) {
+                            throw new Error(
+                                `[DAILY-RECORD-PERSISTENCE-V1] Parent create failed with HTTP ${res.status}.`,
+                            );
+                        }
+                        const createdPayload = await res.json();
+                        const parentId = createdPayload.d?.Id || createdPayload.Id;
+                        return {
+                            id: parentId,
+                            item: {
+                                Id: parentId,
+                                Title: itemData.Title,
+                                LatestVersion: 0,
+                            },
+                        };
+                    },
+                },
+            );
 
-                // DRP-PARENT-CREATE-RACE-001: concurrent empty lookups can both POST.
-                // Re-verify sole ownership before any child writes. Do not DELETE losers.
-                const parentsAfterCreate = await this.listParentIdsByDate(
-                    listPath,
-                    input.date,
-                    resolvedParentFields.title,
-                );
-                assertCreatedParentIsSoleOwner(input.date, parentId, parentsAfterCreate);
-            }
-
-            // DAILY-RECORD-PERSISTENCE-V1: append next version. Never DELETE existing children.
+            const existingItem = resolvedParent.item;
+            const parentId = resolvedParent.id;
+            const mode = created ? 'create' : 'update';
+            const currentVersion = existingItem.LatestVersion ?? 0;
+            const nextVersion = nextDailyRecordVersion(currentVersion);
             for (const [index, row] of input.userRows.entries()) {
                 const rowNo = index + 1;
                 const rowIdentityKey = `${input.date}-${row.userId}-${rowNo}`;

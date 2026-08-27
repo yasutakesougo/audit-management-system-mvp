@@ -55,7 +55,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       options.getListFieldInternalNames
     );
     this.data = new DailyRecordDataAccess(this.spFetch);
-    this.saver = new DailyRecordSaver(this.spFetch);
+    this.saver = new DailyRecordSaver(this.spFetch, this.data);
     this.integrity = new DailyRecordIntegrityScanner(this.spFetch);
     this.rowAggregate = new RowAggregateAccess(this.spFetch);
   }
@@ -75,9 +75,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     const resolvedParentFields = await this.schema.resolveParentFields(listPath);
     const rowsListPath = buildListPath(this.getRowsListTitle());
     const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
-    const existingItem = await this.data.findItemByDate(input.date, listPath, params?.signal);
 
-    return this.saver.save(input, listPath, rowsListPath, existingItem, resolvedRowsFields, resolvedParentFields, params);
+    return this.saver.save(input, listPath, rowsListPath, resolvedRowsFields, resolvedParentFields, params);
   }
 
   async load(date: string): Promise<DailyRecordItem | null> {

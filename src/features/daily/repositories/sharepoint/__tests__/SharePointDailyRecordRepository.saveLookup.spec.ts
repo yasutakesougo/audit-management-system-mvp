@@ -131,15 +131,16 @@ describe('SharePointDailyRecordRepository save parent-lookup abort', () => {
   });
 
   it('4. HTTP 200 + value=[] is the only gate that allows new Parent creation', async () => {
+    let parentLookupCount = 0;
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const target = String(url);
       const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
 
       if (isParentLookup(target)) {
-        return jsonResponse({ value: [] });
-      }
-      if (target.includes('/items?') && target.includes('SupportRecord_Daily') && !isParentLookup(target)) {
-        // Uniqueness probe after create (Title filter without full select still matches parent list).
+        parentLookupCount += 1;
+        if (parentLookupCount <= 2) {
+          return jsonResponse({ value: [] });
+        }
         return jsonResponse({ value: [{ Id: 90 }] });
       }
       if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {

@@ -24,7 +24,12 @@ export const DAILY_RECORD_PERSISTENCE_V1 = {
   childCommitIdentity: 'ParentID + Version + CommitId',
   /** Exactly one SupportRecord_Daily row per RecordDate/Title. */
   parentUniqueness: 'ONE_PARENT_PER_DATE',
-  parentCreateRace: 'POST_CREATE_REVERIFY_FAIL_CLOSED',
+  /**
+   * Atomic save-time parent resolution:
+   * list → pre-create gate re-list → optional POST → post-create re-verify.
+   * Pre-create gate switches to update when a concurrent create wins; never rely on stale null.
+   */
+  parentCreateRace: 'ATOMIC_PRE_CREATE_GATE_POST_CREATE_REVERIFY_FAIL_CLOSED',
 } as const;
 
 export function nextDailyRecordVersion(currentVersion: number | undefined | null): number {
@@ -149,4 +154,49 @@ export function assertCreatedParentIsSoleOwner(
     `created Id ${createdParentId} is not the sole parent (found Ids: ${ids || 'none'}). ` +
     `Aborting before child writes; duplicate parents are not deleted.`,
   );
+}
+
+export type ResolveOrCreateParentPorts<T extends ParentDateIdentity> = {
+  listParents: () => Promise<readonly T[]>;
+  createParent: () => Promise<T>;
+};
+
+export type ResolveOrCreateParentResult<T extends ParentDateIdentity> = {
+  parent: T;
+  /** True only when this save POSTed a new parent row. */
+  created: boolean;
+};
+
+/**
+ * Atomic parent uniqueness contract for save.
+ *
+ * 1. List all parents for date (fail-closed via listParents).
+ * 2. Exactly one → update path.
+ * 3. Zero → pre-create gate: re-list immediately before POST.
+ *    - One found → concurrent winner; update path (no POST).
+ *    - Still zero → POST create.
+ * 4. Post-create re-verify sole ownership before any child writes.
+ */
+export async function resolveOrCreateParentForSave<T extends ParentDateIdentity>(
+  date: string,
+  ports: ResolveOrCreateParentPorts<T>,
+): Promise<ResolveOrCreateParentResult<T>> {
+  let parents = await ports.listParents();
+  let unique = resolveUniqueParentForDate(date, parents);
+  if (unique) {
+    return { parent: unique, created: false };
+  }
+
+  // Pre-create atomic gate: narrow TOCTOU between initial list and POST.
+  parents = await ports.listParents();
+  unique = resolveUniqueParentForDate(date, parents);
+  if (unique) {
+    return { parent: unique, created: false };
+  }
+
+  const created = await ports.createParent();
+  parents = await ports.listParents();
+  assertCreatedParentIsSoleOwner(date, created.id, parents);
+
+  return { parent: created, created: true };
 }

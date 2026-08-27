@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { DailyRecordSaver } from './Saver';
-import type { ResolvedParentFields, ResolvedRowsFields, SharePointItem } from '../../constants';
+import { DailyRecordDataAccess } from './DataAccess';
+import type { ResolvedParentFields, ResolvedRowsFields } from '../../constants';
 import type { SaveDailyRecordInput } from '../../../../domain/legacy/DailyRecordRepository';
 import * as persistence from '../../../domain/persistence/dailyRecordPersistence';
 
@@ -10,6 +11,14 @@ const jsonResponse = (value: unknown, status = 200): Response =>
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+
+const isParentList = (url: string): boolean =>
+  url.includes('/items?') &&
+  (url.includes('$filter') || url.includes('%24filter')) &&
+  url.includes('SupportRecord_Daily');
+
+const makeSaver = (spFetch: SpFetchFn) =>
+  new DailyRecordSaver(spFetch, new DailyRecordDataAccess(spFetch));
 
 const resolvedParentFields: ResolvedParentFields = {
   title: 'Title',
@@ -59,6 +68,15 @@ const sampleInput = (userIds: string[]): SaveDailyRecordInput => ({
   userCount: userIds.length,
 });
 
+const existingParent42 = {
+  Id: 42,
+  Title: '2026-08-27',
+  LatestVersion: 4,
+  LatestCommitId: 'commit-v4',
+  UserCount: 2,
+  __metadata: { etag: '"etag-4"' },
+};
+
 describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
   beforeEach(() => {
     vi.spyOn(persistence, 'createDailyRecordCommitId').mockReturnValue('commit-fixed');
@@ -73,15 +91,6 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     const parentMerges: Record<string, unknown>[] = [];
     const methods: Array<{ url: string; method?: string; httpMethod?: string; ifMatch?: string }> = [];
 
-    const existing: SharePointItem = {
-      Id: 42,
-      Title: '2026-08-27',
-      LatestVersion: 4,
-      LatestCommitId: 'commit-v4',
-      UserCount: 2,
-      __metadata: { etag: '"etag-4"' },
-    };
-
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const headers = init?.headers as Record<string, string> | undefined;
       const httpMethod = headers?.['X-HTTP-Method'];
@@ -91,6 +100,10 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         httpMethod,
         ifMatch: headers?.['IF-MATCH'],
       });
+
+      if (isParentList(String(url))) {
+        return jsonResponse({ value: [existingParent42] });
+      }
 
       if (url.includes('/items') && init?.method === 'POST' && !url.includes('items(')) {
         childBodies.push(JSON.parse(String(init.body)));
@@ -105,12 +118,11 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       return jsonResponse({ value: [] });
     });
 
-    const saver = new DailyRecordSaver(spFetch);
+    const saver = makeSaver(spFetch);
     await saver.save(
       sampleInput(['U001', 'U002']),
       "lists/getbytitle('SupportRecord_Daily')",
       "lists/getbytitle('DailyRecordRows')",
-      existing,
       resolvedRowsFields,
       resolvedParentFields,
     );
@@ -130,15 +142,13 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     let childPosts = 0;
     const parentMerges: Record<string, unknown>[] = [];
 
-    const existing: SharePointItem = {
-      Id: 7,
-      Title: '2026-08-27',
-      LatestVersion: 4,
-      LatestCommitId: 'commit-v4',
-    };
-
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
+      if (isParentList(String(url))) {
+        return jsonResponse({
+          value: [{ Id: 7, Title: '2026-08-27', LatestVersion: 4, LatestCommitId: 'commit-v4' }],
+        });
+      }
       if (url.includes("DailyRecordRows')/items") && init?.method === 'POST' && !url.includes('items(')) {
         childPosts += 1;
         if (childPosts === 3) {
@@ -153,13 +163,12 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       return jsonResponse({ value: [] });
     });
 
-    const saver = new DailyRecordSaver(spFetch);
+    const saver = makeSaver(spFetch);
     await expect(
       saver.save(
         sampleInput(['U001', 'U002', 'U003']),
         "lists/getbytitle('SupportRecord_Daily')",
         "lists/getbytitle('DailyRecordRows')",
-        existing,
         resolvedRowsFields,
         resolvedParentFields,
       ),
@@ -173,11 +182,15 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     const creates: Record<string, unknown>[] = [];
     const childBodies: Record<string, unknown>[] = [];
     const merges: Record<string, unknown>[] = [];
+    let parentListCalls = 0;
 
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
-      if (url.includes('items?') && (String(url).includes('%24filter') || String(url).includes('$filter') || String(url).includes('Title'))) {
-        // Post-create uniqueness probe: sole owner.
+      if (isParentList(String(url))) {
+        parentListCalls += 1;
+        if (parentListCalls <= 2) {
+          return jsonResponse({ value: [] });
+        }
         return jsonResponse({ value: [{ Id: 90 }] });
       }
       if (url.endsWith('/items') && init?.method === 'POST' && url.includes('SupportRecord_Daily')) {
@@ -195,16 +208,16 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       return jsonResponse({ value: [] });
     });
 
-    const saver = new DailyRecordSaver(spFetch);
+    const saver = makeSaver(spFetch);
     await saver.save(
       sampleInput(['U001']),
       "lists/getbytitle('SupportRecord_Daily')",
       "lists/getbytitle('DailyRecordRows')",
-      null,
       resolvedRowsFields,
       resolvedParentFields,
     );
 
+    expect(parentListCalls).toBe(3);
     expect(creates[0].LatestVersion).toBe(0);
     expect(creates[0].LatestCommitId).toBeUndefined();
     expect(childBodies[0].Version).toBe(1);
@@ -213,10 +226,61 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(merges[0].LatestCommitId).toBe('commit-fixed');
   });
 
+  it('AC-18: pre-create gate adopts concurrent winner without Parent POST', async () => {
+    let parentPosts = 0;
+    let parentListCalls = 0;
+    const childBodies: Record<string, unknown>[] = [];
+    const merges: Record<string, unknown>[] = [];
+
+    const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
+      const target = String(url);
+      const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
+
+      if (isParentList(target)) {
+        parentListCalls += 1;
+        if (parentListCalls === 1) {
+          return jsonResponse({ value: [] });
+        }
+        return jsonResponse({
+          value: [{ Id: 10, Title: '2026-08-27', LatestVersion: 0, __metadata: { etag: '"etag-10"' } }],
+        });
+      }
+      if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
+        parentPosts += 1;
+        return jsonResponse({ Id: 99 });
+      }
+      if (target.includes('DailyRecordRows') && init?.method === 'POST' && !target.includes('items(')) {
+        childBodies.push(JSON.parse(String(init.body)));
+        return jsonResponse({ Id: 901 });
+      }
+      if (target.includes('items(10)') && httpMethod === 'MERGE') {
+        merges.push(JSON.parse(String(init.body)));
+        return new Response(null, { status: 204 });
+      }
+      return jsonResponse({ value: [] });
+    });
+
+    const saver = makeSaver(spFetch);
+    await saver.save(
+      sampleInput(['U001']),
+      "lists/getbytitle('SupportRecord_Daily')",
+      "lists/getbytitle('DailyRecordRows')",
+      resolvedRowsFields,
+      resolvedParentFields,
+    );
+
+    expect(parentListCalls).toBe(2);
+    expect(parentPosts).toBe(0);
+    expect(childBodies).toHaveLength(1);
+    expect(merges).toHaveLength(1);
+    expect(merges[0].LatestVersion).toBe(1);
+  });
+
   it('AC-17: create-race aborts before child POSTs and does not DELETE losing parent', async () => {
     let childPosts = 0;
     let deleteCalls = 0;
     const createdIds: number[] = [];
+    let parentListCalls = 0;
 
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const target = String(url);
@@ -224,13 +288,16 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       const httpMethod = headers?.['X-HTTP-Method'];
       if (httpMethod === 'DELETE') deleteCalls += 1;
 
+      if (isParentList(target)) {
+        parentListCalls += 1;
+        if (parentListCalls <= 2) {
+          return jsonResponse({ value: [] });
+        }
+        return jsonResponse({ value: [{ Id: 10 }, { Id: 11 }] });
+      }
       if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
         createdIds.push(11);
         return jsonResponse({ Id: 11 });
-      }
-      if (target.includes('/items?') && target.includes('SupportRecord_Daily')) {
-        // Concurrent create also landed: Ids 10 and 11.
-        return jsonResponse({ value: [{ Id: 10 }, { Id: 11 }] });
       }
       if (target.includes('DailyRecordRows') && init?.method === 'POST') {
         childPosts += 1;
@@ -239,13 +306,12 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       return jsonResponse({ value: [] });
     });
 
-    const saver = new DailyRecordSaver(spFetch);
+    const saver = makeSaver(spFetch);
     await expect(
       saver.save(
         sampleInput(['U001']),
         "lists/getbytitle('SupportRecord_Daily')",
         "lists/getbytitle('DailyRecordRows')",
-        null,
         resolvedRowsFields,
         resolvedParentFields,
       ),
@@ -262,19 +328,22 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
 
     vi.spyOn(persistence, 'createDailyRecordCommitId').mockReturnValue('commit-B');
 
-    const existing: SharePointItem = {
-      Id: 42,
-      Title: '2026-08-27',
-      LatestVersion: 4,
-      LatestCommitId: 'commit-v4',
-      __metadata: { etag: '"etag-stale"' },
-    };
-
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const headers = init?.headers as Record<string, string> | undefined;
       const httpMethod = headers?.['X-HTTP-Method'];
       if (httpMethod === 'DELETE') {
         deleteCalls += 1;
+      }
+      if (isParentList(String(url))) {
+        return jsonResponse({
+          value: [{
+            Id: 42,
+            Title: '2026-08-27',
+            LatestVersion: 4,
+            LatestCommitId: 'commit-v4',
+            __metadata: { etag: '"etag-stale"' },
+          }],
+        });
       }
       if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
         childBodies.push(JSON.parse(String(init.body)));
@@ -286,13 +355,12 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       return jsonResponse({ value: [] });
     });
 
-    const saver = new DailyRecordSaver(spFetch);
+    const saver = makeSaver(spFetch);
     await expect(
       saver.save(
         sampleInput(['U001']),
         "lists/getbytitle('SupportRecord_Daily')",
         "lists/getbytitle('DailyRecordRows')",
-        existing,
         resolvedRowsFields,
         resolvedParentFields,
       ),
