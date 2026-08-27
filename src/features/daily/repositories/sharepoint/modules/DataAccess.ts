@@ -13,7 +13,11 @@ import { parseSpItem } from '../utils/Mappers';
 import type { DailyRecordItem, DailyRecordRepositoryListParams } from '@/features/daily/domain/legacy/DailyRecordRepository';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 import { auditLog } from '@/lib/debugLogger';
-import { buildCurrentVersionChildFilter } from '@/features/daily/domain/persistence/dailyRecordPersistence';
+import {
+    buildCurrentVersionChildFilter,
+    normalizeDailyRecordCommitId,
+    requireCommittedCurrentIdentity,
+} from '@/features/daily/domain/persistence/dailyRecordPersistence';
 
 const PARENT_FILTER_CHUNK_SIZE = 20;
 
@@ -35,12 +39,29 @@ export class DailyRecordDataAccess {
             .filter((row): row is DailyRecordItem['userRows'][number] => Boolean(row));
     }
 
-    private assertCommittedVersionHasRows(parentId: number, latestVersion: number, rows: CurrentChildRow[]): void {
+    private assertCommittedCurrentHasRows(
+        parentId: number,
+        latestVersion: number,
+        latestCommitId: string,
+        rows: CurrentChildRow[],
+    ): void {
         if (latestVersion > 0 && rows.length === 0) {
             throw new Error(
-                `[DAILY-RECORD-PERSISTENCE-V1] Parent ${parentId} points to LatestVersion ${latestVersion}, but no current-version child rows were found.`,
+                `[DAILY-RECORD-PERSISTENCE-V1] Parent ${parentId} points to LatestVersion ${latestVersion} / LatestCommitId ${latestCommitId}, but no current child rows were found.`,
             );
         }
+    }
+
+    private readParentCurrentPointer(item: RawSharePointItem): {
+        latestVersion: number;
+        latestCommitId: string | null;
+    } {
+        const latestVersion = Number(item.LatestVersion ?? 0) || 0;
+        const latestCommitId = normalizeDailyRecordCommitId(item.LatestCommitId);
+        if (latestVersion > 0) {
+            requireCommittedCurrentIdentity(latestVersion, latestCommitId);
+        }
+        return { latestVersion, latestCommitId };
     }
 
     public async load(
@@ -55,14 +76,21 @@ export class DailyRecordDataAccess {
         const record = parseSpItem(item);
         if (!record) return null;
 
-        const latestVersion = Number(item.LatestVersion ?? 0) || 0;
+        let latestVersion = 0;
+        let latestCommitId: string | null = null;
         try {
+            const pointer = this.readParentCurrentPointer(item);
+            latestVersion = pointer.latestVersion;
+            latestCommitId = pointer.latestCommitId;
+
             const rowsListPath = buildListPath(rowsListTitle);
             const filter = buildCurrentVersionChildFilter(
                 resolvedRowsFields.parentId,
                 item.Id,
                 resolvedRowsFields.version,
                 latestVersion,
+                resolvedRowsFields.commitId,
+                latestCommitId,
             );
             const selectFields = [resolvedRowsFields.payload];
             if (resolvedRowsFields.rowNo) selectFields.push(resolvedRowsFields.rowNo);
@@ -76,20 +104,26 @@ export class DailyRecordDataAccess {
 
             const json = await res.json();
             const rows = (json.value || []) as CurrentChildRow[];
-            this.assertCommittedVersionHasRows(item.Id, latestVersion, rows);
+            if (latestVersion > 0 && latestCommitId) {
+                this.assertCommittedCurrentHasRows(item.Id, latestVersion, latestCommitId, rows);
+            }
 
             if (rows.length > 0) {
                 record.userRows = this.parseUserRows(rows, resolvedRowsFields);
-                auditLog.debug('daily', `Loaded via version v${latestVersion}`, { count: rows.length });
+                auditLog.debug('daily', `Loaded via version v${latestVersion}`, {
+                    count: rows.length,
+                    commitId: latestCommitId,
+                });
             } else {
                 // LatestVersion = 0 only: retain legacy parent JSON when no unversioned child rows exist.
                 auditLog.debug('daily', 'Loaded from legacy JSON fallback', { count: record.userRows.length });
             }
         } catch (childError) {
-            if (latestVersion > 0) {
-                auditLog.warn('daily', 'Committed version hydration failed; legacy fallback is prohibited', {
+            if (latestVersion > 0 || (Number(item.LatestVersion ?? 0) || 0) > 0) {
+                auditLog.warn('daily', 'Committed current hydration failed; legacy fallback is prohibited', {
                     parentId: item.Id,
-                    latestVersion,
+                    latestVersion: latestVersion || Number(item.LatestVersion ?? 0) || 0,
+                    latestCommitId,
                     error: String(childError),
                 });
                 throw childError;
@@ -120,7 +154,7 @@ export class DailyRecordDataAccess {
             'Id', DAILY_RECORD_FIELDS.title, DAILY_RECORD_FIELDS.recordDate,
             DAILY_RECORD_FIELDS.reporterName, DAILY_RECORD_FIELDS.reporterRole,
             DAILY_RECORD_FIELDS.userRowsJSON, DAILY_RECORD_FIELDS.userCount,
-            DAILY_RECORD_FIELDS.latestVersion,
+            DAILY_RECORD_FIELDS.latestVersion, DAILY_RECORD_FIELDS.latestCommitId,
             DAILY_RECORD_FIELDS.created, DAILY_RECORD_FIELDS.modified
         ].join(','));
 
@@ -137,23 +171,36 @@ export class DailyRecordDataAccess {
 
         if (parsed.length === 0) return [];
 
+        // Fail closed before querying when any committed parent lacks LatestCommitId.
+        const parentPointers = parsed.map(({ item }) => {
+            const latestVersion = Number(item.LatestVersion ?? 0) || 0;
+            const latestCommitId = normalizeDailyRecordCommitId(item.LatestCommitId);
+            if (latestVersion > 0) {
+                requireCommittedCurrentIdentity(latestVersion, latestCommitId);
+            }
+            return { item, latestVersion, latestCommitId };
+        });
+
         const rowsListPath = buildListPath(rowsListTitle);
         const rowsByParentId = new Map<number, CurrentChildRow[]>();
         const selectFields = [
             resolvedRowsFields.parentId,
             resolvedRowsFields.version,
+            resolvedRowsFields.commitId,
             resolvedRowsFields.payload,
         ];
         if (resolvedRowsFields.rowNo) selectFields.push(resolvedRowsFields.rowNo);
 
-        for (let start = 0; start < parsed.length; start += PARENT_FILTER_CHUNK_SIZE) {
-            const chunk = parsed.slice(start, start + PARENT_FILTER_CHUNK_SIZE);
+        for (let start = 0; start < parentPointers.length; start += PARENT_FILTER_CHUNK_SIZE) {
+            const chunk = parentPointers.slice(start, start + PARENT_FILTER_CHUNK_SIZE);
             const childFilter = chunk
-                .map(({ item }) => `(${buildCurrentVersionChildFilter(
+                .map(({ item, latestVersion, latestCommitId }) => `(${buildCurrentVersionChildFilter(
                     resolvedRowsFields.parentId,
                     item.Id,
                     resolvedRowsFields.version,
-                    Number(item.LatestVersion ?? 0) || 0,
+                    latestVersion,
+                    resolvedRowsFields.commitId,
+                    latestCommitId,
                 )})`)
                 .join(' or ');
 
@@ -176,10 +223,12 @@ export class DailyRecordDataAccess {
             });
         }
 
-        return parsed.map(({ item, record }) => {
-            const latestVersion = Number(item.LatestVersion ?? 0) || 0;
+        return parentPointers.map(({ item, latestVersion, latestCommitId }, index) => {
+            const record = parsed[index].record;
             const rows = rowsByParentId.get(item.Id) ?? [];
-            this.assertCommittedVersionHasRows(item.Id, latestVersion, rows);
+            if (latestVersion > 0 && latestCommitId) {
+                this.assertCommittedCurrentHasRows(item.Id, latestVersion, latestCommitId, rows);
+            }
 
             if (rows.length > 0) {
                 record.userRows = this.parseUserRows(rows, resolvedRowsFields);
@@ -197,7 +246,7 @@ export class DailyRecordDataAccess {
             'Id', DAILY_RECORD_FIELDS.title, DAILY_RECORD_FIELDS.recordDate,
             DAILY_RECORD_FIELDS.reporterName, DAILY_RECORD_FIELDS.reporterRole,
             DAILY_RECORD_FIELDS.userRowsJSON, DAILY_RECORD_FIELDS.userCount,
-            DAILY_RECORD_FIELDS.latestVersion,
+            DAILY_RECORD_FIELDS.latestVersion, DAILY_RECORD_FIELDS.latestCommitId,
             DAILY_RECORD_FIELDS.created, DAILY_RECORD_FIELDS.modified
         ].join(','));
 

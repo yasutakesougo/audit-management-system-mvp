@@ -1,15 +1,16 @@
 // contract:allow-interface
 import { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
+import { normalizeDailyRecordCommitId } from '../persistence/dailyRecordPersistence';
 
 /**
  * 日次記録の整合性例外の種類
  */
 export type DailyIntegrityExceptionType =
-  | 'orphan_parent'    // 親があるが対応するバージョンの子が0件
-  | 'version_mismatch' // 親Versionとの不整合、または現行Version内の重複行
+  | 'orphan_parent'    // 親があるが対応するバージョン+CommitIdの子が0件
+  | 'version_mismatch' // Version/CommitId 不整合、または現行 identity 内の重複行
   | 'stale_pending'    // 書き込み中のまま一定時間経過
   | 'missing_accessory' // 必要な付随データ（送迎設定等）が欠落
-  | 'count_mismatch'   // 親の userCount と現行 Version の子レコード数が不一致
+  | 'count_mismatch'   // 親の userCount と現行 identity の子レコード数が不一致
   | 'scan_unknown';    // Scanner 自体が失敗。PASS と区別するための HOLD
 
 /**
@@ -31,6 +32,8 @@ export interface ScanSourceParent {
   id: string;
   date: string;
   latestVersion: number;
+  /** Required when latestVersion > 0. Absence is an integrity failure. */
+  latestCommitId?: string | null;
   userCount?: number; // 親レコードに保存されている統計的な利用者数
 }
 
@@ -39,6 +42,8 @@ export interface ScanSourceChild {
   userId: string;
   userName?: string;
   version: number;
+  /** Save-attempt identity. Required for versioned current rows. */
+  commitId?: string | null;
   status: string;
   recordedAt: string;
 }
@@ -46,6 +51,19 @@ export interface ScanSourceChild {
 export interface ScanSourceAccessory {
   type: 'transport';
   userId: string;
+}
+
+function isCurrentChild(parent: ScanSourceParent, child: ScanSourceChild): boolean {
+  if (parent.latestVersion <= 0) {
+    return child.version === 0;
+  }
+  const parentCommitId = normalizeDailyRecordCommitId(parent.latestCommitId);
+  const childCommitId = normalizeDailyRecordCommitId(child.commitId);
+  return (
+    child.version === parent.latestVersion &&
+    parentCommitId !== null &&
+    childCommitId === parentCommitId
+  );
 }
 
 /**
@@ -63,71 +81,107 @@ export function scanDailyRecordIntegrity(
   // 1 & 2: 親を起点としたスキャン
   parents.forEach(parent => {
     const parentChildren = children.filter(c => c.parentId === parent.id);
-    const latestVersionChildren = parentChildren.filter(c => c.version === parent.latestVersion);
+    const parentCommitId = normalizeDailyRecordCommitId(parent.latestCommitId);
 
-    // orphan_parent: 最新バージョンとしてマークされているが、子が1件も存在しない
-    if (parent.latestVersion > 0 && latestVersionChildren.length === 0) {
-      exceptions.push({
-        type: 'orphan_parent',
-        date: parent.date,
-        parentId: parent.id,
-        details: `Parent specified v${parent.latestVersion} but no children found for this version. Data may be lost or rollback failed.`,
-        severity: 'error',
-        detectedAt: now.toISOString(),
-      });
-    }
-
-    // version_mismatch: 親の LatestVersion を超えるバージョンを持つ子が存在する（未コミットのゴーストライト）
-    const ghostChildren = parentChildren.filter(c => c.version > parent.latestVersion);
-    if (ghostChildren.length > 0) {
+    // LatestVersion > 0 なのに LatestCommitId が無い → Version-only current 判定を禁止
+    if (parent.latestVersion > 0 && !parentCommitId) {
       exceptions.push({
         type: 'version_mismatch',
         date: parent.date,
         parentId: parent.id,
-        details: `Ghost records found! Children have version up to v${Math.max(...ghostChildren.map(c => c.version))}, but Parent indicates v${parent.latestVersion}.`,
+        details: `LatestVersion ${parent.latestVersion} is set but LatestCommitId is missing. Version-only current identity is prohibited.`,
         severity: 'error',
         detectedAt: now.toISOString(),
       });
     }
 
-    // Concurrent saves can both choose the same nextVersion. If both append rows for the
-    // same user and one parent pointer commit wins, the duplicated rows are still at the
-    // current version and therefore are not caught by "child.version > LatestVersion".
-    // Detect duplicate identity inside the committed version explicitly.
-    if (parent.latestVersion > 0 && latestVersionChildren.length > 0) {
-      const currentIdentityCounts = new Map<string, number>();
-      latestVersionChildren.forEach(child => {
-        const identity = `${parent.id}|${parent.latestVersion}|${child.userId}`;
-        currentIdentityCounts.set(identity, (currentIdentityCounts.get(identity) ?? 0) + 1);
-      });
-      const duplicateUserIds = latestVersionChildren
-        .map(child => child.userId)
-        .filter((userId, index, all) => all.indexOf(userId) === index)
-        .filter(userId => (currentIdentityCounts.get(`${parent.id}|${parent.latestVersion}|${userId}`) ?? 0) > 1);
+    const currentChildren = parentChildren.filter(c => isCurrentChild(parent, c));
 
-      if (duplicateUserIds.length > 0) {
+    // orphan_parent: LatestVersion + LatestCommitId が指す現行子が0件
+    if (parent.latestVersion > 0 && parentCommitId && currentChildren.length === 0) {
+      exceptions.push({
+        type: 'orphan_parent',
+        date: parent.date,
+        parentId: parent.id,
+        details: `Parent specified v${parent.latestVersion} / CommitId ${parentCommitId} but no matching current children were found. Data may be lost or rollback failed.`,
+        severity: 'error',
+        detectedAt: now.toISOString(),
+      });
+    }
+
+    // Version > LatestVersion ghost（未コミットの高バージョン）
+    const versionGhostChildren = parentChildren.filter(c => c.version > parent.latestVersion);
+    if (versionGhostChildren.length > 0) {
+      exceptions.push({
+        type: 'version_mismatch',
+        date: parent.date,
+        parentId: parent.id,
+        details: `Version ghost records found! Children have version up to v${Math.max(...versionGhostChildren.map(c => c.version))}, but Parent indicates v${parent.latestVersion}.`,
+        severity: 'error',
+        detectedAt: now.toISOString(),
+      });
+    }
+
+    // Version == LatestVersion だが CommitId != LatestCommitId（失敗/負け save の ghost）
+    if (parent.latestVersion > 0 && parentCommitId) {
+      const commitGhostChildren = parentChildren.filter(c => {
+        if (c.version !== parent.latestVersion) return false;
+        const childCommitId = normalizeDailyRecordCommitId(c.commitId);
+        return childCommitId !== parentCommitId;
+      });
+      if (commitGhostChildren.length > 0) {
+        const ghostCommitIds = [...new Set(
+          commitGhostChildren
+            .map(c => normalizeDailyRecordCommitId(c.commitId) ?? '(missing)')
+        )];
         exceptions.push({
           type: 'version_mismatch',
           date: parent.date,
           parentId: parent.id,
-          details: `Duplicate current-version rows found for v${parent.latestVersion}: ${duplicateUserIds.join(', ')}. Concurrent saves may have selected the same nextVersion.`,
+          details: `CommitId ghost records found at v${parent.latestVersion}: CommitId(s) [${ghostCommitIds.join(', ')}] differ from LatestCommitId ${parentCommitId}.`,
           severity: 'error',
           detectedAt: now.toISOString(),
         });
       }
     }
 
-    const currentChildren = parent.latestVersion > 0
-      ? latestVersionChildren
+    // Current Version + CommitId 内の duplicate identity
+    if (parent.latestVersion > 0 && parentCommitId && currentChildren.length > 0) {
+      const currentIdentityCounts = new Map<string, number>();
+      currentChildren.forEach(child => {
+        const identity = `${parent.id}|${parent.latestVersion}|${parentCommitId}|${child.userId}`;
+        currentIdentityCounts.set(identity, (currentIdentityCounts.get(identity) ?? 0) + 1);
+      });
+      const duplicateUserIds = currentChildren
+        .map(child => child.userId)
+        .filter((userId, index, all) => all.indexOf(userId) === index)
+        .filter(userId => (
+          currentIdentityCounts.get(`${parent.id}|${parent.latestVersion}|${parentCommitId}|${userId}`) ?? 0
+        ) > 1);
+
+      if (duplicateUserIds.length > 0) {
+        exceptions.push({
+          type: 'version_mismatch',
+          date: parent.date,
+          parentId: parent.id,
+          details: `Duplicate current identity rows found for v${parent.latestVersion} / CommitId ${parentCommitId}: ${duplicateUserIds.join(', ')}.`,
+          severity: 'error',
+          detectedAt: now.toISOString(),
+        });
+      }
+    }
+
+    const countBasisChildren = parent.latestVersion > 0
+      ? currentChildren
       : parentChildren.filter(c => c.version === 0);
 
-    // count_mismatch: 親の userCount と現行 Version の子件数を照合する
-    if (parent.userCount !== undefined && parent.userCount !== currentChildren.length) {
+    // count_mismatch: 親の userCount と現行 identity の子件数を照合する
+    if (parent.userCount !== undefined && parent.userCount !== countBasisChildren.length) {
       exceptions.push({
         type: 'count_mismatch',
         date: parent.date,
         parentId: parent.id,
-        details: `Count mismatch: Parent indicates ${parent.userCount} users, but found ${currentChildren.length} current-version row(s).`,
+        details: `Count mismatch: Parent indicates ${parent.userCount} users, but found ${countBasisChildren.length} current-version row(s).`,
         severity: 'warning',
         detectedAt: now.toISOString(),
       });

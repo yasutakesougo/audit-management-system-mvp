@@ -25,7 +25,7 @@ describe('DAILY_RECORD_CANONICAL_CANDIDATES drift', () => {
   it('標準名がそのまま解決される（drift なし）', () => {
     const available = new Set([
       'Id', 'Title', 'RecordDate', 'ReporterName', 'ReporterRole',
-      'UserRowsJSON', 'UserCount', 'LatestVersion', 'ApprovalStatus', 'ApprovedBy', 'ApprovedAt',
+      'UserRowsJSON', 'UserCount', 'LatestVersion', 'LatestCommitId', 'ApprovalStatus', 'ApprovedBy', 'ApprovedAt',
     ]);
     const { resolved, missing, fieldStatus } = resolveInternalNamesDetailed(
       available,
@@ -35,6 +35,7 @@ describe('DAILY_RECORD_CANONICAL_CANDIDATES drift', () => {
     expect(resolved.title).toBe('Title');
     expect(resolved.recordDate).toBe('RecordDate');
     expect(resolved.userRowsJSON).toBe('UserRowsJSON');
+    expect(resolved.latestCommitId).toBe('LatestCommitId');
     expect(missing).toHaveLength(0);
     expect(fieldStatus.title.isDrifted).toBe(false);
     expect(fieldStatus.recordDate.isDrifted).toBe(false);
@@ -101,7 +102,7 @@ describe('DAILY_RECORD_CANONICAL_CANDIDATES drift', () => {
 describe('DAILY_RECORD_ROW_AGGREGATE_CANDIDATES drift', () => {
   it('標準名がそのまま解決される（drift なし）', () => {
     const available = new Set([
-      'Title', 'ParentID', 'UserCode', 'RecordDate', 'Status', 'ReporterName', 'Payload', 'Kind', 'Group', 'SpecialNote', 'Version',
+      'Title', 'ParentID', 'UserCode', 'RecordDate', 'Status', 'ReporterName', 'Payload', 'Kind', 'Group', 'SpecialNote', 'Version', 'CommitId',
       'RecordedAt', 'RowNo', 'Memo', 'StaffName', 'BipsJSON', 'RowKey',
     ]);
     const { resolved, missing } = resolveInternalNamesDetailed(
@@ -111,6 +112,7 @@ describe('DAILY_RECORD_ROW_AGGREGATE_CANDIDATES drift', () => {
 
     expect(resolved.userId).toBe('UserCode');
     expect(resolved.recordDate).toBe('RecordDate');
+    expect(resolved.commitId).toBe('CommitId');
     expect(missing).toHaveLength(0);
   });
 

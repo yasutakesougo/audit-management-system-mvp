@@ -12,7 +12,10 @@ import {
 } from '../../../domain/legacy/DailyRecordRepository';
 import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
-import { nextDailyRecordVersion } from '../../../domain/persistence/dailyRecordPersistence';
+import {
+    createDailyRecordCommitId,
+    nextDailyRecordVersion,
+} from '../../../domain/persistence/dailyRecordPersistence';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
@@ -39,6 +42,8 @@ export class DailyRecordSaver {
             const itemData: SharePointDailyRecordPayload = buildDailyRecordPayload(input);
             const currentVersion = existingItem?.LatestVersion ?? 0;
             const nextVersion = nextDailyRecordVersion(currentVersion);
+            // Unique per save attempt. Retries and concurrent saves must not share CommitId.
+            const commitId = createDailyRecordCommitId();
 
             const parentMetadata: Record<string, unknown> = {
                 [resolvedParentFields.title]: itemData.Title,
@@ -78,6 +83,7 @@ export class DailyRecordSaver {
                     [resolvedRowsFields.parentId]: parentId,
                     [resolvedRowsFields.userId]: row.userId,
                     [resolvedRowsFields.version]: nextVersion,
+                    [resolvedRowsFields.commitId]: commitId,
                     [resolvedRowsFields.status]: 'completed',
                     [resolvedRowsFields.payload]: JSON.stringify(row),
                     [resolvedRowsFields.recordedAt]: new Date().toISOString(),
@@ -97,8 +103,9 @@ export class DailyRecordSaver {
             }
 
             // Commit point: only after every child row is persisted.
+            // LatestVersion and LatestCommitId must advance together.
             const finalizeUrl = `${listPath}/items(${parentId})`;
-            await this.spFetch(finalizeUrl, {
+            const finalizeRes = await this.spFetch(finalizeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json;odata=nometadata',
@@ -109,15 +116,23 @@ export class DailyRecordSaver {
                 body: JSON.stringify({
                     ...parentMetadata,
                     [resolvedParentFields.latestVersion]: nextVersion,
+                    [resolvedParentFields.latestCommitId]: commitId,
                 }),
             });
+            if (finalizeRes.ok === false) {
+                throw new Error(
+                    `[DAILY-RECORD-PERSISTENCE-V1] Parent commit failed with HTTP ${finalizeRes.status}. ` +
+                    `Child rows for CommitId ${commitId} remain non-current ghosts.`,
+                );
+            }
 
             auditLog.debug('daily', `Committed daily record v${nextVersion}`, {
                 parentId,
                 mode,
+                commitId,
                 rowCount: input.userRows.length,
             });
-            finishSpan({ meta: { status: 'ok', mode, version: nextVersion } });
+            finishSpan({ meta: { status: 'ok', mode, version: nextVersion, commitId } });
         } catch (error) {
             const safeError = toSafeError(error);
             finishSpan({ meta: { status: 'error' }, error: safeError.message });

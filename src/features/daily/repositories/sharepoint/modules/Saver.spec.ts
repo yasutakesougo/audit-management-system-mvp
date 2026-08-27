@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { DailyRecordSaver } from './Saver';
 import type { ResolvedParentFields, ResolvedRowsFields, SharePointItem } from '../../constants';
 import type { SaveDailyRecordInput } from '../../../../domain/legacy/DailyRecordRepository';
+import * as persistence from '../../../../domain/persistence/dailyRecordPersistence';
 
 const jsonResponse = (value: unknown, status = 200): Response =>
   new Response(JSON.stringify(value), {
@@ -18,12 +19,14 @@ const resolvedParentFields: ResolvedParentFields = {
   userRowsJSON: 'User_x0020_Rows_x0020_JSON',
   userCount: 'UserCount',
   latestVersion: 'LatestVersion',
+  latestCommitId: 'LatestCommitId',
 };
 
 const resolvedRowsFields: ResolvedRowsFields = {
   parentId: 'Parent_x0020_ID',
   userId: 'User_x0020_ID',
   version: 'Version',
+  commitId: 'CommitId',
   status: 'Status',
   payload: 'Payload',
   recordedAt: 'Recorded_x0020_At',
@@ -57,22 +60,37 @@ const sampleInput = (userIds: string[]): SaveDailyRecordInput => ({
 });
 
 describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
-  it('appends Versioned children and commits LatestVersion without DELETE (AC-1, AC-2, AC-3)', async () => {
+  beforeEach(() => {
+    vi.spyOn(persistence, 'createDailyRecordCommitId').mockReturnValue('commit-fixed');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('appends Version+CommitId children and commits LatestVersion+LatestCommitId without DELETE (AC-1, AC-2, AC-3, AC-15)', async () => {
     const childBodies: Record<string, unknown>[] = [];
     const parentMerges: Record<string, unknown>[] = [];
-    const methods: Array<{ url: string; method?: string; httpMethod?: string }> = [];
+    const methods: Array<{ url: string; method?: string; httpMethod?: string; ifMatch?: string }> = [];
 
     const existing: SharePointItem = {
       Id: 42,
       Title: '2026-08-27',
       LatestVersion: 4,
+      LatestCommitId: 'commit-v4',
       UserCount: 2,
       __metadata: { etag: '"etag-4"' },
     };
 
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
-      const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
-      methods.push({ url, method: init?.method, httpMethod });
+      const headers = init?.headers as Record<string, string> | undefined;
+      const httpMethod = headers?.['X-HTTP-Method'];
+      methods.push({
+        url,
+        method: init?.method,
+        httpMethod,
+        ifMatch: headers?.['IF-MATCH'],
+      });
 
       if (url.includes('/items') && init?.method === 'POST' && !url.includes('items(')) {
         childBodies.push(JSON.parse(String(init.body)));
@@ -100,12 +118,15 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(methods.some((call) => call.httpMethod === 'DELETE')).toBe(false);
     expect(childBodies).toHaveLength(2);
     expect(childBodies.every((row) => row.Version === 5)).toBe(true);
+    expect(childBodies.every((row) => row.CommitId === 'commit-fixed')).toBe(true);
     expect(parentMerges).toHaveLength(1);
     expect(parentMerges[0].LatestVersion).toBe(5);
+    expect(parentMerges[0].LatestCommitId).toBe('commit-fixed');
     expect(parentMerges[0].UserCount).toBe(2);
+    expect(methods.find((call) => call.httpMethod === 'MERGE')?.ifMatch).toBe('"etag-4"');
   });
 
-  it('keeps the old LatestVersion when a child POST fails mid-save (AC-4)', async () => {
+  it('keeps the old LatestVersion/LatestCommitId when a child POST fails mid-save (AC-4, Test 1 partial)', async () => {
     let childPosts = 0;
     const parentMerges: Record<string, unknown>[] = [];
 
@@ -113,6 +134,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       Id: 7,
       Title: '2026-08-27',
       LatestVersion: 4,
+      LatestCommitId: 'commit-v4',
     };
 
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
@@ -147,7 +169,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(parentMerges).toHaveLength(0);
   });
 
-  it('creates a parent at LatestVersion 0 then commits v1 after children exist', async () => {
+  it('creates a parent at LatestVersion 0 then commits v1 + CommitId after children exist', async () => {
     const creates: Record<string, unknown>[] = [];
     const childBodies: Record<string, unknown>[] = [];
     const merges: Record<string, unknown>[] = [];
@@ -180,7 +202,56 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     );
 
     expect(creates[0].LatestVersion).toBe(0);
+    expect(creates[0].LatestCommitId).toBeUndefined();
     expect(childBodies[0].Version).toBe(1);
+    expect(childBodies[0].CommitId).toBe('commit-fixed');
     expect(merges[0].LatestVersion).toBe(1);
+    expect(merges[0].LatestCommitId).toBe('commit-fixed');
+  });
+
+  it('fails parent commit on ETag conflict without deleting losing CommitId children (AC-11, AC-12)', async () => {
+    const childBodies: Record<string, unknown>[] = [];
+    let deleteCalls = 0;
+
+    vi.spyOn(persistence, 'createDailyRecordCommitId').mockReturnValue('commit-B');
+
+    const existing: SharePointItem = {
+      Id: 42,
+      Title: '2026-08-27',
+      LatestVersion: 4,
+      LatestCommitId: 'commit-v4',
+      __metadata: { etag: '"etag-stale"' },
+    };
+
+    const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
+      const headers = init?.headers as Record<string, string> | undefined;
+      const httpMethod = headers?.['X-HTTP-Method'];
+      if (httpMethod === 'DELETE') {
+        deleteCalls += 1;
+      }
+      if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
+        childBodies.push(JSON.parse(String(init.body)));
+        return jsonResponse({ Id: 3000 + childBodies.length });
+      }
+      if (url.includes('items(42)') && httpMethod === 'MERGE') {
+        return new Response('Precondition Failed', { status: 412 });
+      }
+      return jsonResponse({ value: [] });
+    });
+
+    const saver = new DailyRecordSaver(spFetch);
+    await expect(
+      saver.save(
+        sampleInput(['U001']),
+        "lists/getbytitle('SupportRecord_Daily')",
+        "lists/getbytitle('DailyRecordRows')",
+        existing,
+        resolvedRowsFields,
+        resolvedParentFields,
+      ),
+    ).rejects.toBeTruthy();
+
+    expect(childBodies.every((row) => row.CommitId === 'commit-B')).toBe(true);
+    expect(deleteCalls).toBe(0);
   });
 });

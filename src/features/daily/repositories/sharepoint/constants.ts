@@ -10,7 +10,8 @@ export const DAILY_RECORD_FIELDS = {
   reporterRole: 'ReporterRole', // Text
   userRowsJSON: 'User_x0020_Rows_x0020_JSON', // Multi-line text (DEPRECATED fallback)
   userCount: 'UserCount',       // Number
-  latestVersion: 'LatestVersion', // Atomic version control
+  latestVersion: 'LatestVersion', // Logical revision pointer
+  latestCommitId: 'LatestCommitId', // Save-attempt identity paired with LatestVersion
   isDeleted: 'IsDeleted',       // Logical delete support
   created: 'Created',
   modified: 'Modified',
@@ -22,7 +23,8 @@ export const DAILY_RECORD_FIELDS = {
 export const DAILY_RECORD_ROWS_FIELDS = {
   parentId: 'Parent_x0020_ID',
   userId: 'User_x0020_ID',
-  version: 'Version',           // Matches Parent's LatestVersion
+  version: 'Version',           // Logical revision; pairs with CommitId
+  commitId: 'CommitId',         // Single save-attempt identity
   status: 'Status',
   payload: 'Payload',
   recordedAt: 'Recorded_x0020_At',
@@ -65,6 +67,7 @@ export type ResolvedRowsFields = {
     userId: string;
     recordDate?: string;
     version: string;
+    commitId: string;
     status: string;
     payload: string;
     recordedAt: string;
@@ -84,6 +87,7 @@ export type ResolvedParentFields = {
     userRowsJSON: string;
     userCount: string;
     latestVersion: string;
+    latestCommitId: string;
     approvalStatus?: string;
     approvedBy?: string;
     approvedAt?: string;
@@ -102,6 +106,7 @@ export interface RawSharePointItem {
   User_x0020_Rows_x0020_JSON?: string; // Physical name
   UserCount?: number;
   LatestVersion?: number;
+  LatestCommitId?: string | null;
   IsDeleted?: boolean;
   Created?: string;
   Modified?: string;
@@ -123,6 +128,7 @@ export interface SharePointItem {
   UserRowsJSON?: string; // Logical name
   UserCount?: number;
   LatestVersion?: number;
+  LatestCommitId?: string | null;
   IsDeleted?: boolean;
   Created?: string;
   Modified?: string;
