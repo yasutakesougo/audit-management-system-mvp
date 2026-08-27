@@ -92,8 +92,10 @@ Graph v1.0 `columnDefinition` exposes `name`, type, and `indexed`. It does **not
 | `gate` | Meaning | Next |
 |---|---|---|
 | `HOLD` (exit 2) | At least one UNVERIFIED | Finish inventory |
-| `VERIFIED_GAPS` (exit 0) | All four were read; gaps exist | Separate schema mutation Gate (still no apply until authorized) |
+| `VERIFIED_GAPS` (exit 0) | All four were read; gaps exist | Separate **LIVE-SCHEMA-MUTATION-V1** Gate (Definition → Review → Human GO → Apply) |
 | `VERIFIED_MATCH` (exit 0) | All four match | Mutation not required for these items |
+
+Mutation Definition (no Apply): [`docs/runbooks/live-schema-mutation-v1.md`](./live-schema-mutation-v1.md)
 
 `--mode hold` writes UNVERIFIED evidence without calling SharePoint (exit 2). Use it when credentials are absent.
 
