@@ -63,6 +63,13 @@ Never PASS by empty fallback
 
 途中失敗時は親 `LatestVersion` を動かさない。画面は旧 Version を読む。未完了の新 Version は Integrity Scanner が ghost / pending として検出する。
 
+## 読込規則
+
+- `load(date)` と `list(range)` の両方で、`LatestVersion > 0` の親はその Version の `DailyRecordRows` だけを現行として hydrate する。
+- `LatestVersion = 0` の親は未バージョン行（`Version = 0 / null`）だけを対象とする。
+- `LatestVersion = 0` かつ未バージョン子行が存在しない場合に限り、旧 `UserRowsJSON` をレガシー互換として利用できる。
+- `LatestVersion > 0` なのに対応する子行が0件の場合、旧 `UserRowsJSON` へフォールバックしてはならない。整合性異常として失敗/HOLDにする。
+
 ## 理由
 
 SharePoint Lists にトランザクションがないため、削除して作り直すとコミット前に現行データが消える。追記してから親の Version ポインタだけ進める疑似コミットなら、失敗しても既存記録を失わない。
@@ -73,7 +80,7 @@ SharePoint Lists にトランザクションがないため、削除して作り
 - **AC-2** すべての新規子行に Version を保存する
 - **AC-3** 全子行保存完了後だけ `LatestVersion` を更新する
 - **AC-4** 子行途中失敗時に旧 `LatestVersion` を保持する
-- **AC-5** 読込は `LatestVersion` のみを現行記録として扱う（0 のときはレガシー未バージョン行のみ）
+- **AC-5** `load(date)` / `list(range)` とも `LatestVersion` のみを現行記録として扱う。0 のときはレガシー未バージョン行のみとし、`LatestVersion > 0` の子0件を旧JSONで隠さない
 - **AC-6** `UserCount` と現行 Version の子件数を照合する
 - **AC-7** Integrity Scanner 失敗は UNKNOWN / HOLD にする。空配列フォールバックで PASS にしない
 - **AC-8** 旧 Version は監査証跡として保持する
@@ -87,4 +94,4 @@ SharePoint Lists にトランザクションがないため、削除して作り
 ## トレードオフ
 
 - 更新のたびに子行が増える。旧 Version の整理は別途の監査・アーカイブ規則で行う。
-- 同時保存が同じ `nextVersion` を採ると ghost 行になり得る。Integrity Scanner の `version_mismatch` で検出する。
+- 同時保存が同じ `nextVersion` を採ると、同一 `ParentID + Version + UserID` の重複行が現行Version内に残り得る。これは `child.version > LatestVersion` だけでは検出できないため、Integrity Scanner は現行Version内の重複identityも `version_mismatch` として検出する。
