@@ -13,6 +13,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
     lifecycle: 'required',
     // DAILY_RECORD_CANONICAL_ESSENTIALS と一致させる:
     //   Title / RecordDate / UserRowsJSON が必須。
+    //   Title は YYYY-MM-DD で EnforceUniqueValues（DAILY-RECORD-PERSISTENCE-V1 親一意）。
     //   ReporterName は欠落時でも記録者不明として継続可能なためオプション。
     essentialFields: ['Title', 'RecordDate', 'UserRowsJSON'],
     provisioningFields: [

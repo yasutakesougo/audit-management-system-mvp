@@ -25,11 +25,16 @@ export const DAILY_RECORD_PERSISTENCE_V1 = {
   /** Exactly one SupportRecord_Daily row per RecordDate/Title. */
   parentUniqueness: 'ONE_PARENT_PER_DATE',
   /**
+   * SharePoint storage layer: Title (YYYY-MM-DD) must enforce unique values when provisioned.
+   * Code must treat POST duplicate/conflict as adopt-existing, not as create-race abort.
+   */
+  parentStorageUniqueness: 'TITLE_ENFORCE_UNIQUE_VALUES',
+  /**
    * Atomic save-time parent resolution:
-   * list → pre-create gate re-list → optional POST → post-create re-verify.
+   * list → pre-create gate re-list → optional POST → storage-conflict adopt → post-create re-verify.
    * Pre-create gate switches to update when a concurrent create wins; never rely on stale null.
    */
-  parentCreateRace: 'ATOMIC_PRE_CREATE_GATE_POST_CREATE_REVERIFY_FAIL_CLOSED',
+  parentCreateRace: 'ATOMIC_PRE_CREATE_GATE_STORAGE_CONFLICT_ADOPT_POST_CREATE_REVERIFY_FAIL_CLOSED',
 } as const;
 
 export function nextDailyRecordVersion(currentVersion: number | undefined | null): number {
@@ -115,6 +120,32 @@ export function isAbortLikeError(error: unknown): boolean {
   return name === 'AbortError' || name === 'TimeoutError';
 }
 
+const PARENT_STORAGE_UNIQUENESS_MESSAGE =
+  /duplicate value|unique value|already exists|一意な値|重複する値|この値を持つアイテムが存在|-2130575214/i;
+
+/** SharePoint rejected a duplicate Title under EnforceUniqueValues. */
+export class ParentStorageUniquenessConflictError extends Error {
+  readonly code = 'PARENT_STORAGE_UNIQUENESS_CONFLICT';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'ParentStorageUniquenessConflictError';
+  }
+}
+
+export function isParentStorageUniquenessConflictFromHttp(
+  status: number,
+  bodyText?: string | null,
+): boolean {
+  if (status === 409) return true;
+  if (status !== 400 || !bodyText) return false;
+  return PARENT_STORAGE_UNIQUENESS_MESSAGE.test(bodyText);
+}
+
+export function isParentStorageUniquenessConflict(error: unknown): boolean {
+  return error instanceof ParentStorageUniquenessConflictError;
+}
+
 export type ParentDateIdentity = {
   id: number;
 };
@@ -175,7 +206,8 @@ export type ResolveOrCreateParentResult<T extends ParentDateIdentity> = {
  * 3. Zero → pre-create gate: re-list immediately before POST.
  *    - One found → concurrent winner; update path (no POST).
  *    - Still zero → POST create.
- * 4. Post-create re-verify sole ownership before any child writes.
+ * 4. Storage uniqueness conflict on POST → re-list and adopt existing parent (update path).
+ * 5. Post-create re-verify sole ownership before any child writes (unprovisioned env fallback).
  */
 export async function resolveOrCreateParentForSave<T extends ParentDateIdentity>(
   date: string,
@@ -194,7 +226,24 @@ export async function resolveOrCreateParentForSave<T extends ParentDateIdentity>
     return { parent: unique, created: false };
   }
 
-  const created = await ports.createParent();
+  let created: T;
+  try {
+    created = await ports.createParent();
+  } catch (error) {
+    if (!isParentStorageUniquenessConflict(error)) {
+      throw error;
+    }
+    parents = await ports.listParents();
+    unique = resolveUniqueParentForDate(date, parents);
+    if (!unique) {
+      throw new Error(
+        `[DAILY-RECORD-PERSISTENCE-V1] Parent storage uniqueness conflict for date ${date} ` +
+        `but re-list found no parent. Fail closed.`,
+      );
+    }
+    return { parent: unique, created: false };
+  }
+
   parents = await ports.listParents();
   assertCreatedParentIsSoleOwner(date, created.id, parents);
 

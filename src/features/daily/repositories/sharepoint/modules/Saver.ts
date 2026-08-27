@@ -15,7 +15,9 @@ import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyReco
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import {
     createDailyRecordCommitId,
+    isParentStorageUniquenessConflictFromHttp,
     nextDailyRecordVersion,
+    ParentStorageUniquenessConflictError,
     resolveOrCreateParentForSave,
 } from '../../../domain/persistence/dailyRecordPersistence';
 import { DailyRecordDataAccess } from './DataAccess';
@@ -107,6 +109,12 @@ export class DailyRecordSaver {
                             signal: params?.signal,
                         });
                         if (res.ok === false) {
+                            const bodyText = await res.text();
+                            if (isParentStorageUniquenessConflictFromHttp(res.status, bodyText)) {
+                                throw new ParentStorageUniquenessConflictError(
+                                    `[DAILY-RECORD-PERSISTENCE-V1] Parent storage uniqueness rejected duplicate Title for date ${input.date}.`,
+                                );
+                            }
                             throw new Error(
                                 `[DAILY-RECORD-PERSISTENCE-V1] Parent create failed with HTTP ${res.status}.`,
                             );

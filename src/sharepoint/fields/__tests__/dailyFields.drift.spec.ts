@@ -13,11 +13,23 @@ import { resolveInternalNamesDetailed, areEssentialFieldsResolved } from '@/lib/
 import {
   DAILY_RECORD_CANONICAL_CANDIDATES,
   DAILY_RECORD_CANONICAL_ESSENTIALS,
+  DAILY_RECORD_PARENT_STORAGE_UNIQUENESS,
   DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
   DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS,
   DAILY_ACTIVITY_RECORDS_CANDIDATES,
   DAILY_ACTIVITY_RECORDS_ESSENTIALS,
 } from '../dailyFields';
+
+describe('DAILY_RECORD_PARENT_STORAGE_UNIQUENESS contract', () => {
+  it('requires unique indexed Title on SupportRecord_Daily (AC-19)', () => {
+    expect(DAILY_RECORD_PARENT_STORAGE_UNIQUENESS).toEqual({
+      list: 'SupportRecord_Daily',
+      field: 'Title',
+      indexed: true,
+      enforceUniqueValues: true,
+    });
+  });
+});
 
 // ── Canonical ────────────────────────────────────────────────────────────────
 

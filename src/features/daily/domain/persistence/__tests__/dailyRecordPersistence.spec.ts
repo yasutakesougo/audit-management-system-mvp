@@ -4,8 +4,10 @@ import {
   assertCreatedParentIsSoleOwner,
   buildCurrentVersionChildFilter,
   createDailyRecordCommitId,
+  isParentStorageUniquenessConflictFromHttp,
   nextDailyRecordVersion,
   normalizeDailyRecordCommitId,
+  ParentStorageUniquenessConflictError,
   requireCommittedCurrentIdentity,
   resolveOrCreateParentForSave,
   resolveUniqueParentForDate,
@@ -66,10 +68,11 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(normalizeDailyRecordCommitId('retry-B')).toBe('retry-B');
   });
 
-  it('enforces one parent per date and atomic resolve-or-create (AC-17, AC-18)', () => {
+  it('enforces one parent per date and atomic resolve-or-create (AC-17, AC-18, AC-19)', () => {
     expect(DAILY_RECORD_PERSISTENCE_V1.parentUniqueness).toBe('ONE_PARENT_PER_DATE');
+    expect(DAILY_RECORD_PERSISTENCE_V1.parentStorageUniqueness).toBe('TITLE_ENFORCE_UNIQUE_VALUES');
     expect(DAILY_RECORD_PERSISTENCE_V1.parentCreateRace).toBe(
-      'ATOMIC_PRE_CREATE_GATE_POST_CREATE_REVERIFY_FAIL_CLOSED',
+      'ATOMIC_PRE_CREATE_GATE_STORAGE_CONFLICT_ADOPT_POST_CREATE_REVERIFY_FAIL_CLOSED',
     );
     expect(resolveUniqueParentForDate('2026-08-27', [])).toBeNull();
     expect(resolveUniqueParentForDate('2026-08-27', [{ id: 10 }])?.id).toBe(10);
@@ -114,6 +117,34 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
     });
 
     expect(result).toEqual({ parent: { id: 55 }, created: true });
+    expect(listCalls).toBe(3);
+  });
+
+  it('detects storage uniqueness conflicts from HTTP responses (AC-19)', () => {
+    expect(isParentStorageUniquenessConflictFromHttp(409)).toBe(true);
+    expect(isParentStorageUniquenessConflictFromHttp(400, 'duplicate value found for Title')).toBe(true);
+    expect(isParentStorageUniquenessConflictFromHttp(400, 'Field not found')).toBe(false);
+    expect(isParentStorageUniquenessConflictFromHttp(500, 'duplicate value')).toBe(false);
+  });
+
+  it('resolveOrCreateParentForSave adopts existing parent on storage conflict (AC-19)', async () => {
+    let listCalls = 0;
+    let createCalls = 0;
+
+    const result = await resolveOrCreateParentForSave('2026-08-27', {
+      listParents: async () => {
+        listCalls += 1;
+        if (listCalls <= 2) return [];
+        return [{ id: 10 }];
+      },
+      createParent: async () => {
+        createCalls += 1;
+        throw new ParentStorageUniquenessConflictError('duplicate Title');
+      },
+    });
+
+    expect(result).toEqual({ parent: { id: 10 }, created: false });
+    expect(createCalls).toBe(1);
     expect(listCalls).toBe(3);
   });
 });

@@ -194,3 +194,15 @@ export const DAILY_RECORD_CANONICAL_ENSURE_FIELDS: SpFieldDef[] = [
   { internalName: 'ApprovedBy', type: 'Text', displayName: 'Approved By' },
   { internalName: 'ApprovedAt', type: 'DateTime', displayName: 'Approved At', dateTimeFormat: 'DateTime' },
 ];
+
+/**
+ * Parent row uniqueness at the SharePoint storage layer (DAILY-RECORD-PERSISTENCE-V1).
+ * Title holds YYYY-MM-DD; EnforceUniqueValues prevents duplicate parents per date.
+ * Provisioning apply is a separate Gate — contract + resolver/tests may ship first.
+ */
+export const DAILY_RECORD_PARENT_STORAGE_UNIQUENESS = {
+  list: 'SupportRecord_Daily',
+  field: 'Title',
+  indexed: true,
+  enforceUniqueValues: true,
+} as const;

@@ -276,6 +276,56 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(merges[0].LatestVersion).toBe(1);
   });
 
+  it('AC-19: storage uniqueness conflict adopts existing parent and continues save', async () => {
+    let parentPosts = 0;
+    let parentListCalls = 0;
+    const childBodies: Record<string, unknown>[] = [];
+    const merges: Record<string, unknown>[] = [];
+
+    const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
+      const target = String(url);
+      const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
+
+      if (isParentList(target)) {
+        parentListCalls += 1;
+        if (parentListCalls <= 2) {
+          return jsonResponse({ value: [] });
+        }
+        return jsonResponse({
+          value: [{ Id: 10, Title: '2026-08-27', LatestVersion: 0, __metadata: { etag: '"etag-10"' } }],
+        });
+      }
+      if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
+        parentPosts += 1;
+        return new Response('duplicate value found for Title', { status: 409 });
+      }
+      if (target.includes('DailyRecordRows') && init?.method === 'POST' && !target.includes('items(')) {
+        childBodies.push(JSON.parse(String(init.body)));
+        return jsonResponse({ Id: 901 });
+      }
+      if (target.includes('items(10)') && httpMethod === 'MERGE') {
+        merges.push(JSON.parse(String(init.body)));
+        return new Response(null, { status: 204 });
+      }
+      return jsonResponse({ value: [] });
+    });
+
+    const saver = makeSaver(spFetch);
+    await saver.save(
+      sampleInput(['U001']),
+      "lists/getbytitle('SupportRecord_Daily')",
+      "lists/getbytitle('DailyRecordRows')",
+      resolvedRowsFields,
+      resolvedParentFields,
+    );
+
+    expect(parentPosts).toBe(1);
+    expect(parentListCalls).toBe(3);
+    expect(childBodies).toHaveLength(1);
+    expect(merges).toHaveLength(1);
+    expect(merges[0].LatestVersion).toBe(1);
+  });
+
   it('AC-17: create-race aborts before child POSTs and does not DELETE losing parent', async () => {
     let childPosts = 0;
     let deleteCalls = 0;

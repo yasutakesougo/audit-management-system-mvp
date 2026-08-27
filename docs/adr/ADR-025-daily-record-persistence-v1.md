@@ -89,7 +89,7 @@ Never PASS by empty fallback
 
 **Parent lookup fail-closed:** lookup 失敗を「親なし」と誤認して新規 Parent を作成してはならない。新規作成は HTTP 200 + 空結果のときだけ許可する。
 
-**Parent uniqueness / create-race:** 同一日付 Title の `SupportRecord_Daily` は高々1件。新規 Parent POST の直後に必ず再 lookup し、作成した Id が唯一の親であることを確認してから子行を書く。競合で複数親が観測された場合は child を書かずに abort する（losing Parent は DELETE しない）。`load` / `list` も同一日付の親複数を検知したら fail closed する。
+**Parent uniqueness / create-race:** 同一日付 Title の `SupportRecord_Daily` は高々1件。ストレージ層では `Title`（YYYY-MM-DD）に `EnforceUniqueValues` を付与し、重複 POST を拒否する（プロビジョニングは別 Gate）。save 経路は POST 409/duplicate を storage-conflict として re-list → 既存親を adopt する。未プロビジョン環境向けに post-create re-verify も残す。競合で複数親が観測された場合は child を書かず abort（losing Parent は DELETE しない）。`load` / `list` も duplicate parent を fail closed。
 
 ## 読込規則
 
@@ -132,6 +132,7 @@ Version だけでは失敗再試行や同時保存で同じ番号が再利用さ
 - **AC-16** 既存の Version-only / unversioned データを勝手に migration しない
 - **AC-17** 同一日付 Parent は高々1件。create-race で複数親が観測されたら child を書かず abort。load/list も duplicate parent を fail closed。losing Parent は DELETE しない
 - **AC-18** save 経路の Parent 解決は atomic contract（list → pre-create gate re-list → optional POST → post-create re-verify）。pre-create gate で既存1件なら POST せず update へ。Repository 初期 lookup の stale null に依存しない
+- **AC-19** `SupportRecord_Daily.Title` は storage-enforced unique（EnforceUniqueValues + Indexed）契約。Parent POST が 409/duplicate で拒否されたら re-list して既存親を adopt し update 継続。未プロビジョン環境では post-create re-verify が fallback
 
 ## 対象外
 
