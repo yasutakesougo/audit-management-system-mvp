@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  scanDailyRecordIntegrity, 
+import {
+  scanDailyRecordIntegrity,
   mapIntegrityToExceptionItem,
   ScanSourceParent,
-  ScanSourceChild 
+  ScanSourceChild
 } from '../dailyIntegrityChecker';
 
 describe('dailyIntegrityChecker', () => {
@@ -17,7 +17,7 @@ describe('dailyIntegrityChecker', () => {
       const children: ScanSourceChild[] = []; // v1の子がいない
 
       const results = scanDailyRecordIntegrity(parents, children, [], now);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('orphan_parent');
       expect(results[0].severity).toBe('error');
@@ -34,27 +34,43 @@ describe('dailyIntegrityChecker', () => {
 
       const accessories = [{ type: 'transport' as const, userId: 'U1' }];
       const results = scanDailyRecordIntegrity(parents, children, accessories, now);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('version_mismatch');
       expect(results[0].details).toContain('Ghost records found');
     });
 
+    it('should detect duplicate rows inside the committed version when concurrent saves choose the same nextVersion', () => {
+      const parents: ScanSourceParent[] = [
+        { id: '1', date: '2026-03-30', latestVersion: 2, userCount: 2 }
+      ];
+      const children: ScanSourceChild[] = [
+        { parentId: '1', userId: 'U1', version: 2, status: 'completed', recordedAt: '2026-03-30T09:00:00Z' },
+        { parentId: '1', userId: 'U1', version: 2, status: 'completed', recordedAt: '2026-03-30T09:00:01Z' },
+      ];
+
+      const accessories = [{ type: 'transport' as const, userId: 'U1' }];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
+
+      expect(results.map((item) => item.type)).toContain('version_mismatch');
+      expect(results.find((item) => item.type === 'version_mismatch')?.details).toContain('Duplicate current-version rows');
+    });
+
     it('should detect stale_pending for records stuck in progress', () => {
       const parents: ScanSourceParent[] = [];
       const children: ScanSourceChild[] = [
-        { 
-          parentId: '1', 
-          userId: 'U1', 
-          version: 1, 
-          status: 'pending', 
+        {
+          parentId: '1',
+          userId: 'U1',
+          version: 1,
+          status: 'pending',
           recordedAt: '2026-03-30T09:40:00Z' // 20分前 (閾値10分)
         }
       ];
 
       const accessories = [{ type: 'transport' as const, userId: 'U1' }];
       const results = scanDailyRecordIntegrity(parents, children, accessories, now);
-      
+
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('stale_pending');
       expect(results[0].severity).toBe('warning');
@@ -108,7 +124,7 @@ describe('dailyIntegrityChecker', () => {
 
       const accessories = [{ type: 'transport' as const, userId: 'U1' }];
       const results = scanDailyRecordIntegrity(parents, children, accessories, now);
-      
+
       expect(results).toHaveLength(0);
     });
   });
@@ -125,7 +141,7 @@ describe('dailyIntegrityChecker', () => {
       };
 
       const item = mapIntegrityToExceptionItem(exc);
-      
+
       expect(item.category).toBe('data-os-alert');
       expect(item.severity).toBe('high');
       expect(item.title).toContain('整合性異常');
