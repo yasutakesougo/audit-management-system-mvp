@@ -238,6 +238,14 @@ export class DailyRecordDataAccess {
         });
     }
 
+    /**
+     * Parent lookup for save/load.
+     *
+     * Fail-closed contract:
+     * - network / thrown transport errors → throw (do NOT treat as missing)
+     * - HTTP non-OK (403/500/400 schema missing field, etc.) → throw
+     * - HTTP 200 + value=[] → null (only this permits new Parent create on save)
+     */
     public async findItemByDate(date: string, listPath: string, signal?: AbortSignal): Promise<RawSharePointItem | null> {
         const queryParams = new URLSearchParams();
         queryParams.set('$filter', `${DAILY_RECORD_FIELDS.title} eq '${date}'`);
@@ -250,14 +258,16 @@ export class DailyRecordDataAccess {
             DAILY_RECORD_FIELDS.created, DAILY_RECORD_FIELDS.modified
         ].join(','));
 
-        try {
-            const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`, { signal });
-            const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
-            const items = payload.value ?? [];
-            return items.length > 0 ? items[0] : null;
-        } catch (error) {
-            console.warn('[DailyRecordDataAccess] findItemByDate failed', { date, error });
-            return null;
+        const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`, { signal });
+        if (response.ok === false) {
+            throw new Error(
+                `[DAILY-RECORD-PERSISTENCE-V1] Parent lookup failed with HTTP ${response.status}. ` +
+                `Aborting; do not create a new parent from an uncertain lookup.`,
+            );
         }
+
+        const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
+        const items = payload.value ?? [];
+        return items.length > 0 ? items[0] : null;
     }
 }

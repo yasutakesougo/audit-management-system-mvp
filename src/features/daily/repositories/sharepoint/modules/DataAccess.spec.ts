@@ -380,4 +380,50 @@ describe('DailyRecordDataAccess DAILY-RECORD-PERSISTENCE-V1', () => {
       ),
     ).rejects.toThrow(/LatestCommitId is missing/);
   });
+
+  describe('findItemByDate fail-closed lookup', () => {
+    it('throws on network failure (does not return null)', async () => {
+      const spFetch = vi.fn<SpFetchFn>(async () => {
+        throw new Error('network down');
+      });
+      const data = new DailyRecordDataAccess(spFetch);
+      await expect(
+        data.findItemByDate('2026-08-27', "lists/getbytitle('SupportRecord_Daily')"),
+      ).rejects.toThrow(/network down/);
+    });
+
+    it('throws on HTTP 403/500 (uncertain lookup must not become create)', async () => {
+      for (const status of [403, 500]) {
+        const spFetch = vi.fn<SpFetchFn>(async () =>
+          new Response('error', { status, headers: { 'Content-Type': 'text/plain' } }),
+        );
+        const data = new DailyRecordDataAccess(spFetch);
+        await expect(
+          data.findItemByDate('2026-08-27', "lists/getbytitle('SupportRecord_Daily')"),
+        ).rejects.toThrow(new RegExp(`Parent lookup failed with HTTP ${status}`));
+      }
+    });
+
+    it('throws when LatestCommitId select fails as schema-missing HTTP 400', async () => {
+      const spFetch = vi.fn<SpFetchFn>(async (url) => {
+        expect(String(url)).toContain('LatestCommitId');
+        return new Response("The field 'LatestCommitId' does not exist.", {
+          status: 400,
+          headers: { 'Content-Type': 'text/plain' },
+        });
+      });
+      const data = new DailyRecordDataAccess(spFetch);
+      await expect(
+        data.findItemByDate('2026-08-27', "lists/getbytitle('SupportRecord_Daily')"),
+      ).rejects.toThrow(/Parent lookup failed with HTTP 400/);
+    });
+
+    it('returns null only for HTTP 200 + value=[] (new parent create gate)', async () => {
+      const spFetch = vi.fn<SpFetchFn>(async () => jsonResponse({ value: [] }));
+      const data = new DailyRecordDataAccess(spFetch);
+      await expect(
+        data.findItemByDate('2026-08-27', "lists/getbytitle('SupportRecord_Daily')"),
+      ).resolves.toBeNull();
+    });
+  });
 });

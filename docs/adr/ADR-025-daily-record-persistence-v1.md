@@ -71,16 +71,23 @@ Never PASS by empty fallback
 
 保存手順:
 
-1. 親の `LatestVersion`（未設定は 0）を読む
-2. `nextVersion = LatestVersion + 1` を決める
-3. 保存開始ごとに一意の `CommitId` を生成する
-4. `DailyRecordRows` に `Version = nextVersion` かつ `CommitId = current CommitId` の子行を全件追加する（DELETE しない）
-5. 全子行 POST 成功後だけ、親を IF-MATCH 付きで更新する
-6. 親へ `LatestVersion = nextVersion` と `LatestCommitId = CommitId` を同時 commit する
-7. 親 commit 失敗時も child を DELETE しない
-8. losing / failed CommitId rows は ghost として残してよいが current にはしない
+1. 親を日付で lookup する（`Id` / `LatestVersion` / `LatestCommitId` / ETag）
+2. lookup が不確実な場合は save を abort し、Parent/Child を一切書かない  
+   - network failure → abort（Parent POST=0, Child POST=0）  
+   - HTTP 403/500 → abort（mutation なし）  
+   - `LatestCommitId` 欠落相当の lookup failure（例: $select HTTP 400）→ abort（新 Parent を作らない）  
+   - HTTP 200 + `value=[]` のときだけ「親なし」とみなし、新 Parent 作成を許可する
+3. 既存親がある場合: `nextVersion = LatestVersion + 1`
+4. 保存開始ごとに一意の `CommitId` を生成する
+5. `DailyRecordRows` に `Version = nextVersion` かつ `CommitId = current CommitId` の子行を全件追加する（DELETE しない）
+6. 全子行 POST 成功後だけ、親を IF-MATCH 付きで更新する
+7. 親へ `LatestVersion = nextVersion` と `LatestCommitId = CommitId` を同時 commit する
+8. 親 commit 失敗時も child を DELETE しない
+9. losing / failed CommitId rows は ghost として残してよいが current にはしない
 
 途中失敗時は親の `LatestVersion` / `LatestCommitId` を動かさない。画面は旧 current identity を読む。
+
+**Parent lookup fail-closed:** lookup 失敗を「親なし」と誤認して新規 Parent を作成してはならない。新規作成は HTTP 200 + 空結果のときだけ許可する。
 
 ## 読込規則
 
