@@ -4,9 +4,9 @@ import { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 /**
  * 日次記録の整合性例外の種類
  */
-export type DailyIntegrityExceptionType = 
+export type DailyIntegrityExceptionType =
   | 'orphan_parent'    // 親があるが対応するバージョンの子が0件
-  | 'version_mismatch' // 親のバージョンと一致しない子が混在（不整合）
+  | 'version_mismatch' // 親Versionとの不整合、または現行Version内の重複行
   | 'stale_pending'    // 書き込み中のまま一定時間経過
   | 'missing_accessory' // 必要な付随データ（送迎設定等）が欠落
   | 'count_mismatch'   // 親の userCount と現行 Version の子レコード数が不一致
@@ -49,7 +49,7 @@ export interface ScanSourceAccessory {
 }
 
 /**
- * 日次記録の不整合をスキャンする Pure Function
+ * 日次記録の整合性をスキャンする Pure Function
  */
 export function scanDailyRecordIntegrity(
   parents: ScanSourceParent[],
@@ -65,7 +65,7 @@ export function scanDailyRecordIntegrity(
     const parentChildren = children.filter(c => c.parentId === parent.id);
     const latestVersionChildren = parentChildren.filter(c => c.version === parent.latestVersion);
 
-    // orphan_parent: 最新バージョンとしてマークされているが、子が1件も存在しない（保存が親更新直前で止まった可能性）
+    // orphan_parent: 最新バージョンとしてマークされているが、子が1件も存在しない
     if (parent.latestVersion > 0 && latestVersionChildren.length === 0) {
       exceptions.push({
         type: 'orphan_parent',
@@ -77,7 +77,7 @@ export function scanDailyRecordIntegrity(
       });
     }
 
-    // version_mismatch: 親の LatestVersion を超えるバージョンを持つ子が存在する（ゴーストライト）
+    // version_mismatch: 親の LatestVersion を超えるバージョンを持つ子が存在する（未コミットのゴーストライト）
     const ghostChildren = parentChildren.filter(c => c.version > parent.latestVersion);
     if (ghostChildren.length > 0) {
       exceptions.push({
@@ -88,6 +88,33 @@ export function scanDailyRecordIntegrity(
         severity: 'error',
         detectedAt: now.toISOString(),
       });
+    }
+
+    // Concurrent saves can both choose the same nextVersion. If both append rows for the
+    // same user and one parent pointer commit wins, the duplicated rows are still at the
+    // current version and therefore are not caught by "child.version > LatestVersion".
+    // Detect duplicate identity inside the committed version explicitly.
+    if (parent.latestVersion > 0 && latestVersionChildren.length > 0) {
+      const currentIdentityCounts = new Map<string, number>();
+      latestVersionChildren.forEach(child => {
+        const identity = `${parent.id}|${parent.latestVersion}|${child.userId}`;
+        currentIdentityCounts.set(identity, (currentIdentityCounts.get(identity) ?? 0) + 1);
+      });
+      const duplicateUserIds = latestVersionChildren
+        .map(child => child.userId)
+        .filter((userId, index, all) => all.indexOf(userId) === index)
+        .filter(userId => (currentIdentityCounts.get(`${parent.id}|${parent.latestVersion}|${userId}`) ?? 0) > 1);
+
+      if (duplicateUserIds.length > 0) {
+        exceptions.push({
+          type: 'version_mismatch',
+          date: parent.date,
+          parentId: parent.id,
+          details: `Duplicate current-version rows found for v${parent.latestVersion}: ${duplicateUserIds.join(', ')}. Concurrent saves may have selected the same nextVersion.`,
+          severity: 'error',
+          detectedAt: now.toISOString(),
+        });
+      }
     }
 
     const currentChildren = parent.latestVersion > 0
@@ -127,7 +154,7 @@ export function scanDailyRecordIntegrity(
   // 4. missing_accessory: 子レコード（利用者行）があるが、必要な付随データが存在しない
   // 現在は transport (UserTransport_Settings) のみを対象とする
   const transportUserIds = new Set(accessories.filter(a => a.type === 'transport').map(a => a.userId));
-  
+
   children.forEach(child => {
     // 削除済みや無効な ID はスキップ（親が見つからない場合は orphan 側で処理される可能性があるが、ここでは子起点）
     const parent = parents.find(p => p.id === child.parentId);
