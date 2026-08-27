@@ -285,7 +285,102 @@ integration workflowのartifact対象は`test-results`と`playwright-report`で�
 
 作業後はstorageState削除、クリップボード消去、Token画面終了、Secret名と`updatedAt`の確認、`git status --short`確認を行います。
 
-## 7. Secret値を含まない作業記録
+## 7. Cloudflare Worker rollback準備
+
+対象Workerは`audit-management-system-mvp`、対象公開先は`workers.dev`配下のproductionです。Gate 2の確認はCloudflare Dashboardを正本とし、本番用Write Tokenをローカルへ注入しません。
+
+### 7.1 現在Deploymentと直前安定Versionを確認する
+
+Cloudflare Dashboardで次を開きます。
+
+```text
+Workers & Pages
+→ audit-management-system-mvp
+→ Deployments
+```
+
+Active deploymentの表示から、次を秘密値なしで作業記録へ転記します。
+
+```text
+現在Deployment ID:
+現在Version ID:
+現在Version作成日時:
+現在トラフィック割合:
+直前安定Version ID:
+直前安定Version作成日時:
+段階的Deployment: なし / あり
+```
+
+DashboardにDeployment IDまたはISO形式の作成日時が表示されない場合は、`未表示`と記録し、Version IDや相対表示から推測しません。現在Versionが100%の単一Versionとして表示される場合は、段階的Deploymentを`なし`とします。
+
+補助手段として、別途承認されたread-only認証がある場合だけ次を実行できます。これはGate 2の必須操作ではなく、本番用Write Tokenをローカルへ取り出して実行してはいけません。
+
+```bash
+npx wrangler versions list \
+  --name audit-management-system-mvp \
+  --json
+
+npx wrangler deployments list \
+  --name audit-management-system-mvp \
+  --json
+```
+
+### 7.2 rollback対象を二重確認する
+
+実行前に、次の2箇所へ同じVersion IDを入力して一致を確認します。
+
+```text
+Cloudflare Dashboardの対象Version:
+作業記録・実行コマンドのTARGET_VERSION_ID:
+```
+
+次のいずれかに該当する場合は停止します。
+
+- Version IDが一致しない、または対象Versionが特定できない
+- Active deploymentのtraffic split状態が不明
+- 対象Versionが保存済みVersion履歴から消えている
+- Version間でKV、R2、Queue、D1、Durable Objects等のbinding/resource変更が確認される
+- rollback理由、判断者、実行者、事後確認者を記録できない
+
+### 7.3 rollbackコマンドと成功判定
+
+実際のrollbackはこのRunbook確認では実施しません。緊急時に実行するコマンドは、対象Version IDを明示して次の形式に固定します。
+
+```bash
+TARGET_VERSION_ID='<Cloudflareで再確認したVersion ID>'
+ROLLBACK_REASON='<理由コードまたはIncident ID>'
+
+npx wrangler rollback "$TARGET_VERSION_ID" \
+  --name audit-management-system-mvp \
+  --message "rollback to ${TARGET_VERSION_ID}; reason=${ROLLBACK_REASON}"
+```
+
+rollback後の成功判定は、次の全項目です。
+
+- DashboardのActive deploymentが対象Versionを100%で示す
+- `https://audit-management-system-mvp.momosantanuki.workers.dev/kiosk` がHTTP 200を返す
+- 未認証入口のサインイン要求が表示される
+- Console error、page error、request failureが0である
+- Cloudflareのerror rateが増加していない
+
+rollback判断者、実行者、事後確認者は、単独開発方針に従いすべてリポジトリ管理者とします。実行日時、理由、対象Version ID、確認結果をSecret値なしで記録します。
+
+### 7.4 今回のGate 2基準値
+
+```text
+現在Version: 0872ee12
+現在トラフィック: 100%
+直前安定Version: 086af597
+Dashboard表示: 現在34日前、直前47日前
+Deployment ID: 未表示
+ISO形式の作成日時: 未表示
+段階的Deployment: なし
+実rollback: 未実施
+```
+
+参照: [Cloudflare Workers Rollbacks](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)、[Cloudflare Workers Versions & Deployments](https://developers.cloudflare.com/workers/versions-and-deployments/)
+
+## 8. Secret値を含まない作業記録
 
 ```text
 実施日時（JST）:
@@ -309,7 +404,7 @@ storageState.json削除: yes / no
 git status --short clean: yes / no
 ```
 
-## 8. 最終チェック
+## 9. 最終チェック
 
 - [ ] `PW_STORAGE_STATE_B64`の更新時刻を確認
 - [ ] `storageState.json`を削除
@@ -325,6 +420,11 @@ git status --short clean: yes / no
 - [ ] 名前と`updatedAt`だけを確認
 - [ ] `git status --short`がclean
 - [ ] `deploy-cloudflare-worker`を起動していない
+- [ ] 現在Version IDと直前安定Version IDをDashboardで確認
+- [ ] rollback対象Version IDを二重確認
+- [ ] rollback成功判定と停止条件を確認
+- [ ] rollback判断者・実行者・事後確認者を記録
+- [ ] 実rollbackを実施していない
 
 ## 参考資料
 
