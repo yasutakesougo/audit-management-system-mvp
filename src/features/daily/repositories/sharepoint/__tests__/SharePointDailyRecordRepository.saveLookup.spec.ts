@@ -9,6 +9,21 @@ const jsonResponse = (value: unknown, status = 200): Response =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const jsonResponseWithEtag = (value: unknown, etag: string, status = 200): Response =>
+  new Response(JSON.stringify(value), {
+    status,
+    headers: { 'Content-Type': 'application/json', ETag: etag },
+  });
+
+const isParentCommitSnapshotRead = (url: string, init?: RequestInit): boolean => {
+  const headers = init?.headers as Record<string, string> | undefined;
+  if (headers?.['X-HTTP-Method']) return false;
+  if (init?.method === 'POST') return false;
+  return url.includes('SupportRecord_Daily') &&
+    url.includes('items(') &&
+    (url.includes('$select') || url.includes('%24select'));
+};
+
 const sampleInput = (): SaveDailyRecordInput => ({
   date: '2026-08-27',
   reporter: { name: 'Staff', role: 'Staff' },
@@ -145,6 +160,9 @@ describe('SharePointDailyRecordRepository save parent-lookup abort', () => {
       }
       if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
         return jsonResponse({ Id: 90 });
+      }
+      if (isParentCommitSnapshotRead(target, init)) {
+        return jsonResponseWithEtag({ Id: 90, LatestVersion: 0 }, '"etag-90"');
       }
       if (target.includes('DailyRecordRows') && target.includes('/items') && init?.method === 'POST' && !httpMethod) {
         return jsonResponse({ Id: 901 });

@@ -9,6 +9,21 @@ const jsonResponse = (value: unknown): Response =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const jsonResponseWithEtag = (value: unknown, etag: string): Response =>
+  new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', ETag: etag },
+  });
+
+const isParentCommitSnapshotRead = (path: string, init?: RequestInit): boolean => {
+  const headers = init?.headers as Record<string, string> | undefined;
+  if (headers?.['X-HTTP-Method']) return false;
+  if (init?.method === 'POST') return false;
+  return path.includes('SupportRecord_Daily') &&
+    path.includes('items(') &&
+    (path.includes('$select') || path.includes('%24select'));
+};
+
 describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_E2E', '0');
@@ -74,8 +89,11 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
         capturedBody = JSON.parse(init.body as string);
         return jsonResponse({ d: { Id: 100 } });
       }
-      if (path.includes('items(')) {
-        return jsonResponse({ d: { Id: 100 } });
+      if (isParentCommitSnapshotRead(path, init)) {
+        return jsonResponseWithEtag({ Id: 100, LatestVersion: 0 }, '"etag-100"');
+      }
+      if (path.includes('items(100)') && init?.method === 'POST') {
+        return new Response(null, { status: 204 });
       }
       return jsonResponse({ value: [] });
     });
@@ -146,6 +164,9 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
       if (path.includes("lists/getbytitle('SupportRecord_Daily')/items") && init?.method === 'POST' && !path.includes('items(')) {
         parentCreated = true;
         return jsonResponse({ Id: 9001 });
+      }
+      if (isParentCommitSnapshotRead(path, init)) {
+        return jsonResponseWithEtag({ Id: 9001, LatestVersion: 0 }, '"etag-9001"');
       }
       if (path.includes("lists/getbytitle('SupportRecord_Daily')/items(") && init?.method === 'POST') {
         return new Response(null, { status: 204 });

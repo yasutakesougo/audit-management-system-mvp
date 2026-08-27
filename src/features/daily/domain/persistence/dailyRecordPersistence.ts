@@ -4,6 +4,7 @@
  * Canonical write contract for SupportRecord_Daily + DailyRecordRows.
  * @see docs/adr/ADR-025-daily-record-persistence-v1.md
  */
+// contract:allow-interface — persistence contract types (ports/snapshots), not SharePoint data shapes (SSOT = schema.ts)
 
 export const DAILY_RECORD_PERSISTENCE_V1 = {
   id: 'DAILY-RECORD-PERSISTENCE-V1',
