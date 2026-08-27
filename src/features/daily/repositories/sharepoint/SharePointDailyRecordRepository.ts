@@ -7,9 +7,9 @@ import type {
     DailyRecordRepositoryMutationParams,
     SaveDailyRecordInput,
 } from '../../domain/legacy/DailyRecordRepository';
-import { 
+import {
     getListTitle,
-    readNonEmptyEnv 
+    readNonEmptyEnv
 } from './constants';
 import { buildListPath } from './utils/Helpers';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
@@ -33,7 +33,7 @@ type SharePointDailyRecordRepositoryOptions = {
 export class SharePointDailyRecordRepository implements DailyRecordRepository {
   private readonly spFetch: SpFetchFn;
   private readonly listTitle: string;
-  
+
   private readonly schema: DailyRecordSchemaResolver;
   private readonly data: DailyRecordDataAccess;
   private readonly saver: DailyRecordSaver;
@@ -50,7 +50,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     this.listTitle = options.listTitle ?? getListTitle();
 
     this.schema = new DailyRecordSchemaResolver(
-      this.spFetch, 
+      this.spFetch,
       this.listTitle,
       options.getListFieldInternalNames
     );
@@ -95,7 +95,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         if (!rowAggregateSource) return [];
         return this.rowAggregate.list(rowAggregateSource, params);
     }
-    return this.data.list(params, listPath);
+
+    const rowsListPath = buildListPath(this.getRowsListTitle());
+    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
+    return this.data.list(params, listPath, this.getRowsListTitle(), resolvedRowsFields);
   }
 
   async approve(
