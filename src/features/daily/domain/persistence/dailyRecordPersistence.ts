@@ -22,6 +22,9 @@ export const DAILY_RECORD_PERSISTENCE_V1 = {
   integrityFailure: 'HOLD_UNKNOWN',
   currentIdentity: 'ParentID + LatestVersion + LatestCommitId',
   childCommitIdentity: 'ParentID + Version + CommitId',
+  /** Exactly one SupportRecord_Daily row per RecordDate/Title. */
+  parentUniqueness: 'ONE_PARENT_PER_DATE',
+  parentCreateRace: 'POST_CREATE_REVERIFY_FAIL_CLOSED',
 } as const;
 
 export function nextDailyRecordVersion(currentVersion: number | undefined | null): number {
@@ -105,4 +108,45 @@ export function isAbortLikeError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const name = 'name' in error ? String(error.name) : '';
   return name === 'AbortError' || name === 'TimeoutError';
+}
+
+export type ParentDateIdentity = {
+  id: number;
+};
+
+/**
+ * Parent uniqueness: at most one SupportRecord_Daily row per date Title.
+ * 0 → create gate; 1 → unique existing; >1 → create-race / integrity failure.
+ */
+export function resolveUniqueParentForDate<T extends ParentDateIdentity>(
+  date: string,
+  parents: readonly T[],
+): T | null {
+  if (parents.length === 0) return null;
+  if (parents.length === 1) return parents[0];
+  const ids = parents.map((parent) => parent.id).join(', ');
+  throw new Error(
+    `[DAILY-RECORD-PERSISTENCE-V1] Parent uniqueness violated for date ${date}: ` +
+    `found ${parents.length} parents (Ids: ${ids}). Create-race or duplicate Title. Fail closed.`,
+  );
+}
+
+/**
+ * After creating a parent, re-verify that the created Id is the sole parent for the date.
+ * If a concurrent create also succeeded, abort before writing any children.
+ */
+export function assertCreatedParentIsSoleOwner(
+  date: string,
+  createdParentId: number,
+  parents: readonly ParentDateIdentity[],
+): void {
+  if (parents.length === 1 && parents[0].id === createdParentId) {
+    return;
+  }
+  const ids = parents.map((parent) => parent.id).join(', ');
+  throw new Error(
+    `[DAILY-RECORD-PERSISTENCE-V1] Parent create-race for date ${date}: ` +
+    `created Id ${createdParentId} is not the sole parent (found Ids: ${ids || 'none'}). ` +
+    `Aborting before child writes; duplicate parents are not deleted.`,
+  );
 }

@@ -176,6 +176,10 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
 
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const httpMethod = (init?.headers as Record<string, string> | undefined)?.['X-HTTP-Method'];
+      if (url.includes('items?') && (String(url).includes('%24filter') || String(url).includes('$filter') || String(url).includes('Title'))) {
+        // Post-create uniqueness probe: sole owner.
+        return jsonResponse({ value: [{ Id: 90 }] });
+      }
       if (url.endsWith('/items') && init?.method === 'POST' && url.includes('SupportRecord_Daily')) {
         creates.push(JSON.parse(String(init.body)));
         return jsonResponse({ Id: 90 });
@@ -207,6 +211,49 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(childBodies[0].CommitId).toBe('commit-fixed');
     expect(merges[0].LatestVersion).toBe(1);
     expect(merges[0].LatestCommitId).toBe('commit-fixed');
+  });
+
+  it('AC-17: create-race aborts before child POSTs and does not DELETE losing parent', async () => {
+    let childPosts = 0;
+    let deleteCalls = 0;
+    const createdIds: number[] = [];
+
+    const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
+      const target = String(url);
+      const headers = init?.headers as Record<string, string> | undefined;
+      const httpMethod = headers?.['X-HTTP-Method'];
+      if (httpMethod === 'DELETE') deleteCalls += 1;
+
+      if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
+        createdIds.push(11);
+        return jsonResponse({ Id: 11 });
+      }
+      if (target.includes('/items?') && target.includes('SupportRecord_Daily')) {
+        // Concurrent create also landed: Ids 10 and 11.
+        return jsonResponse({ value: [{ Id: 10 }, { Id: 11 }] });
+      }
+      if (target.includes('DailyRecordRows') && init?.method === 'POST') {
+        childPosts += 1;
+        return jsonResponse({ Id: 5000 + childPosts });
+      }
+      return jsonResponse({ value: [] });
+    });
+
+    const saver = new DailyRecordSaver(spFetch);
+    await expect(
+      saver.save(
+        sampleInput(['U001']),
+        "lists/getbytitle('SupportRecord_Daily')",
+        "lists/getbytitle('DailyRecordRows')",
+        null,
+        resolvedRowsFields,
+        resolvedParentFields,
+      ),
+    ).rejects.toThrow(/Parent create-race/);
+
+    expect(createdIds).toEqual([11]);
+    expect(childPosts).toBe(0);
+    expect(deleteCalls).toBe(0);
   });
 
   it('fails parent commit on ETag conflict without deleting losing CommitId children (AC-11, AC-12)', async () => {

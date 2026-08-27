@@ -425,5 +425,20 @@ describe('DailyRecordDataAccess DAILY-RECORD-PERSISTENCE-V1', () => {
         data.findItemByDate('2026-08-27', "lists/getbytitle('SupportRecord_Daily')"),
       ).resolves.toBeNull();
     });
+
+    it('AC-17: throws when multiple parents exist for the same date', async () => {
+      const spFetch = vi.fn<SpFetchFn>(async () =>
+        jsonResponse({
+          value: [
+            parent(10, '2026-08-27', 0, null),
+            parent(11, '2026-08-27', 0, null),
+          ],
+        }),
+      );
+      const data = new DailyRecordDataAccess(spFetch);
+      await expect(
+        data.findItemByDate('2026-08-27', "lists/getbytitle('SupportRecord_Daily')"),
+      ).rejects.toThrow(/Parent uniqueness violated/);
+    });
   });
 });

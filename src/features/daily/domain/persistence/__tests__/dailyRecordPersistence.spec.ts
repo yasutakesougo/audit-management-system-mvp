@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAILY_RECORD_PERSISTENCE_V1,
+  assertCreatedParentIsSoleOwner,
   buildCurrentVersionChildFilter,
   createDailyRecordCommitId,
   nextDailyRecordVersion,
   normalizeDailyRecordCommitId,
   requireCommittedCurrentIdentity,
+  resolveUniqueParentForDate,
 } from '../dailyRecordPersistence';
 
 describe('DAILY-RECORD-PERSISTENCE-V1', () => {
@@ -61,5 +63,17 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
       .toThrow(/LatestCommitId is missing/);
     expect(normalizeDailyRecordCommitId('  ')).toBeNull();
     expect(normalizeDailyRecordCommitId('retry-B')).toBe('retry-B');
+  });
+
+  it('enforces one parent per date and post-create sole ownership (AC-17)', () => {
+    expect(DAILY_RECORD_PERSISTENCE_V1.parentUniqueness).toBe('ONE_PARENT_PER_DATE');
+    expect(DAILY_RECORD_PERSISTENCE_V1.parentCreateRace).toBe('POST_CREATE_REVERIFY_FAIL_CLOSED');
+    expect(resolveUniqueParentForDate('2026-08-27', [])).toBeNull();
+    expect(resolveUniqueParentForDate('2026-08-27', [{ id: 10 }])?.id).toBe(10);
+    expect(() => resolveUniqueParentForDate('2026-08-27', [{ id: 10 }, { id: 11 }]))
+      .toThrow(/Parent uniqueness violated/);
+    expect(() => assertCreatedParentIsSoleOwner('2026-08-27', 11, [{ id: 10 }, { id: 11 }]))
+      .toThrow(/Parent create-race/);
+    expect(() => assertCreatedParentIsSoleOwner('2026-08-27', 10, [{ id: 10 }])).not.toThrow();
   });
 });

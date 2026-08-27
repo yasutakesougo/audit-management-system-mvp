@@ -17,6 +17,7 @@ import {
     buildCurrentVersionChildFilter,
     normalizeDailyRecordCommitId,
     requireCommittedCurrentIdentity,
+    resolveUniqueParentForDate,
 } from '@/features/daily/domain/persistence/dailyRecordPersistence';
 
 const PARENT_FILTER_CHUNK_SIZE = 20;
@@ -165,6 +166,7 @@ export class DailyRecordDataAccess {
 
         const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
         const parentItems = payload.value ?? [];
+        this.assertNoDuplicateParentDates(parentItems);
         const parsed = parentItems
             .map((item) => ({ item, record: parseSpItem(item) }))
             .filter((entry): entry is { item: RawSharePointItem; record: DailyRecordItem } => Boolean(entry.record));
@@ -238,18 +240,32 @@ export class DailyRecordDataAccess {
         });
     }
 
+    private assertNoDuplicateParentDates(items: RawSharePointItem[]): void {
+        const idsByDate = new Map<string, number[]>();
+        items.forEach((item) => {
+            const date = String(item.Title ?? '').trim();
+            if (!date) return;
+            const ids = idsByDate.get(date) ?? [];
+            ids.push(item.Id);
+            idsByDate.set(date, ids);
+        });
+        for (const [date, ids] of idsByDate) {
+            resolveUniqueParentForDate(date, ids.map((id) => ({ id })));
+        }
+    }
+
     /**
-     * Parent lookup for save/load.
-     *
-     * Fail-closed contract:
-     * - network / thrown transport errors → throw (do NOT treat as missing)
-     * - HTTP non-OK (403/500/400 schema missing field, etc.) → throw
-     * - HTTP 200 + value=[] → null (only this permits new Parent create on save)
+     * List all parents for a date Title. Fail-closed on transport/HTTP errors.
+     * Callers must enforce uniqueness via resolveUniqueParentForDate.
      */
-    public async findItemByDate(date: string, listPath: string, signal?: AbortSignal): Promise<RawSharePointItem | null> {
+    public async listParentsByDate(
+        date: string,
+        listPath: string,
+        signal?: AbortSignal,
+    ): Promise<RawSharePointItem[]> {
         const queryParams = new URLSearchParams();
         queryParams.set('$filter', `${DAILY_RECORD_FIELDS.title} eq '${date}'`);
-        queryParams.set('$top', '1');
+        queryParams.set('$orderby', 'Id asc');
         queryParams.set('$select', [
             'Id', DAILY_RECORD_FIELDS.title, DAILY_RECORD_FIELDS.recordDate,
             DAILY_RECORD_FIELDS.reporterName, DAILY_RECORD_FIELDS.reporterRole,
@@ -267,7 +283,25 @@ export class DailyRecordDataAccess {
         }
 
         const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
-        const items = payload.value ?? [];
-        return items.length > 0 ? items[0] : null;
+        return payload.value ?? [];
+    }
+
+    /**
+     * Parent lookup for save/load.
+     *
+     * Fail-closed contract:
+     * - network / thrown transport errors → throw (do NOT treat as missing)
+     * - HTTP non-OK (403/500/400 schema missing field, etc.) → throw
+     * - HTTP 200 + multiple parents for date → throw (create-race / uniqueness)
+     * - HTTP 200 + value=[] → null (only this permits new Parent create on save)
+     * - HTTP 200 + exactly one parent → that parent
+     */
+    public async findItemByDate(date: string, listPath: string, signal?: AbortSignal): Promise<RawSharePointItem | null> {
+        const items = await this.listParentsByDate(date, listPath, signal);
+        const unique = resolveUniqueParentForDate(
+            date,
+            items.map((item) => ({ id: item.Id, item })),
+        );
+        return unique?.item ?? null;
     }
 }

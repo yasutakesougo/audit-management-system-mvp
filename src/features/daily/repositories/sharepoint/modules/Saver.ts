@@ -2,7 +2,9 @@ import type { SpFetchFn } from '@/lib/sp/spLists';
 import {
     type SharePointItem,
     type ResolvedRowsFields,
-    type ResolvedParentFields
+    type ResolvedParentFields,
+    type SharePointResponse,
+    type RawSharePointItem,
 } from '../constants';
 import { 
     SaveDailyRecordInput, 
@@ -13,6 +15,7 @@ import {
 import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import {
+    assertCreatedParentIsSoleOwner,
     createDailyRecordCommitId,
     nextDailyRecordVersion,
 } from '../../../domain/persistence/dailyRecordPersistence';
@@ -22,6 +25,25 @@ import { toSafeError } from '@/lib/errors';
 
 export class DailyRecordSaver {
     constructor(private readonly spFetch: SpFetchFn) {}
+
+    private async listParentIdsByDate(
+        listPath: string,
+        date: string,
+        titleField: string,
+    ): Promise<Array<{ id: number }>> {
+        const queryParams = new URLSearchParams();
+        queryParams.set('$filter', `${titleField} eq '${date}'`);
+        queryParams.set('$orderby', 'Id asc');
+        queryParams.set('$select', 'Id');
+        const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`);
+        if (response.ok === false) {
+            throw new Error(
+                `[DAILY-RECORD-PERSISTENCE-V1] Post-create parent uniqueness probe failed with HTTP ${response.status}.`,
+            );
+        }
+        const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
+        return (payload.value ?? []).map((item) => ({ id: item.Id }));
+    }
 
     public async save(
         input: SaveDailyRecordInput, 
@@ -70,8 +92,22 @@ export class DailyRecordSaver {
                         [resolvedParentFields.latestVersion]: 0,
                     }),
                 });
+                if (res.ok === false) {
+                    throw new Error(
+                        `[DAILY-RECORD-PERSISTENCE-V1] Parent create failed with HTTP ${res.status}.`,
+                    );
+                }
                 const created = await res.json();
                 parentId = created.d?.Id || created.Id;
+
+                // DRP-PARENT-CREATE-RACE-001: concurrent empty lookups can both POST.
+                // Re-verify sole ownership before any child writes. Do not DELETE losers.
+                const parentsAfterCreate = await this.listParentIdsByDate(
+                    listPath,
+                    input.date,
+                    resolvedParentFields.title,
+                );
+                assertCreatedParentIsSoleOwner(input.date, parentId, parentsAfterCreate);
             }
 
             // DAILY-RECORD-PERSISTENCE-V1: append next version. Never DELETE existing children.

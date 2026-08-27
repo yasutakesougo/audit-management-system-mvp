@@ -138,6 +138,10 @@ describe('SharePointDailyRecordRepository save parent-lookup abort', () => {
       if (isParentLookup(target)) {
         return jsonResponse({ value: [] });
       }
+      if (target.includes('/items?') && target.includes('SupportRecord_Daily') && !isParentLookup(target)) {
+        // Uniqueness probe after create (Title filter without full select still matches parent list).
+        return jsonResponse({ value: [{ Id: 90 }] });
+      }
       if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
         return jsonResponse({ Id: 90 });
       }

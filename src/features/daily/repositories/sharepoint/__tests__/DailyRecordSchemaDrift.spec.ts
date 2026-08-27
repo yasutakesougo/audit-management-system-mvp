@@ -62,10 +62,15 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
           ],
         });
       }
-      if (path.includes('items?$filter=')) {
-        return jsonResponse({ value: [] }); // No existing item -> POST create
+      if (path.includes('/items?') && path.includes('SupportRecord_Daily') && (!init || init.method !== 'POST')) {
+        // Initial empty lookup OR post-create uniqueness probe.
+        // After create Id=100 exists as sole parent.
+        if (capturedBody) {
+          return jsonResponse({ value: [{ Id: 100 }] });
+        }
+        return jsonResponse({ value: [] });
       }
-      if (path.endsWith('/items') && init?.method === 'POST') {
+      if (path.endsWith('/items') && init?.method === 'POST' && path.includes('SupportRecord_Daily')) {
         capturedBody = JSON.parse(init.body as string);
         return jsonResponse({ d: { Id: 100 } });
       }
@@ -97,6 +102,7 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
 
   it('persists recordDate to DailyRecordRows child payload via resolved rows date field', async () => {
     const childBodies: Record<string, unknown>[] = [];
+    let parentCreated = false;
 
     const spFetch = vi.fn(async (path: string, init?: RequestInit) => {
       if (path.includes('lists?$select=Title')) {
@@ -134,16 +140,17 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
           ],
         });
       }
-      if (path.includes("lists/getbytitle('SupportRecord_Daily')/items?$filter=")) {
-        return jsonResponse({ value: [] });
+      if (path.includes("lists/getbytitle('SupportRecord_Daily')/items?") && (!init || init.method !== 'POST')) {
+        return jsonResponse({ value: parentCreated ? [{ Id: 9001 }] : [] });
       }
       if (path.includes("lists/getbytitle('SupportRecord_Daily')/items") && init?.method === 'POST' && !path.includes('items(')) {
+        parentCreated = true;
         return jsonResponse({ Id: 9001 });
       }
       if (path.includes("lists/getbytitle('SupportRecord_Daily')/items(") && init?.method === 'POST') {
         return new Response(null, { status: 204 });
       }
-      if (path.includes("lists/getbytitle('DailyRecordRows')/items?$filter=")) {
+      if (path.includes("lists/getbytitle('DailyRecordRows')/items?") ) {
         return jsonResponse({ value: [] });
       }
       if (path.includes("lists/getbytitle('DailyRecordRows')/items") && init?.method === 'POST') {

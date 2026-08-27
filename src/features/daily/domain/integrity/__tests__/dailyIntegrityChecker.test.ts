@@ -10,6 +10,17 @@ describe('dailyIntegrityChecker', () => {
   const now = new Date('2026-03-30T10:00:00Z');
 
   describe('scanDailyRecordIntegrity', () => {
+    it('AC-17: detects duplicate parents for the same date (create-race residue)', () => {
+      const parents: ScanSourceParent[] = [
+        { id: '10', date: '2026-03-30', latestVersion: 0 },
+        { id: '11', date: '2026-03-30', latestVersion: 0 },
+      ];
+      const results = scanDailyRecordIntegrity(parents, [], [], now);
+      expect(results.map((item) => item.type)).toContain('duplicate_parent');
+      expect(results.find((item) => item.type === 'duplicate_parent')?.details).toContain('10');
+      expect(results.find((item) => item.type === 'duplicate_parent')?.details).toContain('11');
+    });
+
     it('should detect orphan_parent when LatestVersion+LatestCommitId has no matching children', () => {
       const parents: ScanSourceParent[] = [
         { id: '1', date: '2026-03-30', latestVersion: 1, latestCommitId: 'commit-1' }

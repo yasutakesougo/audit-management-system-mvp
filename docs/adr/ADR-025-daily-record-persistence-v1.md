@@ -89,6 +89,8 @@ Never PASS by empty fallback
 
 **Parent lookup fail-closed:** lookup 失敗を「親なし」と誤認して新規 Parent を作成してはならない。新規作成は HTTP 200 + 空結果のときだけ許可する。
 
+**Parent uniqueness / create-race:** 同一日付 Title の `SupportRecord_Daily` は高々1件。新規 Parent POST の直後に必ず再 lookup し、作成した Id が唯一の親であることを確認してから子行を書く。競合で複数親が観測された場合は child を書かずに abort する（losing Parent は DELETE しない）。`load` / `list` も同一日付の親複数を検知したら fail closed する。
+
 ## 読込規則
 
 - `load(date)` と `list(range)` の両方で、`LatestVersion > 0` の親は  
@@ -128,6 +130,7 @@ Version だけでは失敗再試行や同時保存で同じ番号が再利用さ
   - LatestVersion / LatestCommitId が指す current children = 0
 - **AC-15** 通常保存で既存 DailyRecordRows を DELETE しない
 - **AC-16** 既存の Version-only / unversioned データを勝手に migration しない
+- **AC-17** 同一日付 Parent は高々1件。create-race で複数親が観測されたら child を書かず abort。load/list も duplicate parent を fail closed。losing Parent は DELETE しない
 
 ## 対象外
 

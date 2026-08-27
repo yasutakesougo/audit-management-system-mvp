@@ -8,6 +8,7 @@ import { normalizeDailyRecordCommitId } from '../persistence/dailyRecordPersiste
 export type DailyIntegrityExceptionType =
   | 'orphan_parent'    // 親があるが対応するバージョン+CommitIdの子が0件
   | 'version_mismatch' // Version/CommitId 不整合、または現行 identity 内の重複行
+  | 'duplicate_parent' // 同一日付に SupportRecord_Daily が複数（create-race）
   | 'stale_pending'    // 書き込み中のまま一定時間経過
   | 'missing_accessory' // 必要な付随データ（送迎設定等）が欠落
   | 'count_mismatch'   // 親の userCount と現行 identity の子レコード数が不一致
@@ -77,6 +78,25 @@ export function scanDailyRecordIntegrity(
 ): DailyIntegrityException[] {
   const exceptions: DailyIntegrityException[] = [];
   const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10分
+
+  // 0. Parent uniqueness: one SupportRecord_Daily per date (create-race residue)
+  const parentsByDate = new Map<string, ScanSourceParent[]>();
+  parents.forEach((parent) => {
+    const bucket = parentsByDate.get(parent.date) ?? [];
+    bucket.push(parent);
+    parentsByDate.set(parent.date, bucket);
+  });
+  parentsByDate.forEach((sameDateParents, date) => {
+    if (sameDateParents.length <= 1) return;
+    exceptions.push({
+      type: 'duplicate_parent',
+      date,
+      parentId: sameDateParents.map((parent) => parent.id).join(','),
+      details: `Parent uniqueness violated for date ${date}: found ${sameDateParents.length} parents (Ids: ${sameDateParents.map((p) => p.id).join(', ')}). Concurrent create-race residue.`,
+      severity: 'error',
+      detectedAt: now.toISOString(),
+    });
+  });
 
   // 1 & 2: 親を起点としたスキャン
   parents.forEach(parent => {
@@ -253,6 +273,7 @@ export function mapIntegrityToExceptionItem(
   const severityMap: Record<DailyIntegrityExceptionType, 'critical' | 'high' | 'medium' | 'low'> = {
     orphan_parent: 'high',
     version_mismatch: 'medium',
+    duplicate_parent: 'critical',
     stale_pending: 'low',
     missing_accessory: 'medium',
     count_mismatch: 'medium',
@@ -262,6 +283,7 @@ export function mapIntegrityToExceptionItem(
   const titleMap: Record<DailyIntegrityExceptionType, string> = {
     orphan_parent: '[整合性異常] データの保存不全',
     version_mismatch: '[データ不整合] 重複書き込み警告',
+    duplicate_parent: '[整合性異常] 同一日付の親レコード重複',
     stale_pending: '[システム遅延] 保存未完了レコード発生',
     missing_accessory: '[マスタ不整合] 付随データの欠落',
     count_mismatch: '[データ不整合] 利用者数カウント不一致',
