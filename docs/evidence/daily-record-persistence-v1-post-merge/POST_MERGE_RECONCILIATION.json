@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "id": "DAILY-RECORD-PERSISTENCE-V1-POST-MERGE-RECONCILIATION",
+  "generatedAt": "2026-08-27T06:24:00.000Z",
+  "status": "complete",
+  "merge": {
+    "pr": 2549,
+    "mergedAt": "2026-08-27T06:02:08Z",
+    "mergedBy": "yasutakesougo",
+    "mergeCommit": "15111c423c51860feb280c22dae074b282b799ed",
+    "parentMain": "1c8f4505ca27cb538aa722b1117c1eafcdf58880",
+    "parentExactHead": "43655e8693b7dda4e34562abd2dfa041cf8fb9bc",
+    "identityMatch": true,
+    "changedFiles": 26,
+    "additions": 3210,
+    "deletions": 205
+  },
+  "gates": {
+    "codeLandedOnMain": true,
+    "adr025Accepted": true,
+    "localPersistenceUnitTests": { "files": 10, "tests": 106, "failed": 0 },
+    "ciPreflightOnMergeCommit": "success",
+    "ciUnitShards": "success",
+    "qualityGates": "success",
+    "fastLane": "success",
+    "cspGuard": "success",
+    "liveSchemaProvisioning": "OPEN_SEPARATE_GATE",
+    "titleEnforceUniqueValues": "CONTRACT_ONLY",
+    "latestCommitIdColumnProvisioning": "OPEN_SEPARATE_GATE",
+    "commitIdColumnProvisioning": "OPEN_SEPARATE_GATE",
+    "deployAuthorized": false,
+    "sharePointMutation": false,
+    "revertRecommended": false
+  },
+  "mergeCommitChecks": {
+    "commit": "15111c423c51860feb280c22dae074b282b799ed",
+    "failed": 6,
+    "succeeded": 30,
+    "skipped": 2,
+    "failedNames": [
+      "Deep Tests (Chromium) / app-a11y",
+      "Deep Tests (Chromium) / fixture-memory",
+      "Deep Tests (Chromium) / general",
+      "Deep Tests (Chromium) / implementation-hot",
+      "Deep Tests (Chromium) / sp-stub",
+      "Deep Tests (Chromium) / transport-date-check"
+    ]
+  },
+  "e2eDeep": {
+    "preMergeClassification": "E2E-DEEP-FAILURE-RECONCILIATION-V1",
+    "preMergePrRun": "33041195913",
+    "preMergeMainNightly": "33037472202",
+    "postMergeRun": "33044439186",
+    "postMergeUrl": "https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439186",
+    "lanesCausedByPersistenceDiff": 0,
+    "unionFailed": 34,
+    "failureKeysOnlyPostVsPr": [],
+    "failureKeysOnlyPostVsMainNightly": [],
+    "allSpecsDigest": "6b5f6fe8025ace1807a571c11fa704ec9ae612cce1265f5ba15f60d565094163",
+    "junitTestCount": 333,
+    "trueFlakyCount": 0,
+    "bootstrapStatus": "pass",
+    "deepLaneUnionAudit": "success",
+    "postMergeExpectation": "confirmed: same 6-lane failure; not a revert trigger"
+  },
+  "openFollowUps": [
+    "Provision SupportRecord_Daily.LatestVersion + LatestCommitId",
+    "Provision DailyRecordRows.CommitId (Version already in provisioningFields)",
+    "Apply Title EnforceUniqueValues + Indexed on SupportRecord_Daily",
+    "Do not treat E2E Deep red as DAILY-RECORD-PERSISTENCE-V1 regression"
+  ]
+}
