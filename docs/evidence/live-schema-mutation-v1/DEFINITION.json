@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "id": "LIVE-SCHEMA-MUTATION-V1",
+  "phase": "Definition",
+  "generatedAt": "2026-08-27T10:02:17.406740Z",
+  "repositoryBaseline": "a6749c1be237c0e3fac4a762ee941a0ab7b99940",
+  "sourceGate": {
+    "id": "LIVE-SCHEMA-GATE-V1",
+    "gate": "VERIFIED_GAPS",
+    "inventoryPath": "Browser REST",
+    "transport": "GET-ONLY",
+    "evidence": "docs/evidence/live-schema-gate-v1/captures/LIVE_SCHEMA_INVENTORY.json"
+  },
+  "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
+  "objective": "Close DAILY-RECORD-PERSISTENCE-V1 live schema gaps with minimal non-destructive SharePoint field changes. No item rewrite, no backfill, no deploy.",
+  "requiredChanges": [
+    {
+      "id": "SupportRecord_Daily.LatestVersion",
+      "listTitle": "SupportRecord_Daily",
+      "action": "AddField",
+      "internalName": "LatestVersion",
+      "displayName": "LatestVersion",
+      "type": "Number",
+      "indexed": false,
+      "enforceUniqueValues": false,
+      "liveStatusAtDefinition": "MISSING"
+    },
+    {
+      "id": "SupportRecord_Daily.LatestCommitId",
+      "listTitle": "SupportRecord_Daily",
+      "action": "AddField",
+      "internalName": "LatestCommitId",
+      "displayName": "LatestCommitId",
+      "type": "Text",
+      "indexed": false,
+      "enforceUniqueValues": false,
+      "liveStatusAtDefinition": "MISSING"
+    },
+    {
+      "id": "DailyRecordRows.CommitId",
+      "listTitle": "DailyRecordRows",
+      "action": "AddField",
+      "internalName": "CommitId",
+      "displayName": "CommitId",
+      "type": "Text",
+      "indexed": false,
+      "enforceUniqueValues": false,
+      "liveStatusAtDefinition": "MISSING"
+    },
+    {
+      "id": "SupportRecord_Daily.Title.indexedUnique",
+      "listTitle": "SupportRecord_Daily",
+      "action": "SetFieldFlags",
+      "internalName": "Title",
+      "type": "Text",
+      "indexed": true,
+      "enforceUniqueValues": true,
+      "liveStatusAtDefinition": "PRESENT_MISMATCH",
+      "liveEvidence": {
+        "Indexed": false,
+        "EnforceUniqueValues": false
+      },
+      "orderConstraint": "Indexed=true before EnforceUniqueValues=true; only if Title duplicate count is 0"
+    }
+  ],
+  "mandatoryPreflight": [
+    "Confirm SupportRecord_Daily and DailyRecordRows exist (exactly one list each by title)",
+    "Confirm LatestVersion / LatestCommitId / CommitId still absent (or compatible if unexpectedly present)",
+    "Count SupportRecord_Daily Title duplicates (case-sensitive string equality on Title)",
+    "Count SupportRecord_Daily Title null/blank",
+    "Record item counts for both lists",
+    "Capture current field schema snapshot (InternalName, TypeAsString, Indexed, EnforceUniqueValues)",
+    "Store mutation-front rollback evidence (schema snapshot + preflight JSON) under captures/"
+  ],
+  "failClosed": [
+    {
+      "id": "TITLE_DUPLICATES",
+      "when": "Title duplicate groups > 0",
+      "result": "HOLD"
+    },
+    {
+      "id": "SCHEMA_DRIFT",
+      "when": "Live schema diverges from VERIFIED_GAPS baseline in unexpected ways",
+      "result": "HOLD"
+    },
+    {
+      "id": "LIST_AMBIGUITY",
+      "when": "Target list title resolves ambiguously or 0/N matches",
+      "result": "HOLD"
+    },
+    {
+      "id": "PERMISSION_INSUFFICIENT",
+      "when": "Authenticated schema/item read or later apply lacks rights",
+      "result": "HOLD"
+    },
+    {
+      "id": "INCOMPATIBLE_EXISTING_FIELD",
+      "when": "Candidate field exists with incompatible type",
+      "result": "HOLD"
+    }
+  ],
+  "prohibited": [
+    "existing item rewrite",
+    "migration/backfill",
+    "delete of lists/items/fields during this Gate unless separate Human GO for empty-field rollback",
+    "deploy",
+    "persistence runtime activation",
+    "duplicate Title automatic repair",
+    "unrelated schema changes"
+  ],
+  "applyOrderWhenAuthorized": [
+    "1. Re-run preflight (GET/READ-ONLY). Abort on any fail-closed condition.",
+    "2. Add SupportRecord_Daily.LatestVersion (Number).",
+    "3. Add SupportRecord_Daily.LatestCommitId (Text).",
+    "4. Add DailyRecordRows.CommitId (Text).",
+    "5. Set SupportRecord_Daily.Title Indexed=true.",
+    "6. Set SupportRecord_Daily.Title EnforceUniqueValues=true (requires step 5 + zero Title duplicates).",
+    "7. Re-run LIVE-SCHEMA-GATE-V1 inventory classifier; expect VERIFIED_MATCH."
+  ],
+  "authority": {
+    "mutationAuthority": "NOT_YET_AUTHORIZED",
+    "deploy": "NOT_AUTHORIZED",
+    "phase": "Definition",
+    "nextPhases": [
+      "Review",
+      "Human GO",
+      "Apply (only after Human GO)"
+    ],
+    "preflightGate": "HOLD",
+    "applyBlockedBy": [
+      "Mutation Authority NOT_YET_AUTHORIZED",
+      "Preflight HOLD: TITLE_DUPLICATES (8 groups)"
+    ]
+  },
+  "adr": "docs/adr/ADR-025-daily-record-persistence-v1.md",
+  "contracts": {
+    "candidates": "src/sharepoint/fields/dailyFields.ts",
+    "parentUniqueness": "DAILY_RECORD_PARENT_STORAGE_UNIQUENESS",
+    "gateChecks": "scripts/ops/live-schema-gate/classify.mjs"
+  },
+  "preflightExecution": {
+    "status": "EXECUTED",
+    "transport": "GET-ONLY",
+    "path": "Browser REST",
+    "preflightGate": "HOLD",
+    "holds": [
+      {
+        "id": "TITLE_DUPLICATES",
+        "detail": "Title duplicate groups = 8. Automatic repair is prohibited."
+      }
+    ],
+    "lists": {
+      "SupportRecord_Daily": {
+        "found": true,
+        "itemCount": 359
+      },
+      "DailyRecordRows": {
+        "found": true,
+        "itemCount": 3868
+      }
+    },
+    "titleStats": {
+      "duplicateGroupCount": 8,
+      "nullOrBlankTitleCount": 0,
+      "itemRowsRead": 359
+    },
+    "fieldPlans": [
+      {
+        "id": "SupportRecord_Daily.LatestVersion",
+        "liveStatus": "MISSING",
+        "applyEligible": true
+      },
+      {
+        "id": "SupportRecord_Daily.LatestCommitId",
+        "liveStatus": "MISSING",
+        "applyEligible": true
+      },
+      {
+        "id": "DailyRecordRows.CommitId",
+        "liveStatus": "MISSING",
+        "applyEligible": true
+      },
+      {
+        "id": "SupportRecord_Daily.Title.indexedUnique",
+        "liveStatus": "PRESENT_MISMATCH",
+        "applyEligible": true
+      }
+    ],
+    "captures": [
+      "docs/evidence/live-schema-mutation-v1/captures/preflight-browser-dump.json",
+      "docs/evidence/live-schema-mutation-v1/captures/PREFLIGHT.json",
+      "docs/evidence/live-schema-mutation-v1/captures/preflight-title-stats.json"
+    ],
+    "mutationPerformed": false
+  }
+}
