@@ -130,6 +130,7 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
             { InternalName: 'Status' },
             { InternalName: 'Observation' },
             { InternalName: 'Recorded_x0020_At' },
+            { InternalName: 'Version' },
           ],
         });
       }
@@ -186,5 +187,6 @@ describe('DailyRecord Schema Drift & Dynamic Resolution', () => {
     expect(childBodies[0].Date).toContain('2026-05-15');
     expect(childBodies[0].UserID).toBe('I005');
     expect(childBodies[0].RowNo).toBe(1);
+    expect(childBodies[0].Version).toBe(1);
   });
 });

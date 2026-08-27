@@ -60,6 +60,44 @@ describe('dailyIntegrityChecker', () => {
       expect(results[0].severity).toBe('warning');
     });
 
+    it('should detect count_mismatch against current version children only', () => {
+      const parents: ScanSourceParent[] = [
+        { id: '1', date: '2026-03-30', latestVersion: 2, userCount: 1 }
+      ];
+      const children: ScanSourceChild[] = [
+        { parentId: '1', userId: 'U1', version: 1, status: 'completed', recordedAt: '2026-03-30T09:00:00Z' },
+        { parentId: '1', userId: 'U2', version: 1, status: 'completed', recordedAt: '2026-03-30T09:00:00Z' },
+        { parentId: '1', userId: 'U1', version: 2, status: 'completed', recordedAt: '2026-03-30T09:10:00Z' },
+      ];
+
+      const accessories = [
+        { type: 'transport' as const, userId: 'U1' },
+        { type: 'transport' as const, userId: 'U2' },
+      ];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
+
+      expect(results.map((item) => item.type)).toEqual([]);
+    });
+
+    it('should detect count_mismatch when current version count differs from UserCount', () => {
+      const parents: ScanSourceParent[] = [
+        { id: '1', date: '2026-03-30', latestVersion: 2, userCount: 5 }
+      ];
+      const children: ScanSourceChild[] = [
+        { parentId: '1', userId: 'U1', version: 2, status: 'completed', recordedAt: '2026-03-30T09:10:00Z' },
+        { parentId: '1', userId: 'U2', version: 2, status: 'completed', recordedAt: '2026-03-30T09:10:00Z' },
+      ];
+
+      const accessories = [
+        { type: 'transport' as const, userId: 'U1' },
+        { type: 'transport' as const, userId: 'U2' },
+      ];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
+
+      expect(results.map((item) => item.type)).toContain('count_mismatch');
+      expect(results.find((item) => item.type === 'count_mismatch')?.details).toContain('current-version');
+    });
+
     it('should return empty when integrity is healthy', () => {
       const parents: ScanSourceParent[] = [
         { id: '1', date: '2026-03-30', latestVersion: 1 }

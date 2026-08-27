@@ -25,7 +25,7 @@ describe('DAILY_RECORD_CANONICAL_CANDIDATES drift', () => {
   it('標準名がそのまま解決される（drift なし）', () => {
     const available = new Set([
       'Id', 'Title', 'RecordDate', 'ReporterName', 'ReporterRole',
-      'UserRowsJSON', 'UserCount', 'ApprovalStatus', 'ApprovedBy', 'ApprovedAt',
+      'UserRowsJSON', 'UserCount', 'LatestVersion', 'ApprovalStatus', 'ApprovedBy', 'ApprovedAt',
     ]);
     const { resolved, missing, fieldStatus } = resolveInternalNamesDetailed(
       available,

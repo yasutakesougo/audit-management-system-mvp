@@ -9,7 +9,8 @@ export type DailyIntegrityExceptionType =
   | 'version_mismatch' // 親のバージョンと一致しない子が混在（不整合）
   | 'stale_pending'    // 書き込み中のまま一定時間経過
   | 'missing_accessory' // 必要な付随データ（送迎設定等）が欠落
-  | 'count_mismatch';   // 親の userCount と実際の子レコード数が不一致
+  | 'count_mismatch'   // 親の userCount と現行 Version の子レコード数が不一致
+  | 'scan_unknown';    // Scanner 自体が失敗。PASS と区別するための HOLD
 
 /**
  * 日次記録の不整合データ（内部表現）
@@ -88,17 +89,18 @@ export function scanDailyRecordIntegrity(
         detectedAt: now.toISOString(),
       });
     }
-  });
 
-  // count_mismatch: 親が保持している userCount と、実際の子レコード数（ユニークユーザー数）が合わない
-  parents.forEach(parent => {
-    const parentChildren = children.filter(c => c.parentId === parent.id);
-    if (parent.userCount !== undefined && parent.userCount !== parentChildren.length) {
+    const currentChildren = parent.latestVersion > 0
+      ? latestVersionChildren
+      : parentChildren.filter(c => c.version === 0);
+
+    // count_mismatch: 親の userCount と現行 Version の子件数を照合する
+    if (parent.userCount !== undefined && parent.userCount !== currentChildren.length) {
       exceptions.push({
         type: 'count_mismatch',
         date: parent.date,
         parentId: parent.id,
-        details: `Count mismatch: Parent indicates ${parent.userCount} users, but found ${parentChildren.length} row(s).`,
+        details: `Count mismatch: Parent indicates ${parent.userCount} users, but found ${currentChildren.length} current-version row(s).`,
         severity: 'warning',
         detectedAt: now.toISOString(),
       });
@@ -146,6 +148,21 @@ export function scanDailyRecordIntegrity(
   return exceptions;
 }
 
+export function createScanUnknownException(
+  details: string,
+  date = 'unknown',
+  detectedAt: string = new Date().toISOString(),
+): DailyIntegrityException {
+  return {
+    type: 'scan_unknown',
+    date,
+    parentId: 'unknown',
+    details,
+    severity: 'error',
+    detectedAt,
+  };
+}
+
 /**
  * DailyIntegrityException を ExceptionCenter 用の共通モデルへ変換する
  */
@@ -158,6 +175,7 @@ export function mapIntegrityToExceptionItem(
     stale_pending: 'low',
     missing_accessory: 'medium',
     count_mismatch: 'medium',
+    scan_unknown: 'critical',
   };
 
   const titleMap: Record<DailyIntegrityExceptionType, string> = {
@@ -166,6 +184,7 @@ export function mapIntegrityToExceptionItem(
     stale_pending: '[システム遅延] 保存未完了レコード発生',
     missing_accessory: '[マスタ不整合] 付随データの欠落',
     count_mismatch: '[データ不整合] 利用者数カウント不一致',
+    scan_unknown: '[整合性監査] 判定不能（HOLD）',
   };
 
   return {

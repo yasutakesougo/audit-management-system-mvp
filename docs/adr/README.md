@@ -34,6 +34,7 @@
 | [ADR-022](ADR-022-l3-canonical-kiosk-flow.md) | L3 Canonical Kiosk Flow | Accepted | — |
 | [ADR-023](ADR-023-offline-procedure-record-sync.md) | Kiosk Procedure Record Offline Sync Policy | Proposed | — |
 | [ADR-024](ADR-024-modular-monolith-module-boundaries.md) | モジュラーモノリスと業務モジュール境界 | Accepted | 2026-07-10 |
+| [ADR-025](ADR-025-daily-record-persistence-v1.md) | DAILY-RECORD-PERSISTENCE-V1 — 日次記録の Version 追記コミット | Accepted | 2026-08-27 |
 
 ---
 
@@ -76,6 +77,7 @@
 | ADR-001 | アーカイブ戦略 |
 | ADR-014 | SharePoint SSOT Drift Contract（fields/resolver/repository/diagnostics） |
 | ADR-024 | モジュラーモノリス、業務モジュール境界、Ports & Adapters |
+| ADR-025 | 日次記録の Version 追記コミット（DELETE 再作成禁止） |
 
 ---
 

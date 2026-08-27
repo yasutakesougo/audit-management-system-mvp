@@ -120,6 +120,7 @@ export const DAILY_RECORD_CANONICAL_CANDIDATES = {
   reporterRole: ['ReporterRole', 'reporterRole', 'cr013_reporterRole'],
   userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON'],
   userCount: ['UserCount', 'userCount', 'cr013_userCount'],
+  latestVersion: ['LatestVersion', 'latestVersion', 'cr013_latestVersion'],
   approvalStatus: ['ApprovalStatus', 'approvalStatus', 'cr013_approvalStatus'],
   approvedBy: ['ApprovedBy', 'approvedBy', 'cr013_approvedBy'],
   approvedAt: ['ApprovedAt', 'approvedAt', 'cr013_approvedAt'],

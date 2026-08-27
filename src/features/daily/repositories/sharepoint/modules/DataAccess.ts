@@ -13,6 +13,7 @@ import { parseSpItem } from '../utils/Mappers';
 import type { DailyRecordItem, DailyRecordRepositoryListParams } from '@/features/daily/domain/legacy/DailyRecordRepository';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 import { auditLog } from '@/lib/debugLogger';
+import { buildCurrentVersionChildFilter } from '@/features/daily/domain/persistence/dailyRecordPersistence';
 
 export class DailyRecordDataAccess {
     constructor(private readonly spFetch: SpFetchFn) {}
@@ -30,11 +31,14 @@ export class DailyRecordDataAccess {
         if (!record) return null;
 
         try {
-            const latestVersion = (item as unknown as Record<string, number>)[DAILY_RECORD_FIELDS.latestVersion] || 0;
+            const latestVersion = Number(item.LatestVersion ?? 0) || 0;
             const rowsListPath = buildListPath(rowsListTitle);
-            const filter = latestVersion > 0
-                ? `${resolvedRowsFields.parentId} eq ${item.Id} and ${resolvedRowsFields.version} eq ${latestVersion}`
-                : `${resolvedRowsFields.parentId} eq ${item.Id}`;
+            const filter = buildCurrentVersionChildFilter(
+                resolvedRowsFields.parentId,
+                item.Id,
+                resolvedRowsFields.version,
+                latestVersion,
+            );
 
             const res = await this.spFetch(`${rowsListPath}/items?$filter=${encodeURIComponent(filter)}&$select=${resolvedRowsFields.payload}`);
             const json = await res.json();
@@ -89,7 +93,8 @@ export class DailyRecordDataAccess {
         queryParams.set('$select', [
             'Id', DAILY_RECORD_FIELDS.title, DAILY_RECORD_FIELDS.recordDate, 
             DAILY_RECORD_FIELDS.reporterName, DAILY_RECORD_FIELDS.reporterRole, 
-            DAILY_RECORD_FIELDS.userRowsJSON, DAILY_RECORD_FIELDS.userCount, 
+            DAILY_RECORD_FIELDS.userRowsJSON, DAILY_RECORD_FIELDS.userCount,
+            DAILY_RECORD_FIELDS.latestVersion,
             DAILY_RECORD_FIELDS.created, DAILY_RECORD_FIELDS.modified
         ].join(','));
 

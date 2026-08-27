@@ -185,6 +185,7 @@ export class DailyRecordSchemaResolver {
                 reporterRole: DAILY_RECORD_FIELDS.reporterRole,
                 userRowsJSON: DAILY_RECORD_FIELDS.userRowsJSON,
                 userCount: DAILY_RECORD_FIELDS.userCount,
+                latestVersion: DAILY_RECORD_FIELDS.latestVersion,
             };
             return this.resolvedParentFields;
         }
@@ -198,6 +199,7 @@ export class DailyRecordSchemaResolver {
                 reporterRole: DAILY_RECORD_FIELDS.reporterRole,
                 userRowsJSON: DAILY_RECORD_FIELDS.userRowsJSON,
                 userCount: DAILY_RECORD_FIELDS.userCount,
+                latestVersion: DAILY_RECORD_FIELDS.latestVersion,
             };
         }
 
@@ -217,6 +219,7 @@ export class DailyRecordSchemaResolver {
             reporterRole: resolved.reporterRole ?? DAILY_RECORD_FIELDS.reporterRole,
             userRowsJSON: resolved.userRowsJSON ?? DAILY_RECORD_FIELDS.userRowsJSON,
             userCount: resolved.userCount ?? DAILY_RECORD_FIELDS.userCount,
+            latestVersion: resolved.latestVersion ?? DAILY_RECORD_FIELDS.latestVersion,
             approvalStatus: resolved.approvalStatus,
             approvedBy: resolved.approvedBy,
             approvedAt: resolved.approvedAt,

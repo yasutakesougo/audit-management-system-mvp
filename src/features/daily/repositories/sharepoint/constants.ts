@@ -83,6 +83,7 @@ export type ResolvedParentFields = {
     reporterRole: string;
     userRowsJSON: string;
     userCount: string;
+    latestVersion: string;
     approvalStatus?: string;
     approvedBy?: string;
     approvedAt?: string;

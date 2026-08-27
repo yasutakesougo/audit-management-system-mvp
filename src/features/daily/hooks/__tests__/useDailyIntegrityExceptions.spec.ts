@@ -56,4 +56,18 @@ describe('useDailyIntegrityExceptions — referential stability', () => {
     expect(result.current.items).toBe(firstItems);
     expect(firstItems).toEqual([]);
   });
+
+  it('emits HOLD/UNKNOWN instead of empty PASS when scanIntegrity throws', async () => {
+    mockScanIntegrity.mockRejectedValue(new Error('scan exploded'));
+
+    const { result } = renderHook(() =>
+      useDailyIntegrityExceptions('2026-03-31'),
+    );
+
+    await act(async () => {});
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].title).toContain('判定不能');
+    expect(result.current.error?.message).toContain('scan exploded');
+  });
 });

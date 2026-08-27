@@ -17,7 +17,8 @@ import { DailyRecordDataAccess } from './modules/DataAccess';
 import { DailyRecordSaver } from './modules/Saver';
 import { DailyRecordIntegrityScanner } from './modules/IntegrityScanner';
 import { RowAggregateAccess } from './modules/RowAggregateAccess';
-import { DailyIntegrityException } from '../../domain/integrity/dailyIntegrityChecker';
+import { DailyIntegrityException, createScanUnknownException } from '../../domain/integrity/dailyIntegrityChecker';
+import { isAbortLikeError } from '../../domain/persistence/dailyRecordPersistence';
 
 type SharePointDailyRecordRepositoryOptions = {
   listTitle?: string;
@@ -114,11 +115,24 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
   }
 
   async scanIntegrity(dates: string[], signal?: AbortSignal): Promise<DailyIntegrityException[]> {
-    const listPath = await this.schema.resolveListPath();
-    if (!listPath) return [];
-    const rowsListPath = buildListPath(this.getRowsListTitle());
-    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
-    return this.integrity.scan(dates, listPath, this.getRowsListTitle(), resolvedRowsFields, signal);
+    try {
+      const listPath = await this.schema.resolveListPath();
+      if (!listPath) {
+          return [createScanUnknownException(
+              'SupportRecord_Daily list was not resolved. Integrity result is HOLD, not PASS.',
+              dates[0] ?? 'unknown',
+          )];
+      }
+      const rowsListPath = buildListPath(this.getRowsListTitle());
+      const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
+      return this.integrity.scan(dates, listPath, this.getRowsListTitle(), resolvedRowsFields, signal);
+    } catch (error) {
+      if (isAbortLikeError(error)) throw error;
+      return [createScanUnknownException(
+        `Integrity scan failed: ${error instanceof Error ? error.message : String(error)}. Result is HOLD, not PASS.`,
+        dates[0] ?? 'unknown',
+      )];
+    }
   }
 
   async checkListExists(): Promise<boolean> {
