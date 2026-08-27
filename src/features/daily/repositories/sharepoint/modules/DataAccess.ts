@@ -18,6 +18,7 @@ import {
     normalizeDailyRecordCommitId,
     requireCommittedCurrentIdentity,
     resolveUniqueParentForDate,
+    type ParentCommitSnapshotRead,
 } from '@/features/daily/domain/persistence/dailyRecordPersistence';
 
 const PARENT_FILTER_CHUNK_SIZE = 20;
@@ -287,13 +288,14 @@ export class DailyRecordDataAccess {
     }
 
     /**
-     * Read parent ETag once when building the snapshot-bound CAS (not a pre-commit refresh).
+     * Atomic parent pointer+ETag snapshot read for snapshot-bound CAS.
+     * LatestVersion and ETag must come from the same GET — no split list-then-GET.
      */
-    public async readParentSnapshotEtag(
+    public async readParentCommitSnapshot(
         parentId: number,
         listPath: string,
         signal?: AbortSignal,
-    ): Promise<string | null> {
+    ): Promise<ParentCommitSnapshotRead> {
         const queryParams = new URLSearchParams();
         queryParams.set('$select', [
             'Id', DAILY_RECORD_FIELDS.latestVersion, DAILY_RECORD_FIELDS.latestCommitId,
@@ -305,11 +307,23 @@ export class DailyRecordDataAccess {
         );
         if (response.ok === false) {
             throw new Error(
-                `[DAILY-RECORD-PERSISTENCE-V1] Parent snapshot ETag read failed with HTTP ${response.status}.`,
+                `[DAILY-RECORD-PERSISTENCE-V1] Parent commit snapshot read failed with HTTP ${response.status}.`,
             );
         }
-        await response.json();
-        return response.headers.get('ETag');
+        const raw = (await response.json()) as RawSharePointItem;
+        const etag = response.headers.get('ETag');
+        if (!etag) {
+            throw new Error(
+                `[DAILY-RECORD-PERSISTENCE-V1] Parent ${parentId} commit snapshot is missing ETag header. ` +
+                `Snapshot-bound CAS prohibits split pointer/ETag reads. Fail closed before child writes.`,
+            );
+        }
+        return {
+            parentId: raw.Id ?? parentId,
+            latestVersion: raw.LatestVersion ?? 0,
+            latestCommitId: normalizeDailyRecordCommitId(raw.LatestCommitId),
+            etag,
+        };
     }
 
     /**

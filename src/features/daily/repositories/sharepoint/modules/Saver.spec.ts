@@ -23,12 +23,27 @@ const isParentList = (url: string): boolean =>
   (url.includes('$filter') || url.includes('%24filter')) &&
   url.includes('SupportRecord_Daily');
 
-const isParentSnapshotEtagRead = (url: string, init?: RequestInit): boolean => {
+const isParentCommitSnapshotRead = (url: string, init?: RequestInit): boolean => {
   const headers = init?.headers as Record<string, string> | undefined;
   if (headers?.['X-HTTP-Method']) return false;
   if (init?.method === 'POST') return false;
   return String(url).includes('SupportRecord_Daily') &&
-    String(url).includes('items(');
+    String(url).includes('items(') &&
+    (String(url).includes('$select') || String(url).includes('%24select'));
+};
+
+const parentCommitSnapshotResponse = (
+  url: string,
+  latestVersion: number,
+  etag: string,
+  latestCommitId: string | null = null,
+): Response => {
+  const match = String(url).match(/items\((\d+)\)/);
+  const id = match ? Number(match[1]) : 0;
+  return jsonResponseWithEtag(
+    { Id: id, LatestVersion: latestVersion, LatestCommitId: latestCommitId },
+    etag,
+  );
 };
 
 const makeSaver = (spFetch: SpFetchFn) =>
@@ -119,6 +134,10 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({ value: [existingParent42] });
       }
 
+      if (isParentCommitSnapshotRead(String(url), init)) {
+        return parentCommitSnapshotResponse(String(url), 4, '"etag-4"', 'commit-v4');
+      }
+
       if (url.includes('/items') && init?.method === 'POST' && !url.includes('items(')) {
         childBodies.push(JSON.parse(String(init.body)));
         return jsonResponse({ Id: 1000 + childBodies.length });
@@ -152,10 +171,11 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(methods.find((call) => call.httpMethod === 'MERGE')?.ifMatch).toBe('"etag-4"');
   });
 
-  it('AC-20: snapshot-bound MERGE keeps bound ETag without pre-commit refresh (AC-11/AC-12 guard)', async () => {
+  it('AC-20: snapshot-bound MERGE uses atomic pointer+ETag read without pre-commit refresh (AC-11/AC-12 guard)', async () => {
     let snapshotReadsAfterChildren = 0;
     let childPosted = false;
     let mergeIfMatch: string | undefined;
+    let childVersion: number | undefined;
 
     const spFetch = vi.fn<SpFetchFn>(async (url, init) => {
       const target = String(url);
@@ -164,13 +184,14 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       if (isParentList(target)) {
         return jsonResponse({ value: [existingParent42] });
       }
+      if (isParentCommitSnapshotRead(target, init)) {
+        if (childPosted) snapshotReadsAfterChildren += 1;
+        return parentCommitSnapshotResponse(target, 5, '"etag-winner"', 'commit-v5');
+      }
       if (target.includes("DailyRecordRows')/items") && init?.method === 'POST' && !target.includes('items(')) {
         childPosted = true;
+        childVersion = JSON.parse(String(init.body)).Version as number;
         return jsonResponse({ Id: 1001 });
-      }
-      if (isParentSnapshotEtagRead(target, init)) {
-        if (childPosted) snapshotReadsAfterChildren += 1;
-        return jsonResponseWithEtag({ Id: 42, LatestVersion: 5 }, '"etag-winner"');
       }
       if (target.includes('items(42)') && httpMethod === 'MERGE') {
         mergeIfMatch = (init?.headers as Record<string, string> | undefined)?.['IF-MATCH'];
@@ -189,7 +210,8 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
     );
 
     expect(snapshotReadsAfterChildren).toBe(0);
-    expect(mergeIfMatch).toBe('"etag-4"');
+    expect(mergeIfMatch).toBe('"etag-winner"');
+    expect(childVersion).toBe(6);
   });
 
   it('AC-20: aborts before child POSTs when parent snapshot ETag is missing', async () => {
@@ -201,7 +223,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
           value: [{ Id: 7, Title: '2026-08-27', LatestVersion: 4, LatestCommitId: 'commit-v4' }],
         });
       }
-      if (isParentSnapshotEtagRead(String(url), init)) {
+      if (isParentCommitSnapshotRead(String(url), init)) {
         return jsonResponse({ Id: 7, LatestVersion: 4 });
       }
       if (url.includes("DailyRecordRows')/items") && init?.method === 'POST' && !url.includes('items(')) {
@@ -220,7 +242,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         resolvedRowsFields,
         resolvedParentFields,
       ),
-    ).rejects.toThrow(/Snapshot-bound CAS prohibits IF-MATCH '\*'/);
+    ).rejects.toThrow(/missing ETag header/);
 
     expect(childPosts).toBe(0);
   });
@@ -241,6 +263,9 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
             __metadata: { etag: '"etag-7"' },
           }],
         });
+      }
+      if (isParentCommitSnapshotRead(String(url), init)) {
+        return parentCommitSnapshotResponse(String(url), 4, '"etag-7"', 'commit-v4');
       }
       if (url.includes("DailyRecordRows')/items") && init?.method === 'POST' && !url.includes('items(')) {
         childPosts += 1;
@@ -290,6 +315,9 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         creates.push(JSON.parse(String(init.body)));
         return jsonResponseWithEtag({ Id: 90 }, '"etag-90"');
       }
+      if (isParentCommitSnapshotRead(String(url), init)) {
+        return parentCommitSnapshotResponse(String(url), 0, '"etag-90"');
+      }
       if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
         childBodies.push(JSON.parse(String(init.body)));
         return jsonResponse({ Id: 901 });
@@ -333,7 +361,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       if (url.endsWith('/items') && init?.method === 'POST' && url.includes('SupportRecord_Daily') && !httpMethod) {
         return jsonResponse({ Id: 90 });
       }
-      if (isParentSnapshotEtagRead(String(url), init)) {
+      if (isParentCommitSnapshotRead(String(url), init)) {
         return jsonResponse({ Id: 90, LatestVersion: 0 });
       }
       if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
@@ -352,7 +380,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         resolvedRowsFields,
         resolvedParentFields,
       ),
-    ).rejects.toThrow(/Snapshot-bound CAS prohibits IF-MATCH '\*'/);
+    ).rejects.toThrow(/missing ETag header/);
 
     expect(childPosts).toBe(0);
   });
@@ -375,6 +403,9 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({
           value: [{ Id: 10, Title: '2026-08-27', LatestVersion: 0, __metadata: { etag: '"etag-10"' } }],
         });
+      }
+      if (isParentCommitSnapshotRead(target, init)) {
+        return parentCommitSnapshotResponse(target, 0, '"etag-10"');
       }
       if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
         parentPosts += 1;
@@ -425,6 +456,9 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({
           value: [{ Id: 10, Title: '2026-08-27', LatestVersion: 0, __metadata: { etag: '"etag-10"' } }],
         });
+      }
+      if (isParentCommitSnapshotRead(target, init)) {
+        return parentCommitSnapshotResponse(target, 0, '"etag-10"');
       }
       if (target.includes('SupportRecord_Daily') && target.endsWith('/items') && init?.method === 'POST' && !httpMethod) {
         parentPosts += 1;
@@ -525,6 +559,9 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
             __metadata: { etag: '"etag-stale"' },
           }],
         });
+      }
+      if (isParentCommitSnapshotRead(String(url), init)) {
+        return parentCommitSnapshotResponse(String(url), 4, '"etag-stale"', 'commit-v4');
       }
       if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
         childBodies.push(JSON.parse(String(init.body)));

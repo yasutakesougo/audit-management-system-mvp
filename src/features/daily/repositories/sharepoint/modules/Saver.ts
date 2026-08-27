@@ -14,18 +14,14 @@ import {
 import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import {
-    bindParentCommitSnapshot,
+    bindParentCommitSnapshotFromRead,
     createDailyRecordCommitId,
-    nextDailyRecordVersion,
-    readParentEtagFromItem,
+    nextVersionFromParentCommitSnapshot,
     resolveOrCreateParentForSave,
     resolveSnapshotBoundParentCommitIfMatch,
 } from '../../../domain/persistence/dailyRecordPersistence';
 import { DailyRecordDataAccess } from './DataAccess';
-import {
-    assertDailyRecordParentHttpResponse,
-    rethrowClassifiedDailyRecordParentHttpError,
-} from './dailyRecordSpHttpErrors';
+import { invokeClassifiedDailyRecordParentSpFetch } from './dailyRecordSpHttpErrors';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
@@ -101,59 +97,38 @@ export class DailyRecordSaver {
                     },
                     createParent: async () => {
                         const createUrl = `${listPath}/items`;
-                        const res = await this.spFetch(createUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json;odata=nometadata',
-                                'Accept': 'application/json;odata=nometadata',
-                            },
-                            body: JSON.stringify({
-                                ...parentMetadata,
-                                [resolvedParentFields.latestVersion]: 0,
+                        const res = await invokeClassifiedDailyRecordParentSpFetch(
+                            'parent_create',
+                            { date: input.date },
+                            () => this.spFetch(createUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json;odata=nometadata',
+                                    'Accept': 'application/json;odata=nometadata',
+                                },
+                                body: JSON.stringify({
+                                    ...parentMetadata,
+                                    [resolvedParentFields.latestVersion]: 0,
+                                }),
+                                signal: params?.signal,
                             }),
-                            signal: params?.signal,
-                        });
-                        try {
-                            await assertDailyRecordParentHttpResponse('parent_create', res, { date: input.date });
-                        } catch (error) {
-                            rethrowClassifiedDailyRecordParentHttpError(error, 'parent_create', { date: input.date });
-                        }
+                        );
                         const createdPayload = await res.json();
                         const parentId = createdPayload.d?.Id || createdPayload.Id;
-                        const createEtag = res.headers.get('ETag');
-                        return {
-                            id: parentId,
-                            item: {
-                                Id: parentId,
-                                Title: itemData.Title,
-                                LatestVersion: 0,
-                                __metadata: createEtag ? { etag: createEtag } : undefined,
-                            },
-                        };
+                        return { id: parentId, item: { Id: parentId, Title: itemData.Title, LatestVersion: 0 } };
                     },
                 },
             );
 
-            const existingItem = resolvedParent.item;
             const parentId = resolvedParent.id;
             const mode = created ? 'create' : 'update';
-            const currentVersion = existingItem.LatestVersion ?? 0;
-            const nextVersion = nextDailyRecordVersion(currentVersion);
-
-            let snapshotEtag = readParentEtagFromItem(existingItem);
-            if (!snapshotEtag) {
-                snapshotEtag = await this.dataAccess.readParentSnapshotEtag(
-                    parentId,
-                    listPath,
-                    params?.signal,
-                );
-            }
-            const snapshot = bindParentCommitSnapshot({
+            const snapshotRead = await this.dataAccess.readParentCommitSnapshot(
                 parentId,
-                created,
-                latestVersion: currentVersion,
-                etag: snapshotEtag,
-            });
+                listPath,
+                params?.signal,
+            );
+            const snapshot = bindParentCommitSnapshotFromRead(snapshotRead, created);
+            const nextVersion = nextVersionFromParentCommitSnapshot(snapshot);
 
             for (const [index, row] of input.userRows.entries()) {
                 const rowNo = index + 1;
@@ -184,25 +159,24 @@ export class DailyRecordSaver {
 
             // Commit point: snapshot-bound ETag CAS — no pre-commit refresh.
             const finalizeUrl = `${listPath}/items(${parentId})`;
-            const finalizeRes = await this.spFetch(finalizeUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json;odata=nometadata',
-                    'Accept': 'application/json;odata=nometadata',
-                    'IF-MATCH': resolveSnapshotBoundParentCommitIfMatch(snapshot),
-                    'X-HTTP-Method': 'MERGE',
-                },
-                body: JSON.stringify({
-                    ...parentMetadata,
-                    [resolvedParentFields.latestVersion]: nextVersion,
-                    [resolvedParentFields.latestCommitId]: commitId,
+            await invokeClassifiedDailyRecordParentSpFetch(
+                'parent_commit',
+                { commitId },
+                () => this.spFetch(finalizeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json;odata=nometadata',
+                        'Accept': 'application/json;odata=nometadata',
+                        'IF-MATCH': resolveSnapshotBoundParentCommitIfMatch(snapshot),
+                        'X-HTTP-Method': 'MERGE',
+                    },
+                    body: JSON.stringify({
+                        ...parentMetadata,
+                        [resolvedParentFields.latestVersion]: nextVersion,
+                        [resolvedParentFields.latestCommitId]: commitId,
+                    }),
                 }),
-            });
-            try {
-                await assertDailyRecordParentHttpResponse('parent_commit', finalizeRes, { commitId });
-            } catch (error) {
-                rethrowClassifiedDailyRecordParentHttpError(error, 'parent_commit', { commitId });
-            }
+            );
 
             auditLog.debug('daily', `Committed daily record v${nextVersion}`, {
                 parentId,

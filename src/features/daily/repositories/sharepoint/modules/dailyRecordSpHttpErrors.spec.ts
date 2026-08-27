@@ -3,6 +3,7 @@ import { ParentStorageUniquenessConflictError } from '../../../domain/persistenc
 import {
   classifyDailyRecordParentHttpFailure,
   classifyDailyRecordParentHttpFailureFromError,
+  invokeClassifiedDailyRecordParentSpFetch,
   throwDailyRecordParentHttpFailure,
 } from './dailyRecordSpHttpErrors';
 
@@ -42,5 +43,19 @@ describe('dailyRecordSpHttpErrors', () => {
   it('throws ETag conflict message for parent commit 412', () => {
     expect(() => throwDailyRecordParentHttpFailure('parent_commit', 412, null, { commitId: 'commit-B' }))
       .toThrow(/ETag conflict \(HTTP 412\)/);
+  });
+
+  it('invokeClassifiedDailyRecordParentSpFetch classifies thrown spFetch errors (DRP-SPFETCH-ERROR-MODE-001)', async () => {
+    await expect(
+      invokeClassifiedDailyRecordParentSpFetch(
+        'parent_commit',
+        { commitId: 'commit-B' },
+        async () => {
+          const error = new Error('Precondition Failed') as Error & { status: number };
+          error.status = 412;
+          throw error;
+        },
+      ),
+    ).rejects.toThrow(/ETag conflict \(HTTP 412\)/);
   });
 });

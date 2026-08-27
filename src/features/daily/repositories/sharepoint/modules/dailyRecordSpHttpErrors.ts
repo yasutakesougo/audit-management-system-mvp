@@ -115,3 +115,20 @@ export function rethrowClassifiedDailyRecordParentHttpError(
   }
   throw error;
 }
+
+/**
+ * Invoke spFetch for parent create/commit with HTTP classifier on both thrown and non-OK responses.
+ */
+export async function invokeClassifiedDailyRecordParentSpFetch(
+  phase: DailyRecordParentHttpPhase,
+  context: { date?: string; commitId?: string },
+  fn: () => Promise<Response>,
+): Promise<Response> {
+  try {
+    const response = await fn();
+    await assertDailyRecordParentHttpResponse(phase, response, context);
+    return response;
+  } catch (error) {
+    rethrowClassifiedDailyRecordParentHttpError(error, phase, context);
+  }
+}

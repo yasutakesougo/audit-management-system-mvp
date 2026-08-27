@@ -36,8 +36,8 @@ export const DAILY_RECORD_PERSISTENCE_V1 = {
   parentCreateRace: 'ATOMIC_PRE_CREATE_GATE_STORAGE_CONFLICT_ADOPT_POST_CREATE_REVERIFY_FAIL_CLOSED',
   /**
    * Parent LatestVersion+LatestCommitId commit uses snapshot-bound ETag CAS.
-   * ETag is captured once at parent resolution; MERGE uses that snapshot without refresh.
-   * IF-MATCH '*' is prohibited on every path.
+   * Pointer (LatestVersion) and ETag are captured in one atomic GET after parent resolution;
+   * MERGE uses that snapshot without refresh. IF-MATCH '*' is prohibited on every path.
    */
   parentCommit: 'SNAPSHOT_BOUND_ETAG_CAS',
 } as const;
@@ -166,6 +166,14 @@ export function readParentEtagFromItem(item: { __metadata?: { etag?: string } })
   return normalizeParentEtag(item.__metadata?.etag);
 }
 
+export type ParentCommitSnapshotRead = {
+  parentId: number;
+  latestVersion: number;
+  latestCommitId: string | null;
+  /** ETag from the same HTTP response as latestVersion (atomic pointer+ETag read). */
+  etag: string;
+};
+
 export type ParentCommitSnapshot = {
   parentId: number;
   /** ETag captured at parent resolution — bound for IF-MATCH at commit (no refresh). */
@@ -173,6 +181,23 @@ export type ParentCommitSnapshot = {
   latestVersion: number;
   created: boolean;
 };
+
+/** Derive next Version from the snapshot-bound parent pointer (same atomic read as etag). */
+export function nextVersionFromParentCommitSnapshot(snapshot: ParentCommitSnapshot): number {
+  return nextDailyRecordVersion(snapshot.latestVersion);
+}
+
+export function bindParentCommitSnapshotFromRead(
+  read: ParentCommitSnapshotRead,
+  created: boolean,
+): ParentCommitSnapshot {
+  return bindParentCommitSnapshot({
+    parentId: read.parentId,
+    created,
+    latestVersion: read.latestVersion,
+    etag: read.etag,
+  });
+}
 
 /**
  * Bind the parent ETag snapshot used for optimistic CAS at commit time.

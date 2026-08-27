@@ -1,13 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   DAILY_RECORD_PERSISTENCE_V1,
   assertCreatedParentIsSoleOwner,
   bindParentCommitSnapshot,
+  bindParentCommitSnapshotFromRead,
   buildCurrentVersionChildFilter,
   createDailyRecordCommitId,
   isParentCommitEtagConflictFromHttp,
   isParentStorageUniquenessConflictFromHttp,
   nextDailyRecordVersion,
+  nextVersionFromParentCommitSnapshot,
   normalizeDailyRecordCommitId,
   normalizeParentEtag,
   ParentStorageUniquenessConflictError,
@@ -157,13 +159,14 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(DAILY_RECORD_PERSISTENCE_V1.parentCommit).toBe('SNAPSHOT_BOUND_ETAG_CAS');
     expect(normalizeParentEtag(' "etag-1" ')).toBe('"etag-1"');
     expect(readParentEtagFromItem({ __metadata: { etag: '"etag-2"' } })).toBe('"etag-2"');
-    const snapshot = bindParentCommitSnapshot({
+    const snapshot = bindParentCommitSnapshotFromRead({
       parentId: 42,
-      created: false,
       latestVersion: 4,
+      latestCommitId: 'commit-v4',
       etag: '"etag-4"',
-    });
+    }, false);
     expect(resolveSnapshotBoundParentCommitIfMatch(snapshot)).toBe('"etag-4"');
+    expect(nextVersionFromParentCommitSnapshot(snapshot)).toBe(5);
     expect(() => bindParentCommitSnapshot({
       parentId: 90,
       created: true,

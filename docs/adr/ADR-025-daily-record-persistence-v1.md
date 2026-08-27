@@ -135,7 +135,7 @@ Version だけでは失敗再試行や同時保存で同じ番号が再利用さ
 - **AC-17** 同一日付 Parent は高々1件。create-race で複数親が観測されたら child を書かず abort。load/list も duplicate parent を fail closed。losing Parent は DELETE しない
 - **AC-18** save 経路の Parent 解決は atomic contract（list → pre-create gate re-list → optional POST → post-create re-verify）。pre-create gate で既存1件なら POST せず update へ。Repository 初期 lookup の stale null に依存しない
 - **AC-19** `SupportRecord_Daily.Title` は storage-enforced unique（EnforceUniqueValues + Indexed）契約。Parent POST が 409/duplicate で拒否されたら re-list して既存親を adopt し update 継続。未プロビジョン環境では post-create re-verify が fallback
-- **AC-20** 親 commit は snapshot-bound ETag CAS。parent 解決時に ETag を束縛し MERGE は refresh しない。`*` 禁止。ETag 欠落は child 前 abort。412/428/409/400 precondition は losing commit として fail closed
+- **AC-20** 親 commit は snapshot-bound ETag CAS。parent 解決後に pointer（LatestVersion）と ETag を同一 GET で atomic に束縛し MERGE は refresh しない。split read 禁止。`*` 禁止。ETag 欠落は child 前 abort。412/428/409/400 precondition は losing commit として fail closed
 
 ## 対象外
 

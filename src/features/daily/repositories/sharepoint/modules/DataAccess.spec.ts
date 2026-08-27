@@ -442,19 +442,34 @@ describe('DailyRecordDataAccess DAILY-RECORD-PERSISTENCE-V1', () => {
     });
   });
 
-  describe('readParentSnapshotEtag (AC-20)', () => {
-    it('returns ETag response header for snapshot binding', async () => {
+  describe('readParentCommitSnapshot (AC-20)', () => {
+    it('returns pointer fields and ETag from the same GET response', async () => {
       const spFetch = vi.fn<SpFetchFn>(async (url) => {
         expect(String(url)).toContain('items(42)');
-        return new Response(JSON.stringify({ Id: 42, LatestVersion: 4 }), {
+        return new Response(JSON.stringify({ Id: 42, LatestVersion: 4, LatestCommitId: 'commit-v4' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json', ETag: '"etag-42"' },
         });
       });
       const data = new DailyRecordDataAccess(spFetch);
       await expect(
-        data.readParentSnapshotEtag(42, "lists/getbytitle('SupportRecord_Daily')"),
-      ).resolves.toBe('"etag-42"');
+        data.readParentCommitSnapshot(42, "lists/getbytitle('SupportRecord_Daily')"),
+      ).resolves.toEqual({
+        parentId: 42,
+        latestVersion: 4,
+        latestCommitId: 'commit-v4',
+        etag: '"etag-42"',
+      });
+    });
+
+    it('fails closed when ETag header is missing from atomic read', async () => {
+      const spFetch = vi.fn<SpFetchFn>(async () =>
+        jsonResponse({ Id: 42, LatestVersion: 4 }),
+      );
+      const data = new DailyRecordDataAccess(spFetch);
+      await expect(
+        data.readParentCommitSnapshot(42, "lists/getbytitle('SupportRecord_Daily')"),
+      ).rejects.toThrow(/missing ETag header/);
     });
   });
 });
