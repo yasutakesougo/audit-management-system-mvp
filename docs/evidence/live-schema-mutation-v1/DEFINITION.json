@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "LIVE-SCHEMA-MUTATION-V1",
   "phase": "Definition",
-  "generatedAt": "2026-08-27T10:02:17.406740Z",
+  "generatedAt": "2026-08-27T10:11:12.787304Z",
   "repositoryBaseline": "a6749c1be237c0e3fac4a762ee941a0ab7b99940",
   "sourceGate": {
     "id": "LIVE-SCHEMA-GATE-V1",
@@ -60,14 +60,15 @@
         "Indexed": false,
         "EnforceUniqueValues": false
       },
-      "orderConstraint": "Indexed=true before EnforceUniqueValues=true; only if Title duplicate count is 0"
+      "orderConstraint": "Confirm Indexed=true (re-read) before setting EnforceUniqueValues=true; requires Title duplicate groups=0, blank=0, and complete Title/Id enumeration"
     }
   ],
   "mandatoryPreflight": [
     "Confirm SupportRecord_Daily and DailyRecordRows exist (exactly one list each by title)",
     "Confirm LatestVersion / LatestCommitId / CommitId still absent (or compatible if unexpectedly present)",
     "Count SupportRecord_Daily Title duplicates (case-sensitive string equality on Title)",
-    "Count SupportRecord_Daily Title null/blank",
+    "Count SupportRecord_Daily Title null/blank (P1-1: blank > 0 \u2192 HOLD)",
+    "Verify Title/Id enumeration completeness: itemRowsRead === ItemCount (P1-2)",
     "Record item counts for both lists",
     "Capture current field schema snapshot (InternalName, TypeAsString, Indexed, EnforceUniqueValues)",
     "Store mutation-front rollback evidence (schema snapshot + preflight JSON) under captures/"
@@ -76,6 +77,16 @@
     {
       "id": "TITLE_DUPLICATES",
       "when": "Title duplicate groups > 0",
+      "result": "HOLD"
+    },
+    {
+      "id": "TITLE_BLANK",
+      "when": "Title null/blank count > 0 (P1-1)",
+      "result": "HOLD"
+    },
+    {
+      "id": "TITLE_ENUMERATION_INCOMPLETE",
+      "when": "itemRowsRead !== ItemCount or Title stats unread (P1-2)",
       "result": "HOLD"
     },
     {
@@ -106,15 +117,16 @@
     "deploy",
     "persistence runtime activation",
     "duplicate Title automatic repair",
+    "blank Title automatic repair",
     "unrelated schema changes"
   ],
   "applyOrderWhenAuthorized": [
-    "1. Re-run preflight (GET/READ-ONLY). Abort on any fail-closed condition.",
+    "1. Re-run preflight (GET/READ-ONLY). Abort on any fail-closed condition (duplicates, blanks, incomplete enumeration).",
     "2. Add SupportRecord_Daily.LatestVersion (Number).",
     "3. Add SupportRecord_Daily.LatestCommitId (Text).",
     "4. Add DailyRecordRows.CommitId (Text).",
-    "5. Set SupportRecord_Daily.Title Indexed=true.",
-    "6. Set SupportRecord_Daily.Title EnforceUniqueValues=true (requires step 5 + zero Title duplicates).",
+    "5. Set SupportRecord_Daily.Title Indexed=true, then re-read and confirm Indexed=true (P2-1).",
+    "6. Only after step 5 confirmation: Set EnforceUniqueValues=true (also requires duplicate=0, blank=0, complete enumeration).",
     "7. Re-run LIVE-SCHEMA-GATE-V1 inventory classifier; expect VERIFIED_MATCH."
   ],
   "authority": {
@@ -130,7 +142,10 @@
     "applyBlockedBy": [
       "Mutation Authority NOT_YET_AUTHORIZED",
       "Preflight HOLD: TITLE_DUPLICATES (8 groups)"
-    ]
+    ],
+    "correction1": true,
+    "sharePointMutation": "NONE",
+    "duplicateRemediation": "NONE"
   },
   "adr": "docs/adr/ADR-025-daily-record-persistence-v1.md",
   "contracts": {
@@ -162,7 +177,9 @@
     "titleStats": {
       "duplicateGroupCount": 8,
       "nullOrBlankTitleCount": 0,
-      "itemRowsRead": 359
+      "itemRowsRead": 359,
+      "enumerationComplete": true,
+      "blankFailClosedPass": true
     },
     "fieldPlans": [
       {
@@ -191,6 +208,23 @@
       "docs/evidence/live-schema-mutation-v1/captures/PREFLIGHT.json",
       "docs/evidence/live-schema-mutation-v1/captures/preflight-title-stats.json"
     ],
-    "mutationPerformed": false
+    "mutationPerformed": false,
+    "correction1Applied": true,
+    "sharePointMutation": "NONE",
+    "duplicateRemediation": "NONE"
+  },
+  "correction1": {
+    "id": "LIVE-SCHEMA-MUTATION-V1-Correction-1",
+    "fix": [
+      "P1-1 blank Title fail-closed",
+      "P1-2 enumeration completeness fail-closed",
+      "P2-1 index-before-unique wording"
+    ],
+    "blankTitleFailClosed": true,
+    "enumerationCompletenessFailClosed": true,
+    "indexBeforeUnique": "Confirm Title.Indexed=true before setting Title.EnforceUniqueValues=true. Never enable unique while Indexed is false.",
+    "sharePointMutation": "NONE",
+    "duplicateRemediation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
   }
 }

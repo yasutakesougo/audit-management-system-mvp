@@ -13,6 +13,24 @@ import {
 
 export const LIVE_SCHEMA_MUTATION_ID = 'LIVE-SCHEMA-MUTATION-V1';
 
+/**
+ * Correction-1 — Definition fail-closed / wording fixes (no SharePoint mutation).
+ *
+ * P1-1: Title null/blank count > 0 → HOLD (cannot enable EnforceUniqueValues).
+ * P1-2: Title/Id enumeration must be complete (itemRowsRead === ItemCount) → else HOLD.
+ * P2-1: Establish Indexed=true first; only then set EnforceUniqueValues=true.
+ */
+export const LIVE_SCHEMA_MUTATION_CORRECTION_1 = {
+  id: 'LIVE-SCHEMA-MUTATION-V1-Correction-1',
+  blankTitleFailClosed: true,
+  enumerationCompletenessFailClosed: true,
+  indexBeforeUnique:
+    'Confirm Title.Indexed=true before setting Title.EnforceUniqueValues=true. Never enable unique while Indexed is false.',
+  sharePointMutation: 'NONE',
+  duplicateRemediation: 'NONE',
+  deploy: 'NOT_AUTHORIZED',
+};
+
 export const LIVE_SCHEMA_MUTATION_REQUIRED_CHANGES = [
   {
     id: 'SupportRecord_Daily.LatestVersion',
@@ -163,11 +181,44 @@ export function classifyMutationPreflight(dump) {
   let titleDuplicateGroupCount = null;
   let titleNullOrBlankCount = null;
   let titleRowsRead = null;
+  let enumerationComplete = null;
+  const itemCountReported = parent?.itemCount == null ? null : Number(parent.itemCount);
 
   if (titleStats && typeof titleStats === 'object') {
     titleDuplicateGroupCount = Number(titleStats.duplicateGroupCount);
     titleNullOrBlankCount = Number(titleStats.nullOrBlankTitleCount);
     titleRowsRead = Number(titleStats.itemRowsRead);
+
+    // P1-2: enumeration completeness fail-closed
+    if (!Number.isFinite(titleRowsRead) || itemCountReported == null || !Number.isFinite(itemCountReported)) {
+      enumerationComplete = false;
+      holds.push({
+        id: 'TITLE_ENUMERATION_INCOMPLETE',
+        listTitle: 'SupportRecord_Daily',
+        detail:
+          `Title/Id enumeration completeness unverified (itemRowsRead=${titleStats.itemRowsRead}, ItemCount=${parent?.itemCount}).`,
+      });
+    } else if (titleRowsRead !== itemCountReported) {
+      enumerationComplete = false;
+      holds.push({
+        id: 'TITLE_ENUMERATION_INCOMPLETE',
+        listTitle: 'SupportRecord_Daily',
+        detail:
+          `Title/Id rows read (${titleRowsRead}) !== list ItemCount (${itemCountReported}). Pagination or filter gap — fail closed.`,
+      });
+    } else {
+      enumerationComplete = true;
+    }
+
+    if (parent?.error) {
+      enumerationComplete = false;
+      holds.push({
+        id: 'TITLE_ENUMERATION_INCOMPLETE',
+        listTitle: 'SupportRecord_Daily',
+        detail: `Title/Id enumeration reported error: ${parent.error}`,
+      });
+    }
+
     if (Number.isFinite(titleDuplicateGroupCount) && titleDuplicateGroupCount > 0) {
       holds.push({
         id: 'TITLE_DUPLICATES',
@@ -175,7 +226,18 @@ export function classifyMutationPreflight(dump) {
         detail: `Title duplicate groups = ${titleDuplicateGroupCount}. Automatic repair is prohibited.`,
       });
     }
+
+    // P1-1: blank Title fail-closed
+    if (Number.isFinite(titleNullOrBlankCount) && titleNullOrBlankCount > 0) {
+      holds.push({
+        id: 'TITLE_BLANK',
+        listTitle: 'SupportRecord_Daily',
+        detail:
+          `Title null/blank count = ${titleNullOrBlankCount}. EnforceUniqueValues cannot be enabled; automatic blank repair is prohibited.`,
+      });
+    }
   } else if (parent?.found === true) {
+    enumerationComplete = false;
     holds.push({
       id: 'TITLE_STATS_UNREAD',
       listTitle: 'SupportRecord_Daily',
@@ -190,15 +252,20 @@ export function classifyMutationPreflight(dump) {
 
   const preflightGate = holds.length > 0 ? 'HOLD' : 'READY';
   if (preflightGate === 'READY') {
-    notes.push('Preflight READY: lists readable, no Title duplicates, no incompatible fields.');
+    notes.push(
+      'Preflight READY: lists readable; Title enumeration complete; no Title duplicates/blanks; no incompatible fields.',
+    );
+    notes.push(LIVE_SCHEMA_MUTATION_CORRECTION_1.indexBeforeUnique);
     notes.push('Mutation Authority remains NOT_YET_AUTHORIZED until Human GO.');
   } else {
     notes.push('Preflight HOLD: do not Apply. Resolve fail-closed conditions first.');
+    notes.push('Duplicate remediation: NONE in this Gate. Blank Title remediation: NONE in this Gate.');
   }
 
   return {
     id: LIVE_SCHEMA_MUTATION_ID,
     phase: 'Preflight',
+    correction1: LIVE_SCHEMA_MUTATION_CORRECTION_1,
     preflightGate,
     mutation: false,
     mutationAuthority: 'NOT_YET_AUTHORIZED',
@@ -209,7 +276,8 @@ export function classifyMutationPreflight(dump) {
       duplicateGroupCount: titleDuplicateGroupCount,
       nullOrBlankTitleCount: titleNullOrBlankCount,
       itemRowsRead: titleRowsRead,
-      itemCountReported: parent?.itemCount ?? null,
+      itemCountReported,
+      enumerationComplete,
     },
     listSummaries: Object.fromEntries(
       Object.entries(lists).map(([title, state]) => [

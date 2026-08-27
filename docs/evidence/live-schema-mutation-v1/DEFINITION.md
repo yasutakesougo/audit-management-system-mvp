@@ -45,10 +45,11 @@ Read-only only (`GET` / PnP `Get-*`). Capture under `docs/evidence/live-schema-m
 1. Target lists exist (exactly one `SupportRecord_Daily`, one `DailyRecordRows`).
 2. The three add-columns are still absent (or HOLD on incompatible existing type).
 3. `SupportRecord_Daily` **Title duplicate count** (string equality on `Title`).
-4. `SupportRecord_Daily` **Title null/blank count**.
-5. Item counts for both lists.
-6. Current field schema snapshot (`InternalName`, `TypeAsString`, `Indexed`, `EnforceUniqueValues`).
-7. Rollback evidence = that snapshot + preflight JSON (no cookies/tokens/PII beyond date-like Titles).
+4. `SupportRecord_Daily` **Title null/blank count** (P1-1: `> 0` → HOLD).
+5. Title/Id **enumeration completeness**: `itemRowsRead === ItemCount` (P1-2).
+6. Item counts for both lists.
+7. Current field schema snapshot (`InternalName`, `TypeAsString`, `Indexed`, `EnforceUniqueValues`).
+8. Rollback evidence = that snapshot + preflight JSON (no cookies/tokens/PII beyond date-like Titles).
 
 Tooling: `scripts/ops/live-schema-mutation-preflight.browser.js` → classify with `scripts/ops/live-schema-mutation-preflight.mjs`.
 
@@ -57,10 +58,31 @@ Tooling: `scripts/ops/live-schema-mutation-preflight.browser.js` → classify wi
 | Condition | Action |
 |---|---|
 | Title duplicate groups `> 0` | **HOLD** — no automatic repair |
+| Title null/blank count `> 0` (**P1-1**) | **HOLD** — no automatic blank repair |
+| Title/Id enumeration incomplete (`itemRowsRead !== ItemCount`) (**P1-2**) | **HOLD** |
 | Unexpected schema drift vs Gate baseline | **HOLD** |
 | List title ambiguous / missing | **HOLD** |
 | Permission insufficient | **HOLD** |
 | Candidate field exists with incompatible type | **HOLD** |
+
+## Correction-1
+
+```text
+LIVE-SCHEMA-MUTATION-V1
+Definition Correction-1
+Fix:
+P1-1 blank Title fail-closed
+P1-2 enumeration completeness fail-closed
+P2-1 index-before-unique wording
+SharePoint mutation:
+NONE
+Duplicate remediation:
+NONE
+Deploy:
+NOT AUTHORIZED
+```
+
+**P2-1:** Confirm `Title.Indexed=true` **before** setting `Title.EnforceUniqueValues=true`. Never enable unique while Indexed is false. These are two ordered SetFieldFlags steps, not a single simultaneous toggle.
 
 ## Prohibited (all phases of this Gate unless a later Human GO explicitly says otherwise)
 
@@ -70,30 +92,30 @@ Tooling: `scripts/ops/live-schema-mutation-preflight.browser.js` → classify wi
 - Deploy  
 - Persistence runtime activation  
 - Duplicate Title automatic repair  
+- Blank Title automatic repair  
 - Unrelated schema changes  
 
 ## Apply order (only after Review + Human GO)
 
-1. Re-run preflight. Abort on any fail-closed hit.  
+1. Re-run preflight. Abort on any fail-closed hit (duplicates, blanks, incomplete enumeration, …).  
 2. Add `LatestVersion` (Number).  
 3. Add `LatestCommitId` (Text).  
 4. Add `CommitId` (Text) on `DailyRecordRows`.  
-5. Set `Title.Indexed = true`.  
-6. Set `Title.EnforceUniqueValues = true` (requires step 5 + zero Title duplicates).  
+5. Set `Title.Indexed = true`, then **re-read** the field and confirm `Indexed=true`.  
+6. Only after step 5 confirmation: set `Title.EnforceUniqueValues = true` (also requires zero Title duplicates, zero blanks, complete enumeration).  
 7. Re-run LIVE-SCHEMA-GATE-V1 inventory; require `VERIFIED_MATCH`.
-
-Indexed **before** unique (same rule as `Set-ListFieldSafe` in `scripts/provision-spo.ps1`).
 
 ## Authority
 
 | Gate | Status |
 |---|---|
-| Definition (this document) | **ACTIVE** |
+| Definition (this document) | **ACTIVE** (+ Correction-1) |
 | Review | pending |
 | Human GO | pending |
 | Mutation Apply | **NOT YET AUTHORIZED** |
 | Deploy | **NOT AUTHORIZED** |
 | Persistence runtime activation | **NOT AUTHORIZED** |
+| Duplicate / blank remediation | **NONE** in this Gate |
 
 ## Preflight execution (Definition-time, GET-only)
 
@@ -105,18 +127,21 @@ Executed on `/sites/welfare` via Browser REST **GET-only** (field snapshot + `Ti
 | `DailyRecordRows` found | PASS (ItemCount **3868**) |
 | `LatestVersion` / `LatestCommitId` / `CommitId` still absent | PASS (still MISSING) |
 | `Title` Indexed + Unique | still `false` / `false` (PRESENT_MISMATCH) |
-| Title null/blank count | **0** |
+| Title null/blank count | **0** (P1-1 pass) |
+| Title enumeration completeness | **359/359** (P1-2 pass) |
 | Title duplicate groups | **8** → **fail-closed HOLD** |
 | Preflight gate | **HOLD** |
 | Mutation Authority | **NOT YET AUTHORIZED** |
+| SharePoint mutation | **NONE** |
+| Duplicate remediation | **NONE** |
 
 Captures (gitignored): `captures/preflight-browser-dump.json`, `captures/PREFLIGHT.json`, `captures/preflight-title-stats.json`.
 
-**Implication:** Even after Review / Human GO, Apply must remain blocked until Title duplicate groups are **0**. This Gate does **not** auto-repair duplicates; resolution is a separate human data decision.
+**Implication:** Even after Review / Human GO, Apply must remain blocked until Title duplicate groups are **0**, blank count is **0**, and enumeration is complete. This Gate does **not** auto-repair Titles.
 
 ## Next
 
-1. **Review** this Definition + preflight HOLD (`TITLE_DUPLICATES`).  
+1. **Review** this Definition + Correction-1 + preflight HOLD (`TITLE_DUPLICATES`).  
 2. Human resolves Title duplicates **outside** this Gate (no automatic repair here).  
 3. Re-run preflight until `preflightGate=READY`.  
 4. **Human GO** required before Apply.  

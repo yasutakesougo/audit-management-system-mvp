@@ -18,7 +18,7 @@ Minimal SharePoint schema changes for DAILY-RECORD-PERSISTENCE-V1 live gaps.
 1. `SupportRecord_Daily.LatestVersion` — add **Number**  
 2. `SupportRecord_Daily.LatestCommitId` — add **Text**  
 3. `DailyRecordRows.CommitId` — add **Text**  
-4. `SupportRecord_Daily.Title` — `Indexed=true` then `EnforceUniqueValues=true`
+4. `SupportRecord_Daily.Title` — confirm `Indexed=true` first, then set `EnforceUniqueValues=true` (never unique while Indexed is false)
 
 ## Preflight (GET / READ-ONLY)
 
@@ -52,16 +52,38 @@ node scripts/ops/live-schema-mutation-preflight.mjs --mode rest
 - ItemCount per list
 - Title duplicate group count
 - Title null/blank count
+- Title enumeration completeness (`itemRowsRead === ItemCount`)
 - `preflightGate`: `READY` | `HOLD`
 
 ### Fail-closed (HOLD — do not Apply)
 
 - Title duplicate groups `> 0`
+- Title null/blank count `> 0` (**Correction-1 P1-1**)
+- Title/Id enumeration incomplete (**Correction-1 P1-2**)
 - Schema drift / incompatible existing field type
 - List missing or ambiguous
 - Auth/permission failure
 
-**Do not** auto-repair duplicate Titles in this Gate.
+**Do not** auto-repair duplicate or blank Titles in this Gate.
+
+## Correction-1
+
+```text
+LIVE-SCHEMA-MUTATION-V1
+Definition Correction-1
+Fix:
+P1-1 blank Title fail-closed
+P1-2 enumeration completeness fail-closed
+P2-1 index-before-unique wording
+SharePoint mutation:
+NONE
+Duplicate remediation:
+NONE
+Deploy:
+NOT AUTHORIZED
+```
+
+**P2-1 wording:** Confirm `Title.Indexed=true` (re-read) **before** setting `Title.EnforceUniqueValues=true`. Never enable unique while Indexed is false.
 
 ## Apply (blocked until Human GO)
 
@@ -71,8 +93,8 @@ Order when authorized:
 
 1. Re-run preflight → must be `READY`  
 2. Add three columns  
-3. Index `Title`  
-4. Enforce unique on `Title`  
+3. Set `Title.Indexed=true`, re-read, confirm Indexed  
+4. Set `Title.EnforceUniqueValues=true`  
 5. LIVE-SCHEMA-GATE inventory → `VERIFIED_MATCH`
 
 ## Prohibited
@@ -81,6 +103,7 @@ Order when authorized:
 - Delete  
 - Deploy  
 - Persistence runtime activation  
+- Duplicate / blank Title automatic repair  
 - Unrelated schema edits  
 - Calling this Gate “complete” after Definition alone  
 
@@ -97,4 +120,4 @@ docs/evidence/live-schema-mutation-v1/
 
 - Gate inventory: `docs/runbooks/live-schema-gate-inventory.md`
 - ADR-025: `docs/adr/ADR-025-daily-record-persistence-v1.md`
-- Unique-before-index pattern: `scripts/provision-spo.ps1` `Set-ListFieldSafe`
+- Index-before-unique pattern: `scripts/provision-spo.ps1` `Set-ListFieldSafe`
