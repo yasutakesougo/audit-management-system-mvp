@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "LIVE-SCHEMA-GATE-V1",
+  "generatedAt": "2026-08-27T06:56:00.000Z",
+  "status": "HOLD",
+  "merge": {
+    "persistencePr": 2549,
+    "postMergePr": 2553,
+    "sourceHead": "eca87b6dfb37de3b8686331cf5423d6cf09965ce",
+    "mergeCommit": "75beb6ab7c22033b3f5b6d07f3480e3ef5f8d4d5",
+    "mainHead": "75beb6ab7c22033b3f5b6d07f3480e3ef5f8d4d5",
+    "mergedAt": "2026-08-27T06:52:48Z"
+  },
+  "site": {
+    "relativeUrl": "/sites/welfare",
+    "access": "PASS",
+    "listSchemaRead": "BLOCKED_BY_AVAILABLE_CONNECTOR_CAPABILITY",
+    "connectorLimitation": "Document-library / drive-item APIs cannot read Microsoft Lists column definitions, Indexed, or EnforceUniqueValues"
+  },
+  "liveChecks": [
+    { "id": "SupportRecord_Daily.LatestVersion", "status": "UNVERIFIED" },
+    { "id": "SupportRecord_Daily.LatestCommitId", "status": "UNVERIFIED" },
+    { "id": "DailyRecordRows.CommitId", "status": "UNVERIFIED" },
+    { "id": "SupportRecord_Daily.Title.indexedUnique", "status": "UNVERIFIED" }
+  ],
+  "gates": {
+    "liveSchema": "UNVERIFIED",
+    "schemaMutation": "NONE",
+    "deployAuthorized": false,
+    "sharePointMutation": false,
+    "inferredFromRepoProvisioning": false
+  },
+  "repoGapNotLive": {
+    "parentLatestVersionInProvisioningFields": false,
+    "parentLatestCommitIdInProvisioningFields": false,
+    "childVersionInProvisioningFields": true,
+    "childCommitIdInProvisioningFields": false,
+    "titleEnforceUniqueValuesApply": "CONTRACT_ONLY"
+  },
+  "next": [
+    "Run GET-only inventory via browser REST, PnP Get-PnPField, SharePoint REST fields, Graph columns, or list settings UI",
+    "Classify with scripts/ops/live-schema-gate-inventory.mjs",
+    "Do not mutate schema in this Gate",
+    "Do not deploy"
+  ]
+}
