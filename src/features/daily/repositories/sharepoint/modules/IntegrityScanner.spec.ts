@@ -39,7 +39,7 @@ describe('DailyRecordIntegrityScanner', () => {
         });
       }
 
-      if (url.includes('DailyRecordRows/items?$filter=')) {
+      if (url.includes('DailyRecordRows') && url.includes('/items')) {
         expect(url).toContain('CommitId');
         return jsonResponse({
           value: [
@@ -82,7 +82,7 @@ describe('DailyRecordIntegrityScanner', () => {
         });
       }
 
-      if (url.includes('DailyRecordRows/items?$filter=')) {
+      if (url.includes('DailyRecordRows') && url.includes('/items')) {
         return jsonResponse({
           value: [
             {
@@ -132,7 +132,7 @@ describe('DailyRecordIntegrityScanner', () => {
         });
       }
 
-      if (url.includes('DailyRecordRows/items?$filter=')) {
+      if (url.includes('DailyRecordRows') && url.includes('/items')) {
         return jsonResponse({
           value: [
             {
@@ -208,7 +208,7 @@ describe('DailyRecordIntegrityScanner', () => {
         });
       }
 
-      if (url.includes('DailyRecordRows/items?$filter=')) {
+      if (url.includes('DailyRecordRows') && url.includes('/items')) {
         return jsonResponse({
           value: [
             {
@@ -249,7 +249,7 @@ describe('DailyRecordIntegrityScanner', () => {
         });
       }
 
-      if (url.includes('DailyRecordRows/items?$filter=')) {
+      if (url.includes('DailyRecordRows') && url.includes('/items')) {
         return jsonResponse({
           value: [
             {

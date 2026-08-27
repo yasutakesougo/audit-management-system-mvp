@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   DAILY_RECORD_PERSISTENCE_V1,
   buildCurrentVersionChildFilter,

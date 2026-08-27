@@ -3,7 +3,7 @@ import type { SpFetchFn } from '@/lib/sp/spLists';
 import { DailyRecordSaver } from './Saver';
 import type { ResolvedParentFields, ResolvedRowsFields, SharePointItem } from '../../constants';
 import type { SaveDailyRecordInput } from '../../../../domain/legacy/DailyRecordRepository';
-import * as persistence from '../../../../domain/persistence/dailyRecordPersistence';
+import * as persistence from '../../../domain/persistence/dailyRecordPersistence';
 
 const jsonResponse = (value: unknown, status = 200): Response =>
   new Response(JSON.stringify(value), {
