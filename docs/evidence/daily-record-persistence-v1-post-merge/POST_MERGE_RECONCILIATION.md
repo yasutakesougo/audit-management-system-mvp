@@ -11,7 +11,8 @@ Read-only confirmation that PR #2549 landed on `main` as exact-head `43655e86`, 
 | Saver child DELETE | **PASS** — save path uses child POST + parent MERGE only |
 | Local persistence unit tests | **PASS** — 10 files / 106 tests |
 | CI Preflight on merge commit | **PASS** — run [33044439152](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439152) |
-| E2E Deep | **EXPECTED RED** — 0/6 lanes were PR-diff caused (see [E2E-DEEP-FAILURE-RECONCILIATION-V1](../e2e-deep-failure-reconciliation-v1/RECONCILIATION_REPORT.md) / [PR #2552](https://github.com/yasutakesougo/audit-management-system-mvp/pull/2552)) |
+| CI unit shards / Quality / fast / CSP | **PASS** — see terminal table below |
+| E2E Deep | **EXPECTED RED (confirmed)** — 6/6 Chromium lanes fail; **34/34 failure keys identical** to pre-merge exact-head and `main` nightly. Deep Lane Union Audit **success**. |
 | Live schema provisioning | **OPEN** — separate Gate (ADR 対象外) |
 | Deploy | **NOT AUTHORIZED** until live schema Gate |
 
@@ -73,24 +74,36 @@ Test Files  10 passed (10)
 
 No SharePoint mutation. No deploy. No workflow rerun.
 
-## Post-merge CI snapshot (merge commit `15111c42`)
+## Post-merge CI (merge commit `15111c42`) — terminal
 
-Recorded 2026-08-27T06:06Z. Push event workflows:
+Push-event checks on `15111c42`: **6 failed / 30 succeeded / 2 skipped** (`quality_extended` skipped on push; Integration Scenarios skipped off-schedule). The 6 failures are exactly the Deep Chromium lanes.
 
-| Workflow | Run | Snapshot |
+| Workflow | Run | Conclusion |
 |---|---|---|
-| CI Preflight | [33044439152](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439152) | **success** (typecheck, lint, test-id guard, preflight unit graphs 0/1, TZ matrix, aggregator) |
+| CI Preflight | [33044439152](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439152) | **success** |
+| CI (typecheck + unit shards 1–3) | [33044439184](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439184) | **success** |
+| Quality Gates (`quality` + `canary`) | [33044439247](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439247) | **success** |
+| fast-lane | [33044439167](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439167) | **success** |
+| CSP Guard | [33044439217](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439217) | **success** |
 | schedule-guardrails | [33044439156](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439156) | **success** |
 | storybook-a11y | [33044439166](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439166) | **success** |
 | pre-deploy-gate | [33044439177](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439177) | **success** |
 | Report Links | [33044439230](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439230) | **success** |
-| CI (typecheck + unit shards) | [33044439184](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439184) | in progress (contracts/registry already success) |
-| Quality Gates | [33044439247](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439247) | in progress |
-| fast-lane | [33044439167](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439167) | in progress |
-| CSP Guard | [33044439217](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439217) | in progress |
-| E2E Deep Tests | [33044439186](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439186) | in progress — **expect 6 Chromium lanes red**, same keys as pre-merge |
+| E2E Deep Tests | [33044439186](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439186) | **failure** (6 lanes) + Deep Lane Union Audit **success** |
 
-Checklist `docs/runbooks/post-merge-checklist.md` says “stop on main FAILURE”. That rule applies to **new** failures. E2E Deep has been red on `main` schedule for 10+ consecutive nights and was classified as unrelated to this merge.
+### E2E Deep key identity (post-merge vs pre-merge)
+
+| Run | SHA | Failed keys | only-this-side |
+|---|---|---|---|
+| Post-merge push [33044439186](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33044439186) | `15111c42` | 34 | none |
+| PR #2549 exact-head [33041195913](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33041195913) | `43655e86` | 34 | none |
+| `main` nightly [33037472202](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33037472202) | `1c8f4505` | 34 | none |
+
+Spec digest unchanged: `6b5f6fe8025ace1807a571c11fa704ec9ae612cce1265f5ba15f60d565094163`. JUnit identities 333. Bootstrap pass. True-flaky 0.
+
+Per-lane JUnit matches pre-merge exact-head: app-a11y 11/13, fixture-memory 10/14, sp-stub 7/15, transport-date-check 3/3, implementation-hot 2/14, general 1/274. The only error-text delta is the generated CRUD timestamp in `users-crud.integration` (`統合テスト太郎_<epoch>`).
+
+Checklist `docs/runbooks/post-merge-checklist.md` says “stop on main FAILURE”. That rule applies to **new** failures. These 6 lanes are the same pre-existing set classified in E2E-DEEP-FAILURE-RECONCILIATION-V1.
 
 ## Live schema — still a separate Gate
 
@@ -116,7 +129,7 @@ Until those columns exist in the live SharePoint site, runtime save will fail cl
 
 1. Schema Gate: add `LatestVersion`, `LatestCommitId` to parent ensure/provisioning; add `CommitId` to child rows; apply Title unique index.
 2. Keep E2E Deep follow-ups on harness PRs (stale testids, demo-vs-SP stub lane contract, fixture cardinality) — see PR #2552. Do not patch persistence to “fix” those 34 keys.
-3. After Quality Gates / unit shards on `15111c42` complete, attach the terminal conclusions to this folder if they differ from Preflight.
+3. Quality Gates / unit shards on `15111c42` completed **success**. No additional persistence follow-up from those jobs.
 
 ## Machine-readable companion
 
