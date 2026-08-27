@@ -120,6 +120,8 @@ export const DAILY_RECORD_CANONICAL_CANDIDATES = {
   reporterRole: ['ReporterRole', 'reporterRole', 'cr013_reporterRole'],
   userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON'],
   userCount: ['UserCount', 'userCount', 'cr013_userCount'],
+  latestVersion: ['LatestVersion', 'latestVersion', 'cr013_latestVersion'],
+  latestCommitId: ['LatestCommitId', 'latestCommitId', 'cr013_latestCommitId'],
   approvalStatus: ['ApprovalStatus', 'approvalStatus', 'cr013_approvalStatus'],
   approvedBy: ['ApprovedBy', 'approvedBy', 'cr013_approvedBy'],
   approvedAt: ['ApprovedAt', 'approvedAt', 'cr013_approvedAt'],
@@ -144,6 +146,7 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   group: ['Group', 'group', 'cr013_group'],
   specialNote: ['SpecialNote', 'specialNote', 'cr013_specialnote'],
   version: ['Version', 'VersionNo', 'cr013_version'],
+  commitId: ['CommitId', 'commitId', 'cr013_commitId'],
   recordedAt: ['Recorded_x0020_At', 'RecordedAt', 'cr013_recordedAt'],
   rowKey: ['Title', 'RowKey'],
   rowNo: [
@@ -191,3 +194,15 @@ export const DAILY_RECORD_CANONICAL_ENSURE_FIELDS: SpFieldDef[] = [
   { internalName: 'ApprovedBy', type: 'Text', displayName: 'Approved By' },
   { internalName: 'ApprovedAt', type: 'DateTime', displayName: 'Approved At', dateTimeFormat: 'DateTime' },
 ];
+
+/**
+ * Parent row uniqueness at the SharePoint storage layer (DAILY-RECORD-PERSISTENCE-V1).
+ * Title holds YYYY-MM-DD; EnforceUniqueValues prevents duplicate parents per date.
+ * Provisioning apply is a separate Gate — contract + resolver/tests may ship first.
+ */
+export const DAILY_RECORD_PARENT_STORAGE_UNIQUENESS = {
+  list: 'SupportRecord_Daily',
+  field: 'Title',
+  indexed: true,
+  enforceUniqueValues: true,
+} as const;

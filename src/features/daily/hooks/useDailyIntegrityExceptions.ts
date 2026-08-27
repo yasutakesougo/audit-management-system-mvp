@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
-import { mapIntegrityToExceptionItem } from '@/features/daily/domain/integrity/dailyIntegrityChecker';
+import {
+  createScanUnknownException,
+  mapIntegrityToExceptionItem,
+} from '@/features/daily/domain/integrity/dailyIntegrityChecker';
+import { isAbortLikeError } from '@/features/daily/domain/persistence/dailyRecordPersistence';
 
 /**
  * useDailyIntegrityExceptions
  * 
  * 指定された日付範囲の日次記録の整合性をスキャンし、
  * 不整合があれば ExceptionItem[] として返却する。
+ *
+ * Scanner 失敗は空配列（PASS）にせず、HOLD / UNKNOWN アイテムにする。
  */
 export function useDailyIntegrityExceptions(targetDate: string) {
   const repository = useDailyRecordRepository();
@@ -23,8 +29,6 @@ export function useDailyIntegrityExceptions(targetDate: string) {
       setIsLoading(true);
       setError(null);
       try {
-        // 現在は targetDate の当日のみをスキャン対象とする
-        // (将来的に過去n日間への拡張も可能)
         const exceptions = await repository.scanIntegrity([targetDate], controller.signal);
         
         if (!aborted) {
@@ -32,10 +36,14 @@ export function useDailyIntegrityExceptions(targetDate: string) {
           setItems(mapped);
         }
       } catch (err) {
-        if (!aborted) {
-          console.error('[useDailyIntegrityExceptions] Scan failed:', err);
-          setError(err instanceof Error ? err : new Error(String(err)));
-        }
+        if (aborted || isAbortLikeError(err)) return;
+        console.error('[useDailyIntegrityExceptions] Scan failed:', err);
+        const hold = createScanUnknownException(
+          err instanceof Error ? err.message : String(err),
+          targetDate,
+        );
+        setItems([mapIntegrityToExceptionItem(hold)]);
+        setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         if (!aborted) {
           setIsLoading(false);

@@ -8,11 +8,13 @@ import {
 import { buildListPath } from '../utils/Helpers';
 import { 
     scanDailyRecordIntegrity, 
+    createScanUnknownException,
     type DailyIntegrityException,
     type ScanSourceParent,
     type ScanSourceChild,
     type ScanSourceAccessory
 } from '../../../domain/integrity/dailyIntegrityChecker';
+import { isAbortLikeError } from '../../../domain/persistence/dailyRecordPersistence';
 
 export class DailyRecordIntegrityScanner {
     constructor(private readonly spFetch: SpFetchFn) {}
@@ -29,9 +31,15 @@ export class DailyRecordIntegrityScanner {
         try {
             const rowsListPath = buildListPath(rowsListTitle);
             const dateFilters = dates.map(d => `${DAILY_RECORD_FIELDS.recordDate} eq '${d}T00:00:00Z'`).join(' or ');
-            const parentUrl = `${listPath}/items?$filter=(${dateFilters}) and ${DAILY_RECORD_FIELDS.isDeleted} ne true&$select=Id,RecordDate,LatestVersion`;
+            const parentUrl = `${listPath}/items?$filter=(${dateFilters}) and ${DAILY_RECORD_FIELDS.isDeleted} ne true&$select=Id,RecordDate,${DAILY_RECORD_FIELDS.latestVersion},${DAILY_RECORD_FIELDS.latestCommitId},${DAILY_RECORD_FIELDS.userCount}`;
 
             const pRes = await this.spFetch(parentUrl, { signal });
+            if (!pRes.ok) {
+                return [createScanUnknownException(
+                    `Parent integrity scan failed with HTTP ${pRes.status}. Result is HOLD, not PASS.`,
+                    dates[0] ?? 'unknown',
+                )];
+            }
             const pData = await pRes.json();
             const rawParents = pData.value || [];
 
@@ -39,15 +47,23 @@ export class DailyRecordIntegrityScanner {
                 id: String(p.Id),
                 date: p.RecordDate ? p.RecordDate.split('T')[0] : 'unknown',
                 latestVersion: p.LatestVersion || 0,
+                latestCommitId: p.LatestCommitId ?? null,
+                userCount: typeof p.UserCount === 'number' ? p.UserCount : undefined,
             }));
 
             if (parents.length === 0) return [];
 
             const parentIds = parents.map(p => p.id);
             const idFilters = parentIds.map(id => `${resolvedRowsFields.parentId} eq ${id}`).join(' or ');
-            const childUrl = `${rowsListPath}/items?$filter=${encodeURIComponent(idFilters)}&$select=${resolvedRowsFields.parentId},${resolvedRowsFields.userId},${resolvedRowsFields.version},${resolvedRowsFields.status},${resolvedRowsFields.payload},${resolvedRowsFields.recordedAt}`;
+            const childUrl = `${rowsListPath}/items?$filter=${encodeURIComponent(idFilters)}&$select=${resolvedRowsFields.parentId},${resolvedRowsFields.userId},${resolvedRowsFields.version},${resolvedRowsFields.commitId},${resolvedRowsFields.status},${resolvedRowsFields.payload},${resolvedRowsFields.recordedAt}`;
 
             const cRes = await this.spFetch(childUrl, { signal });
+            if (!cRes.ok) {
+                return [createScanUnknownException(
+                    `Child integrity scan failed with HTTP ${cRes.status}. Result is HOLD, not PASS.`,
+                    dates[0] ?? 'unknown',
+                )];
+            }
             const cData = await cRes.json();
             const rawChildren = cData.value || [];
 
@@ -55,6 +71,7 @@ export class DailyRecordIntegrityScanner {
                 parentId: String(c[resolvedRowsFields.parentId]),
                 userId: c[resolvedRowsFields.userId] as string,
                 version: (c[resolvedRowsFields.version] as number) || 0,
+                commitId: (c[resolvedRowsFields.commitId] as string | null | undefined) ?? null,
                 status: c[resolvedRowsFields.status] as string,
                 recordedAt: c[resolvedRowsFields.recordedAt] as string,
             }));
@@ -78,14 +95,19 @@ export class DailyRecordIntegrityScanner {
                         })));
                     }
                 } catch (accError) {
+                    if (isAbortLikeError(accError)) throw accError;
                     console.warn('[DailyRecordIntegrityScanner] Failed to fetch accessories', accError);
                 }
             }
 
             return scanDailyRecordIntegrity(parents, children, accessories);
         } catch (error) {
+            if (isAbortLikeError(error)) throw error;
             console.error('[DailyRecordIntegrityScanner] Integrity scan failed', error);
-            return [];
+            return [createScanUnknownException(
+                `Integrity scan failed: ${error instanceof Error ? error.message : String(error)}. Result is HOLD, not PASS.`,
+                dates[0] ?? 'unknown',
+            )];
         }
     }
 }

@@ -7,9 +7,9 @@ import type {
     DailyRecordRepositoryMutationParams,
     SaveDailyRecordInput,
 } from '../../domain/legacy/DailyRecordRepository';
-import { 
+import {
     getListTitle,
-    readNonEmptyEnv 
+    readNonEmptyEnv
 } from './constants';
 import { buildListPath } from './utils/Helpers';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
@@ -17,7 +17,8 @@ import { DailyRecordDataAccess } from './modules/DataAccess';
 import { DailyRecordSaver } from './modules/Saver';
 import { DailyRecordIntegrityScanner } from './modules/IntegrityScanner';
 import { RowAggregateAccess } from './modules/RowAggregateAccess';
-import { DailyIntegrityException } from '../../domain/integrity/dailyIntegrityChecker';
+import { DailyIntegrityException, createScanUnknownException } from '../../domain/integrity/dailyIntegrityChecker';
+import { isAbortLikeError } from '../../domain/persistence/dailyRecordPersistence';
 
 type SharePointDailyRecordRepositoryOptions = {
   listTitle?: string;
@@ -32,7 +33,7 @@ type SharePointDailyRecordRepositoryOptions = {
 export class SharePointDailyRecordRepository implements DailyRecordRepository {
   private readonly spFetch: SpFetchFn;
   private readonly listTitle: string;
-  
+
   private readonly schema: DailyRecordSchemaResolver;
   private readonly data: DailyRecordDataAccess;
   private readonly saver: DailyRecordSaver;
@@ -49,12 +50,12 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     this.listTitle = options.listTitle ?? getListTitle();
 
     this.schema = new DailyRecordSchemaResolver(
-      this.spFetch, 
+      this.spFetch,
       this.listTitle,
       options.getListFieldInternalNames
     );
     this.data = new DailyRecordDataAccess(this.spFetch);
-    this.saver = new DailyRecordSaver(this.spFetch);
+    this.saver = new DailyRecordSaver(this.spFetch, this.data);
     this.integrity = new DailyRecordIntegrityScanner(this.spFetch);
     this.rowAggregate = new RowAggregateAccess(this.spFetch);
   }
@@ -74,9 +75,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     const resolvedParentFields = await this.schema.resolveParentFields(listPath);
     const rowsListPath = buildListPath(this.getRowsListTitle());
     const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
-    const existingItem = await this.data.findItemByDate(input.date, listPath, params?.signal);
 
-    return this.saver.save(input, listPath, rowsListPath, existingItem, resolvedRowsFields, resolvedParentFields, params);
+    return this.saver.save(input, listPath, rowsListPath, resolvedRowsFields, resolvedParentFields, params);
   }
 
   async load(date: string): Promise<DailyRecordItem | null> {
@@ -94,7 +94,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         if (!rowAggregateSource) return [];
         return this.rowAggregate.list(rowAggregateSource, params);
     }
-    return this.data.list(params, listPath);
+
+    const rowsListPath = buildListPath(this.getRowsListTitle());
+    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
+    return this.data.list(params, listPath, this.getRowsListTitle(), resolvedRowsFields);
   }
 
   async approve(
@@ -114,11 +117,24 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
   }
 
   async scanIntegrity(dates: string[], signal?: AbortSignal): Promise<DailyIntegrityException[]> {
-    const listPath = await this.schema.resolveListPath();
-    if (!listPath) return [];
-    const rowsListPath = buildListPath(this.getRowsListTitle());
-    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
-    return this.integrity.scan(dates, listPath, this.getRowsListTitle(), resolvedRowsFields, signal);
+    try {
+      const listPath = await this.schema.resolveListPath();
+      if (!listPath) {
+          return [createScanUnknownException(
+              'SupportRecord_Daily list was not resolved. Integrity result is HOLD, not PASS.',
+              dates[0] ?? 'unknown',
+          )];
+      }
+      const rowsListPath = buildListPath(this.getRowsListTitle());
+      const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
+      return this.integrity.scan(dates, listPath, this.getRowsListTitle(), resolvedRowsFields, signal);
+    } catch (error) {
+      if (isAbortLikeError(error)) throw error;
+      return [createScanUnknownException(
+        `Integrity scan failed: ${error instanceof Error ? error.message : String(error)}. Result is HOLD, not PASS.`,
+        dates[0] ?? 'unknown',
+      )];
+    }
   }
 
   async checkListExists(): Promise<boolean> {

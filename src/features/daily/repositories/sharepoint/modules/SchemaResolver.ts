@@ -185,6 +185,8 @@ export class DailyRecordSchemaResolver {
                 reporterRole: DAILY_RECORD_FIELDS.reporterRole,
                 userRowsJSON: DAILY_RECORD_FIELDS.userRowsJSON,
                 userCount: DAILY_RECORD_FIELDS.userCount,
+                latestVersion: DAILY_RECORD_FIELDS.latestVersion,
+                latestCommitId: DAILY_RECORD_FIELDS.latestCommitId,
             };
             return this.resolvedParentFields;
         }
@@ -198,6 +200,8 @@ export class DailyRecordSchemaResolver {
                 reporterRole: DAILY_RECORD_FIELDS.reporterRole,
                 userRowsJSON: DAILY_RECORD_FIELDS.userRowsJSON,
                 userCount: DAILY_RECORD_FIELDS.userCount,
+                latestVersion: DAILY_RECORD_FIELDS.latestVersion,
+                latestCommitId: DAILY_RECORD_FIELDS.latestCommitId,
             };
         }
 
@@ -217,6 +221,8 @@ export class DailyRecordSchemaResolver {
             reporterRole: resolved.reporterRole ?? DAILY_RECORD_FIELDS.reporterRole,
             userRowsJSON: resolved.userRowsJSON ?? DAILY_RECORD_FIELDS.userRowsJSON,
             userCount: resolved.userCount ?? DAILY_RECORD_FIELDS.userCount,
+            latestVersion: resolved.latestVersion ?? DAILY_RECORD_FIELDS.latestVersion,
+            latestCommitId: resolved.latestCommitId ?? DAILY_RECORD_FIELDS.latestCommitId,
             approvalStatus: resolved.approvalStatus,
             approvedBy: resolved.approvedBy,
             approvedAt: resolved.approvedAt,
@@ -235,6 +241,7 @@ export class DailyRecordSchemaResolver {
                 userId: DAILY_RECORD_ROWS_FIELDS.userId,
                 recordDate: 'RecordDate',
                 version: DAILY_RECORD_ROWS_FIELDS.version,
+                commitId: DAILY_RECORD_ROWS_FIELDS.commitId,
                 status: DAILY_RECORD_ROWS_FIELDS.status,
                 payload: DAILY_RECORD_ROWS_FIELDS.payload,
                 recordedAt: DAILY_RECORD_ROWS_FIELDS.recordedAt,
@@ -253,6 +260,7 @@ export class DailyRecordSchemaResolver {
                 parentId: DAILY_RECORD_ROWS_FIELDS.parentId,
                 userId: DAILY_RECORD_ROWS_FIELDS.userId,
                 version: DAILY_RECORD_ROWS_FIELDS.version,
+                commitId: DAILY_RECORD_ROWS_FIELDS.commitId,
                 status: DAILY_RECORD_ROWS_FIELDS.status,
                 payload: DAILY_RECORD_ROWS_FIELDS.payload,
                 recordedAt: DAILY_RECORD_ROWS_FIELDS.recordedAt,
@@ -274,6 +282,7 @@ export class DailyRecordSchemaResolver {
             userId: resolved.userId ?? DAILY_RECORD_ROWS_FIELDS.userId,
             recordDate: resolved.recordDate,
             version: resolved.version ?? DAILY_RECORD_ROWS_FIELDS.version,
+            commitId: resolved.commitId ?? DAILY_RECORD_ROWS_FIELDS.commitId,
             status: resolved.status ?? DAILY_RECORD_ROWS_FIELDS.status,
             payload: resolved.payload ?? DAILY_RECORD_ROWS_FIELDS.payload,
             recordedAt: resolved.recordedAt ?? DAILY_RECORD_ROWS_FIELDS.recordedAt,

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   _resetSpHealthSignalStore,
   getSpHealthSignal,
@@ -6,17 +6,24 @@ import {
 } from '../spHealthSignalStore';
 
 describe('SpHealthSignalStore correlation metadata', () => {
+  beforeEach(() => {
+    _resetSpHealthSignalStore();
+  });
+
   afterEach(() => {
     _resetSpHealthSignalStore();
   });
 
   it('retains first and latest occurrence times while updating the diagnostic ID', () => {
+    const firstOccurredAt = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const lastOccurredAt = new Date().toISOString();
+
     reportSpHealthEvent({
       severity: 'critical',
       reasonCode: 'sp_list_unreachable',
       listName: 'Users_Master',
       message: 'List not found',
-      occurredAt: '2026-08-04T02:30:00.000Z',
+      occurredAt: firstOccurredAt,
       source: 'realtime',
       diagnosticId: 'diag-12345678',
       httpStatus: 404,
@@ -30,7 +37,7 @@ describe('SpHealthSignalStore correlation metadata', () => {
       reasonCode: 'sp_list_unreachable',
       listName: 'Users_Master',
       message: 'List not found',
-      occurredAt: '2026-08-04T02:33:00.000Z',
+      occurredAt: lastOccurredAt,
       source: 'realtime',
       diagnosticId: 'diag-87654321',
       httpStatus: 404,
@@ -43,8 +50,8 @@ describe('SpHealthSignalStore correlation metadata', () => {
     expect(getSpHealthSignal()).toMatchObject({
       occurrenceCount: 2,
       diagnosticId: 'diag-87654321',
-      firstOccurredAt: '2026-08-04T02:30:00.000Z',
-      lastOccurredAt: '2026-08-04T02:33:00.000Z',
+      firstOccurredAt,
+      lastOccurredAt,
     });
   });
 });
