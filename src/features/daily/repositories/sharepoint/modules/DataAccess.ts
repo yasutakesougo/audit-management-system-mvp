@@ -287,9 +287,9 @@ export class DailyRecordDataAccess {
     }
 
     /**
-     * Pre-commit parent ETag refresh. Returns the response ETag header (strict optimistic commit).
+     * Read parent ETag once when building the snapshot-bound CAS (not a pre-commit refresh).
      */
-    public async getParentCommitEtag(
+    public async readParentSnapshotEtag(
         parentId: number,
         listPath: string,
         signal?: AbortSignal,
@@ -305,7 +305,7 @@ export class DailyRecordDataAccess {
         );
         if (response.ok === false) {
             throw new Error(
-                `[DAILY-RECORD-PERSISTENCE-V1] Parent commit ETag refresh failed with HTTP ${response.status}.`,
+                `[DAILY-RECORD-PERSISTENCE-V1] Parent snapshot ETag read failed with HTTP ${response.status}.`,
             );
         }
         await response.json();

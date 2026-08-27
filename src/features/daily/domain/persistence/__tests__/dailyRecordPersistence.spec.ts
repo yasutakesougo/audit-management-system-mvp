@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   DAILY_RECORD_PERSISTENCE_V1,
   assertCreatedParentIsSoleOwner,
+  bindParentCommitSnapshot,
   buildCurrentVersionChildFilter,
   createDailyRecordCommitId,
   isParentCommitEtagConflictFromHttp,
@@ -12,9 +13,8 @@ import {
   ParentStorageUniquenessConflictError,
   readParentEtagFromItem,
   requireCommittedCurrentIdentity,
-  requireParentCommitEtagBeforeChildren,
   resolveOrCreateParentForSave,
-  resolveStrictParentCommitIfMatch,
+  resolveSnapshotBoundParentCommitIfMatch,
   resolveUniqueParentForDate,
 } from '../dailyRecordPersistence';
 
@@ -153,32 +153,26 @@ describe('DAILY-RECORD-PERSISTENCE-V1', () => {
     expect(listCalls).toBe(3);
   });
 
-  it('strict parent commit contract (AC-20)', () => {
-    expect(DAILY_RECORD_PERSISTENCE_V1.parentCommit).toBe('STRICT_ETAG_OPTIMISTIC');
+  it('snapshot-bound parent commit contract (AC-20)', () => {
+    expect(DAILY_RECORD_PERSISTENCE_V1.parentCommit).toBe('SNAPSHOT_BOUND_ETAG_CAS');
     expect(normalizeParentEtag(' "etag-1" ')).toBe('"etag-1"');
     expect(readParentEtagFromItem({ __metadata: { etag: '"etag-2"' } })).toBe('"etag-2"');
-    expect(() => requireParentCommitEtagBeforeChildren(
-      { parentId: 42, created: false, latestVersion: 4 },
-      null,
-    )).toThrow(/missing ETag before child writes/);
-    expect(() => requireParentCommitEtagBeforeChildren(
-      { parentId: 90, created: true, latestVersion: 0 },
-      null,
-    )).not.toThrow();
-    expect(resolveStrictParentCommitIfMatch(
-      { parentId: 42, created: false, latestVersion: 4 },
-      '"etag-4"',
-    )).toBe('"etag-4"');
-    expect(resolveStrictParentCommitIfMatch(
-      { parentId: 90, created: true, latestVersion: 0 },
-      null,
-    )).toBe('*');
-    expect(() => resolveStrictParentCommitIfMatch(
-      { parentId: 42, created: false, latestVersion: 4 },
-      null,
-    )).toThrow(/IF-MATCH '\*' is prohibited/);
+    const snapshot = bindParentCommitSnapshot({
+      parentId: 42,
+      created: false,
+      latestVersion: 4,
+      etag: '"etag-4"',
+    });
+    expect(resolveSnapshotBoundParentCommitIfMatch(snapshot)).toBe('"etag-4"');
+    expect(() => bindParentCommitSnapshot({
+      parentId: 90,
+      created: true,
+      latestVersion: 0,
+      etag: null,
+    })).toThrow(/Snapshot-bound CAS prohibits IF-MATCH '\*'/);
     expect(isParentCommitEtagConflictFromHttp(412)).toBe(true);
     expect(isParentCommitEtagConflictFromHttp(428)).toBe(true);
-    expect(isParentCommitEtagConflictFromHttp(409)).toBe(false);
+    expect(isParentCommitEtagConflictFromHttp(409)).toBe(true);
+    expect(isParentCommitEtagConflictFromHttp(400, 'Precondition Failed')).toBe(true);
   });
 });

@@ -91,7 +91,7 @@ Never PASS by empty fallback
 
 **Parent uniqueness / create-race:** 同一日付 Title の `SupportRecord_Daily` は高々1件。ストレージ層では `Title`（YYYY-MM-DD）に `EnforceUniqueValues` を付与し、重複 POST を拒否する（プロビジョニングは別 Gate）。save 経路は POST 409/duplicate を storage-conflict として re-list → 既存親を adopt する。未プロビジョン環境向けに post-create re-verify も残す。競合で複数親が観測された場合は child を書かず abort（losing Parent は DELETE しない）。`load` / `list` も duplicate parent を fail closed。
 
-**Parent optimistic commit:** 親の `LatestVersion+LatestCommitId` commit は strict IF-MATCH。update/adopt 経路は child 書込前に ETag 必須（欠落時 abort）。全 child POST 後に pre-commit ETag refresh してから MERGE。`IF-MATCH: *` は当該 save が新規作成した `LatestVersion=0` 親の初回 commit のみ許可。412/428 ETag 競合は losing commit として fail closed（child DELETE 禁止）。
+**Parent optimistic commit:** 親の `LatestVersion+LatestCommitId` commit は snapshot-bound ETag CAS。parent 解決時に ETag を1回だけ束縛し、child POST 後の MERGE はその snapshot を IF-MATCH に使う（pre-commit refresh 禁止）。`IF-MATCH: *` は全経路禁止。412/428/409/400 precondition は losing commit として fail closed（child DELETE 禁止）。spFetch 例外も status で同分類する。
 
 ## 読込規則
 
@@ -135,7 +135,7 @@ Version だけでは失敗再試行や同時保存で同じ番号が再利用さ
 - **AC-17** 同一日付 Parent は高々1件。create-race で複数親が観測されたら child を書かず abort。load/list も duplicate parent を fail closed。losing Parent は DELETE しない
 - **AC-18** save 経路の Parent 解決は atomic contract（list → pre-create gate re-list → optional POST → post-create re-verify）。pre-create gate で既存1件なら POST せず update へ。Repository 初期 lookup の stale null に依存しない
 - **AC-19** `SupportRecord_Daily.Title` は storage-enforced unique（EnforceUniqueValues + Indexed）契約。Parent POST が 409/duplicate で拒否されたら re-list して既存親を adopt し update 継続。未プロビジョン環境では post-create re-verify が fallback
-- **AC-20** 親 commit は strict ETag optimistic contract。update/adopt は ETag 欠落時 child 前 abort。child 後 pre-commit ETag refresh → IF-MATCH MERGE。`*` は新規作成親の LatestVersion=0 初回 commit のみ。412/428 は losing commit として fail closed
+- **AC-20** 親 commit は snapshot-bound ETag CAS。parent 解決時に ETag を束縛し MERGE は refresh しない。`*` 禁止。ETag 欠落は child 前 abort。412/428/409/400 precondition は losing commit として fail closed
 
 ## 対象外
 

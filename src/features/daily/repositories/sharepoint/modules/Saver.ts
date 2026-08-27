@@ -14,18 +14,18 @@ import {
 import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import {
+    bindParentCommitSnapshot,
     createDailyRecordCommitId,
-    isParentCommitEtagConflictFromHttp,
-    isParentStorageUniquenessConflictFromHttp,
     nextDailyRecordVersion,
-    ParentStorageUniquenessConflictError,
     readParentEtagFromItem,
-    requireParentCommitEtagBeforeChildren,
     resolveOrCreateParentForSave,
-    resolveStrictParentCommitIfMatch,
-    type StrictParentCommitContext,
+    resolveSnapshotBoundParentCommitIfMatch,
 } from '../../../domain/persistence/dailyRecordPersistence';
 import { DailyRecordDataAccess } from './DataAccess';
+import {
+    assertDailyRecordParentHttpResponse,
+    rethrowClassifiedDailyRecordParentHttpError,
+} from './dailyRecordSpHttpErrors';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
@@ -113,16 +113,10 @@ export class DailyRecordSaver {
                             }),
                             signal: params?.signal,
                         });
-                        if (res.ok === false) {
-                            const bodyText = await res.text();
-                            if (isParentStorageUniquenessConflictFromHttp(res.status, bodyText)) {
-                                throw new ParentStorageUniquenessConflictError(
-                                    `[DAILY-RECORD-PERSISTENCE-V1] Parent storage uniqueness rejected duplicate Title for date ${input.date}.`,
-                                );
-                            }
-                            throw new Error(
-                                `[DAILY-RECORD-PERSISTENCE-V1] Parent create failed with HTTP ${res.status}.`,
-                            );
+                        try {
+                            await assertDailyRecordParentHttpResponse('parent_create', res, { date: input.date });
+                        } catch (error) {
+                            rethrowClassifiedDailyRecordParentHttpError(error, 'parent_create', { date: input.date });
                         }
                         const createdPayload = await res.json();
                         const parentId = createdPayload.d?.Id || createdPayload.Id;
@@ -145,17 +139,21 @@ export class DailyRecordSaver {
             const mode = created ? 'create' : 'update';
             const currentVersion = existingItem.LatestVersion ?? 0;
             const nextVersion = nextDailyRecordVersion(currentVersion);
-            const commitContext: StrictParentCommitContext = {
+
+            let snapshotEtag = readParentEtagFromItem(existingItem);
+            if (!snapshotEtag) {
+                snapshotEtag = await this.dataAccess.readParentSnapshotEtag(
+                    parentId,
+                    listPath,
+                    params?.signal,
+                );
+            }
+            const snapshot = bindParentCommitSnapshot({
                 parentId,
                 created,
                 latestVersion: currentVersion,
-            };
-
-            let parentEtag = readParentEtagFromItem(existingItem);
-            if (!parentEtag && !created) {
-                parentEtag = await this.dataAccess.getParentCommitEtag(parentId, listPath, params?.signal);
-            }
-            requireParentCommitEtagBeforeChildren(commitContext, parentEtag);
+                etag: snapshotEtag,
+            });
 
             for (const [index, row] of input.userRows.entries()) {
                 const rowNo = index + 1;
@@ -184,20 +182,14 @@ export class DailyRecordSaver {
                 });
             }
 
-            // Commit point: only after every child row is persisted.
-            // Refresh ETag immediately before MERGE (strict optimistic commit).
-            const refreshedEtag = await this.dataAccess.getParentCommitEtag(parentId, listPath, params?.signal);
-            const ifMatch = resolveStrictParentCommitIfMatch(
-                commitContext,
-                refreshedEtag ?? parentEtag ?? readParentEtagFromItem(existingItem),
-            );
+            // Commit point: snapshot-bound ETag CAS — no pre-commit refresh.
             const finalizeUrl = `${listPath}/items(${parentId})`;
             const finalizeRes = await this.spFetch(finalizeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json;odata=nometadata',
                     'Accept': 'application/json;odata=nometadata',
-                    'IF-MATCH': ifMatch,
+                    'IF-MATCH': resolveSnapshotBoundParentCommitIfMatch(snapshot),
                     'X-HTTP-Method': 'MERGE',
                 },
                 body: JSON.stringify({
@@ -206,17 +198,10 @@ export class DailyRecordSaver {
                     [resolvedParentFields.latestCommitId]: commitId,
                 }),
             });
-            if (finalizeRes.ok === false) {
-                if (isParentCommitEtagConflictFromHttp(finalizeRes.status)) {
-                    throw new Error(
-                        `[DAILY-RECORD-PERSISTENCE-V1] Parent optimistic commit failed: ETag conflict (HTTP ${finalizeRes.status}). ` +
-                        `Child rows for CommitId ${commitId} remain non-current ghosts.`,
-                    );
-                }
-                throw new Error(
-                    `[DAILY-RECORD-PERSISTENCE-V1] Parent commit failed with HTTP ${finalizeRes.status}. ` +
-                    `Child rows for CommitId ${commitId} remain non-current ghosts.`,
-                );
+            try {
+                await assertDailyRecordParentHttpResponse('parent_commit', finalizeRes, { commitId });
+            } catch (error) {
+                rethrowClassifiedDailyRecordParentHttpError(error, 'parent_commit', { commitId });
             }
 
             auditLog.debug('daily', `Committed daily record v${nextVersion}`, {
