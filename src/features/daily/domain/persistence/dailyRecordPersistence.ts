@@ -35,6 +35,11 @@ export const DAILY_RECORD_PERSISTENCE_V1 = {
    * Pre-create gate switches to update when a concurrent create wins; never rely on stale null.
    */
   parentCreateRace: 'ATOMIC_PRE_CREATE_GATE_STORAGE_CONFLICT_ADOPT_POST_CREATE_REVERIFY_FAIL_CLOSED',
+  /**
+   * Parent LatestVersion+LatestCommitId commit uses strict IF-MATCH.
+   * Update path requires ETag; pre-commit refresh before MERGE; '*' only for first commit on a new parent.
+   */
+  parentCommit: 'STRICT_ETAG_OPTIMISTIC',
 } as const;
 
 export function nextDailyRecordVersion(currentVersion: number | undefined | null): number {
@@ -144,6 +149,65 @@ export function isParentStorageUniquenessConflictFromHttp(
 
 export function isParentStorageUniquenessConflict(error: unknown): boolean {
   return error instanceof ParentStorageUniquenessConflictError;
+}
+
+export function normalizeParentEtag(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function readParentEtagFromItem(item: { __metadata?: { etag?: string } }): string | null {
+  return normalizeParentEtag(item.__metadata?.etag);
+}
+
+export type StrictParentCommitContext = {
+  parentId: number;
+  /** True only when this save POSTed the parent row in this attempt. */
+  created: boolean;
+  latestVersion: number;
+};
+
+/**
+ * Update / adopt paths must have a known parent ETag before writing children.
+ * First commit on a brand-new parent (LatestVersion 0) may resolve ETag at commit time.
+ */
+export function requireParentCommitEtagBeforeChildren(
+  context: StrictParentCommitContext,
+  etag: string | null,
+): void {
+  if (context.created && context.latestVersion === 0) {
+    return;
+  }
+  if (!normalizeParentEtag(etag)) {
+    throw new Error(
+      `[DAILY-RECORD-PERSISTENCE-V1] Parent ${context.parentId} is missing ETag before child writes. ` +
+      `Aborting; strict optimistic commit requires a known parent version.`,
+    );
+  }
+}
+
+/**
+ * Resolve IF-MATCH for parent commit. Wildcard '*' is allowed only for the first
+ * commit on a parent this save just created at LatestVersion 0.
+ */
+export function resolveStrictParentCommitIfMatch(
+  context: StrictParentCommitContext,
+  etag: string | null,
+): string {
+  const normalized = normalizeParentEtag(etag);
+  if (normalized) return normalized;
+  if (context.created && context.latestVersion === 0) {
+    return '*';
+  }
+  throw new Error(
+    `[DAILY-RECORD-PERSISTENCE-V1] Strict parent commit requires ETag for parent ${context.parentId} ` +
+    `(created=${context.created}, LatestVersion=${context.latestVersion}). IF-MATCH '*' is prohibited.`,
+  );
+}
+
+export function isParentCommitEtagConflictFromHttp(status: number): boolean {
+  return status === 412 || status === 428;
 }
 
 export type ParentDateIdentity = {

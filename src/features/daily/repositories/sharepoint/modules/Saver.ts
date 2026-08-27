@@ -15,10 +15,15 @@ import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyReco
 import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import {
     createDailyRecordCommitId,
+    isParentCommitEtagConflictFromHttp,
     isParentStorageUniquenessConflictFromHttp,
     nextDailyRecordVersion,
     ParentStorageUniquenessConflictError,
+    readParentEtagFromItem,
+    requireParentCommitEtagBeforeChildren,
     resolveOrCreateParentForSave,
+    resolveStrictParentCommitIfMatch,
+    type StrictParentCommitContext,
 } from '../../../domain/persistence/dailyRecordPersistence';
 import { DailyRecordDataAccess } from './DataAccess';
 import { auditLog } from '@/lib/debugLogger';
@@ -121,12 +126,14 @@ export class DailyRecordSaver {
                         }
                         const createdPayload = await res.json();
                         const parentId = createdPayload.d?.Id || createdPayload.Id;
+                        const createEtag = res.headers.get('ETag');
                         return {
                             id: parentId,
                             item: {
                                 Id: parentId,
                                 Title: itemData.Title,
                                 LatestVersion: 0,
+                                __metadata: createEtag ? { etag: createEtag } : undefined,
                             },
                         };
                     },
@@ -138,6 +145,18 @@ export class DailyRecordSaver {
             const mode = created ? 'create' : 'update';
             const currentVersion = existingItem.LatestVersion ?? 0;
             const nextVersion = nextDailyRecordVersion(currentVersion);
+            const commitContext: StrictParentCommitContext = {
+                parentId,
+                created,
+                latestVersion: currentVersion,
+            };
+
+            let parentEtag = readParentEtagFromItem(existingItem);
+            if (!parentEtag && !created) {
+                parentEtag = await this.dataAccess.getParentCommitEtag(parentId, listPath, params?.signal);
+            }
+            requireParentCommitEtagBeforeChildren(commitContext, parentEtag);
+
             for (const [index, row] of input.userRows.entries()) {
                 const rowNo = index + 1;
                 const rowIdentityKey = `${input.date}-${row.userId}-${rowNo}`;
@@ -166,14 +185,19 @@ export class DailyRecordSaver {
             }
 
             // Commit point: only after every child row is persisted.
-            // LatestVersion and LatestCommitId must advance together.
+            // Refresh ETag immediately before MERGE (strict optimistic commit).
+            const refreshedEtag = await this.dataAccess.getParentCommitEtag(parentId, listPath, params?.signal);
+            const ifMatch = resolveStrictParentCommitIfMatch(
+                commitContext,
+                refreshedEtag ?? parentEtag ?? readParentEtagFromItem(existingItem),
+            );
             const finalizeUrl = `${listPath}/items(${parentId})`;
             const finalizeRes = await this.spFetch(finalizeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json;odata=nometadata',
                     'Accept': 'application/json;odata=nometadata',
-                    'IF-MATCH': existingItem?.__metadata?.etag ?? '*',
+                    'IF-MATCH': ifMatch,
                     'X-HTTP-Method': 'MERGE',
                 },
                 body: JSON.stringify({
@@ -183,6 +207,12 @@ export class DailyRecordSaver {
                 }),
             });
             if (finalizeRes.ok === false) {
+                if (isParentCommitEtagConflictFromHttp(finalizeRes.status)) {
+                    throw new Error(
+                        `[DAILY-RECORD-PERSISTENCE-V1] Parent optimistic commit failed: ETag conflict (HTTP ${finalizeRes.status}). ` +
+                        `Child rows for CommitId ${commitId} remain non-current ghosts.`,
+                    );
+                }
                 throw new Error(
                     `[DAILY-RECORD-PERSISTENCE-V1] Parent commit failed with HTTP ${finalizeRes.status}. ` +
                     `Child rows for CommitId ${commitId} remain non-current ghosts.`,

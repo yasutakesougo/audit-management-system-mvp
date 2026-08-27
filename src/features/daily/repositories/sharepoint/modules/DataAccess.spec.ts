@@ -441,4 +441,20 @@ describe('DailyRecordDataAccess DAILY-RECORD-PERSISTENCE-V1', () => {
       ).rejects.toThrow(/Parent uniqueness violated/);
     });
   });
+
+  describe('getParentCommitEtag (AC-20)', () => {
+    it('returns ETag response header for pre-commit refresh', async () => {
+      const spFetch = vi.fn<SpFetchFn>(async (url) => {
+        expect(String(url)).toContain('items(42)');
+        return new Response(JSON.stringify({ Id: 42, LatestVersion: 4 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"etag-42"' },
+        });
+      });
+      const data = new DailyRecordDataAccess(spFetch);
+      await expect(
+        data.getParentCommitEtag(42, "lists/getbytitle('SupportRecord_Daily')"),
+      ).resolves.toBe('"etag-42"');
+    });
+  });
 });

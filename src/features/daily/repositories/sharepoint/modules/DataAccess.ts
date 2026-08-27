@@ -287,6 +287,32 @@ export class DailyRecordDataAccess {
     }
 
     /**
+     * Pre-commit parent ETag refresh. Returns the response ETag header (strict optimistic commit).
+     */
+    public async getParentCommitEtag(
+        parentId: number,
+        listPath: string,
+        signal?: AbortSignal,
+    ): Promise<string | null> {
+        const queryParams = new URLSearchParams();
+        queryParams.set('$select', [
+            'Id', DAILY_RECORD_FIELDS.latestVersion, DAILY_RECORD_FIELDS.latestCommitId,
+        ].join(','));
+
+        const response = await this.spFetch(
+            `${listPath}/items(${parentId})?${queryParams.toString()}`,
+            { signal },
+        );
+        if (response.ok === false) {
+            throw new Error(
+                `[DAILY-RECORD-PERSISTENCE-V1] Parent commit ETag refresh failed with HTTP ${response.status}.`,
+            );
+        }
+        await response.json();
+        return response.headers.get('ETag');
+    }
+
+    /**
      * Parent lookup for save/load.
      *
      * Fail-closed contract:
