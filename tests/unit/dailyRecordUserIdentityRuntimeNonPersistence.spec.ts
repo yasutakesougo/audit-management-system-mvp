@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 // @ts-ignore -- production runtime is intentionally plain ESM and verified behaviorally here.
 import {
   RuntimeGuardError,
@@ -320,14 +319,14 @@ describe('DAILY-RECORD-USER-IDENTITY-RECONCILIATION-V1 runtime non-persistence',
   });
 
   it('runtime source imports no persistence API and has no direct console logger', () => {
-    const corePath = fileURLToPath(new URL(
-      '../../scripts/ops/daily-record-user-identity-reconciliation/runtime-non-persistence-core.mjs',
-      import.meta.url,
-    ));
-    const runnerPath = fileURLToPath(new URL(
-      '../../scripts/ops/daily-record-user-identity-reconciliation/runtime-non-persistence-runner.mjs',
-      import.meta.url,
-    ));
+    const corePath = join(
+      process.cwd(),
+      'scripts', 'ops', 'daily-record-user-identity-reconciliation', 'runtime-non-persistence-core.mjs',
+    );
+    const runnerPath = join(
+      process.cwd(),
+      'scripts', 'ops', 'daily-record-user-identity-reconciliation', 'runtime-non-persistence-runner.mjs',
+    );
 
     const source = `${readFileSync(corePath, 'utf8')}\n${readFileSync(runnerPath, 'utf8')}`;
     for (const forbidden of [
