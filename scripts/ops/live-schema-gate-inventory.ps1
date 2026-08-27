@@ -1,14 +1,16 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-    LIVE-SCHEMA-GATE-V1 read-only PnP inventory (GET / Get-PnPField only).
+    LIVE-SCHEMA-GATE-V1 read-only PnP inventory (Get-PnPList / Get-PnPField).
 
 .DESCRIPTION
     Reads SupportRecord_Daily and DailyRecordRows field metadata:
     InternalName, TypeAsString, Indexed, EnforceUniqueValues.
 
-    This script MUST NOT call Add-PnPField, Set-PnPField, New-PnPList,
-    Remove-PnPField, or any HTTP method other than GET.
+    Cmdlet layer: READ-ONLY. Mutating cmdlets are stubbed to throw.
+    Transport: NOT GUARANTEED HTTP GET. PnP.PowerShell uses CSOM /
+    ClientContext / ExecuteQueryRetry. Do not label this path GET-ONLY.
+    Schema mutation: PROHIBITED.
 
 .EXAMPLE
     .\scripts\ops\live-schema-gate-inventory.ps1 -SiteUrl "https://isogokatudouhome.sharepoint.com/sites/welfare" -UseWebLogin
@@ -32,7 +34,7 @@ $forbidden = @(
 )
 foreach ($name in $forbidden) {
     Set-Item -Path "function:$name" -Value {
-        throw "[LIVE-SCHEMA-GATE-V1] Refusing mutating command. This inventory is GET-only."
+        throw "[LIVE-SCHEMA-GATE-V1] Refusing mutating command. PnP inventory is READ-ONLY; schema mutation is PROHIBITED."
     } -Force
 }
 
@@ -92,9 +94,12 @@ $dump = [ordered]@{
     id            = 'LIVE-SCHEMA-GATE-V1'
     mode          = 'pnp'
     siteUrl       = $SiteUrl
-    httpMethods   = @('GET')
-    mutation      = $false
-    deploy        = 'NOT_AUTHORIZED'
+    httpMethods                 = $null
+    transport                   = 'READ-ONLY'
+    transportMethodGuaranteed   = $false
+    mutation                    = $false
+    schemaMutation              = 'PROHIBITED'
+    deploy                      = 'NOT_AUTHORIZED'
     generatedAt   = (Get-Date).ToUniversalTime().ToString('o')
     lists         = $lists
 }

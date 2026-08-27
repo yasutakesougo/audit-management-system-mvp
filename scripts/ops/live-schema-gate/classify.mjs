@@ -11,6 +11,44 @@
 
 export const LIVE_SCHEMA_GATE_ID = 'LIVE-SCHEMA-GATE-V1';
 
+/**
+ * Correction-1 (P1-1): PnP is read-only at the cmdlet layer, but CSOM /
+ * ClientContext / ExecuteQueryRetry does not guarantee HTTP GET-only transport.
+ * Browser REST, Node SharePoint REST, and Microsoft Graph are GET-ONLY.
+ */
+export const LIVE_SCHEMA_GATE_CORRECTION_1 = {
+  id: 'LIVE-SCHEMA-GATE-V1-Correction-1',
+  browserRest: 'GET-ONLY',
+  nodeSharePointRest: 'GET-ONLY',
+  microsoftGraph: 'GET-ONLY',
+  pnpPowerShell: 'READ-ONLY',
+  pnpTransportMethodGuaranteed: false,
+  schemaMutation: 'PROHIBITED',
+};
+
+export const LIVE_SCHEMA_GATE_INVENTORY_PATHS = {
+  browserRest: {
+    transport: 'GET-ONLY',
+    transportMethodGuaranteed: true,
+    mutation: 'PROHIBITED',
+  },
+  nodeSharePointRest: {
+    transport: 'GET-ONLY',
+    transportMethodGuaranteed: true,
+    mutation: 'PROHIBITED',
+  },
+  microsoftGraph: {
+    transport: 'GET-ONLY',
+    transportMethodGuaranteed: true,
+    mutation: 'PROHIBITED',
+  },
+  pnpPowerShell: {
+    transport: 'READ-ONLY',
+    transportMethodGuaranteed: false,
+    mutation: 'PROHIBITED',
+  },
+};
+
 export const LIVE_SCHEMA_GATE_CHECKS = [
   {
     id: 'SupportRecord_Daily.LatestVersion',

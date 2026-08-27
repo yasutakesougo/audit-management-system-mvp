@@ -70,18 +70,37 @@ This table is the **code/repo** gap on `75beb6ab`. It is not a live SharePoint i
 
 Until live inventory completes, runtime save against live lists must remain disabled. Missing live columns would fail closed (`$select` / POST schema errors → abort, no child DELETE). That is HOLD, not a license to guess.
 
+## Correction-1 (P1-1) — inventory transport boundary
+
+```text
+LIVE-SCHEMA-GATE-V1 Correction-1
+Browser REST:
+GET-ONLY
+Node SharePoint REST:
+GET-ONLY
+Microsoft Graph:
+GET-ONLY
+PnP PowerShell:
+READ-ONLY
+TRANSPORT METHOD NOT GUARANTEED
+Schema Mutation:
+PROHIBITED
+```
+
+Browser REST and Node REST pin `method: 'GET'` and refuse POST/PATCH/MERGE/DELETE. Graph inventory is also GET. PnP uses `Get-PnPList` / `Get-PnPField` (read-only cmdlets) over CSOM `ClientContext` / `ExecuteQueryRetry()`, so it is **not** HTTP GET-ONLY.
+
 ## Next Gate (inventory only)
 
-Use one of these **GET-only** paths. Classify with `scripts/ops/live-schema-gate-inventory.mjs`. Do not Add/Set fields in this Gate.
+Use these read inventory paths. Classify with `scripts/ops/live-schema-gate-inventory.mjs`. Schema mutation is **PROHIBITED** in this Gate.
 
-1. **Browser REST (fastest if already signed in to the site)**  
+1. **Browser REST (GET-ONLY; fastest if already signed in)**  
    Paste `scripts/ops/live-schema-gate-inventory.browser.js` into the SharePoint console on `/sites/welfare`. Save the JSON. Classify with `--mode file`.
-2. **PnP PowerShell**  
-   `scripts/ops/live-schema-gate-inventory.ps1` (`Get-PnPField` only).
-3. **SharePoint REST**  
+2. **PnP PowerShell (READ-ONLY; transport method not guaranteed)**  
+   `scripts/ops/live-schema-gate-inventory.ps1` (`Get-PnPField`). Do not call this GET-ONLY.
+3. **SharePoint REST (GET-ONLY)**  
    `node scripts/ops/live-schema-gate-inventory.mjs --mode rest` with `SHAREPOINT_SITE` + `tests/.auth/storageState.json` or `SP_ACCESS_TOKEN`.
-4. **Microsoft Graph**  
-   `--mode graph` with `GRAPH_ACCESS_TOKEN`. Confirms existence / type / Indexed. **Does not** expose `EnforceUniqueValues` on Graph v1.0 `columnDefinition`, so Title unique stays UNVERIFIED unless REST or PnP is used.
+4. **Microsoft Graph (GET-ONLY)**  
+   `--mode graph` with `GRAPH_ACCESS_TOKEN`. Confirms existence / type / Indexed. **Does not** expose `EnforceUniqueValues` on Graph v1.0 `columnDefinition`, so Title unique stays UNVERIFIED unless REST (GET-ONLY) or PnP (READ-ONLY) is used.
 5. **SharePoint list settings UI**  
    List settings → columns. Record InternalName, type, Indexed, Enforce unique values. Do not change settings in this Gate.
 
@@ -95,7 +114,7 @@ After a complete inventory:
 | `VERIFIED_GAPS` | All four checks were read; at least one is MISSING / MISMATCH / LIST_MISSING → **separate** schema mutation Gate |
 | `VERIFIED_MATCH` | All four already match; mutation not required for these items |
 
-Schema mutation and Deploy stay unauthorized until a later Gate.
+Schema mutation and Deploy stay unauthorized until a later Gate. Correction-1 does not change the live HOLD / UNVERIFIED verdict.
 
 ## Machine-readable companion
 

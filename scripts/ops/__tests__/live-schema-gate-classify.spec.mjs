@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   LIVE_SCHEMA_GATE_CHECKS,
+  LIVE_SCHEMA_GATE_CORRECTION_1,
+  LIVE_SCHEMA_GATE_INVENTORY_PATHS,
   classifyLiveSchemaInventory,
   normalizeInventoryField,
   summarizeLiveSchemaGate,
@@ -32,6 +34,26 @@ describe('LIVE-SCHEMA-GATE-V1 classify', () => {
       'DailyRecordRows.CommitId',
       'SupportRecord_Daily.Title.indexedUnique',
     ]);
+  });
+
+  it('Correction-1 does not label PnP as HTTP GET-ONLY', () => {
+    expect(LIVE_SCHEMA_GATE_CORRECTION_1).toEqual({
+      id: 'LIVE-SCHEMA-GATE-V1-Correction-1',
+      browserRest: 'GET-ONLY',
+      nodeSharePointRest: 'GET-ONLY',
+      microsoftGraph: 'GET-ONLY',
+      pnpPowerShell: 'READ-ONLY',
+      pnpTransportMethodGuaranteed: false,
+      schemaMutation: 'PROHIBITED',
+    });
+    expect(LIVE_SCHEMA_GATE_INVENTORY_PATHS.pnpPowerShell).toEqual({
+      transport: 'READ-ONLY',
+      transportMethodGuaranteed: false,
+      mutation: 'PROHIBITED',
+    });
+    expect(LIVE_SCHEMA_GATE_INVENTORY_PATHS.browserRest.transport).toBe('GET-ONLY');
+    expect(LIVE_SCHEMA_GATE_INVENTORY_PATHS.nodeSharePointRest.transport).toBe('GET-ONLY');
+    expect(LIVE_SCHEMA_GATE_INVENTORY_PATHS.microsoftGraph.transport).toBe('GET-ONLY');
   });
 
   it('keeps all four UNVERIFIED when lists were not read (do not infer MISSING)', () => {
@@ -199,9 +221,11 @@ describe('live-schema-gate-inventory CLI', () => {
     const report = JSON.parse(readFileSync(out, 'utf8'));
     expect(report.gate).toBe('HOLD');
     expect(report.mutation).toBe(false);
-    expect(report.schemaMutation).toBe('NONE');
+    expect(report.schemaMutation).toBe('PROHIBITED');
     expect(report.deploy).toBe('NOT_AUTHORIZED');
     expect(report.httpMethods).toEqual([]);
+    expect(report.correction1.pnpPowerShell).toBe('READ-ONLY');
+    expect(report.correction1.pnpTransportMethodGuaranteed).toBe(false);
     expect(report.checks.every((check) => check.status === 'UNVERIFIED')).toBe(true);
   });
 
@@ -234,5 +258,35 @@ describe('live-schema-gate-inventory CLI', () => {
     const report = JSON.parse(readFileSync(out, 'utf8'));
     expect(report.gate).toBe('VERIFIED_MATCH');
     expect(report.mutation).toBe(false);
+    expect(report.schemaMutation).toBe('PROHIBITED');
+    expect(report.httpMethods).toEqual(['GET']);
+  });
+
+  it('does not stamp HTTP GET onto a PnP dump', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'live-schema-gate-'));
+    const input = path.join(dir, 'pnp.json');
+    const out = path.join(dir, 'classified.json');
+    writeFileSync(input, JSON.stringify({
+      mode: 'pnp',
+      httpMethods: ['GET'],
+      lists: {
+        SupportRecord_Daily: { found: null, fields: null },
+        DailyRecordRows: { found: null, fields: null },
+      },
+    }));
+    const result = spawnSync(process.execPath, [INVENTORY, '--mode', 'file', '--input', input, '--out', out], {
+      encoding: 'utf8',
+    });
+    expect(result.status).toBe(2);
+    const report = JSON.parse(readFileSync(out, 'utf8'));
+    expect(report.mode).toBe('pnp');
+    expect(report.httpMethods).toBeNull();
+    expect(report.inventoryPath).toMatchObject({
+      key: 'pnpPowerShell',
+      transport: 'READ-ONLY',
+      transportMethodGuaranteed: false,
+    });
+    expect(report.schemaMutation).toBe('PROHIBITED');
+    expect(report.gate).toBe('HOLD');
   });
 });

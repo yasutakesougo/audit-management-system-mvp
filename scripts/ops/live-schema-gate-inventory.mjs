@@ -2,7 +2,11 @@
 /**
  * LIVE-SCHEMA-GATE-V1 read-only inventory.
  *
- * GET only. Never POST / PATCH / MERGE / DELETE. Never Add-PnPField / Set-PnPField.
+ * Browser REST / Node SharePoint REST / Microsoft Graph: HTTP GET-ONLY
+ *   (POST / PATCH / MERGE / DELETE refused).
+ * PnP PowerShell is a separate script: READ-ONLY cmdlets, transport method
+ *   NOT GUARANTEED (CSOM / ExecuteQueryRetry). Do not label PnP as HTTP GET-ONLY.
+ * Schema mutation: PROHIBITED.
  *
  * Modes:
  *   --mode hold     Write UNVERIFIED evidence (no network). Default when auth is absent.
@@ -23,7 +27,9 @@ import { fileURLToPath } from 'node:url';
 
 import {
   LIVE_SCHEMA_GATE_CHECKS,
+  LIVE_SCHEMA_GATE_CORRECTION_1,
   LIVE_SCHEMA_GATE_ID,
+  LIVE_SCHEMA_GATE_INVENTORY_PATHS,
   classifyLiveSchemaInventory,
   normalizeInventoryField,
   summarizeLiveSchemaGate,
@@ -187,19 +193,36 @@ function emptyUnverifiedLists(reason) {
   return lists;
 }
 
-function buildReport({ mode, site, lists, httpMethods, notes }) {
+function inventoryPathForMode(mode, dump = null) {
+  if (mode === 'rest') return { key: 'nodeSharePointRest', ...LIVE_SCHEMA_GATE_INVENTORY_PATHS.nodeSharePointRest };
+  if (mode === 'graph') return { key: 'microsoftGraph', ...LIVE_SCHEMA_GATE_INVENTORY_PATHS.microsoftGraph };
+  if (mode === 'pnp' || dump?.mode === 'pnp') {
+    return { key: 'pnpPowerShell', ...LIVE_SCHEMA_GATE_INVENTORY_PATHS.pnpPowerShell };
+  }
+  if (mode === 'browser-rest' || dump?.mode === 'browser-rest') {
+    return { key: 'browserRest', ...LIVE_SCHEMA_GATE_INVENTORY_PATHS.browserRest };
+  }
+  return null;
+}
+
+function buildReport({ mode, site, lists, httpMethods, notes, dump = null }) {
   const checks = classifyLiveSchemaInventory({ lists });
   const summary = summarizeLiveSchemaGate(checks);
+  const inventoryPath = inventoryPathForMode(mode, dump);
   return {
     schemaVersion: 1,
     id: LIVE_SCHEMA_GATE_ID,
     generatedAt: new Date().toISOString(),
     mode,
     siteUrl: site,
-    httpMethods,
+    httpMethods: inventoryPath && inventoryPath.transportMethodGuaranteed === false
+      ? null
+      : httpMethods,
+    inventoryPath,
+    correction1: LIVE_SCHEMA_GATE_CORRECTION_1,
     ...summary,
     mutation: false,
-    schemaMutation: 'NONE',
+    schemaMutation: 'PROHIBITED',
     deploy: 'NOT_AUTHORIZED',
     checks,
     lists: Object.fromEntries(
@@ -239,11 +262,41 @@ async function main() {
     }
     const dump = JSON.parse(readFileSync(resolve(args.input), 'utf8'));
     lists = dump.lists;
-    httpMethods = dump.httpMethods ?? ['GET'];
-    notes = dump.notes ?? ['Classified from captured dump.'];
+    const pathMeta = inventoryPathForMode(dump.mode ?? 'file', dump);
+    if (pathMeta && pathMeta.transportMethodGuaranteed === false) {
+      httpMethods = null;
+      notes = dump.notes ?? [
+        'Classified from captured PnP dump.',
+        'PnP is READ-ONLY. Transport method is NOT GUARANTEED (CSOM / ExecuteQueryRetry).',
+      ];
+    } else {
+      httpMethods = dump.httpMethods ?? ['GET'];
+      notes = dump.notes ?? ['Classified from captured dump.'];
+    }
     if (!lists) {
       throw new Error('Input JSON must contain { lists: { ListTitle: { found, fields } } }');
     }
+    const report = buildReport({
+      mode: dump.mode ?? args.mode,
+      site: dump.siteUrl ?? args.site,
+      lists,
+      httpMethods,
+      notes,
+      dump,
+    });
+    writeReport(args.out, report);
+    console.log(JSON.stringify({
+      id: report.id,
+      gate: report.gate,
+      liveSchema: report.liveSchema,
+      mutation: report.mutation,
+      schemaMutation: report.schemaMutation,
+      deploy: report.deploy,
+      out: args.out,
+      checks: report.checks.map((check) => ({ id: check.id, status: check.status })),
+    }, null, 2));
+    if (report.gate === 'HOLD') process.exitCode = 2;
+    return;
   } else if (args.mode === 'rest') {
     httpMethods = ['GET'];
     const headers = {};
@@ -253,7 +306,7 @@ async function main() {
       headers.Cookie = cookieHeaderFromStorageState(args.storageState);
     }
     lists = await fetchRestLists(args.site, headers);
-    notes = ['SharePoint REST fields GET. Indexed and EnforceUniqueValues are readable.'];
+    notes = ['SharePoint REST fields GET-ONLY. Indexed and EnforceUniqueValues are readable.'];
   } else if (args.mode === 'graph') {
     httpMethods = ['GET'];
     const token = process.env.GRAPH_ACCESS_TOKEN;
@@ -262,8 +315,8 @@ async function main() {
     }
     lists = await fetchGraphLists(args.site, token);
     notes = [
-      'Microsoft Graph list columns GET.',
-      'EnforceUniqueValues is not exposed on Graph v1.0 columnDefinition. Title unique stays UNVERIFIED unless a REST/PnP dump is used.',
+      'Microsoft Graph list columns GET-ONLY.',
+      'EnforceUniqueValues is not exposed on Graph v1.0 columnDefinition. Title unique stays UNVERIFIED unless a REST dump is used.',
     ];
   } else {
     throw new Error(`Unknown --mode ${args.mode}. Use hold | file | rest | graph.`);

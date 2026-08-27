@@ -1,6 +1,7 @@
 # Live inventory captures
 
-GET-only dumps from PnP / REST / Graph / browser console belong here.
+Read-only dumps from REST / Graph / browser console (HTTP GET-ONLY) and PnP
+(READ-ONLY; transport method not guaranteed) belong here.
 
 They are gitignored so site field inventories are not committed by accident.
 Classify with:
