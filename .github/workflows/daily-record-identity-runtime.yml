@@ -1,0 +1,40 @@
+name: daily-record-identity-runtime
+
+on:
+  push:
+    branches:
+      - feat/daily-record-identity-runtime-non-persistence
+    paths:
+      - 'scripts/ops/daily-record-user-identity-reconciliation/**'
+      - 'tests/unit/dailyRecordUserIdentityRuntimeNonPersistence.spec.ts'
+      - '.github/workflows/daily-record-identity-runtime.yml'
+  pull_request:
+    paths:
+      - 'scripts/ops/daily-record-user-identity-reconciliation/**'
+      - 'tests/unit/dailyRecordUserIdentityRuntimeNonPersistence.spec.ts'
+      - '.github/workflows/daily-record-identity-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-runtime-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run targeted synthetic runtime tests
+        env:
+          DRUIR_ENABLE_PRODUCTION_READ: ''
+        run: npx vitest run tests/unit/dailyRecordUserIdentityRuntimeNonPersistence.spec.ts
