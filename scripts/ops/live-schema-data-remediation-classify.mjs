@@ -50,6 +50,12 @@ function main() {
         Created: item.Created ?? null,
         Modified: item.Modified ?? null,
         childCount: item.childCount ?? 0,
+        contentSignificanceVerified: item.contentSignificanceVerified === true,
+        userRowsJSONPresent: item.userRowsJSONPresent === true,
+        userCountPositive: item.userCountPositive === true
+          || (item.userCount != null && Number(item.userCount) > 0),
+        latestVersionPositive: item.latestVersionPositive === true
+          || (item.latestVersion != null && Number(item.latestVersion) > 0),
       })),
     };
   });

@@ -39,9 +39,26 @@ Automatic winner selection: PROHIBITED
 
 ## Cases
 
-- **A** Empty accidental duplicate → manual removal *candidate* after Human GO  
-- **B** Meaningful / children on multiple parents → human decision; child work = separate Gate  
-- **C** Distinct logical parents sharing Title → schema contract reassessment; do not coerce Unique  
+- **A** Verified empty accidental duplicate (content-significance proof required — **P1-1**) → manual removal *candidate* after Human GO  
+- **B** Meaningful / children on multiple parents / unverified content → human decision; child work = separate Gate  
+- **C** Distinct logical parents sharing Title → **SCHEMA CONTRACT REASSESSMENT** (**P2-1**); do **not** delete/merge to coerce Unique  
+
+## Correction-1
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Definition Correction-1
+
+P1-1 Case A content significance evidence
+P1-2 child evidence strict fail-closed
+P1-3 expected 8 groups strict baseline
+P2-1 Case C routing clarification
+```
+
+- **P1-1:** Case A requires verified `UserRowsJSON` / `UserCount` / `LatestVersion` booleans per parent.  
+- **P1-2:** Missing or incomplete child refs → definition HOLD.  
+- **P1-3:** Group count must be exactly 8 — drift fails definition.  
+- **P2-1:** Case C routes to schema reassessment, not data remediation delete/merge.  
 
 ## After remediation (future)
 

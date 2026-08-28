@@ -50,8 +50,36 @@
     'Id', 'Title', 'Created', 'Modified',
     'RecordDate', 'Date', 'cr013_date', 'cr013_recorddate', 'recordDate',
     'UserId', 'UserID', 'UserCode', 'cr013_usercode', 'cr013_personId',
+    // P1-1 content-significance evidence (boolean flags only in output — no payload)
+    'UserRowsJSON', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON',
+    'UserCount', 'cr013_userCount',
+    'LatestVersion', 'cr013_latestVersion',
   ];
+  const contentSignificanceFieldCandidates = [
+    'UserRowsJSON', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON',
+    'UserCount', 'cr013_userCount',
+    'LatestVersion', 'cr013_latestVersion',
+  ];
+  const contentSignificanceFieldsInSchema = contentSignificanceFieldCandidates.filter((n) => parentFieldNames.has(n));
   const parentSelect = parentSelectCandidates.filter((n) => parentFieldNames.has(n) || ['Id', 'Title', 'Created', 'Modified'].includes(n));
+
+  function extractContentSignificance(item) {
+    const userRowsRaw = item.UserRowsJSON ?? item.User_x0020_Rows_x0020_JSON ?? item.cr013_userRowsJSON ?? null;
+    const userCountRaw = item.UserCount ?? item.cr013_userCount ?? null;
+    const latestVersionRaw = item.LatestVersion ?? item.cr013_latestVersion ?? null;
+    const userRowsTrimmed = userRowsRaw == null ? '' : String(userRowsRaw).trim();
+    const userRowsJSONPresent = userRowsTrimmed !== '' && userRowsTrimmed !== '[]';
+    const userCount = userCountRaw == null ? null : Number(userCountRaw);
+    const latestVersion = latestVersionRaw == null ? null : Number(latestVersionRaw);
+    return {
+      contentSignificanceVerified: contentSignificanceFieldsInSchema.length > 0,
+      userRowsJSONPresent,
+      userCount,
+      userCountPositive: Number.isFinite(userCount) && userCount > 0,
+      latestVersion,
+      latestVersionPositive: Number.isFinite(latestVersion) && latestVersion > 0,
+    };
+  }
 
   const parentMeta = await getJson("web/lists/getbytitle('SupportRecord_Daily')?$select=Title,ItemCount,Id");
   const parentsRes = await getAll(
@@ -122,15 +150,19 @@
         title,
         groupSize: items.length,
         parentItemIds: ids,
-        items: items.map((it) => ({
-          Id: it.Id,
-          Title: it.Title,
-          RecordDate: it.RecordDate ?? it.cr013_recorddate ?? it.cr013_date ?? it.Date ?? null,
-          UserId: it.UserId ?? it.UserID ?? it.UserCode ?? it.cr013_usercode ?? it.cr013_personId ?? null,
-          Created: it.Created ?? null,
-          Modified: it.Modified ?? null,
-          childCount: childCounts[String(it.Id)] || 0,
-        })),
+        items: items.map((it) => {
+          const content = extractContentSignificance(it);
+          return {
+            Id: it.Id,
+            Title: it.Title,
+            RecordDate: it.RecordDate ?? it.cr013_recorddate ?? it.cr013_date ?? it.Date ?? null,
+            UserId: it.UserId ?? it.UserID ?? it.UserCode ?? it.cr013_usercode ?? it.cr013_personId ?? null,
+            Created: it.Created ?? null,
+            Modified: it.Modified ?? null,
+            childCount: childCounts[String(it.Id)] || 0,
+            ...content,
+          };
+        }),
       };
     });
 
@@ -178,6 +210,11 @@
       parentIdField,
       rowsRead: childRefs.rowsRead ?? null,
       enumerationComplete: childRefs.enumerationComplete ?? null,
+      error: childRefs.error ?? null,
+    },
+    contentSignificanceCapture: {
+      verified: contentSignificanceFieldsInSchema.length > 0,
+      fieldsInSchema: contentSignificanceFieldsInSchema,
     },
     duplicateGroups,
   };

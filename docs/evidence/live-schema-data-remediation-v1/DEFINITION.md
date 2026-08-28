@@ -55,9 +55,31 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 | `duplicateItemCount` | **18** |
 | Title null/blank | **0** |
 | Child refs via `ParentID` | **COMPLETE** |
+| Content-significance capture | **NOT CAPTURED** (pre–Correction-1 dump) |
 | Data mutation | **NONE** |
 
+## Correction-1
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Definition Correction-1
+
+P1-1 Case A content significance evidence
+P1-2 child evidence strict fail-closed
+P1-3 expected 8 groups strict baseline
+P2-1 Case C routing clarification
+```
+
+| Fix | Rule |
+|---|---|
+| **P1-1** | `EMPTY_DUPLICATE_CANDIDATE` (Case A) requires **verified** content-significance evidence on **every** parent (`UserRowsJSON` / `UserCount` / `LatestVersion` booleans). `childCount=0` alone is insufficient. Missing evidence → `AMBIGUOUS` + `CONTENT_SIGNIFICANCE_UNVERIFIED`. |
+| **P1-2** | Child-reference evidence must be **complete and readable** (`childRefsSummary.ok === true`, ParentID resolved, child enumeration complete). Any gap → `readCompleteness=HOLD`, `definition=HOLD`. |
+| **P1-3** | Expected duplicate-group baseline is **exactly 8**. Count drift → `definition=HOLD` (strict, not soft warning). |
+| **P2-1** | Case C (`SCHEMA_CONTRACT_CONFLICT`) routes to **SCHEMA CONTRACT REASSESSMENT** — **not** data remediation delete/merge. `dataRemediationEligible=false`. |
+
 ## Group register (8 / 8) — Titles redacted
+
+> **Note (Correction-1):** The executed investigation dump predates content-significance field capture. Case A groups (TD-001, TD-002, TD-007, TD-008) are **blocked** from Case A labeling until re-investigation with updated browser script.
 
 ### TD-001 — TEST_LIKE · size 3 · IDs `[7, 12, 15]`
 
@@ -66,7 +88,7 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 | RecordDate | UNVERIFIED (all null) |
 | UserId | UNVERIFIED (all null) |
 | Children | 0 / 0 / 0 |
-| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Classification | **AMBIGUOUS** (Case A blocked — `CONTENT_SIGNIFICANCE_UNVERIFIED`) |
 | Automatic remediation | **PROHIBITED** |
 | Human decision | **YES** |
 
@@ -76,7 +98,7 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 |---|---|
 | RecordDate / UserId | UNVERIFIED / UNVERIFIED |
 | Children | 0 / 0 / 0 |
-| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Classification | **AMBIGUOUS** (Case A blocked — `CONTENT_SIGNIFICANCE_UNVERIFIED`) |
 | Human decision | **YES** |
 
 ### TD-003 — DATE(`2026-05-12`) · size 2 · IDs `[2060, 2063]`
@@ -107,8 +129,8 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 | RecordDate | **DIFFERENT** |
 | UserId | UNVERIFIED |
 | Children | 0 / 0 |
-| Classification | **AMBIGUOUS** → Case C **SCHEMA CONTRACT CONFLICT CANDIDATE** |
-| Notes | Same Title, different RecordDate — do not force Unique by data destruction |
+| Classification | **SCHEMA_CONTRACT_CONFLICT** (Case C) |
+| Route | **SCHEMA CONTRACT REASSESSMENT** — not data remediation delete/merge |
 | Human decision | **YES** |
 
 ### TD-006 — TEST_LIKE · size 2 · IDs `[6, 11]`
@@ -117,7 +139,8 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 |---|---|
 | RecordDate | **DIFFERENT** |
 | Children | 0 / 0 |
-| Classification | **AMBIGUOUS** → Case C candidate |
+| Classification | **SCHEMA_CONTRACT_CONFLICT** (Case C) |
+| Route | **SCHEMA CONTRACT REASSESSMENT** |
 | Human decision | **YES** |
 
 ### TD-007 — TEST_LIKE · size 2 · IDs `[13, 14]`
@@ -125,7 +148,7 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 | Field | Value |
 |---|---|
 | Children | 0 / 0 |
-| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Classification | **AMBIGUOUS** (Case A blocked — `CONTENT_SIGNIFICANCE_UNVERIFIED`) |
 | Human decision | **YES** |
 
 ### TD-008 — TEST_LIKE · size 2 · IDs `[1, 2]`
@@ -134,22 +157,24 @@ Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIG
 |---|---|
 | RecordDate | SAME |
 | Children | 0 / 0 |
-| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Classification | **AMBIGUOUS** (Case A blocked — `CONTENT_SIGNIFICANCE_UNVERIFIED`) |
 | Human decision | **YES** |
 
 ## Remediation strategy (future Human GO only)
 
 | Case | When | Future action (not now) |
 |---|---|---|
-| **A** | Empty accidental duplicate (no children; identity consistent / null) | Manual removal **candidate** only after Human GO |
-| **B** | Meaningful / multi-parent children | **AUTO REPAIR PROHIBITED** — human data decision; child migration = separate Gate |
-| **C** | Same Title, distinct logical parents | **SCHEMA CONTRACT REASSESSMENT** — do not coerce Unique |
+| **A** | Verified empty accidental duplicate (no children; content-significance verified empty; identity consistent) | Manual removal **candidate** only after Human GO |
+| **B** | Meaningful / multi-parent children / unverified content | **AUTO REPAIR PROHIBITED** — human data decision; child migration = separate Gate |
+| **C** | Same Title, distinct logical parents | **SCHEMA CONTRACT REASSESSMENT** — do **not** coerce Unique via delete/merge |
 
 ## Fail-closed (no auto repair)
 
-- Different logical parents share Title (TD-005, TD-006)  
+- Different logical parents share Title (TD-005, TD-006) → schema reassessment, not delete/merge  
 - Child rows on multiple duplicate parents (TD-003, TD-004)  
-- Partial paging / auth failure / missing child evidence  
+- Partial paging / auth failure / missing child evidence (**P1-2**)  
+- Case A without content-significance proof (**P1-1**)  
+- Duplicate group count ≠ 8 (**P1-3**)  
 - Any ambiguity about canonical record → **human decision**, never auto winner  
 
 ## Verification after future remediation
@@ -161,6 +186,7 @@ SupportRecord_Daily enumeration complete
 Title duplicateGroupCount = 0
 Title nullOrBlankTitleCount = 0
 itemRowsRead = ItemCount
+contentSignificanceCapture.verified = true
 ```
 
 Then re-run `LIVE-SCHEMA-MUTATION-V1` preflight → expect `preflightGate=READY`.  
@@ -174,19 +200,22 @@ POST/PUT/PATCH/MERGE/DELETE · item Set/Remove · Title rewrite · parent delete
 
 | Criterion | Status |
 |---|---|
-| 8/8 groups accounted | **PASS** |
+| 8/8 groups accounted (**P1-3**) | **PASS** |
 | All parent IDs identified | **PASS** |
-| Child-reference status known | **PASS** |
+| Child-reference status known (**P1-2**) | **PASS** |
+| Content-significance evidence captured | **PENDING RE-INVESTIGATION** |
 | No auto winner | **PASS** |
+| Case C routed to schema reassessment (**P2-1**) | **PASS** |
 | No item / schema mutation | **PASS** |
 | Human decision point per group | **PASS** |
 | Rollback/verification plan defined | **PASS** |
 
 ## Next
 
-1. **Human review** of TD-001…TD-008 classifications.  
-2. Separate **Human Data Remediation GO** per group/case (start with Case A test-like empties only if approved).  
-3. Do **not** open schema Apply until mutation preflight is READY after remediation.  
+1. **Re-investigate** with updated browser script (content-significance booleans) to unblock Case A labeling.  
+2. **Human review** of TD-001…TD-008 classifications.  
+3. Separate **Human Data Remediation GO** per group/case (Case B only after child Gate; Case C → schema reassessment).  
+4. Do **not** open schema Apply until mutation preflight is READY after remediation.  
 
 Tooling: `scripts/ops/live-schema-data-remediation-investigate.browser.js` · `scripts/ops/live-schema-data-remediation-classify.mjs`  
 Runbook: [`docs/runbooks/live-schema-data-remediation-v1.md`](../../runbooks/live-schema-data-remediation-v1.md)

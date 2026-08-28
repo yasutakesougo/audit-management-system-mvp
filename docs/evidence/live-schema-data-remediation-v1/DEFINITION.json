@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
   "phase": "Definition",
-  "generatedAt": "2026-08-28T00:38:00.000Z",
+  "generatedAt": "2026-08-28T01:30:00.000Z",
   "repositoryBaseline": "e6dabf377961bcd7f8b61561dcbd86e5a57f7da4",
   "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
   "authority": {
@@ -12,6 +12,17 @@
     "blockingCondition": "TITLE_DUPLICATES=8",
     "dataMutationAuthority": "NOT_YET_AUTHORIZED",
     "schemaMutationAuthority": "NOT_AUTHORIZED",
+    "deploy": "NOT_AUTHORIZED"
+  },
+  "correction": {
+    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-1",
+    "fixes": [
+      "P1-1 Case A content significance evidence",
+      "P1-2 child evidence strict fail-closed",
+      "P1-3 expected 8 groups strict baseline",
+      "P2-1 Case C routing clarification"
+    ],
+    "sharePointMutation": "NONE",
     "deploy": "NOT_AUTHORIZED"
   },
   "investigation": {
@@ -24,15 +35,17 @@
     "parentIdField": "ParentID",
     "duplicateGroupCount": 8,
     "duplicateItemCount": 18,
-    "nullOrBlankTitleCount": 0
+    "nullOrBlankTitleCount": 0,
+    "contentSignificanceCapture": "NOT_CAPTURED"
   },
   "summary": {
     "duplicateGroupsAccounted": "8/8",
     "affectedParentItems": 18,
     "childReferences": "COMPLETE",
-    "emptyDuplicateCandidates": 4,
+    "contentSignificanceCapture": "NOT_CAPTURED",
+    "emptyDuplicateCandidates": 0,
     "activeDuplicates": 2,
-    "ambiguousGroups": 2,
+    "ambiguousGroups": 4,
     "schemaContractConflictCandidates": 2,
     "definition": "PASS",
     "dataMutation": "NONE",
@@ -45,8 +58,9 @@
       "parentItemIds": [7, 12, 15],
       "groupSize": 3,
       "titleDisplay": "TEST_LIKE(len=9)",
-      "classification": "EMPTY_DUPLICATE_CANDIDATE",
-      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "classification": "AMBIGUOUS",
+      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
+      "holdReason": "CONTENT_SIGNIFICANCE_UNVERIFIED",
       "humanDecisionRequired": true
     },
     {
@@ -54,8 +68,9 @@
       "parentItemIds": [3, 4, 5],
       "groupSize": 3,
       "titleDisplay": "TEST_LIKE(len=5)",
-      "classification": "EMPTY_DUPLICATE_CANDIDATE",
-      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "classification": "AMBIGUOUS",
+      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
+      "holdReason": "CONTENT_SIGNIFICANCE_UNVERIFIED",
       "humanDecisionRequired": true
     },
     {
@@ -84,8 +99,10 @@
       "groupSize": 2,
       "titleDisplay": "SHORT(len=1)",
       "recordDateComparison": "DIFFERENT",
-      "classification": "AMBIGUOUS",
-      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE",
+      "classification": "SCHEMA_CONTRACT_CONFLICT",
+      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT",
+      "remediationRoute": "SCHEMA_CONTRACT_REASSESSMENT",
+      "dataRemediationEligible": false,
       "humanDecisionRequired": true
     },
     {
@@ -94,8 +111,10 @@
       "groupSize": 2,
       "titleDisplay": "TEST_LIKE(len=11)",
       "recordDateComparison": "DIFFERENT",
-      "classification": "AMBIGUOUS",
-      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE",
+      "classification": "SCHEMA_CONTRACT_CONFLICT",
+      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT",
+      "remediationRoute": "SCHEMA_CONTRACT_REASSESSMENT",
+      "dataRemediationEligible": false,
       "humanDecisionRequired": true
     },
     {
@@ -103,8 +122,9 @@
       "parentItemIds": [13, 14],
       "groupSize": 2,
       "titleDisplay": "TEST_LIKE(len=16)",
-      "classification": "EMPTY_DUPLICATE_CANDIDATE",
-      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "classification": "AMBIGUOUS",
+      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
+      "holdReason": "CONTENT_SIGNIFICANCE_UNVERIFIED",
       "humanDecisionRequired": true
     },
     {
@@ -112,15 +132,16 @@
       "parentItemIds": [1, 2],
       "groupSize": 2,
       "titleDisplay": "TEST_LIKE(len=4)",
-      "classification": "EMPTY_DUPLICATE_CANDIDATE",
-      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "classification": "AMBIGUOUS",
+      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
+      "holdReason": "CONTENT_SIGNIFICANCE_UNVERIFIED",
       "humanDecisionRequired": true
     }
   ],
   "remediationCases": {
-    "A": "Truly empty accidental duplicate — manual removal candidate only after Human GO",
-    "B": "Meaningful data / multi-parent children — AUTO REPAIR PROHIBITED",
-    "C": "Same Title but distinct logical parents — SCHEMA CONTRACT REASSESSMENT REQUIRED"
+    "A": "Verified empty accidental duplicate — manual removal candidate only after Human GO and content-significance proof (P1-1)",
+    "B": "Meaningful data / multi-parent children / unverified content — AUTO REPAIR PROHIBITED",
+    "C": "Same Title but distinct logical parents — SCHEMA CONTRACT REASSESSMENT (P2-1); not delete/merge"
   },
   "prohibited": [
     "item POST/PUT/PATCH/MERGE/DELETE",
@@ -129,11 +150,13 @@
     "child reassignment",
     "automatic canonical selection",
     "automatic duplicate repair",
+    "Case C data remediation delete/merge",
     "schema mutation",
     "deploy",
     "runtime activation"
   ],
   "next": [
+    "Re-investigate with content-significance field capture (updated browser script)",
     "Human review of TD-001..TD-008",
     "Separate Human Data Remediation GO (no mutation in this PR)",
     "Re-run LIVE-SCHEMA-MUTATION-V1 preflight after remediation"

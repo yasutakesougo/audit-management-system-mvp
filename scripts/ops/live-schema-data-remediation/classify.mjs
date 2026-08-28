@@ -8,10 +8,33 @@ export const LIVE_SCHEMA_DATA_REMEDIATION_ID = 'LIVE-SCHEMA-DATA-REMEDIATION-V1'
 export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_BASELINE = {
   dataMutationAuthority: 'NOT_YET_AUTHORIZED',
   schemaMutation: 'PROHIBITED',
-  deploy: 'NOT_AUTHORIZED',
+  deploy: 'NOT AUTHORIZED',
   automaticWinnerSelection: 'PROHIBITED',
   automaticDuplicateRepair: 'PROHIBITED',
 };
+
+/**
+ * Correction-1 — Definition fail-closed / routing fixes (no SharePoint mutation).
+ *
+ * P1-1: Case A (EMPTY_DUPLICATE_CANDIDATE) requires content-significance evidence
+ *       on every parent — childCount=0 alone is insufficient.
+ * P1-2: Child-reference evidence must be complete and readable — else HOLD.
+ * P1-3: Expected duplicate-group baseline is exactly 8 — count drift → definition HOLD.
+ * P2-1: Case C routes to SCHEMA CONTRACT REASSESSMENT — not data remediation delete/merge.
+ */
+export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1 = {
+  id: 'LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-1',
+  caseAContentSignificanceRequired: true,
+  childEvidenceStrictFailClosed: true,
+  expectedDuplicateGroupsStrictBaseline: 8,
+  caseCRoute:
+    'SCHEMA_CONTRACT_REASSESSMENT — do not route Case C to data remediation delete/merge.',
+  sharePointMutation: 'NONE',
+  deploy: 'NOT_AUTHORIZED',
+};
+
+/** Strict preflight baseline — drift fails definition (P1-3). */
+export const EXPECTED_DUPLICATE_GROUP_BASELINE = 8;
 
 /**
  * @param {unknown} value
@@ -48,6 +71,55 @@ function compareField(items, field) {
 }
 
 /**
+ * Content significance booleans — no payload (P1-1).
+ * @param {Record<string, unknown>} item
+ */
+export function assessItemContentSignificance(item) {
+  const verified = item.contentSignificanceVerified === true;
+  const userRowsJSONPresent = item.userRowsJSONPresent === true;
+  const userCountPositive = item.userCountPositive === true
+    || (item.userCount != null && Number(item.userCount) > 0);
+  const latestVersionPositive = item.latestVersionPositive === true
+    || (item.latestVersion != null && Number(item.latestVersion) > 0);
+  const recordDatePresent = !isBlank(item.RecordDate);
+  const userIdPresent = !isBlank(item.UserId);
+
+  const hasSignificantContent = userRowsJSONPresent || userCountPositive || latestVersionPositive;
+
+  return {
+    verified,
+    userRowsJSONPresent,
+    userCountPositive,
+    latestVersionPositive,
+    recordDatePresent,
+    userIdPresent,
+    hasSignificantContent,
+    allInsignificant:
+      verified
+      && !hasSignificantContent
+      && !recordDatePresent
+      && !userIdPresent,
+  };
+}
+
+/**
+ * @param {Array<Record<string, unknown>>} items
+ */
+function assessGroupContentSignificance(items) {
+  const perItem = items.map(assessItemContentSignificance);
+  const allVerified = perItem.length > 0 && perItem.every((s) => s.verified);
+  const anySignificant = perItem.some((s) => s.hasSignificantContent);
+  const allInsignificant = allVerified && perItem.every((s) => s.allInsignificant);
+
+  return {
+    perItem,
+    allVerified,
+    anySignificant,
+    allInsignificant,
+  };
+}
+
+/**
  * @param {object} group
  */
 export function classifyDuplicateGroup(group) {
@@ -57,15 +129,22 @@ export function classifyDuplicateGroup(group) {
   const childCounts = items.map((item) => Number(item.childCount) || 0);
   const parentsWithChildren = childCounts.filter((n) => n > 0).length;
   const totalChildren = childCounts.reduce((a, b) => a + b, 0);
+  const content = assessGroupContentSignificance(items);
 
   let classification = 'AMBIGUOUS';
   let remediationCase = 'B_MEANINGFUL_OR_AMBIGUOUS';
-  let holdReasons = [];
+  /** @type {string | null} */
+  let remediationRoute = null;
+  const holdReasons = [];
 
+  // P2-1: Case C — schema contract conflict, not data remediation delete/merge
   if (recordDateComparison === 'DIFFERENT' || userIdComparison === 'DIFFERENT') {
-    classification = 'AMBIGUOUS';
-    remediationCase = 'C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE';
-    holdReasons.push('Parent identity fields differ within same Title group');
+    classification = 'SCHEMA_CONTRACT_CONFLICT';
+    remediationCase = 'C_SCHEMA_CONTRACT_CONFLICT';
+    remediationRoute = 'SCHEMA_CONTRACT_REASSESSMENT';
+    holdReasons.push(
+      'Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)',
+    );
   } else if (parentsWithChildren > 1) {
     classification = 'ACTIVE_DUPLICATE';
     remediationCase = 'B_MEANINGFUL_OR_AMBIGUOUS';
@@ -74,15 +153,34 @@ export function classifyDuplicateGroup(group) {
     classification = 'ACTIVE_DUPLICATE';
     remediationCase = 'B_MEANINGFUL_OR_AMBIGUOUS';
     holdReasons.push('At least one parent has child references');
+  } else if (content.anySignificant) {
+    classification = 'ACTIVE_DUPLICATE';
+    remediationCase = 'B_MEANINGFUL_OR_AMBIGUOUS';
+    holdReasons.push('Parent content-significance evidence present despite zero child refs');
   } else if (
     items.length >= 2
     && childCounts.every((n) => n === 0)
     && recordDateComparison !== 'DIFFERENT'
+    && userIdComparison !== 'DIFFERENT'
   ) {
-    // Empty of children — still not auto-deletable
-    classification = 'EMPTY_DUPLICATE_CANDIDATE';
-    remediationCase = 'A_EMPTY_ACCIDENTAL_CANDIDATE';
-    holdReasons.push('No children on any parent — still requires human decision (no auto delete)');
+    // P1-1: Case A requires verified insignificant content on every parent
+    if (!content.allVerified) {
+      classification = 'AMBIGUOUS';
+      remediationCase = 'B_MEANINGFUL_OR_AMBIGUOUS';
+      holdReasons.push(
+        'CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence',
+      );
+    } else if (content.allInsignificant) {
+      classification = 'EMPTY_DUPLICATE_CANDIDATE';
+      remediationCase = 'A_EMPTY_ACCIDENTAL_CANDIDATE';
+      holdReasons.push(
+        'Content-significance verified empty on all parents — still requires human decision (no auto delete)',
+      );
+    } else {
+      classification = 'AMBIGUOUS';
+      remediationCase = 'B_MEANINGFUL_OR_AMBIGUOUS';
+      holdReasons.push('Mixed or unverified parent content — no safe Case A labeling');
+    }
   } else {
     holdReasons.push('Insufficient evidence for safe automatic classification');
   }
@@ -94,6 +192,11 @@ export function classifyDuplicateGroup(group) {
     titleDisplay: redactTitle(group.title),
     recordDateComparison,
     userIdComparison,
+    contentSignificance: {
+      verified: content.allVerified,
+      anySignificant: content.anySignificant,
+      allInsignificant: content.allInsignificant,
+    },
     childReferences: Object.fromEntries(
       items.map((item) => [String(item.Id), Number(item.childCount) || 0]),
     ),
@@ -104,6 +207,8 @@ export function classifyDuplicateGroup(group) {
     })),
     classification,
     remediationCase,
+    remediationRoute,
+    dataRemediationEligible: remediationRoute !== 'SCHEMA_CONTRACT_REASSESSMENT',
     automaticRemediation: 'PROHIBITED',
     humanDecisionRequired: true,
     holdReasons,
@@ -111,7 +216,7 @@ export function classifyDuplicateGroup(group) {
 }
 
 /**
- * @param {{ lists?: any, duplicateGroups?: any[], titleStats?: any, childRefsSummary?: any }} dump
+ * @param {{ lists?: any, duplicateGroups?: any[], titleStats?: any, childRefsSummary?: any, contentSignificanceCapture?: any }} dump
  */
 export function classifyDataRemediationInvestigation(dump) {
   const lists = dump?.lists || {};
@@ -122,40 +227,78 @@ export function classifyDataRemediationInvestigation(dump) {
   const child = lists.DailyRecordRows;
 
   let readCompleteness = 'PASS';
+
+  // P1-2: parent enumeration fail-closed
   if (!parent?.enumerationComplete) {
     readCompleteness = 'HOLD';
-    holds.push({ id: 'PARENT_ENUMERATION_INCOMPLETE', detail: 'SupportRecord_Daily paging/itemCount mismatch or unread.' });
+    holds.push({
+      id: 'PARENT_ENUMERATION_INCOMPLETE',
+      detail: 'SupportRecord_Daily paging/itemCount mismatch or unread.',
+    });
   }
-  if (dump?.childRefsSummary && dump.childRefsSummary.ok === false) {
+
+  // P1-2: child evidence strict fail-closed
+  const childRefsSummary = dump?.childRefsSummary;
+  const parentIdField = childRefsSummary?.parentIdField ?? dump?.parentIdFieldUsed ?? null;
+
+  if (!childRefsSummary) {
     readCompleteness = 'HOLD';
-    holds.push({ id: 'CHILD_REFERENCE_EVIDENCE_MISSING', detail: dump.childRefsSummary.error || 'Child refs unread.' });
-  } else if (child && child.enumerationComplete === false) {
+    holds.push({
+      id: 'CHILD_REFERENCE_EVIDENCE_MISSING',
+      detail: 'childRefsSummary absent — child evidence unread (strict fail-closed).',
+    });
+  } else if (childRefsSummary.ok !== true) {
     readCompleteness = 'HOLD';
-    holds.push({ id: 'CHILD_ENUMERATION_INCOMPLETE', detail: 'DailyRecordRows paging/itemCount mismatch.' });
+    holds.push({
+      id: 'CHILD_REFERENCE_EVIDENCE_INCOMPLETE',
+      detail: childRefsSummary.error || 'Child refs unread or incomplete.',
+    });
+  }
+
+  if (!parentIdField) {
+    readCompleteness = 'HOLD';
+    holds.push({
+      id: 'CHILD_PARENT_ID_FIELD_MISSING',
+      detail: 'ParentID field not resolved on DailyRecordRows.',
+    });
+  }
+
+  if (child && child.enumerationComplete !== true) {
+    readCompleteness = 'HOLD';
+    holds.push({
+      id: 'CHILD_ENUMERATION_INCOMPLETE',
+      detail: 'DailyRecordRows paging/itemCount mismatch or unread.',
+    });
   }
 
   const groups = Array.isArray(dump?.duplicateGroups) ? dump.duplicateGroups : [];
   const classified = groups.map(classifyDuplicateGroup);
 
-  const expected = Number(dump?.titleStats?.duplicateGroupCount ?? groups.length);
-  if (classified.length !== 8 && expected === 8) {
+  // P1-3: strict 8-group baseline — drift fails definition (not soft warning)
+  if (classified.length !== EXPECTED_DUPLICATE_GROUP_BASELINE) {
     holds.push({
-      id: 'DUPLICATE_GROUP_COUNT_DRIFT',
-      detail: `Expected 8 groups from prior preflight; investigation found ${classified.length}.`,
+      id: 'DUPLICATE_GROUP_COUNT_BASELINE_MISMATCH',
+      detail:
+        `Strict baseline requires exactly ${EXPECTED_DUPLICATE_GROUP_BASELINE} groups; found ${classified.length}.`,
     });
   }
-  if (classified.length !== expected && Number.isFinite(expected)) {
+
+  const titleStatsCount = dump?.titleStats?.duplicateGroupCount;
+  if (
+    Number.isFinite(titleStatsCount)
+    && titleStatsCount !== classified.length
+  ) {
     holds.push({
       id: 'GROUP_COUNT_INTERNAL_MISMATCH',
-      detail: `titleStats.duplicateGroupCount=${expected} but classified=${classified.length}.`,
+      detail: `titleStats.duplicateGroupCount=${titleStatsCount} but classified=${classified.length}.`,
     });
   }
 
   for (const group of classified) {
-    if (group.remediationCase === 'C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE') {
+    if (group.remediationRoute === 'SCHEMA_CONTRACT_REASSESSMENT') {
       holds.push({
-        id: 'SCHEMA_CONTRACT_CONFLICT_CANDIDATE',
-        detail: `${group.groupId}: same Title but differing parent identity fields.`,
+        id: 'SCHEMA_CONTRACT_REASSESSMENT_REQUIRED',
+        detail: `${group.groupId}: Case C — schema contract reassessment; data remediation delete/merge prohibited.`,
       });
     }
     if (group.classification === 'AMBIGUOUS') {
@@ -164,33 +307,49 @@ export function classifyDataRemediationInvestigation(dump) {
         detail: `${group.groupId}: human decision required; no auto winner.`,
       });
     }
+    if (group.holdReasons.some((r) => r.includes('CONTENT_SIGNIFICANCE_UNVERIFIED'))) {
+      holds.push({
+        id: 'CONTENT_SIGNIFICANCE_UNVERIFIED',
+        detail: `${group.groupId}: Case A blocked — content significance evidence not captured or incomplete.`,
+      });
+    }
+  }
+
+  const contentCaptureVerified = dump?.contentSignificanceCapture?.verified === true;
+  if (!contentCaptureVerified) {
+    notes.push(
+      'P1-1: content-significance fields not captured in investigation — Case A labeling blocked.',
+    );
   }
 
   const emptyCandidates = classified.filter((g) => g.classification === 'EMPTY_DUPLICATE_CANDIDATE').length;
   const activeDuplicates = classified.filter((g) => g.classification === 'ACTIVE_DUPLICATE').length;
   const ambiguousGroups = classified.filter((g) => g.classification === 'AMBIGUOUS').length;
-  const schemaConflicts = classified.filter((g) => g.remediationCase === 'C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE').length;
+  const schemaConflicts = classified.filter((g) => g.remediationRoute === 'SCHEMA_CONTRACT_REASSESSMENT').length;
 
-  // Definition PASS if all groups accounted and read complete — data mutation still not authorized.
-  // HOLD if incomplete evidence.
   let definition = 'PASS';
   if (readCompleteness !== 'PASS') definition = 'HOLD';
   if (classified.length === 0) definition = 'HOLD';
+  if (classified.length !== EXPECTED_DUPLICATE_GROUP_BASELINE) definition = 'HOLD';
 
   notes.push('Automatic winner selection is PROHIBITED.');
   notes.push('EMPTY_DUPLICATE_CANDIDATE is not permission to delete.');
+  notes.push('Case C (SCHEMA_CONTRACT_CONFLICT) routes to schema reassessment — not delete/merge.');
   notes.push('Data mutation requires a separate Human Data Remediation GO.');
 
   return {
     id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
     phase: 'Definition',
+    correction: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1,
     ...LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_BASELINE,
     readCompleteness,
     definition,
-    expectedDuplicateGroups: 8,
+    expectedDuplicateGroups: EXPECTED_DUPLICATE_GROUP_BASELINE,
     duplicateGroupsAccounted: classified.length,
     affectedParentItems: classified.reduce((sum, g) => sum + g.groupSize, 0),
-    childReferences: dump?.childRefsSummary?.ok ? 'COMPLETE' : 'INCOMPLETE',
+    childReferences:
+      readCompleteness === 'PASS' && childRefsSummary?.ok === true ? 'COMPLETE' : 'INCOMPLETE',
+    contentSignificanceCapture: contentCaptureVerified ? 'VERIFIED' : 'NOT_CAPTURED',
     emptyDuplicateCandidates: emptyCandidates,
     activeDuplicates,
     ambiguousGroups,
