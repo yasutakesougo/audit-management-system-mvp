@@ -1,0 +1,192 @@
+# LIVE-SCHEMA-DATA-REMEDIATION-V1 — Definition
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Phase:
+Definition
+Data Mutation Authority:
+NOT YET AUTHORIZED
+Schema Mutation Authority:
+NOT AUTHORIZED
+Deploy:
+NOT AUTHORIZED
+```
+
+Define how to safely resolve the **8 Title duplicate groups** blocking LIVE-SCHEMA-MUTATION-V1 preflight (`TITLE_DUPLICATES`). This phase **investigates and classifies** only. It does **not** rewrite Titles, delete parents, reassign children, mutate schema, or deploy.
+
+## Authority baseline
+
+| Item | Status |
+|---|---|
+| Repository | `yasutakesougo/audit-management-system-mvp` |
+| `main` | `e6dabf377961bcd7f8b61561dcbd86e5a57f7da4` |
+| LIVE-SCHEMA-GATE-V1 | `VERIFIED_GAPS` |
+| LIVE-SCHEMA-MUTATION-V1 Definition | **MERGED / LOCKED** |
+| Mutation preflight | **HOLD** (`TITLE_DUPLICATES = 8`) |
+| Schema mutation | **PROHIBITED** |
+| Deploy | **NOT AUTHORIZED** |
+
+Site: `https://isogokatudouhome.sharepoint.com/sites/welfare`  
+Parent: `SupportRecord_Daily` · Child: `DailyRecordRows` (`ParentID`)
+
+## Critical safety rules
+
+```text
+Duplicate != disposable
+Oldest != canonical
+Newest != canonical
+No children != safe to delete
+Same Title != same logical record
+Automatic winner selection:
+PROHIBITED
+```
+
+## Read-only investigation (executed)
+
+Transport: Browser REST **GET-ONLY**.  
+Raw dump: `captures/investigation-raw.json` (gitignored).  
+Redacted machine report: [`DEFINITION_INVESTIGATION.json`](./DEFINITION_INVESTIGATION.json).
+
+| Check | Result |
+|---|---|
+| Parent ItemCount / rowsRead | **359 / 359** (complete) |
+| Child ItemCount / rowsRead | **3868 / 3868** (complete) |
+| `duplicateGroupCount` | **8** |
+| `duplicateItemCount` | **18** |
+| Title null/blank | **0** |
+| Child refs via `ParentID` | **COMPLETE** |
+| Data mutation | **NONE** |
+
+## Group register (8 / 8) — Titles redacted
+
+### TD-001 — TEST_LIKE · size 3 · IDs `[7, 12, 15]`
+
+| Field | Value |
+|---|---|
+| RecordDate | UNVERIFIED (all null) |
+| UserId | UNVERIFIED (all null) |
+| Children | 0 / 0 / 0 |
+| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Automatic remediation | **PROHIBITED** |
+| Human decision | **YES** |
+
+### TD-002 — TEST_LIKE · size 3 · IDs `[3, 4, 5]`
+
+| Field | Value |
+|---|---|
+| RecordDate / UserId | UNVERIFIED / UNVERIFIED |
+| Children | 0 / 0 / 0 |
+| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Human decision | **YES** |
+
+### TD-003 — DATE(`2026-05-12`) · size 2 · IDs `[2060, 2063]`
+
+| Field | Value |
+|---|---|
+| RecordDate | SAME |
+| UserId | UNVERIFIED |
+| Children | **38** / **16** |
+| Classification | **ACTIVE_DUPLICATE** (Case B) |
+| Notes | Children on **both** parents → no delete/merge without separate child Gate |
+| Human decision | **YES** |
+
+### TD-004 — DATE_LIKE · size 2 · IDs `[2084, 2085]`
+
+| Field | Value |
+|---|---|
+| RecordDate | SAME |
+| UserId | UNVERIFIED |
+| Children | **14** / **1** |
+| Classification | **ACTIVE_DUPLICATE** (Case B) |
+| Human decision | **YES** |
+
+### TD-005 — SHORT · size 2 · IDs `[21, 22]`
+
+| Field | Value |
+|---|---|
+| RecordDate | **DIFFERENT** |
+| UserId | UNVERIFIED |
+| Children | 0 / 0 |
+| Classification | **AMBIGUOUS** → Case C **SCHEMA CONTRACT CONFLICT CANDIDATE** |
+| Notes | Same Title, different RecordDate — do not force Unique by data destruction |
+| Human decision | **YES** |
+
+### TD-006 — TEST_LIKE · size 2 · IDs `[6, 11]`
+
+| Field | Value |
+|---|---|
+| RecordDate | **DIFFERENT** |
+| Children | 0 / 0 |
+| Classification | **AMBIGUOUS** → Case C candidate |
+| Human decision | **YES** |
+
+### TD-007 — TEST_LIKE · size 2 · IDs `[13, 14]`
+
+| Field | Value |
+|---|---|
+| Children | 0 / 0 |
+| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Human decision | **YES** |
+
+### TD-008 — TEST_LIKE · size 2 · IDs `[1, 2]`
+
+| Field | Value |
+|---|---|
+| RecordDate | SAME |
+| Children | 0 / 0 |
+| Classification | **EMPTY_DUPLICATE_CANDIDATE** (Case A candidate) |
+| Human decision | **YES** |
+
+## Remediation strategy (future Human GO only)
+
+| Case | When | Future action (not now) |
+|---|---|---|
+| **A** | Empty accidental duplicate (no children; identity consistent / null) | Manual removal **candidate** only after Human GO |
+| **B** | Meaningful / multi-parent children | **AUTO REPAIR PROHIBITED** — human data decision; child migration = separate Gate |
+| **C** | Same Title, distinct logical parents | **SCHEMA CONTRACT REASSESSMENT** — do not coerce Unique |
+
+## Fail-closed (no auto repair)
+
+- Different logical parents share Title (TD-005, TD-006)  
+- Child rows on multiple duplicate parents (TD-003, TD-004)  
+- Partial paging / auth failure / missing child evidence  
+- Any ambiguity about canonical record → **human decision**, never auto winner  
+
+## Verification after future remediation
+
+GET-only re-check required:
+
+```text
+SupportRecord_Daily enumeration complete
+Title duplicateGroupCount = 0
+Title nullOrBlankTitleCount = 0
+itemRowsRead = ItemCount
+```
+
+Then re-run `LIVE-SCHEMA-MUTATION-V1` preflight → expect `preflightGate=READY`.  
+READY still does **not** authorize schema Apply (separate Human GO).
+
+## Prohibited in this Gate
+
+POST/PUT/PATCH/MERGE/DELETE · item Set/Remove · Title rewrite · parent delete · child reassignment · merge · automatic canonical selection · schema mutation · deploy · runtime activation
+
+## Acceptance (Definition)
+
+| Criterion | Status |
+|---|---|
+| 8/8 groups accounted | **PASS** |
+| All parent IDs identified | **PASS** |
+| Child-reference status known | **PASS** |
+| No auto winner | **PASS** |
+| No item / schema mutation | **PASS** |
+| Human decision point per group | **PASS** |
+| Rollback/verification plan defined | **PASS** |
+
+## Next
+
+1. **Human review** of TD-001…TD-008 classifications.  
+2. Separate **Human Data Remediation GO** per group/case (start with Case A test-like empties only if approved).  
+3. Do **not** open schema Apply until mutation preflight is READY after remediation.  
+
+Tooling: `scripts/ops/live-schema-data-remediation-investigate.browser.js` · `scripts/ops/live-schema-data-remediation-classify.mjs`  
+Runbook: [`docs/runbooks/live-schema-data-remediation-v1.md`](../../runbooks/live-schema-data-remediation-v1.md)

@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Definition",
+  "generatedAt": "2026-08-28T00:38:00.000Z",
+  "repositoryBaseline": "e6dabf377961bcd7f8b61561dcbd86e5a57f7da4",
+  "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
+  "authority": {
+    "liveSchemaGateV1": "VERIFIED_GAPS",
+    "liveSchemaMutationV1Definition": "MERGED_LOCKED",
+    "liveSchemaMutationV1Preflight": "HOLD",
+    "blockingCondition": "TITLE_DUPLICATES=8",
+    "dataMutationAuthority": "NOT_YET_AUTHORIZED",
+    "schemaMutationAuthority": "NOT_AUTHORIZED",
+    "deploy": "NOT_AUTHORIZED"
+  },
+  "investigation": {
+    "transport": "Browser REST GET-ONLY",
+    "readCompleteness": "PASS",
+    "parentItemCount": 359,
+    "parentRowsRead": 359,
+    "childItemCount": 3868,
+    "childRowsRead": 3868,
+    "parentIdField": "ParentID",
+    "duplicateGroupCount": 8,
+    "duplicateItemCount": 18,
+    "nullOrBlankTitleCount": 0
+  },
+  "summary": {
+    "duplicateGroupsAccounted": "8/8",
+    "affectedParentItems": 18,
+    "childReferences": "COMPLETE",
+    "emptyDuplicateCandidates": 4,
+    "activeDuplicates": 2,
+    "ambiguousGroups": 2,
+    "schemaContractConflictCandidates": 2,
+    "definition": "PASS",
+    "dataMutation": "NONE",
+    "schemaMutation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
+  },
+  "groups": [
+    {
+      "groupId": "TD-001",
+      "parentItemIds": [7, 12, 15],
+      "groupSize": 3,
+      "titleDisplay": "TEST_LIKE(len=9)",
+      "classification": "EMPTY_DUPLICATE_CANDIDATE",
+      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-002",
+      "parentItemIds": [3, 4, 5],
+      "groupSize": 3,
+      "titleDisplay": "TEST_LIKE(len=5)",
+      "classification": "EMPTY_DUPLICATE_CANDIDATE",
+      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-003",
+      "parentItemIds": [2060, 2063],
+      "groupSize": 2,
+      "titleDisplay": "DATE(2026-05-12)",
+      "childReferences": { "2060": 38, "2063": 16 },
+      "classification": "ACTIVE_DUPLICATE",
+      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-004",
+      "parentItemIds": [2084, 2085],
+      "groupSize": 2,
+      "titleDisplay": "DATE_LIKE(len=13)",
+      "childReferences": { "2084": 14, "2085": 1 },
+      "classification": "ACTIVE_DUPLICATE",
+      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-005",
+      "parentItemIds": [21, 22],
+      "groupSize": 2,
+      "titleDisplay": "SHORT(len=1)",
+      "recordDateComparison": "DIFFERENT",
+      "classification": "AMBIGUOUS",
+      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-006",
+      "parentItemIds": [6, 11],
+      "groupSize": 2,
+      "titleDisplay": "TEST_LIKE(len=11)",
+      "recordDateComparison": "DIFFERENT",
+      "classification": "AMBIGUOUS",
+      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT_CANDIDATE",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-007",
+      "parentItemIds": [13, 14],
+      "groupSize": 2,
+      "titleDisplay": "TEST_LIKE(len=16)",
+      "classification": "EMPTY_DUPLICATE_CANDIDATE",
+      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "humanDecisionRequired": true
+    },
+    {
+      "groupId": "TD-008",
+      "parentItemIds": [1, 2],
+      "groupSize": 2,
+      "titleDisplay": "TEST_LIKE(len=4)",
+      "classification": "EMPTY_DUPLICATE_CANDIDATE",
+      "remediationCase": "A_EMPTY_ACCIDENTAL_CANDIDATE",
+      "humanDecisionRequired": true
+    }
+  ],
+  "remediationCases": {
+    "A": "Truly empty accidental duplicate — manual removal candidate only after Human GO",
+    "B": "Meaningful data / multi-parent children — AUTO REPAIR PROHIBITED",
+    "C": "Same Title but distinct logical parents — SCHEMA CONTRACT REASSESSMENT REQUIRED"
+  },
+  "prohibited": [
+    "item POST/PUT/PATCH/MERGE/DELETE",
+    "Title rewrite",
+    "parent delete",
+    "child reassignment",
+    "automatic canonical selection",
+    "automatic duplicate repair",
+    "schema mutation",
+    "deploy",
+    "runtime activation"
+  ],
+  "next": [
+    "Human review of TD-001..TD-008",
+    "Separate Human Data Remediation GO (no mutation in this PR)",
+    "Re-run LIVE-SCHEMA-MUTATION-V1 preflight after remediation"
+  ]
+}

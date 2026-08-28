@@ -64,7 +64,8 @@ node scripts/ops/live-schema-mutation-preflight.mjs --mode rest
 - List missing or ambiguous
 - Auth/permission failure
 
-**Do not** auto-repair duplicate or blank Titles in this Gate.
+**Do not** auto-repair duplicate or blank Titles in this Gate.  
+Title duplicate remediation is a separate Gate: [`live-schema-data-remediation-v1.md`](./live-schema-data-remediation-v1.md).
 
 ## Correction-1
 
