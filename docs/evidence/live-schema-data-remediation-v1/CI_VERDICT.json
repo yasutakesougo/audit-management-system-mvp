@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Definition",
+  "exactHead": "9c5197075040b54ed669101802a2e8457819d237",
+  "pr": 2557,
+  "generatedAt": "2026-08-28T01:55:00.000Z",
+  "ciTerminal": true,
+  "verdict": "READY GO",
+  "definitionReview": "PASS / LOCKABLE",
+  "requiredChecks": {
+    "failed": 0,
+    "pending": 0,
+    "status": "PASS"
+  },
+  "lanes": {
+    "core": "PASS",
+    "preflight": "PASS",
+    "quality": "PASS",
+    "canary": "PASS",
+    "fast": "PASS",
+    "smoke": "PASS",
+    "csp": "PASS",
+    "kiosk-e2e": "PASS",
+    "storybook-a11y": "PASS",
+    "schedule-guardrails": "PASS"
+  },
+  "e2eDeep": {
+    "chromiumLanesFailed": 6,
+    "chromiumLanesTotal": 6,
+    "status": "EXPECTED RED (baseline)",
+    "deepLaneUnionAudit": "PASS",
+    "runId": 33133203807
+  },
+  "merge": {
+    "prReady": true,
+    "autoMergeEnabled": true,
+    "githubMergeState": "BLOCKED",
+    "reason": "E2E Deep lane job failures block GitHub merge rollup; required checks pass. Admin/bypass merge may be needed (same pattern as LIVE-SCHEMA-MUTATION-V1 PR #2556)."
+  },
+  "dataMutation": "NONE",
+  "schemaMutation": "NONE",
+  "deploy": "NOT AUTHORIZED"
+}
