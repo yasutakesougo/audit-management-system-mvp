@@ -26,6 +26,9 @@ export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1 = {
   id: 'LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-1',
   caseAContentSignificanceRequired: true,
   childEvidenceStrictFailClosed: true,
+  childEvidenceTrueOnly: true,
+  titleStatsPresenceRequired: true,
+  titleStatsStrictBaseline: 8,
   expectedDuplicateGroupsStrictBaseline: 8,
   caseCRoute:
     'SCHEMA_CONTRACT_REASSESSMENT — do not route Case C to data remediation delete/merge.',
@@ -35,6 +38,14 @@ export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1 = {
 
 /** Strict preflight baseline — drift fails definition (P1-3). */
 export const EXPECTED_DUPLICATE_GROUP_BASELINE = 8;
+
+/**
+ * True-only evidence gate — literal `true` passes; truthy non-boolean fails closed.
+ * @param {unknown} value
+ */
+export function isEvidenceTrue(value) {
+  return value === true;
+}
 
 /**
  * @param {unknown} value
@@ -228,16 +239,16 @@ export function classifyDataRemediationInvestigation(dump) {
 
   let readCompleteness = 'PASS';
 
-  // P1-2: parent enumeration fail-closed
-  if (!parent?.enumerationComplete) {
+  // P1-2: parent enumeration true-only fail-closed
+  if (!isEvidenceTrue(parent?.enumerationComplete)) {
     readCompleteness = 'HOLD';
     holds.push({
       id: 'PARENT_ENUMERATION_INCOMPLETE',
-      detail: 'SupportRecord_Daily paging/itemCount mismatch or unread.',
+      detail: 'SupportRecord_Daily enumerationComplete must be true (true-only fail-closed).',
     });
   }
 
-  // P1-2: child evidence strict fail-closed
+  // P1-2: child evidence true-only fail-closed — every flag must be literal true
   const childRefsSummary = dump?.childRefsSummary;
   const parentIdField = childRefsSummary?.parentIdField ?? dump?.parentIdFieldUsed ?? null;
 
@@ -245,14 +256,23 @@ export function classifyDataRemediationInvestigation(dump) {
     readCompleteness = 'HOLD';
     holds.push({
       id: 'CHILD_REFERENCE_EVIDENCE_MISSING',
-      detail: 'childRefsSummary absent — child evidence unread (strict fail-closed).',
+      detail: 'childRefsSummary absent — child evidence unread (true-only fail-closed).',
     });
-  } else if (childRefsSummary.ok !== true) {
-    readCompleteness = 'HOLD';
-    holds.push({
-      id: 'CHILD_REFERENCE_EVIDENCE_INCOMPLETE',
-      detail: childRefsSummary.error || 'Child refs unread or incomplete.',
-    });
+  } else {
+    if (!isEvidenceTrue(childRefsSummary.ok)) {
+      readCompleteness = 'HOLD';
+      holds.push({
+        id: 'CHILD_REFERENCE_EVIDENCE_INCOMPLETE',
+        detail: childRefsSummary.error || 'childRefsSummary.ok must be true (true-only fail-closed).',
+      });
+    }
+    if (!isEvidenceTrue(childRefsSummary.enumerationComplete)) {
+      readCompleteness = 'HOLD';
+      holds.push({
+        id: 'CHILD_REFERENCE_ENUMERATION_INCOMPLETE',
+        detail: 'childRefsSummary.enumerationComplete must be true (true-only fail-closed).',
+      });
+    }
   }
 
   if (!parentIdField) {
@@ -263,18 +283,44 @@ export function classifyDataRemediationInvestigation(dump) {
     });
   }
 
-  if (child && child.enumerationComplete !== true) {
+  if (!child) {
+    readCompleteness = 'HOLD';
+    holds.push({
+      id: 'CHILD_LIST_EVIDENCE_MISSING',
+      detail: 'DailyRecordRows list evidence absent from investigation dump.',
+    });
+  } else if (!isEvidenceTrue(child.enumerationComplete)) {
     readCompleteness = 'HOLD';
     holds.push({
       id: 'CHILD_ENUMERATION_INCOMPLETE',
-      detail: 'DailyRecordRows paging/itemCount mismatch or unread.',
+      detail: 'DailyRecordRows enumerationComplete must be true (true-only fail-closed).',
     });
   }
 
   const groups = Array.isArray(dump?.duplicateGroups) ? dump.duplicateGroups : [];
   const classified = groups.map(classifyDuplicateGroup);
 
-  // P1-3: strict 8-group baseline — drift fails definition (not soft warning)
+  // P1-3 + titleStats: strict 8-group baseline with titleStats presence requirement
+  const titleStats = dump?.titleStats;
+  let titleStatsValid = false;
+
+  if (!titleStats || typeof titleStats !== 'object') {
+    readCompleteness = 'HOLD';
+    holds.push({
+      id: 'TITLE_STATS_MISSING',
+      detail: 'titleStats absent — duplicateGroupCount baseline unread (strict fail-closed).',
+    });
+  } else if (titleStats.duplicateGroupCount !== EXPECTED_DUPLICATE_GROUP_BASELINE) {
+    readCompleteness = 'HOLD';
+    holds.push({
+      id: 'TITLE_STATS_BASELINE_MISMATCH',
+      detail:
+        `titleStats.duplicateGroupCount must be exactly ${EXPECTED_DUPLICATE_GROUP_BASELINE}; got ${titleStats.duplicateGroupCount}.`,
+    });
+  } else {
+    titleStatsValid = true;
+  }
+
   if (classified.length !== EXPECTED_DUPLICATE_GROUP_BASELINE) {
     holds.push({
       id: 'DUPLICATE_GROUP_COUNT_BASELINE_MISMATCH',
@@ -283,14 +329,13 @@ export function classifyDataRemediationInvestigation(dump) {
     });
   }
 
-  const titleStatsCount = dump?.titleStats?.duplicateGroupCount;
   if (
-    Number.isFinite(titleStatsCount)
-    && titleStatsCount !== classified.length
+    titleStatsValid
+    && titleStats.duplicateGroupCount !== classified.length
   ) {
     holds.push({
       id: 'GROUP_COUNT_INTERNAL_MISMATCH',
-      detail: `titleStats.duplicateGroupCount=${titleStatsCount} but classified=${classified.length}.`,
+      detail: `titleStats.duplicateGroupCount=${titleStats.duplicateGroupCount} but classified=${classified.length}.`,
     });
   }
 
@@ -331,6 +376,13 @@ export function classifyDataRemediationInvestigation(dump) {
   if (readCompleteness !== 'PASS') definition = 'HOLD';
   if (classified.length === 0) definition = 'HOLD';
   if (classified.length !== EXPECTED_DUPLICATE_GROUP_BASELINE) definition = 'HOLD';
+  if (!titleStatsValid) definition = 'HOLD';
+
+  const childEvidenceComplete =
+    isEvidenceTrue(childRefsSummary?.ok)
+    && isEvidenceTrue(childRefsSummary?.enumerationComplete)
+    && Boolean(parentIdField)
+    && isEvidenceTrue(child?.enumerationComplete);
 
   notes.push('Automatic winner selection is PROHIBITED.');
   notes.push('EMPTY_DUPLICATE_CANDIDATE is not permission to delete.');
@@ -347,8 +399,7 @@ export function classifyDataRemediationInvestigation(dump) {
     expectedDuplicateGroups: EXPECTED_DUPLICATE_GROUP_BASELINE,
     duplicateGroupsAccounted: classified.length,
     affectedParentItems: classified.reduce((sum, g) => sum + g.groupSize, 0),
-    childReferences:
-      readCompleteness === 'PASS' && childRefsSummary?.ok === true ? 'COMPLETE' : 'INCOMPLETE',
+    childReferences: childEvidenceComplete ? 'COMPLETE' : 'INCOMPLETE',
     contentSignificanceCapture: contentCaptureVerified ? 'VERIFIED' : 'NOT_CAPTURED',
     emptyDuplicateCandidates: emptyCandidates,
     activeDuplicates,

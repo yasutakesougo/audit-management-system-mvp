@@ -5,6 +5,7 @@ import {
   LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1,
   classifyDataRemediationInvestigation,
   classifyDuplicateGroup,
+  isEvidenceTrue,
   redactTitle,
 } from '../live-schema-data-remediation/classify.mjs';
 
@@ -23,7 +24,9 @@ describe('LIVE-SCHEMA-DATA-REMEDIATION-V1 classify', () => {
     );
     expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.caseAContentSignificanceRequired).toBe(true);
     expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.childEvidenceStrictFailClosed).toBe(true);
-    expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.expectedDuplicateGroupsStrictBaseline).toBe(8);
+    expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.childEvidenceTrueOnly).toBe(true);
+    expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.titleStatsPresenceRequired).toBe(true);
+    expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.titleStatsStrictBaseline).toBe(8);
     expect(LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1.caseCRoute).toMatch(/SCHEMA_CONTRACT_REASSESSMENT/);
   });
 
@@ -130,6 +133,41 @@ describe('LIVE-SCHEMA-DATA-REMEDIATION-V1 classify', () => {
     expect(result.dataMutation).toBe('NONE');
   });
 
+  it('isEvidenceTrue accepts only literal true', () => {
+    expect(isEvidenceTrue(true)).toBe(true);
+    expect(isEvidenceTrue(false)).toBe(false);
+    expect(isEvidenceTrue(undefined)).toBe(false);
+    expect(isEvidenceTrue('true')).toBe(false);
+    expect(isEvidenceTrue(1)).toBe(false);
+  });
+
+  it('P1-2: HOLDs when childRefsSummary.ok is truthy but not literal true', () => {
+    const result = classifyDataRemediationInvestigation({
+      lists: {
+        SupportRecord_Daily: { enumerationComplete: true },
+        DailyRecordRows: { enumerationComplete: true },
+      },
+      childRefsSummary: {
+        ok: 'true',
+        parentIdField: 'ParentID',
+        enumerationComplete: true,
+      },
+      titleStats: { duplicateGroupCount: 8 },
+      duplicateGroups: Array.from({ length: 8 }, (_, i) => ({
+        groupId: `TD-${String(i + 1).padStart(3, '0')}`,
+        title: `t-${i}`,
+        groupSize: 2,
+        items: [
+          { Id: i * 2, childCount: 0, contentSignificanceVerified: true },
+          { Id: i * 2 + 1, childCount: 0, contentSignificanceVerified: true },
+        ],
+      })),
+    });
+    expect(result.readCompleteness).toBe('HOLD');
+    expect(result.childReferences).toBe('INCOMPLETE');
+    expect(result.holds.some((h) => h.id === 'CHILD_REFERENCE_EVIDENCE_INCOMPLETE')).toBe(true);
+  });
+
   it('P1-2: HOLDs when child refs evidence missing (strict fail-closed)', () => {
     const result = classifyDataRemediationInvestigation({
       lists: {
@@ -151,6 +189,36 @@ describe('LIVE-SCHEMA-DATA-REMEDIATION-V1 classify', () => {
     expect(result.readCompleteness).toBe('HOLD');
     expect(result.childReferences).toBe('INCOMPLETE');
     expect(result.holds.some((h) => h.id === 'CHILD_REFERENCE_EVIDENCE_MISSING')).toBe(true);
+  });
+
+  it('titleStats: HOLDs when titleStats missing or duplicateGroupCount != 8', () => {
+    const base = {
+      lists: {
+        SupportRecord_Daily: { enumerationComplete: true },
+        DailyRecordRows: { enumerationComplete: true },
+      },
+      childRefsSummary: { ok: true, parentIdField: 'ParentID', enumerationComplete: true },
+      duplicateGroups: Array.from({ length: 8 }, (_, i) => ({
+        groupId: `TD-${String(i + 1).padStart(3, '0')}`,
+        title: `t-${i}`,
+        groupSize: 2,
+        items: [
+          { Id: i * 2, childCount: 0, contentSignificanceVerified: true },
+          { Id: i * 2 + 1, childCount: 0, contentSignificanceVerified: true },
+        ],
+      })),
+    };
+
+    const missing = classifyDataRemediationInvestigation(base);
+    expect(missing.definition).toBe('HOLD');
+    expect(missing.holds.some((h) => h.id === 'TITLE_STATS_MISSING')).toBe(true);
+
+    const drift = classifyDataRemediationInvestigation({
+      ...base,
+      titleStats: { duplicateGroupCount: 9 },
+    });
+    expect(drift.definition).toBe('HOLD');
+    expect(drift.holds.some((h) => h.id === 'TITLE_STATS_BASELINE_MISMATCH')).toBe(true);
   });
 
   it('P1-3: HOLDs definition when duplicate group count != 8', () => {

@@ -156,9 +156,12 @@
     "runtime activation"
   ],
   "next": [
-    "Re-investigate with content-significance field capture (updated browser script)",
+    "Merge Definition (no SharePoint item/schema mutation in this PR)",
+    "Optional GET-only re-investigation for content-significance booleans (Case A labeling only)",
     "Human review of TD-001..TD-008",
-    "Separate Human Data Remediation GO (no mutation in this PR)",
-    "Re-run LIVE-SCHEMA-MUTATION-V1 preflight after remediation"
+    "Separate Human Data Remediation GO per group (Case C → schema reassessment, not delete/merge)",
+    "GET-only verify duplicateGroupCount=0",
+    "Re-run LIVE-SCHEMA-MUTATION-V1 preflight (READY still not schema Apply)",
+    "Schema Apply requires separate Human GO after preflight READY"
   ]
 }

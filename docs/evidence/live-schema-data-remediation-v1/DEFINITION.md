@@ -73,8 +73,8 @@ P2-1 Case C routing clarification
 | Fix | Rule |
 |---|---|
 | **P1-1** | `EMPTY_DUPLICATE_CANDIDATE` (Case A) requires **verified** content-significance evidence on **every** parent (`UserRowsJSON` / `UserCount` / `LatestVersion` booleans). `childCount=0` alone is insufficient. Missing evidence → `AMBIGUOUS` + `CONTENT_SIGNIFICANCE_UNVERIFIED`. |
-| **P1-2** | Child-reference evidence must be **complete and readable** (`childRefsSummary.ok === true`, ParentID resolved, child enumeration complete). Any gap → `readCompleteness=HOLD`, `definition=HOLD`. |
-| **P1-3** | Expected duplicate-group baseline is **exactly 8**. Count drift → `definition=HOLD` (strict, not soft warning). |
+| **P1-2** | Child-reference evidence **true-only fail-closed**: `childRefsSummary.ok === true`, `childRefsSummary.enumerationComplete === true`, ParentID resolved, `DailyRecordRows.enumerationComplete === true`. Truthy non-boolean fails. Any gap → `readCompleteness=HOLD`, `definition=HOLD`. |
+| **P1-3** | Expected duplicate-group baseline is **exactly 8** in both `duplicateGroups` and **`titleStats.duplicateGroupCount`** (`titleStats` must be present). Count drift → `definition=HOLD`. |
 | **P2-1** | Case C (`SCHEMA_CONTRACT_CONFLICT`) routes to **SCHEMA CONTRACT REASSESSMENT** — **not** data remediation delete/merge. `dataRemediationEligible=false`. |
 
 ## Group register (8 / 8) — Titles redacted
@@ -210,12 +210,21 @@ POST/PUT/PATCH/MERGE/DELETE · item Set/Remove · Title rewrite · parent delete
 | Human decision point per group | **PASS** |
 | Rollback/verification plan defined | **PASS** |
 
-## Next
+## Next (post-merge — no mutation in this Gate)
 
-1. **Re-investigate** with updated browser script (content-significance booleans) to unblock Case A labeling.  
-2. **Human review** of TD-001…TD-008 classifications.  
-3. Separate **Human Data Remediation GO** per group/case (Case B only after child Gate; Case C → schema reassessment).  
-4. Do **not** open schema Apply until mutation preflight is READY after remediation.  
+This Definition PR **does not authorize** SharePoint item writes, schema mutation, or deploy.
+
+| Step | Gate / action | Notes |
+|---|---|---|
+| 1 | **Merge Definition** | Locks classification rules + 8-group register (TD-001…TD-008). |
+| 2 | **Optional re-investigation** | Re-run browser script to capture content-significance booleans; unblocks Case A labeling only — still no item mutation. |
+| 3 | **Human review** | Review TD-001…TD-008 classifications per Case A/B/C. |
+| 4 | **Human Data Remediation GO** | Separate explicit GO **per group** before any item fix. Case B requires child Gate; **Case C → schema contract reassessment track (not delete/merge)**. |
+| 5 | **Verify (GET-only)** | Re-count duplicates → expect `duplicateGroupCount=0`. |
+| 6 | **LIVE-SCHEMA-MUTATION-V1 preflight** | Expect `READY` after remediation — still **not** schema Apply. |
+| 7 | **Schema Apply Human GO** | Only after preflight READY + separate authorization. |
+
+**Out of scope until step 4:** Title rewrite · parent delete · child reassignment · schema mutation · deploy.
 
 Tooling: `scripts/ops/live-schema-data-remediation-investigate.browser.js` · `scripts/ops/live-schema-data-remediation-classify.mjs`  
 Runbook: [`docs/runbooks/live-schema-data-remediation-v1.md`](../../runbooks/live-schema-data-remediation-v1.md)

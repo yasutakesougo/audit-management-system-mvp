@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T01:28:53.184Z",
+  "generatedAt": "2026-08-28T01:32:56.925Z",
   "sourceGeneratedAt": "2026-08-28T00:32:56.611Z",
   "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
   "mode": "browser-rest",
@@ -40,6 +40,9 @@
     "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-1",
     "caseAContentSignificanceRequired": true,
     "childEvidenceStrictFailClosed": true,
+    "childEvidenceTrueOnly": true,
+    "titleStatsPresenceRequired": true,
+    "titleStatsStrictBaseline": 8,
     "expectedDuplicateGroupsStrictBaseline": 8,
     "caseCRoute": "SCHEMA_CONTRACT_REASSESSMENT — do not route Case C to data remediation delete/merge.",
     "sharePointMutation": "NONE",

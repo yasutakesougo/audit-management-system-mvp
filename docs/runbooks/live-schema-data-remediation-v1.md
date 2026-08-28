@@ -56,8 +56,8 @@ P2-1 Case C routing clarification
 ```
 
 - **P1-1:** Case A requires verified `UserRowsJSON` / `UserCount` / `LatestVersion` booleans per parent.  
-- **P1-2:** Missing or incomplete child refs → definition HOLD.  
-- **P1-3:** Group count must be exactly 8 — drift fails definition.  
+- **P1-2:** Child evidence **true-only** — `ok` and `enumerationComplete` must be literal `true`; truthy strings fail.  
+- **P1-3:** `titleStats` must be present with `duplicateGroupCount === 8`.  
 - **P2-1:** Case C routes to schema reassessment, not data remediation delete/merge.  
 
 ## After remediation (future)
