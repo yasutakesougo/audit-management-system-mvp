@@ -3,6 +3,10 @@
  * LIVE-SCHEMA-DATA-REMEDIATION-V1 — classify a GET-only investigation dump.
  * Correction-2: emits Evidence Pack, Candidate Classification, Decision Pack.
  * Correction-3: loads BASELINE.json and mechanically binds baselineHead + listIds.
+ * Phase 3: emits PHASE3_EXIT gate (ambiguity=0, listIds, significance, Case C).
+ *
+ * Operator signed-in GET is the primary capture path (raw JSON under captures/).
+ * Cloud Agent login is fallback only.
  *
  *   node scripts/ops/live-schema-data-remediation-classify.mjs \
  *     --input captures/investigation-raw.json \
@@ -10,10 +14,10 @@
  *     --out docs/evidence/live-schema-data-remediation-v1/DEFINITION_INVESTIGATION.json \
  *     --evidence-pack docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json \
  *     --candidates docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json \
- *     --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md
+ *     --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md \
+ *     --phase3-exit docs/evidence/live-schema-data-remediation-v1/PHASE3_EXIT.json
  *
- * Writes redacted reports suitable for evidence (raw titles stripped).
- * Exit code 2 when definition or baseline identity is HOLD.
+ * Exit code 2 when definition, baseline identity, or Phase 3 exit is HOLD.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -22,9 +26,11 @@ import { fileURLToPath } from 'node:url';
 import {
   bindCapturedListIdsToBaseline,
   buildCandidateClassification,
+  buildDecisionPack,
   buildDecisionPackMarkdown,
   buildEvidencePack,
   classifyDataRemediationInvestigation,
+  evaluatePhase3Exit,
 } from './live-schema-data-remediation/classify.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -33,6 +39,8 @@ const DEFAULT_OUT = resolve(EVIDENCE_DIR, 'captures/DEFINITION_INVESTIGATION.jso
 const DEFAULT_EVIDENCE_PACK = resolve(EVIDENCE_DIR, 'EVIDENCE_PACK.json');
 const DEFAULT_CANDIDATES = resolve(EVIDENCE_DIR, 'CANDIDATE_CLASSIFICATION.json');
 const DEFAULT_DECISION_PACK = resolve(EVIDENCE_DIR, 'DECISION_PACK.md');
+const DEFAULT_DECISION_PACK_JSON = resolve(EVIDENCE_DIR, 'DECISION_PACK.json');
+const DEFAULT_PHASE3_EXIT = resolve(EVIDENCE_DIR, 'PHASE3_EXIT.json');
 const DEFAULT_BASELINE = resolve(EVIDENCE_DIR, 'BASELINE.json');
 
 function parseArgs(argv) {
@@ -43,6 +51,8 @@ function parseArgs(argv) {
     evidencePack: DEFAULT_EVIDENCE_PACK,
     candidates: DEFAULT_CANDIDATES,
     decisionPack: DEFAULT_DECISION_PACK,
+    decisionPackJson: DEFAULT_DECISION_PACK_JSON,
+    phase3Exit: DEFAULT_PHASE3_EXIT,
     bindListIds: true,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -54,6 +64,8 @@ function parseArgs(argv) {
     else if (key === '--evidence-pack' && value) { args.evidencePack = resolve(value); i += 1; }
     else if (key === '--candidates' && value) { args.candidates = resolve(value); i += 1; }
     else if (key === '--decision-pack' && value) { args.decisionPack = resolve(value); i += 1; }
+    else if (key === '--decision-pack-json' && value) { args.decisionPackJson = resolve(value); i += 1; }
+    else if (key === '--phase3-exit' && value) { args.phase3Exit = resolve(value); i += 1; }
     else if (key === '--no-bind-list-ids') { args.bindListIds = false; }
   }
   return args;
@@ -78,11 +90,10 @@ function main() {
       detail: String(err && err.message ? err.message : err),
     }, null, 2));
     process.exitCode = 2;
-    // Continue with null baseline so classify emits HOLD + artifacts for debugging
   }
 
   const dump = JSON.parse(readFileSync(resolve(args.input), 'utf8'));
-  const classified = classifyDataRemediationInvestigation(dump, { baseline });
+  let classified = classifyDataRemediationInvestigation(dump, { baseline });
 
   // Correction-3: bind first-capture listIds into BASELINE.json for subsequent runs
   let baselineBind = { changed: false };
@@ -96,12 +107,12 @@ function main() {
     baselineBind = bindCapturedListIdsToBaseline(baseline, classified.baselineVerification);
     if (baselineBind.changed) {
       writeJson(args.baseline, baselineBind.baseline);
-      // Re-verify with bound baseline so Evidence Pack records BOUND state on next semantics
       baseline = baselineBind.baseline;
+      classified = classifyDataRemediationInvestigation(dump, { baseline });
     }
   }
 
-  // Redacted investigation report (Correction-1 compatible + Correction-2/3 fields)
+  // Redacted investigation report
   const redactedGroups = classified.groups.map((c) => {
     const raw = (dump.duplicateGroups || []).find((g) => {
       const ids = g.parentItemIds || (g.items || []).map((it) => it.Id);
@@ -136,7 +147,7 @@ function main() {
   });
 
   const report = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: new Date().toISOString(),
     sourceGeneratedAt: dump.generatedAt ?? null,
     siteUrl: dump.siteUrl ?? null,
@@ -163,8 +174,46 @@ function main() {
   const candidates = buildCandidateClassification(classified);
   writeJson(args.candidates, candidates);
 
+  const decisionPack = buildDecisionPack(classified, {
+    evidencePackPath: 'docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json',
+    candidatesPath: 'docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json',
+    sourceGeneratedAt: dump.generatedAt ?? null,
+  });
+  writeJson(args.decisionPackJson, decisionPack);
+
+  const phase3Exit = evaluatePhase3Exit(dump, classified, { baseline, evidencePack });
+  writeJson(args.phase3Exit, phase3Exit);
+  writeFileSync(
+    args.phase3Exit.replace(/\.json$/i, '.md'),
+    [
+      '# LIVE-SCHEMA-DATA-REMEDIATION-V1 — Phase 3 Exit',
+      '',
+      '```text',
+      `Result: ${phase3Exit.result}`,
+      `Unresolved ambiguity: ${phase3Exit.unresolvedAmbiguityCount}`,
+      'Mutation authority: NOT_AUTHORIZED',
+      '```',
+      '',
+      '## Checks',
+      '',
+      ...Object.entries(phase3Exit.checks).map(
+        ([id, c]) => `- **${id}**: ${c.result} — ${c.detail}`,
+      ),
+      '',
+      phase3Exit.result === 'PASS'
+        ? 'Human may proceed to Phase 4 TD+action GO/HOLD on Decision Pack.'
+        : 'HOLD — operator signed-in GET / Evidence gaps must clear before Phase 4.',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+
   mkdirSync(dirname(args.decisionPack), { recursive: true });
-  writeFileSync(args.decisionPack, buildDecisionPackMarkdown(candidates), 'utf8');
+  writeFileSync(
+    args.decisionPack,
+    buildDecisionPackMarkdown(decisionPack, { phase3Exit }),
+    'utf8',
+  );
 
   console.log(JSON.stringify({
     id: report.id,
@@ -177,6 +226,8 @@ function main() {
       listIdentityResult: report.baselineVerification?.listIdentityResult ?? null,
     },
     baselineListIdsBound: baselineBind.changed === true,
+    phase3Exit: phase3Exit.result,
+    unresolvedAmbiguityCount: phase3Exit.unresolvedAmbiguityCount,
     duplicateGroupsAccounted: `${report.duplicateGroupsAccounted}/${report.expectedDuplicateGroups}`,
     caseACandidates: report.caseACandidates,
     caseBCandidates: report.caseBCandidates,
@@ -188,12 +239,15 @@ function main() {
     evidencePack: args.evidencePack,
     candidates: args.candidates,
     decisionPack: args.decisionPack,
+    decisionPackJson: args.decisionPackJson,
+    phase3ExitPath: args.phase3Exit,
   }, null, 2));
 
   if (
     report.definition === 'HOLD'
     || report.readCompleteness === 'HOLD'
     || report.baselineVerification?.result === 'HOLD'
+    || phase3Exit.result === 'HOLD'
   ) {
     process.exitCode = 2;
   }

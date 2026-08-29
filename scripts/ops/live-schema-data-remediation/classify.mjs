@@ -456,13 +456,56 @@ export function toMechanicalCandidate(classification, remediationRoute) {
 export function suggestedDispositionForCandidate(candidate) {
   switch (candidate) {
     case 'CASE_A_CANDIDATE':
-      return 'archive/delete candidate (Human GO required; not authorized)';
+      return 'DELETE GO or PRESERVE candidate (Human GO required; not authorized)';
     case 'CASE_B_CANDIDATE':
-      return 'preserve / human data decision (child Gate if needed)';
+      return 'PRESERVE / MERGE GO / HOLD (Human GO required; child Gate if needed)';
     case 'CASE_C_CANDIDATE':
-      return 'schema contract re-evaluation (no delete/merge)';
+      return 'SCHEMA RE-EVALUATION only (no delete/merge)';
     default:
       return 'HOLD pending evidence / human review';
+  }
+}
+
+/**
+ * Phase 4 Human actions allowed in Decision Pack form only.
+ * Presence in this set does NOT grant mutation authority.
+ */
+export const PHASE4_HUMAN_ACTIONS = Object.freeze([
+  'PRESERVE',
+  'DELETE GO',
+  'MERGE GO',
+  'SCHEMA RE-EVALUATION',
+  'HOLD',
+]);
+
+/**
+ * @param {string} candidate
+ * @returns {string[]}
+ */
+export function allowedHumanActionsForCandidate(candidate) {
+  if (candidate === 'CASE_C_CANDIDATE') {
+    return ['SCHEMA RE-EVALUATION', 'HOLD'];
+  }
+  if (candidate === 'CASE_A_CANDIDATE' || candidate === 'CASE_B_CANDIDATE') {
+    return ['PRESERVE', 'DELETE GO', 'MERGE GO', 'HOLD'];
+  }
+  return ['HOLD'];
+}
+
+/**
+ * Recommended disposition token for Decision Pack (not authority).
+ * @param {string} candidate
+ */
+export function recommendedDispositionToken(candidate) {
+  switch (candidate) {
+    case 'CASE_A_CANDIDATE':
+      return 'DELETE GO';
+    case 'CASE_B_CANDIDATE':
+      return 'PRESERVE';
+    case 'CASE_C_CANDIDATE':
+      return 'SCHEMA RE-EVALUATION';
+    default:
+      return 'HOLD';
   }
 }
 
@@ -588,10 +631,17 @@ export function classifyDuplicateGroup(group) {
     candidate,
     lane,
     suggestedDisposition: suggestedDispositionForCandidate(candidate),
+    recommendedDisposition: recommendedDispositionToken(candidate),
+    allowedHumanActions: allowedHumanActionsForCandidate(candidate),
     dataRemediationEligible: remediationRoute !== 'SCHEMA_CONTRACT_REASSESSMENT',
     automaticRemediation: 'PROHIBITED',
     humanDecisionRequired: true,
     humanDecision: null,
+    requestedHumanAction: null,
+    expectedPostState: null,
+    mutationAuthorityStatus: 'NOT_AUTHORIZED',
+    reviewerDecision: null,
+    decisionRationale: null,
     holdReasons,
   };
 }
@@ -932,7 +982,7 @@ export function buildEvidencePack(dump, classified) {
  */
 export function buildCandidateClassification(classified) {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
     phase: 'Phase2_MechanicalCandidates',
     correction2: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
@@ -950,10 +1000,12 @@ export function buildCandidateClassification(classified) {
       CASE_C_CANDIDATE: classified.caseCCandidates,
       AMBIGUOUS: classified.ambiguousGroups,
     },
+    phase4HumanActions: PHASE4_HUMAN_ACTIONS,
     rules: {
       CASE_A_CANDIDATE: '!= DELETE; Human GO required',
       CASE_C_CANDIDATE: 'lane = SCHEMA_CONTRACT_REASSESSMENT; no delete/merge',
       mechanicalCandidate: '!= authorized Case',
+      decisionPackActions: 'PRESERVE|DELETE GO|MERGE GO|SCHEMA RE-EVALUATION|HOLD — form only; not authority',
     },
     groups: classified.groups.map((g) => ({
       groupId: g.groupId,
@@ -962,10 +1014,18 @@ export function buildCandidateClassification(classified) {
       lane: g.lane,
       significance: g.contentSignificance?.value ?? 'UNKNOWN',
       significanceVerified: g.contentSignificance?.verified === true,
+      contentSignificance: g.contentSignificance,
       classification: g.classification,
       suggestedDisposition: g.suggestedDisposition,
+      recommendedDisposition: g.recommendedDisposition,
+      allowedHumanActions: g.allowedHumanActions,
       dataRemediationEligible: g.dataRemediationEligible,
       humanDecision: null,
+      requestedHumanAction: null,
+      expectedPostState: null,
+      mutationAuthorityStatus: 'NOT_AUTHORIZED',
+      reviewerDecision: null,
+      decisionRationale: null,
       holdReasons: g.holdReasons,
     })),
     notes: classified.notes,
@@ -973,37 +1033,94 @@ export function buildCandidateClassification(classified) {
 }
 
 /**
- * Markdown Decision Pack for Human Review (Phase 3/4).
- * @param {ReturnType<typeof buildCandidateClassification>} candidates
+ * Build structured Decision Pack rows (Phase 4 form; values blank / NOT_AUTHORIZED).
+ * @param {ReturnType<typeof classifyDataRemediationInvestigation>} classified
+ * @param {{ evidencePackPath?: string, candidatesPath?: string, sourceGeneratedAt?: string|null }} [refs]
  */
-export function buildDecisionPackMarkdown(candidates) {
+export function buildDecisionPack(classified, refs = {}) {
+  const rows = classified.groups.map((g) => ({
+    tdId: g.groupId,
+    observedItemIds: g.parentItemIds,
+    candidateClassification: g.candidate,
+    contentSignificance: {
+      value: g.contentSignificance?.value ?? 'UNKNOWN',
+      verified: g.contentSignificance?.verified === true,
+      perItem: g.contentSignificance?.perItem ?? [],
+    },
+    evidenceRefs: {
+      evidencePack: refs.evidencePackPath ?? 'docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json',
+      candidates: refs.candidatesPath ?? 'docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json',
+      groupId: g.groupId,
+      sourceGeneratedAt: refs.sourceGeneratedAt ?? null,
+    },
+    recommendedDisposition: g.recommendedDisposition,
+    requestedHumanAction: null,
+    allowedHumanActions: g.allowedHumanActions,
+    expectedPostState: null,
+    mutationAuthorityStatus: 'NOT_AUTHORIZED',
+    reviewerDecision: null,
+    decisionRationale: null,
+    lane: g.lane,
+    dataRemediationEligible: g.dataRemediationEligible,
+    holdReasons: g.holdReasons,
+  }));
+
+  return {
+    schemaVersion: 3,
+    id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
+    phase: 'Phase3_DecisionPack_Phase4_Form',
+    generatedAt: new Date().toISOString(),
+    bulkGo: 'PROHIBITED',
+    mutationAuthorityStatus: 'NOT_AUTHORIZED',
+    phase4HumanActions: PHASE4_HUMAN_ACTIONS,
+    rules: {
+      caseCActionsOnly: ['SCHEMA RE-EVALUATION', 'HOLD'],
+      deleteOrMergeGo: 'Decision Pack form only — does NOT authorize SharePoint mutation',
+      agentMustNotInventGo: true,
+    },
+    counts: {
+      CASE_A_CANDIDATE: classified.caseACandidates,
+      CASE_B_CANDIDATE: classified.caseBCandidates,
+      CASE_C_CANDIDATE: classified.caseCCandidates,
+      AMBIGUOUS: classified.ambiguousGroups,
+    },
+    rows,
+  };
+}
+
+/**
+ * Markdown Decision Pack for Human Review (Phase 3/4).
+ * @param {ReturnType<typeof buildDecisionPack>} decisionPack
+ * @param {{ phase3Exit?: ReturnType<typeof evaluatePhase3Exit> | null }} [opts]
+ */
+export function buildDecisionPackMarkdown(decisionPack, opts = {}) {
+  const phase3 = opts.phase3Exit;
   const lines = [
     '# LIVE-SCHEMA-DATA-REMEDIATION-V1 — Decision Pack',
     '',
     '```text',
     'Phase: 3 Independent Evidence Review → 4 Human Disposition',
-    'Authority: PENDING (blank until Human fills GO/HOLD per row)',
-    'Bulk GO for all 8: PROHIBITED',
+    'Bulk GO: PROHIBITED',
+    'Mutation authority: NOT_AUTHORIZED (DELETE GO / MERGE GO are form labels only)',
     'CASE_*_CANDIDATE != authorized Case',
     'CASE_A_CANDIDATE != DELETE',
+    `Phase3Exit: ${phase3?.result ?? 'PENDING'}`,
     '```',
     '',
-    'Mechanical candidates only. Fill **Human Decision** per row after Evidence Review.',
+    'Fill **Requested human action** + **Reviewer decision** per TD after Phase 3 PASS.',
+    'Allowed actions: `PRESERVE` | `DELETE GO` | `MERGE GO` | `SCHEMA RE-EVALUATION` | `HOLD`.',
+    'Case C rows may only use `SCHEMA RE-EVALUATION` or `HOLD`.',
     '',
-    '| TD | Candidate | Significance | State | Suggested disposition | Lane | Human Decision |',
-    '|---|---|---|---|---|---|---|',
+    '| TD | Item IDs | Candidate | Significance | Recommended | Allowed actions | Requested action | Expected post-state | Mutation authority | Reviewer decision | Rationale |',
+    '|---|---|---|---|---|---|---|---|---|---|---|',
   ];
 
-  for (const g of candidates.groups) {
-    const state = g.candidate === 'CASE_B_CANDIDATE'
-      ? 'active/meaningful'
-      : g.candidate === 'CASE_C_CANDIDATE'
-        ? 'contract conflict'
-        : g.candidate === 'CASE_A_CANDIDATE'
-          ? 'empty candidate'
-          : 'ambiguous';
+  for (const row of decisionPack.rows) {
+    const ids = Array.isArray(row.observedItemIds) ? row.observedItemIds.join(',') : '';
+    const allowed = (row.allowedHumanActions || []).join(' / ');
+    const sig = row.contentSignificance?.value ?? 'UNKNOWN';
     lines.push(
-      `| ${g.groupId} | ${g.candidate} | ${g.significance} | ${state} | ${g.suggestedDisposition} | ${g.lane} | _GO / HOLD_ |`,
+      `| ${row.tdId} | ${ids} | ${row.candidateClassification} | ${sig} | ${row.recommendedDisposition} | ${allowed} | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |`,
     );
   }
 
@@ -1011,25 +1128,195 @@ export function buildDecisionPackMarkdown(candidates) {
     '',
     '## Lane split',
     '',
-    '- **DATA_REMEDIATION** (A/B after Human Case authorization): small-batch mutation only with per-target GO',
-    '- **SCHEMA_CONTRACT_REASSESSMENT** (C): no delete/merge; schema contract track',
+    '- **DATA_REMEDIATION** (A/B after Human Case authorization): TD+action GO only',
+    '- **SCHEMA_CONTRACT_REASSESSMENT** (C): `SCHEMA RE-EVALUATION` / `HOLD` only — no delete/merge',
     '- **HOLD_REVIEW**: evidence gap — do not mutate',
     '',
-    '## Authority (Phase 4 — not yet filled)',
-    '',
-    'Per-row examples (do not treat as granted):',
+    '## Phase 4 action semantics (form only)',
     '',
     '```text',
-    'TD-00N / Item … → Action … → Expected post-state … → Rollback … → Human GO',
+    'PRESERVE              — keep item(s); no delete',
+    'DELETE GO             — authorize delete of named TargetItemIds only (not yet granted)',
+    'MERGE GO              — authorize merge of named targets only (not yet granted)',
+    'SCHEMA RE-EVALUATION  — Case C lane; never delete/merge to coerce Unique',
+    'HOLD                  — no action',
     '```',
     '',
     '## Counts',
     '',
     '```json',
-    JSON.stringify(candidates.counts, null, 2),
+    JSON.stringify(decisionPack.counts, null, 2),
     '```',
     '',
   );
 
+  if (phase3) {
+    lines.push(
+      '## Phase 3 Exit',
+      '',
+      '```json',
+      JSON.stringify({
+        result: phase3.result,
+        unresolvedAmbiguityCount: phase3.unresolvedAmbiguityCount,
+        checks: phase3.checks,
+      }, null, 2),
+      '```',
+      '',
+    );
+  }
+
   return `${lines.join('\n')}\n`;
 }
+
+/**
+ * Phase 3 Independent Evidence Review exit gate.
+ * Pack existence alone is insufficient — all criteria must PASS.
+ *
+ * @param {Record<string, unknown>} dump
+ * @param {ReturnType<typeof classifyDataRemediationInvestigation>} classified
+ * @param {{ baseline?: Record<string, unknown> | null, evidencePack?: Record<string, unknown> | null }} [options]
+ */
+export function evaluatePhase3Exit(dump, classified, options = {}) {
+  const baseline = options.baseline ?? null;
+  const bv = classified.baselineVerification
+    || verifyBaselineIdentity(baseline, dump);
+
+  /** @type {Record<string, { result: string, detail: string }>} */
+  const checks = {};
+
+  // baselineHead fixed
+  const headOk = bv.headResult === 'PASS'
+    && bv.expectedHead != null
+    && bv.observedHead != null
+    && bv.expectedHead === bv.observedHead;
+  checks.baselineHeadFixed = {
+    result: headOk ? 'PASS' : 'HOLD',
+    detail: headOk
+      ? `baselineHead bound: ${bv.observedHead}`
+      : `baselineHead not fixed (expected=${bv.expectedHead} observed=${bv.observedHead})`,
+  };
+
+  // listIds captured / bound (not PENDING)
+  const listDetails = bv.lists || {};
+  const listNames = ['SupportRecord_Daily', 'DailyRecordRows'];
+  const listResults = listNames.map((n) => listDetails[n]?.result ?? 'MISSING');
+  const listIdsCaptured = listResults.every((r) => r === 'PASS' || r === 'CAPTURED');
+  const listIdsPending = listResults.some((r) => r === 'PENDING_CAPTURE' || r === 'MISSING' || r === 'HOLD');
+  checks.listIdsCaptured = {
+    result: listIdsCaptured && !listResults.includes('HOLD') ? 'PASS' : 'HOLD',
+    detail: listIdsPending
+      ? `list identity incomplete: ${JSON.stringify(listResults)}`
+      : `list identity ok: ${JSON.stringify(Object.fromEntries(listNames.map((n) => [n, listDetails[n]?.result])))}`,
+  };
+
+  // TD-001...008 complete
+  const present = new Set((classified.groups || []).map((g) => g.groupId));
+  const missingTd = Object.keys(FROZEN_TD_REGISTER).filter((td) => !present.has(td));
+  checks.tdRegisterComplete = {
+    result: missingTd.length === 0 && (classified.groups || []).length === EXPECTED_DUPLICATE_GROUP_BASELINE
+      ? 'PASS'
+      : 'HOLD',
+    detail: missingTd.length === 0
+      ? 'TD-001...008 all present'
+      : `missing TD: ${missingTd.join(', ')}`,
+  };
+
+  // contentSignificance.value ∈ TRUE/FALSE/UNKNOWN + basis/evidence present
+  const sigIssues = [];
+  for (const g of classified.groups || []) {
+    const perItem = g.contentSignificance?.perItem || [];
+    if (perItem.length === 0) {
+      sigIssues.push(`${g.groupId}: no per-item contentSignificance`);
+      continue;
+    }
+    for (const item of perItem) {
+      const value = item?.value;
+      if (value !== 'TRUE' && value !== 'FALSE' && value !== 'UNKNOWN') {
+        sigIssues.push(`${g.groupId}/item ${item?.Id}: invalid value ${value}`);
+      }
+      if (!Array.isArray(item?.basis) || item.basis.length === 0) {
+        sigIssues.push(`${g.groupId}/item ${item?.Id}: basis missing`);
+      }
+      if (!item?.evidence || typeof item.evidence !== 'object') {
+        sigIssues.push(`${g.groupId}/item ${item?.Id}: evidence missing`);
+      }
+    }
+  }
+  checks.contentSignificanceComplete = {
+    result: sigIssues.length === 0 ? 'PASS' : 'HOLD',
+    detail: sigIssues.length === 0
+      ? 'all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence'
+      : sigIssues.slice(0, 8).join('; '),
+  };
+
+  // classification traceable
+  const untraceable = (classified.groups || []).filter(
+    (g) => !g.candidate || !g.lane || !Array.isArray(g.holdReasons),
+  );
+  checks.classificationTraceable = {
+    result: untraceable.length === 0 ? 'PASS' : 'HOLD',
+    detail: untraceable.length === 0
+      ? 'each TD has candidate+lane+holdReasons'
+      : `untraceable: ${untraceable.map((g) => g.groupId).join(', ')}`,
+  };
+
+  // Case C separated
+  const caseCBad = (classified.groups || []).filter(
+    (g) => g.candidate === 'CASE_C_CANDIDATE'
+      && (g.dataRemediationEligible !== false || g.lane !== 'SCHEMA_CONTRACT_REASSESSMENT'),
+  );
+  checks.caseCSeparated = {
+    result: caseCBad.length === 0 ? 'PASS' : 'HOLD',
+    detail: caseCBad.length === 0
+      ? 'all CASE_C_CANDIDATE on SCHEMA_CONTRACT_REASSESSMENT with dataRemediationEligible=false'
+      : `Case C misrouted: ${caseCBad.map((g) => g.groupId).join(', ')}`,
+  };
+
+  // unresolved ambiguity count
+  const unresolvedAmbiguityCount = classified.ambiguousGroups ?? 0;
+  checks.unresolvedAmbiguity = {
+    result: unresolvedAmbiguityCount === 0 ? 'PASS' : 'HOLD',
+    detail: `unresolvedAmbiguityCount=${unresolvedAmbiguityCount}`,
+  };
+
+  // source capture identity fixed
+  const liveCapture = dump?.liveCaptureStatus;
+  const mode = dump?.mode;
+  const sourceFixed = Boolean(dump?.baselineHead)
+    && (mode === 'browser-rest' || liveCapture === 'CAPTURED')
+    && liveCapture !== 'HOLD';
+  checks.sourceCaptureIdentityFixed = {
+    result: sourceFixed ? 'PASS' : 'HOLD',
+    detail: sourceFixed
+      ? `source capture fixed (mode=${mode}, liveCaptureStatus=${liveCapture})`
+      : `source capture not fixed (mode=${mode}, liveCaptureStatus=${liveCapture}) — operator signed-in GET required`,
+  };
+
+  const failed = Object.entries(checks)
+    .filter(([, c]) => c.result !== 'PASS')
+    .map(([id, c]) => ({ id, detail: c.detail }));
+
+  const result = failed.length === 0 ? 'PASS' : 'HOLD';
+
+  return {
+    schemaVersion: 1,
+    id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
+    phase: 'Phase3_IndependentEvidenceReview_Exit',
+    generatedAt: new Date().toISOString(),
+    result,
+    unresolvedAmbiguityCount,
+    checks,
+    failed,
+    notes: [
+      'Phase 3 PASS is required before Human fills Phase 4 TD+action GO/HOLD.',
+      'DELETE GO / MERGE GO in Decision Pack are form labels only — mutationAuthorityStatus remains NOT_AUTHORIZED until Human grants.',
+      'Operator signed-in GET is the primary capture path; Cloud Agent login is fallback only.',
+    ],
+    authority: {
+      itemMutation: 'NOT_AUTHORIZED',
+      schemaMutation: 'NOT_AUTHORIZED',
+      humanDisposition: result === 'PASS' ? 'READY_FOR_HUMAN' : 'BLOCKED_BY_PHASE3_HOLD',
+    },
+  };
+}
+

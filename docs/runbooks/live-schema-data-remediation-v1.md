@@ -41,8 +41,13 @@ node scripts/ops/live-schema-data-remediation-classify.mjs \
   --out docs/evidence/live-schema-data-remediation-v1/DEFINITION_INVESTIGATION.json \
   --evidence-pack docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json \
   --candidates docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json \
-  --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md
+  --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md \
+  --decision-pack-json docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.json \
+  --phase3-exit docs/evidence/live-schema-data-remediation-v1/PHASE3_EXIT.json
 ```
+
+Primary capture path: **Operator** signed-in browser on `/sites/welfare` → raw JSON under `captures/`.  
+Cloud Agent login is **fallback only**.
 
 One-shot fields include structured:
 

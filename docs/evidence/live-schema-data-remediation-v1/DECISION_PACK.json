@@ -1,34 +1,10 @@
 {
   "schemaVersion": 3,
   "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
-  "phase": "Phase2_MechanicalCandidates",
-  "correction2": {
-    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-2",
-    "phaseScope": "Phase0_Baseline_Phase1_Evidence_Phase2_Candidates",
-    "structuredContentSignificance": true,
-    "frozenTdRegisterRequired": true,
-    "mechanicalCandidatesOnly": true,
-    "candidateDoesNotAuthorizeCase": true,
-    "caseACandidateIsNotDelete": true,
-    "caseCLane": "SCHEMA_CONTRACT_REASSESSMENT",
-    "factsAreNotAuthority": true,
-    "sharePointMutation": "NONE",
-    "deploy": "NOT_AUTHORIZED"
-  },
+  "phase": "Phase3_DecisionPack_Phase4_Form",
   "generatedAt": "2026-08-29T03:19:42.312Z",
-  "readCompleteness": "PASS",
-  "definition": "PASS",
-  "authority": {
-    "itemMutation": "NOT_AUTHORIZED",
-    "schemaMutation": "NOT_AUTHORIZED",
-    "humanDisposition": "PENDING"
-  },
-  "counts": {
-    "CASE_A_CANDIDATE": 0,
-    "CASE_B_CANDIDATE": 2,
-    "CASE_C_CANDIDATE": 2,
-    "AMBIGUOUS": 4
-  },
+  "bulkGo": "PROHIBITED",
+  "mutationAuthorityStatus": "NOT_AUTHORIZED",
   "phase4HumanActions": [
     "PRESERVE",
     "DELETE GO",
@@ -37,28 +13,31 @@
     "HOLD"
   ],
   "rules": {
-    "CASE_A_CANDIDATE": "!= DELETE; Human GO required",
-    "CASE_C_CANDIDATE": "lane = SCHEMA_CONTRACT_REASSESSMENT; no delete/merge",
-    "mechanicalCandidate": "!= authorized Case",
-    "decisionPackActions": "PRESERVE|DELETE GO|MERGE GO|SCHEMA RE-EVALUATION|HOLD — form only; not authority"
+    "caseCActionsOnly": [
+      "SCHEMA RE-EVALUATION",
+      "HOLD"
+    ],
+    "deleteOrMergeGo": "Decision Pack form only — does NOT authorize SharePoint mutation",
+    "agentMustNotInventGo": true
   },
-  "groups": [
+  "counts": {
+    "CASE_A_CANDIDATE": 0,
+    "CASE_B_CANDIDATE": 2,
+    "CASE_C_CANDIDATE": 2,
+    "AMBIGUOUS": 4
+  },
+  "rows": [
     {
-      "groupId": "TD-001",
-      "parentItemIds": [
+      "tdId": "TD-001",
+      "observedItemIds": [
         7,
         12,
         15
       ],
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "AMBIGUOUS",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 7,
@@ -98,39 +77,38 @@
           }
         ]
       },
-      "classification": "AMBIGUOUS",
-      "suggestedDisposition": "HOLD pending evidence / human review",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-001",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "HOLD"
       ],
-      "dataRemediationEligible": true,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ]
     },
     {
-      "groupId": "TD-002",
-      "parentItemIds": [
+      "tdId": "TD-002",
+      "observedItemIds": [
         3,
         4,
         5
       ],
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "AMBIGUOUS",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 3,
@@ -170,38 +148,37 @@
           }
         ]
       },
-      "classification": "AMBIGUOUS",
-      "suggestedDisposition": "HOLD pending evidence / human review",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-002",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "HOLD"
       ],
-      "dataRemediationEligible": true,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ]
     },
     {
-      "groupId": "TD-003",
-      "parentItemIds": [
+      "tdId": "TD-003",
+      "observedItemIds": [
         2060,
         2063
       ],
-      "candidate": "CASE_B_CANDIDATE",
-      "lane": "DATA_REMEDIATION",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "CASE_B_CANDIDATE",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 2060,
@@ -229,41 +206,40 @@
           }
         ]
       },
-      "classification": "ACTIVE_DUPLICATE",
-      "suggestedDisposition": "PRESERVE / MERGE GO / HOLD (Human GO required; child Gate if needed)",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-003",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "PRESERVE",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "PRESERVE",
         "DELETE GO",
         "MERGE GO",
         "HOLD"
       ],
-      "dataRemediationEligible": true,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "DATA_REMEDIATION",
+      "dataRemediationEligible": true,
       "holdReasons": [
         "Child rows exist on multiple duplicate parents"
       ]
     },
     {
-      "groupId": "TD-004",
-      "parentItemIds": [
+      "tdId": "TD-004",
+      "observedItemIds": [
         2084,
         2085
       ],
-      "candidate": "CASE_B_CANDIDATE",
-      "lane": "DATA_REMEDIATION",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "CASE_B_CANDIDATE",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 2084,
@@ -291,41 +267,40 @@
           }
         ]
       },
-      "classification": "ACTIVE_DUPLICATE",
-      "suggestedDisposition": "PRESERVE / MERGE GO / HOLD (Human GO required; child Gate if needed)",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-004",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "PRESERVE",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "PRESERVE",
         "DELETE GO",
         "MERGE GO",
         "HOLD"
       ],
-      "dataRemediationEligible": true,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "DATA_REMEDIATION",
+      "dataRemediationEligible": true,
       "holdReasons": [
         "Child rows exist on multiple duplicate parents"
       ]
     },
     {
-      "groupId": "TD-005",
-      "parentItemIds": [
+      "tdId": "TD-005",
+      "observedItemIds": [
         21,
         22
       ],
-      "candidate": "CASE_C_CANDIDATE",
-      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "CASE_C_CANDIDATE",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 21,
@@ -353,39 +328,38 @@
           }
         ]
       },
-      "classification": "SCHEMA_CONTRACT_CONFLICT",
-      "suggestedDisposition": "SCHEMA RE-EVALUATION only (no delete/merge)",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-005",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "SCHEMA RE-EVALUATION",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "SCHEMA RE-EVALUATION",
         "HOLD"
       ],
-      "dataRemediationEligible": false,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "dataRemediationEligible": false,
       "holdReasons": [
         "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
       ]
     },
     {
-      "groupId": "TD-006",
-      "parentItemIds": [
+      "tdId": "TD-006",
+      "observedItemIds": [
         6,
         11
       ],
-      "candidate": "CASE_C_CANDIDATE",
-      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "CASE_C_CANDIDATE",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 6,
@@ -413,39 +387,38 @@
           }
         ]
       },
-      "classification": "SCHEMA_CONTRACT_CONFLICT",
-      "suggestedDisposition": "SCHEMA RE-EVALUATION only (no delete/merge)",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-006",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "SCHEMA RE-EVALUATION",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "SCHEMA RE-EVALUATION",
         "HOLD"
       ],
-      "dataRemediationEligible": false,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "dataRemediationEligible": false,
       "holdReasons": [
         "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
       ]
     },
     {
-      "groupId": "TD-007",
-      "parentItemIds": [
+      "tdId": "TD-007",
+      "observedItemIds": [
         13,
         14
       ],
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "AMBIGUOUS",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 13,
@@ -473,38 +446,37 @@
           }
         ]
       },
-      "classification": "AMBIGUOUS",
-      "suggestedDisposition": "HOLD pending evidence / human review",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-007",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "HOLD"
       ],
-      "dataRemediationEligible": true,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ]
     },
     {
-      "groupId": "TD-008",
-      "parentItemIds": [
+      "tdId": "TD-008",
+      "observedItemIds": [
         1,
         2
       ],
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "significance": "UNKNOWN",
-      "significanceVerified": false,
+      "candidateClassification": "AMBIGUOUS",
       "contentSignificance": {
-        "verified": false,
-        "anySignificant": false,
-        "allInsignificant": false,
         "value": "UNKNOWN",
+        "verified": false,
         "perItem": [
           {
             "Id": 1,
@@ -532,31 +504,26 @@
           }
         ]
       },
-      "classification": "AMBIGUOUS",
-      "suggestedDisposition": "HOLD pending evidence / human review",
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-008",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
       "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
       "allowedHumanActions": [
         "HOLD"
       ],
-      "dataRemediationEligible": true,
-      "humanDecision": null,
-      "requestedHumanAction": null,
       "expectedPostState": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ]
     }
-  ],
-  "notes": [
-    "P1-1: content-significance fields not captured in investigation — Case A labeling blocked.",
-    "Automatic winner selection is PROHIBITED.",
-    "CASE_A_CANDIDATE / EMPTY_DUPLICATE_CANDIDATE is not permission to delete.",
-    "CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.",
-    "Mechanical candidates are not Human-authorized Cases.",
-    "Data mutation requires a separate Human Data Remediation GO (Phase 4).",
-    "Correction-3: Evidence must bind baselineHead + list identity to BASELINE.json."
   ]
 }

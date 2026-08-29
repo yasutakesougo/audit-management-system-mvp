@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Phase3_IndependentEvidenceReview_Exit",
+  "generatedAt": "2026-08-29T03:19:42.313Z",
+  "result": "HOLD",
+  "unresolvedAmbiguityCount": 4,
+  "checks": {
+    "baselineHeadFixed": {
+      "result": "PASS",
+      "detail": "baselineHead bound: acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6"
+    },
+    "listIdsCaptured": {
+      "result": "HOLD",
+      "detail": "list identity incomplete: [\"PENDING_CAPTURE\",\"PENDING_CAPTURE\"]"
+    },
+    "tdRegisterComplete": {
+      "result": "PASS",
+      "detail": "TD-001...008 all present"
+    },
+    "contentSignificanceComplete": {
+      "result": "PASS",
+      "detail": "all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence"
+    },
+    "classificationTraceable": {
+      "result": "PASS",
+      "detail": "each TD has candidate+lane+holdReasons"
+    },
+    "caseCSeparated": {
+      "result": "PASS",
+      "detail": "all CASE_C_CANDIDATE on SCHEMA_CONTRACT_REASSESSMENT with dataRemediationEligible=false"
+    },
+    "unresolvedAmbiguity": {
+      "result": "HOLD",
+      "detail": "unresolvedAmbiguityCount=4"
+    },
+    "sourceCaptureIdentityFixed": {
+      "result": "HOLD",
+      "detail": "source capture not fixed (mode=rehydrate-from-definition-investigation, liveCaptureStatus=HOLD) — operator signed-in GET required"
+    }
+  },
+  "failed": [
+    {
+      "id": "listIdsCaptured",
+      "detail": "list identity incomplete: [\"PENDING_CAPTURE\",\"PENDING_CAPTURE\"]"
+    },
+    {
+      "id": "unresolvedAmbiguity",
+      "detail": "unresolvedAmbiguityCount=4"
+    },
+    {
+      "id": "sourceCaptureIdentityFixed",
+      "detail": "source capture not fixed (mode=rehydrate-from-definition-investigation, liveCaptureStatus=HOLD) — operator signed-in GET required"
+    }
+  ],
+  "notes": [
+    "Phase 3 PASS is required before Human fills Phase 4 TD+action GO/HOLD.",
+    "DELETE GO / MERGE GO in Decision Pack are form labels only — mutationAuthorityStatus remains NOT_AUTHORIZED until Human grants.",
+    "Operator signed-in GET is the primary capture path; Cloud Agent login is fallback only."
+  ],
+  "authority": {
+    "itemMutation": "NOT_AUTHORIZED",
+    "schemaMutation": "NOT_AUTHORIZED",
+    "humanDisposition": "BLOCKED_BY_PHASE3_HOLD"
+  }
+}

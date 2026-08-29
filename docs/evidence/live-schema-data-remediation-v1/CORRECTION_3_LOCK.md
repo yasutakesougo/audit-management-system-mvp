@@ -35,7 +35,8 @@ NOT AUTHORIZED
 |---|---|
 | contentSignificance live capture | NOT_CAPTURED |
 | listId bind | PENDING_CAPTURE |
-| Phase 3 Independent Evidence Review | WAITING on live GET regenerate |
-| Phase 4 Human Disposition | NOT STARTED (Decision Pack blank) |
+| Phase 3 Exit Checker (tooling) | READY — result HOLD until Operator live GET |
+| Phase 3 Independent Evidence Review | WAITING on Operator signed-in GET → captures/ |
+| Phase 4 Human Disposition | NOT STARTED (Decision Pack form blank / NOT_AUTHORIZED) |
 
 Do **not** treat this lock as Human GO, mutation authority, Schema Apply, or deploy authority.

@@ -5,13 +5,17 @@ import {
   LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1,
   LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
   LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_3,
+  PHASE4_HUMAN_ACTIONS,
+  allowedHumanActionsForCandidate,
   assessItemContentSignificance,
   bindCapturedListIdsToBaseline,
   buildCandidateClassification,
+  buildDecisionPack,
   buildDecisionPackMarkdown,
   buildEvidencePack,
   classifyDataRemediationInvestigation,
   classifyDuplicateGroup,
+  evaluatePhase3Exit,
   isEvidenceTrue,
   redactTitle,
   resolveStableGroupId,
@@ -407,10 +411,21 @@ describe('LIVE-SCHEMA-DATA-REMEDIATION-V1 classify', () => {
     expect(candidates.groups.find((g) => g.groupId === 'TD-005').candidate).toBe('CASE_C_CANDIDATE');
     expect(candidates.groups.find((g) => g.groupId === 'TD-005').lane).toBe('SCHEMA_CONTRACT_REASSESSMENT');
 
-    const md = buildDecisionPackMarkdown(candidates);
+    const decisionPack = buildDecisionPack(classified, { sourceGeneratedAt: dump.generatedAt });
+    expect(decisionPack.mutationAuthorityStatus).toBe('NOT_AUTHORIZED');
+    expect(decisionPack.rows).toHaveLength(8);
+    expect(decisionPack.rows.find((r) => r.tdId === 'TD-005').allowedHumanActions).toEqual([
+      'SCHEMA RE-EVALUATION',
+      'HOLD',
+    ]);
+    expect(decisionPack.rows.every((r) => r.requestedHumanAction === null)).toBe(true);
+    expect(decisionPack.rows.every((r) => r.reviewerDecision === null)).toBe(true);
+
+    const md = buildDecisionPackMarkdown(decisionPack);
     expect(md).toMatch(/TD-001/);
-    expect(md).toMatch(/_GO \/ HOLD_/);
-    expect(md).toMatch(/Bulk GO for all 8: PROHIBITED/);
+    expect(md).toMatch(/DELETE GO/);
+    expect(md).toMatch(/NOT_AUTHORIZED/);
+    expect(md).toMatch(/Bulk GO: PROHIBITED/);
   });
 });
 
@@ -576,5 +591,145 @@ describe('Correction-3 baseline identity binding', () => {
     });
     expect(rematch.result).toBe('PASS');
     expect(rematch.lists.SupportRecord_Daily.result).toBe('PASS');
+  });
+});
+
+describe('Phase 3 Exit + Decision Pack TD+action schema', () => {
+  it('exposes Phase 4 action vocabulary and Case C restrictions', () => {
+    expect(PHASE4_HUMAN_ACTIONS).toEqual([
+      'PRESERVE',
+      'DELETE GO',
+      'MERGE GO',
+      'SCHEMA RE-EVALUATION',
+      'HOLD',
+    ]);
+    expect(allowedHumanActionsForCandidate('CASE_C_CANDIDATE')).toEqual([
+      'SCHEMA RE-EVALUATION',
+      'HOLD',
+    ]);
+    expect(allowedHumanActionsForCandidate('CASE_A_CANDIDATE')).toContain('DELETE GO');
+    expect(allowedHumanActionsForCandidate('AMBIGUOUS')).toEqual(['HOLD']);
+  });
+
+  it('Phase 3 HOLDs when listIds pending, ambiguity > 0, or source capture HOLD', () => {
+    const dump = {
+      baselineHead: PINNED_HEAD,
+      mode: 'rehydrate-from-definition-investigation',
+      liveCaptureStatus: 'HOLD',
+      lists: {
+        SupportRecord_Daily: { enumerationComplete: true, listId: null },
+        DailyRecordRows: { enumerationComplete: true, listId: null },
+      },
+      childRefsSummary: { ok: true, parentIdField: 'ParentID', enumerationComplete: true },
+      titleStats: { duplicateGroupCount: 8 },
+      contentSignificanceCapture: { verified: false },
+      duplicateGroups: Array.from({ length: 8 }, (_, i) => {
+        const ids = [
+          [7, 12, 15], [3, 4, 5], [2060, 2063], [2084, 2085],
+          [21, 22], [6, 11], [13, 14], [1, 2],
+        ][i];
+        return {
+          groupId: `TD-${String(i + 1).padStart(3, '0')}`,
+          title: `t-${i}`,
+          parentItemIds: ids,
+          items: ids.map((Id, j) => ({
+            Id,
+            childCount: i === 2 || i === 3 ? 1 : 0,
+            RecordDate: i === 4
+              ? (j === 0 ? '2026-01-01' : '2026-02-02')
+              : i === 5
+                ? (j === 0 ? '2026-03-01' : '2026-04-02')
+                : null,
+            contentSignificance: {
+              value: 'UNKNOWN',
+              basis: ['not captured'],
+              evidence: { itemId: Id },
+            },
+          })),
+        };
+      }),
+    };
+    const classified = classifyDataRemediationInvestigation(dump, { baseline: makeBaseline() });
+    const exit = evaluatePhase3Exit(dump, classified, { baseline: makeBaseline() });
+    expect(exit.result).toBe('HOLD');
+    expect(exit.unresolvedAmbiguityCount).toBeGreaterThan(0);
+    expect(exit.checks.listIdsCaptured.result).toBe('HOLD');
+    expect(exit.checks.sourceCaptureIdentityFixed.result).toBe('HOLD');
+    expect(exit.authority.itemMutation).toBe('NOT_AUTHORIZED');
+  });
+
+  it('Phase 3 PASS when live capture, listIds, significance, ambiguity=0, Case C separated', () => {
+    const dump = {
+      baselineHead: PINNED_HEAD,
+      mode: 'browser-rest',
+      liveCaptureStatus: 'CAPTURED',
+      generatedAt: '2026-08-29T03:00:00.000Z',
+      lists: {
+        SupportRecord_Daily: { enumerationComplete: true, listId: 'guid-p', rowsRead: 359, itemCount: 359 },
+        DailyRecordRows: { enumerationComplete: true, listId: 'guid-c', rowsRead: 3868, itemCount: 3868 },
+      },
+      childRefsSummary: { ok: true, parentIdField: 'ParentID', enumerationComplete: true, rowsRead: 3868 },
+      titleStats: { duplicateGroupCount: 8, duplicateItemCount: 18, nullOrBlankTitleCount: 0 },
+      contentSignificanceCapture: { verified: true, shape: 'value_basis_evidence' },
+      duplicateGroups: Array.from({ length: 8 }, (_, i) => {
+        const ids = [
+          [7, 12, 15], [3, 4, 5], [2060, 2063], [2084, 2085],
+          [21, 22], [6, 11], [13, 14], [1, 2],
+        ][i];
+        const isC = i === 4 || i === 5;
+        const isB = i === 2 || i === 3;
+        return {
+          groupId: `TD-${String(i + 1).padStart(3, '0')}`,
+          title: isC ? 's' : isB ? `2026-05-${10 + i}` : `probe-${i}`,
+          parentItemIds: ids,
+          items: ids.map((Id, j) => ({
+            Id,
+            childCount: isB ? (j === 0 ? 2 : 1) : 0,
+            RecordDate: isC
+              ? (j === 0 ? '2026-01-01' : '2026-02-02')
+              : isB
+                ? `2026-05-${10 + i}`
+                : null,
+            UserId: null,
+            contentSignificanceVerified: true,
+            userRowsJSONPresent: false,
+            userCountPositive: false,
+            latestVersionPositive: false,
+            contentSignificance: {
+              value: 'FALSE',
+              basis: ['UserRowsJSON is empty', 'UserCount empty or zero', 'LatestVersion empty or zero'],
+              evidence: { itemId: Id, userRowsJSONPresent: false },
+            },
+          })),
+        };
+      }),
+    };
+
+    const baseline = makeBaseline();
+    const classified = classifyDataRemediationInvestigation(dump, { baseline });
+    expect(classified.ambiguousGroups).toBe(0);
+    expect(classified.caseCCandidates).toBe(2);
+    expect(classified.caseACandidates).toBeGreaterThanOrEqual(1);
+
+    const exit = evaluatePhase3Exit(dump, classified, { baseline });
+    expect(exit.checks.baselineHeadFixed.result).toBe('PASS');
+    expect(exit.checks.listIdsCaptured.result).toBe('PASS');
+    expect(exit.checks.tdRegisterComplete.result).toBe('PASS');
+    expect(exit.checks.contentSignificanceComplete.result).toBe('PASS');
+    expect(exit.checks.classificationTraceable.result).toBe('PASS');
+    expect(exit.checks.caseCSeparated.result).toBe('PASS');
+    expect(exit.checks.unresolvedAmbiguity.result).toBe('PASS');
+    expect(exit.checks.sourceCaptureIdentityFixed.result).toBe('PASS');
+    expect(exit.result).toBe('PASS');
+    expect(exit.unresolvedAmbiguityCount).toBe(0);
+
+    const pack = buildDecisionPack(classified);
+    expect(pack.rows.find((r) => r.tdId === 'TD-001').recommendedDisposition).toBe('DELETE GO');
+    expect(pack.rows.find((r) => r.tdId === 'TD-005').recommendedDisposition).toBe('SCHEMA RE-EVALUATION');
+    expect(pack.rows.every((r) => r.mutationAuthorityStatus === 'NOT_AUTHORIZED')).toBe(true);
+
+    const md = buildDecisionPackMarkdown(pack, { phase3Exit: exit });
+    expect(md).toMatch(/Phase3Exit: PASS/);
+    expect(md).toMatch(/SCHEMA RE-EVALUATION/);
   });
 });

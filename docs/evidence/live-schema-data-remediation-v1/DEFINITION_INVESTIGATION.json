@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "generatedAt": "2026-08-29T02:03:10.279Z",
+  "schemaVersion": 3,
+  "generatedAt": "2026-08-29T03:19:42.309Z",
   "sourceGeneratedAt": "2026-08-29T02:03:10.247Z",
   "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
   "mode": "rehydrate-from-definition-investigation",
@@ -290,10 +290,19 @@
       "candidate": "AMBIGUOUS",
       "lane": "HOLD_REVIEW",
       "suggestedDisposition": "HOLD pending evidence / human review",
+      "recommendedDisposition": "HOLD",
+      "allowedHumanActions": [
+        "HOLD"
+      ],
       "dataRemediationEligible": true,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ],
@@ -536,10 +545,19 @@
       "candidate": "AMBIGUOUS",
       "lane": "HOLD_REVIEW",
       "suggestedDisposition": "HOLD pending evidence / human review",
+      "recommendedDisposition": "HOLD",
+      "allowedHumanActions": [
+        "HOLD"
+      ],
       "dataRemediationEligible": true,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ],
@@ -750,11 +768,23 @@
       "remediationRoute": null,
       "candidate": "CASE_B_CANDIDATE",
       "lane": "DATA_REMEDIATION",
-      "suggestedDisposition": "preserve / human data decision (child Gate if needed)",
+      "suggestedDisposition": "PRESERVE / MERGE GO / HOLD (Human GO required; child Gate if needed)",
+      "recommendedDisposition": "PRESERVE",
+      "allowedHumanActions": [
+        "PRESERVE",
+        "DELETE GO",
+        "MERGE GO",
+        "HOLD"
+      ],
       "dataRemediationEligible": true,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "Child rows exist on multiple duplicate parents"
       ],
@@ -926,11 +956,23 @@
       "remediationRoute": null,
       "candidate": "CASE_B_CANDIDATE",
       "lane": "DATA_REMEDIATION",
-      "suggestedDisposition": "preserve / human data decision (child Gate if needed)",
+      "suggestedDisposition": "PRESERVE / MERGE GO / HOLD (Human GO required; child Gate if needed)",
+      "recommendedDisposition": "PRESERVE",
+      "allowedHumanActions": [
+        "PRESERVE",
+        "DELETE GO",
+        "MERGE GO",
+        "HOLD"
+      ],
       "dataRemediationEligible": true,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "Child rows exist on multiple duplicate parents"
       ],
@@ -1102,11 +1144,21 @@
       "remediationRoute": "SCHEMA_CONTRACT_REASSESSMENT",
       "candidate": "CASE_C_CANDIDATE",
       "lane": "SCHEMA_CONTRACT_REASSESSMENT",
-      "suggestedDisposition": "schema contract re-evaluation (no delete/merge)",
+      "suggestedDisposition": "SCHEMA RE-EVALUATION only (no delete/merge)",
+      "recommendedDisposition": "SCHEMA RE-EVALUATION",
+      "allowedHumanActions": [
+        "SCHEMA RE-EVALUATION",
+        "HOLD"
+      ],
       "dataRemediationEligible": false,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
       ],
@@ -1278,11 +1330,21 @@
       "remediationRoute": "SCHEMA_CONTRACT_REASSESSMENT",
       "candidate": "CASE_C_CANDIDATE",
       "lane": "SCHEMA_CONTRACT_REASSESSMENT",
-      "suggestedDisposition": "schema contract re-evaluation (no delete/merge)",
+      "suggestedDisposition": "SCHEMA RE-EVALUATION only (no delete/merge)",
+      "recommendedDisposition": "SCHEMA RE-EVALUATION",
+      "allowedHumanActions": [
+        "SCHEMA RE-EVALUATION",
+        "HOLD"
+      ],
       "dataRemediationEligible": false,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
       ],
@@ -1455,10 +1517,19 @@
       "candidate": "AMBIGUOUS",
       "lane": "HOLD_REVIEW",
       "suggestedDisposition": "HOLD pending evidence / human review",
+      "recommendedDisposition": "HOLD",
+      "allowedHumanActions": [
+        "HOLD"
+      ],
       "dataRemediationEligible": true,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ],
@@ -1631,10 +1702,19 @@
       "candidate": "AMBIGUOUS",
       "lane": "HOLD_REVIEW",
       "suggestedDisposition": "HOLD pending evidence / human review",
+      "recommendedDisposition": "HOLD",
+      "allowedHumanActions": [
+        "HOLD"
+      ],
       "dataRemediationEligible": true,
       "automaticRemediation": "PROHIBITED",
       "humanDecisionRequired": true,
       "humanDecision": null,
+      "requestedHumanAction": null,
+      "expectedPostState": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
       "holdReasons": [
         "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
       ],

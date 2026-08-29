@@ -28,9 +28,11 @@ It does **not** replace the locked Definition ([DEFINITION.md](./DEFINITION.md) 
 ```text
 Phase 0   Baseline Fix
 Phase 1   GET-only Evidence Collection (one-shot)
+          Primary: Operator signed-in browser → captures/
+          Fallback: Cloud Agent signed-in GET (only if operator unavailable)
 Phase 2   Mechanical Candidate Classification
-Phase 3   Independent Evidence Review
-Phase 4   Human Disposition GO / HOLD (per group / item)
+Phase 3   Independent Evidence Review (+ PHASE3_EXIT mechanical gate)
+Phase 4   Human Disposition GO / HOLD (per TD+action)
           ├─ Case A/B → Data Remediation Lane
           └─ Case C   → Schema Contract Re-evaluation Lane
 Phase 5   Authorized Mutation (small batches; Human GO only)
@@ -39,6 +41,14 @@ Phase 7   Mutation Preflight Re-run (once)
 Phase 8   Schema Apply Human GO / HOLD
 Phase 9   Schema Apply
 Phase 10  Post-Apply Verification → LIVE-SCHEMA-GATE-V1 Closure
+```
+
+### Operator / Agent / Human handoff
+
+```text
+Operator: signed-in GET-only → raw JSON → captures/ → capture identity fixed
+Agent:    ingest → classify → Evidence/Decision Pack regen → Phase 3 exit判定
+Human:    Phase 3 PASS確認 → Phase 4 TD+action単位 GO / HOLD
 ```
 
 ## Hard rules
@@ -121,16 +131,41 @@ CASE_*_CANDIDATE != authorized Case
 CASE_A_CANDIDATE != DELETE
 ```
 
-Artifacts: [CANDIDATE_CLASSIFICATION.json](./CANDIDATE_CLASSIFICATION.json), [DECISION_PACK.md](./DECISION_PACK.md)
+Artifacts: [CANDIDATE_CLASSIFICATION.json](./CANDIDATE_CLASSIFICATION.json), [DECISION_PACK.json](./DECISION_PACK.json), [DECISION_PACK.md](./DECISION_PACK.md)
 
 ## Phase 3 — Independent Evidence Review
 
 Review the Decision Pack table once. Re-open GET only if evidence quality fails.
 
+Mechanical exit gate ([PHASE3_EXIT.json](./PHASE3_EXIT.json)) — all must PASS:
+
+| Check | Requirement |
+|---|---|
+| baselineHead fixed | exact match to BASELINE |
+| listIds captured | both lists CAPTURED/PASS |
+| TD-001…008 complete | frozen register present |
+| contentSignificance | value ∈ TRUE/FALSE/UNKNOWN + basis + evidence |
+| classification traceable | candidate + lane + holdReasons |
+| Case C separated | schema lane; not data-remediation eligible |
+| unresolved ambiguity | count === 0 |
+| source capture identity fixed | live capture (not rehydrate HOLD) |
+
+Pack existence alone is **not** Phase 3 PASS.
+
 ## Phase 4 — Human Disposition
 
-Per-row GO/HOLD (never one bulk GO for all eight).  
-Suggested dispositions are **not** authority.
+Per-TD+action GO/HOLD (never one bulk GO for all eight).  
+Recommended dispositions and `DELETE GO` / `MERGE GO` labels are **form only** — not authority (`mutationAuthorityStatus=NOT_AUTHORIZED` until Human grants).
+
+Allowed actions:
+
+```text
+PRESERVE | DELETE GO | MERGE GO | SCHEMA RE-EVALUATION | HOLD
+```
+
+Case C rows may only use `SCHEMA RE-EVALUATION` | `HOLD`.
+
+Decision Pack row fields: TD ID · Observed Item IDs · Candidate Classification · contentSignificance · Evidence refs · Recommended disposition · Requested human action · Expected post-state · Mutation authority status · Reviewer decision · Decision rationale.
 
 Lane split:
 
@@ -160,7 +195,8 @@ Separate Human Gate → Apply → Post-Apply GET → Gate closure.
 
 ```text
 #2557 MERGED / LOCKED
-★ Phase 0–2 (Evidence Pack + Candidates)
+★ Phase 0–2 tooling + Phase 3 Exit Checker + Decision Pack schema READY
+Live capture: HOLD (awaiting Operator signed-in GET → captures/)
 STOP before Phase 4 Human Disposition GO
 ```
 

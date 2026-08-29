@@ -1,14 +1,33 @@
-# LIVE-SCHEMA-DATA-REMEDIATION-V1 — GET-only next (Human Decision Pack path)
+# LIVE-SCHEMA-DATA-REMEDIATION-V1 — GET-only next (Operator primary path)
 
 ```text
-After:
-4bfedfed CI reconciliation + Correction-3 Evidence lock
-Next:
-signed-in One-shot GET-only Evidence Collection
-Then:
-Independent Evidence Review → Phase 4 Human Disposition GO/HOLD
-Authority now:
-GET ONLY
+Path: 1 (adopted)
+Primary: Operator signed-in GET → captures/ → capture identity fixed
+Fallback: Cloud Agent signed-in GET (only if operator path unavailable)
+Authority now: GET ONLY
+Phase 4 mutation: NOT AUTHORIZED (Decision Pack form only)
+```
+
+## Why path 1
+
+Critical path is **reliable signed-in live GET**. Operator browser on `/sites/welfare` yields higher Evidence quality and reproducibility than Cloud Agent auth (which can HOLD). Agent work in parallel is tooling only (Phase 3 Exit Checker + Decision Pack schema).
+
+## Fixed execution order
+
+```text
+Operator:
+  signed-in GET-only
+  → raw JSON → captures/
+  → capture identity fixed
+Agent:
+  capture ingest
+  → classify
+  → Evidence Pack regen
+  → Decision Pack regen
+  → Phase 3 exit判定
+Human:
+  Phase 3 PASS確認
+  → Phase 4 TD+action単位 GO / HOLD
 ```
 
 ## Preconditions (already satisfied)
@@ -17,6 +36,7 @@ GET ONLY
 - [x] Correction-3 mechanical bind in tooling
 - [x] Required / core / quality PASS on Evidence Pack tip
 - [x] Deep known-failure identity MATCH (not a blocker for this Gate)
+- [x] Phase 3 Exit Checker + Decision Pack TD+action schema (tooling)
 
 ## Operator steps (signed-in `/sites/welfare`)
 
@@ -27,8 +47,8 @@ GET ONLY
    - `baselineHead === acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6`
    - `lists.*.listId` present
    - `contentSignificance` `{value,basis,evidence}` per item
-5. Save raw JSON under `docs/evidence/live-schema-data-remediation-v1/captures/` (gitignored).
-6. Classify (binds listIds into BASELINE on first CAPTURED):
+5. Save raw JSON under `docs/evidence/live-schema-data-remediation-v1/captures/` (gitignored). Fix capture identity (`mode=browser-rest`, `liveCaptureStatus=CAPTURED`).
+6. Classify (binds listIds into BASELINE on first CAPTURED; emits Phase 3 exit + Decision Pack JSON):
 
 ```bash
 node scripts/ops/live-schema-data-remediation-classify.mjs \
@@ -37,12 +57,43 @@ node scripts/ops/live-schema-data-remediation-classify.mjs \
   --out docs/evidence/live-schema-data-remediation-v1/DEFINITION_INVESTIGATION.json \
   --evidence-pack docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json \
   --candidates docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json \
-  --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md
+  --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md \
+  --decision-pack-json docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.json \
+  --phase3-exit docs/evidence/live-schema-data-remediation-v1/PHASE3_EXIT.json
 ```
 
-7. Expect classify exit 0 with `baselineVerification.result=PASS` and listIds `CAPTURED`→`BOUND`.
-8. Phase 3: Independent Evidence Review of [`DECISION_PACK.md`](./DECISION_PACK.md).
-9. Phase 4: fill **Human Decision** per row (never bulk GO). Case C → schema lane only.
+7. Expect classify exit 0 only when `baselineVerification.result=PASS`, listIds `CAPTURED`→`BOUND`, and `phase3Exit=PASS`.
+8. Phase 3: Independent Evidence Review via [`PHASE3_EXIT.md`](./PHASE3_EXIT.md) + [`DECISION_PACK.md`](./DECISION_PACK.md).
+9. Phase 4: Human fills **Requested human action** + **Reviewer decision** per TD (never bulk GO). Case C → `SCHEMA RE-EVALUATION` | `HOLD` only.
+
+## Phase 3 Exit Criteria (mechanical)
+
+All must PASS (pack existence alone is insufficient):
+
+| Check | Pass condition |
+|---|---|
+| baselineHead fixed | exact match to `BASELINE.json` |
+| listIds captured | SupportRecord_Daily + DailyRecordRows CAPTURED/PASS (not PENDING) |
+| TD-001…008 complete | all eight frozen groups present |
+| contentSignificance | `value ∈ {TRUE,FALSE,UNKNOWN}` + `basis` + `evidence` per parent |
+| classification traceable | candidate + lane + holdReasons |
+| Case C separated | CASE_C → SCHEMA_CONTRACT_REASSESSMENT; `dataRemediationEligible=false` |
+| unresolved ambiguity | count === 0 |
+| source capture identity fixed | live browser capture (not rehydrate HOLD) |
+
+Artifact: [`PHASE3_EXIT.json`](./PHASE3_EXIT.json)
+
+## Phase 4 Decision Pack actions (form only)
+
+```text
+PRESERVE
+DELETE GO
+MERGE GO
+SCHEMA RE-EVALUATION
+HOLD
+```
+
+`DELETE GO` / `MERGE GO` prepare the Decision Pack **form** only — they do **not** grant mutation authority (`mutationAuthorityStatus=NOT_AUTHORIZED` until Human grants after Phase 3 PASS).
 
 ## Fail-closed
 
@@ -52,6 +103,7 @@ node scripts/ops/live-schema-data-remediation-classify.mjs \
 | listId mismatch vs BOUND baseline | HOLD |
 | enumeration incomplete | HOLD |
 | contentSignificance still UNKNOWN for Case A path | keep AMBIGUOUS — do not invent Case A |
+| Phase 3 any check HOLD | do not fill Phase 4 Human GO |
 
 ## Prohibited until Phase 4 Human GO
 
