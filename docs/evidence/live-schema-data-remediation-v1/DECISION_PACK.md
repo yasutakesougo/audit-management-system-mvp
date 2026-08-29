@@ -6,9 +6,13 @@ Authority: PENDING (blank until Human fills GO/HOLD per row)
 Bulk GO for all 8: PROHIBITED
 CASE_*_CANDIDATE != authorized Case
 CASE_A_CANDIDATE != DELETE
+CI (4bfedfed): required/core/quality PASS; Deep known-failure MATCH
+Correction-3: EVIDENCE LOCKED
+Live GET before trusting Case A/Ambiguous rows: REQUIRED (see GET_ONLY_NEXT.md)
 ```
 
-Mechanical candidates only. Fill **Human Decision** per row after Evidence Review.
+Mechanical candidates only. Fill **Human Decision** per row after Evidence Review **and** after signed-in one-shot GET regenerates this pack.
+
 
 | TD | Candidate | Significance | State | Suggested disposition | Lane | Human Decision |
 |---|---|---|---|---|---|---|

@@ -3,6 +3,7 @@
 ```text
 Phase: 1 One-shot GET-only Evidence Collection
 Live Capture: HOLD
+Correction-3: EVIDENCE LOCKED (CI reconciled on 4bfedfed)
 Item Mutation: NOT AUTHORIZED
 Schema Mutation: NOT AUTHORIZED
 Deploy: NOT AUTHORIZED
@@ -13,7 +14,8 @@ Deploy: NOT AUTHORIZED
 | Item | Status |
 |---|---|
 | Baseline HEAD | `acb5ec3f` (pinned) |
-| Correction-3 baseline ↔ Evidence identity binding | **READY** (classifier loads BASELINE.json; mismatch → HOLD / exit 2) |
+| Correction-3 baseline ↔ Evidence identity binding | **LOCKED** |
+| CI reconciliation (`4bfedfed`) | **PASS** required/core/quality; Deep known-failure **MATCH** |
 | Tooling (browser script + classify + candidates) | **READY** |
 | Signed-in SharePoint browser GET in this Cloud Agent | **HOLD** (no session / credentials) |
 | Evidence Pack artifact | **EMITTED** (rehydrated; `baselineVerification.result=PASS` on pinned head; listIds `PENDING_CAPTURE`) |
@@ -42,16 +44,10 @@ Artifacts:
 - [EVIDENCE_PACK.json](./EVIDENCE_PACK.json)
 - [CANDIDATE_CLASSIFICATION.json](./CANDIDATE_CLASSIFICATION.json)
 - [DECISION_PACK.md](./DECISION_PACK.md)
+- [CORRECTION_3_LOCK.md](./CORRECTION_3_LOCK.md)
+- [CI_RECONCILIATION_4bfedfed.md](./CI_RECONCILIATION_4bfedfed.md)
+- [GET_ONLY_NEXT.md](./GET_ONLY_NEXT.md)
 
 ## Unblock (human / signed-in browser)
 
-```text
-1. Confirm BASELINE.json HEAD still matches origin/main
-2. Sign in to https://isogokatudouhome.sharepoint.com/sites/welfare
-3. Paste scripts/ops/live-schema-data-remediation-investigate.browser.js
-4. Save raw JSON under captures/ (gitignored)
-5. Re-run classify CLI → refresh Evidence Pack / Candidates / Decision Pack
-6. Proceed to Phase 3 Independent Evidence Review
-```
-
-Until step 5 completes with `contentSignificanceCapture.verified=true` (or explicit schema absence documented), Case A candidates remain blocked (`AMBIGUOUS` + `CONTENT_SIGNIFICANCE_UNVERIFIED`).
+Follow [GET_ONLY_NEXT.md](./GET_ONLY_NEXT.md). Until live GET completes with `contentSignificanceCapture.verified=true` (or explicit schema absence documented), Case A candidates remain blocked (`AMBIGUOUS` + `CONTENT_SIGNIFICANCE_UNVERIFIED`).

@@ -142,9 +142,21 @@ itemRowsRead = ItemCount
 
 Open PRs `#2551` / `#2552` / `#2541` stay on a separate lane. Do not block Schema work to merge them.
 
+## Current position
+
+```text
+#2557 MERGED / LOCKED
+★ Phase 0–2 + Correction-3 Evidence LOCKED
+CI (4bfedfed): required/core/quality PASS · Deep known-failure MATCH
+Live Capture: HOLD → see GET_ONLY_NEXT.md
+STOP before Phase 4 Human Disposition GO
+```
+
 ## Related
 
-- Process: `docs/evidence/live-schema-data-remediation-v1/PROCESS.md`
+- CI reconciliation: `docs/evidence/live-schema-data-remediation-v1/CI_RECONCILIATION_4bfedfed.md`
+- Correction-3 lock: `docs/evidence/live-schema-data-remediation-v1/CORRECTION_3_LOCK.md`
+- GET-only next: `docs/evidence/live-schema-data-remediation-v1/GET_ONLY_NEXT.md`
 - Mutation Definition: `docs/evidence/live-schema-mutation-v1/DEFINITION.md`
 - Mutation preflight runbook: `docs/runbooks/live-schema-mutation-v1.md`
 - ADR-025 parent Title uniqueness contract

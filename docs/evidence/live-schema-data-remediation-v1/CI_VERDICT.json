@@ -1,13 +1,16 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
-  "phase": "Definition",
-  "exactHead": "9c5197075040b54ed669101802a2e8457819d237",
-  "pr": 2557,
-  "generatedAt": "2026-08-28T01:55:00.000Z",
+  "phase": "EvidencePack_Correction3",
+  "exactHead": "4bfedfeda1c0a5325b0e671608d2794d473e3449",
+  "pr": 2558,
+  "baselineHead": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+  "generatedAt": "2026-08-29T02:36:00.000Z",
   "ciTerminal": true,
-  "verdict": "READY GO",
+  "verdict": "CORRECTION-3 EVIDENCE LOCKABLE",
   "definitionReview": "PASS / LOCKABLE",
+  "liveCapture": "HOLD",
+  "humanDisposition": "NOT_STARTED",
   "requiredChecks": {
     "failed": 0,
     "pending": 0,
@@ -20,6 +23,7 @@
     "canary": "PASS",
     "fast": "PASS",
     "smoke": "PASS",
+    "e2e-smoke-nurse": "PASS",
     "csp": "PASS",
     "kiosk-e2e": "PASS",
     "storybook-a11y": "PASS",
@@ -30,13 +34,16 @@
     "chromiumLanesTotal": 6,
     "status": "EXPECTED RED (baseline)",
     "deepLaneUnionAudit": "PASS",
-    "runId": 33133203807
+    "failureKeyIdentityVsMain": "34/34 identical",
+    "newFailuresFromThisPr": "NONE",
+    "prRunId": 33227980166,
+    "mainBaselineRunId": 33228467614,
+    "reconciliation": "docs/evidence/live-schema-data-remediation-v1/CI_RECONCILIATION_4bfedfed.md"
   },
-  "merge": {
-    "prReady": true,
-    "autoMergeEnabled": true,
-    "githubMergeState": "BLOCKED",
-    "reason": "E2E Deep lane job failures block GitHub merge rollup; required checks pass. Admin/bypass merge may be needed (same pattern as LIVE-SCHEMA-MUTATION-V1 PR #2556)."
+  "correction3": {
+    "status": "EVIDENCE_LOCKED",
+    "baselineIdentityBound": true,
+    "listIds": "PENDING_CAPTURE"
   },
   "dataMutation": "NONE",
   "schemaMutation": "NONE",
