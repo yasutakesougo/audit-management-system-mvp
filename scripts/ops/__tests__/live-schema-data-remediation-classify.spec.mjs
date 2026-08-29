@@ -420,10 +420,14 @@ describe('LIVE-SCHEMA-DATA-REMEDIATION-V1 classify', () => {
     ]);
     expect(decisionPack.rows.every((r) => r.requestedHumanAction === null)).toBe(true);
     expect(decisionPack.rows.every((r) => r.reviewerDecision === null)).toBe(true);
+    expect(decisionPack.rows.every((r) => r.targetItemIds === null)).toBe(true);
+    expect(decisionPack.rows.every((r) => r.rollback === null)).toBe(true);
 
     const md = buildDecisionPackMarkdown(decisionPack);
     expect(md).toMatch(/TD-001/);
     expect(md).toMatch(/DELETE GO/);
+    expect(md).toMatch(/TargetItemIds/);
+    expect(md).toMatch(/Rollback/);
     expect(md).toMatch(/NOT_AUTHORIZED/);
     expect(md).toMatch(/Bulk GO: PROHIBITED/);
   });
@@ -727,9 +731,65 @@ describe('Phase 3 Exit + Decision Pack TD+action schema', () => {
     expect(pack.rows.find((r) => r.tdId === 'TD-001').recommendedDisposition).toBe('DELETE GO');
     expect(pack.rows.find((r) => r.tdId === 'TD-005').recommendedDisposition).toBe('SCHEMA RE-EVALUATION');
     expect(pack.rows.every((r) => r.mutationAuthorityStatus === 'NOT_AUTHORIZED')).toBe(true);
+    expect(pack.rows.every((r) => r.targetItemIds === null && r.rollback === null)).toBe(true);
 
     const md = buildDecisionPackMarkdown(pack, { phase3Exit: exit });
     expect(md).toMatch(/Phase3Exit: PASS/);
     expect(md).toMatch(/SCHEMA RE-EVALUATION/);
+    expect(md).toMatch(/TargetItemIds/);
+  });
+
+  it('Phase 3 HOLDs Case A candidate when significance remains UNKNOWN without schema-absent', () => {
+    const dump = {
+      baselineHead: PINNED_HEAD,
+      mode: 'browser-rest',
+      liveCaptureStatus: 'CAPTURED',
+      lists: {
+        SupportRecord_Daily: { enumerationComplete: true, listId: 'guid-p', rowsRead: 2, itemCount: 2 },
+        DailyRecordRows: { enumerationComplete: true, listId: 'guid-c', rowsRead: 0, itemCount: 0 },
+      },
+      childRefsSummary: { ok: true, parentIdField: 'ParentID', enumerationComplete: true, rowsRead: 0 },
+      titleStats: { duplicateGroupCount: 8 },
+      contentSignificanceCapture: { verified: true },
+      duplicateGroups: Array.from({ length: 8 }, (_, i) => {
+        const ids = [
+          [7, 12, 15], [3, 4, 5], [2060, 2063], [2084, 2085],
+          [21, 22], [6, 11], [13, 14], [1, 2],
+        ][i];
+        return {
+          parentItemIds: ids,
+          items: ids.map((Id) => ({
+            Id,
+            childCount: 0,
+            RecordDate: null,
+            UserId: null,
+            contentSignificanceVerified: true,
+            userRowsJSONPresent: false,
+            userCountPositive: false,
+            latestVersionPositive: false,
+            // Force FALSE so classify yields CASE_A, then override group value path via UNKNOWN on pack check
+            contentSignificance: {
+              value: 'FALSE',
+              basis: ['empty'],
+              evidence: { itemId: Id },
+            },
+          })),
+        };
+      }),
+    };
+    const classified = classifyDataRemediationInvestigation(dump, { baseline: makeBaseline() });
+    expect(classified.caseACandidates).toBeGreaterThan(0);
+    // Mutate one Case A group's significance to UNKNOWN without schema-absent
+    const caseA = classified.groups.find((g) => g.candidate === 'CASE_A_CANDIDATE');
+    expect(caseA).toBeTruthy();
+    caseA.contentSignificance.perItem = caseA.contentSignificance.perItem.map((p) => ({
+      ...p,
+      value: 'UNKNOWN',
+      basis: ['not verified live'],
+      evidence: { itemId: p.Id },
+    }));
+    const exit = evaluatePhase3Exit(dump, classified, { baseline: makeBaseline() });
+    expect(exit.checks.contentSignificanceComplete.result).toBe('HOLD');
+    expect(exit.result).toBe('HOLD');
   });
 });

@@ -638,7 +638,9 @@ export function classifyDuplicateGroup(group) {
     humanDecisionRequired: true,
     humanDecision: null,
     requestedHumanAction: null,
+    targetItemIds: null,
     expectedPostState: null,
+    rollback: null,
     mutationAuthorityStatus: 'NOT_AUTHORIZED',
     reviewerDecision: null,
     decisionRationale: null,
@@ -1022,7 +1024,9 @@ export function buildCandidateClassification(classified) {
       dataRemediationEligible: g.dataRemediationEligible,
       humanDecision: null,
       requestedHumanAction: null,
+      targetItemIds: null,
       expectedPostState: null,
+      rollback: null,
       mutationAuthorityStatus: 'NOT_AUTHORIZED',
       reviewerDecision: null,
       decisionRationale: null,
@@ -1055,8 +1059,10 @@ export function buildDecisionPack(classified, refs = {}) {
     },
     recommendedDisposition: g.recommendedDisposition,
     requestedHumanAction: null,
+    targetItemIds: null,
     allowedHumanActions: g.allowedHumanActions,
     expectedPostState: null,
+    rollback: null,
     mutationAuthorityStatus: 'NOT_AUTHORIZED',
     reviewerDecision: null,
     decisionRationale: null,
@@ -1107,12 +1113,12 @@ export function buildDecisionPackMarkdown(decisionPack, opts = {}) {
     `Phase3Exit: ${phase3?.result ?? 'PENDING'}`,
     '```',
     '',
-    'Fill **Requested human action** + **Reviewer decision** per TD after Phase 3 PASS.',
+    'Fill **Requested human action** + **TargetItemIds** + **Expected post-state** + **Rollback** + **Reviewer decision** per TD after Phase 3 PASS.',
     'Allowed actions: `PRESERVE` | `DELETE GO` | `MERGE GO` | `SCHEMA RE-EVALUATION` | `HOLD`.',
-    'Case C rows may only use `SCHEMA RE-EVALUATION` or `HOLD`.',
+    'Case C rows may only use `SCHEMA RE-EVALUATION` or `HOLD` (never DELETE / PRESERVE-as-delete).',
     '',
-    '| TD | Item IDs | Candidate | Significance | Recommended | Allowed actions | Requested action | Expected post-state | Mutation authority | Reviewer decision | Rationale |',
-    '|---|---|---|---|---|---|---|---|---|---|---|',
+    '| TD | Observed Item IDs | Candidate | Significance | Recommended | Allowed actions | Requested action | TargetItemIds | Expected post-state | Rollback | Mutation authority | Reviewer decision | Rationale |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
   ];
 
   for (const row of decisionPack.rows) {
@@ -1120,7 +1126,7 @@ export function buildDecisionPackMarkdown(decisionPack, opts = {}) {
     const allowed = (row.allowedHumanActions || []).join(' / ');
     const sig = row.contentSignificance?.value ?? 'UNKNOWN';
     lines.push(
-      `| ${row.tdId} | ${ids} | ${row.candidateClassification} | ${sig} | ${row.recommendedDisposition} | ${allowed} | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |`,
+      `| ${row.tdId} | ${ids} | ${row.candidateClassification} | ${sig} | ${row.recommendedDisposition} | ${allowed} | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |`,
     );
   }
 
@@ -1242,10 +1248,27 @@ export function evaluatePhase3Exit(dump, classified, options = {}) {
       }
     }
   }
+  // Case A path: UNKNOWN not allowed unless explicitly schema-absent documented
+  for (const g of classified.groups || []) {
+    if (g.candidate !== 'CASE_A_CANDIDATE') continue;
+    const perItem = g.contentSignificance?.perItem || [];
+    for (const item of perItem) {
+      if (item?.value === 'UNKNOWN') {
+        const schemaAbsent = item?.evidence?.schemaAbsent === true
+          || item?.basis?.some?.((b) => /schema.?absent|field.?absent|not in schema/i.test(String(b)));
+        if (!schemaAbsent) {
+          sigIssues.push(
+            `${g.groupId}/item ${item?.Id}: CASE_A_CANDIDATE cannot remain UNKNOWN without schema-absent evidence`,
+          );
+        }
+      }
+    }
+  }
+
   checks.contentSignificanceComplete = {
     result: sigIssues.length === 0 ? 'PASS' : 'HOLD',
     detail: sigIssues.length === 0
-      ? 'all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence'
+      ? 'all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence; Case A not UNKNOWN (unless schema-absent)'
       : sigIssues.slice(0, 8).join('; '),
   };
 

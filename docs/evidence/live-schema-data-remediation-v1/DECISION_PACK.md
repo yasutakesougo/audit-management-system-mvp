@@ -9,20 +9,20 @@ CASE_A_CANDIDATE != DELETE
 Phase3Exit: HOLD
 ```
 
-Fill **Requested human action** + **Reviewer decision** per TD after Phase 3 PASS.
+Fill **Requested human action** + **TargetItemIds** + **Expected post-state** + **Rollback** + **Reviewer decision** per TD after Phase 3 PASS.
 Allowed actions: `PRESERVE` | `DELETE GO` | `MERGE GO` | `SCHEMA RE-EVALUATION` | `HOLD`.
-Case C rows may only use `SCHEMA RE-EVALUATION` or `HOLD`.
+Case C rows may only use `SCHEMA RE-EVALUATION` or `HOLD` (never DELETE / PRESERVE-as-delete).
 
-| TD | Item IDs | Candidate | Significance | Recommended | Allowed actions | Requested action | Expected post-state | Mutation authority | Reviewer decision | Rationale |
-|---|---|---|---|---|---|---|---|---|---|---|
-| TD-001 | 7,12,15 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-002 | 3,4,5 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-003 | 2060,2063 | CASE_B_CANDIDATE | UNKNOWN | PRESERVE | PRESERVE / DELETE GO / MERGE GO / HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-004 | 2084,2085 | CASE_B_CANDIDATE | UNKNOWN | PRESERVE | PRESERVE / DELETE GO / MERGE GO / HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-005 | 21,22 | CASE_C_CANDIDATE | UNKNOWN | SCHEMA RE-EVALUATION | SCHEMA RE-EVALUATION / HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-006 | 6,11 | CASE_C_CANDIDATE | UNKNOWN | SCHEMA RE-EVALUATION | SCHEMA RE-EVALUATION / HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-007 | 13,14 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
-| TD-008 | 1,2 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD | Observed Item IDs | Candidate | Significance | Recommended | Allowed actions | Requested action | TargetItemIds | Expected post-state | Rollback | Mutation authority | Reviewer decision | Rationale |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| TD-001 | 7,12,15 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-002 | 3,4,5 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-003 | 2060,2063 | CASE_B_CANDIDATE | UNKNOWN | PRESERVE | PRESERVE / DELETE GO / MERGE GO / HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-004 | 2084,2085 | CASE_B_CANDIDATE | UNKNOWN | PRESERVE | PRESERVE / DELETE GO / MERGE GO / HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-005 | 21,22 | CASE_C_CANDIDATE | UNKNOWN | SCHEMA RE-EVALUATION | SCHEMA RE-EVALUATION / HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-006 | 6,11 | CASE_C_CANDIDATE | UNKNOWN | SCHEMA RE-EVALUATION | SCHEMA RE-EVALUATION / HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-007 | 13,14 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
+| TD-008 | 1,2 | AMBIGUOUS | UNKNOWN | HOLD | HOLD | _blank_ | _blank_ | _blank_ | _blank_ | NOT_AUTHORIZED | _blank_ | _blank_ |
 
 ## Lane split
 
@@ -72,7 +72,7 @@ HOLD                  — no action
     },
     "contentSignificanceComplete": {
       "result": "PASS",
-      "detail": "all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence"
+      "detail": "all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence; Case A not UNKNOWN (unless schema-absent)"
     },
     "classificationTraceable": {
       "result": "PASS",

@@ -76,6 +76,7 @@ All must PASS (pack existence alone is insufficient):
 | listIds captured | SupportRecord_Daily + DailyRecordRows CAPTURED/PASS (not PENDING) |
 | TD-001…008 complete | all eight frozen groups present |
 | contentSignificance | `value ∈ {TRUE,FALSE,UNKNOWN}` + `basis` + `evidence` per parent |
+| Case A significance | `CASE_A_CANDIDATE` must not remain `UNKNOWN` unless schema-absent documented |
 | classification traceable | candidate + lane + holdReasons |
 | Case C separated | CASE_C → SCHEMA_CONTRACT_REASSESSMENT; `dataRemediationEligible=false` |
 | unresolved ambiguity | count === 0 |
@@ -93,7 +94,23 @@ SCHEMA RE-EVALUATION
 HOLD
 ```
 
+Per-TD blank slots (agent must not invent): Requested action · TargetItemIds · Expected post-state · Rollback · Reviewer decision · Rationale.
+
 `DELETE GO` / `MERGE GO` prepare the Decision Pack **form** only — they do **not** grant mutation authority (`mutationAuthorityStatus=NOT_AUTHORIZED` until Human grants after Phase 3 PASS).
+
+Case C rows: `SCHEMA RE-EVALUATION` | `HOLD` only (never DELETE / PRESERVE-as-delete).
+
+## Operator dump status (this session)
+
+```text
+captures/investigation-raw.json: ABSENT
+Live GET: HOLD
+Evidence regenerate from live: BLOCKED
+Tooling tip: LANDED (Phase 3 exit + Decision Pack TD+action)
+Do not invent: listIds / contentSignificance / Human GO
+```
+
+Follow steps above when the operator drop arrives. Until then Phase 3 remains HOLD.
 
 ## Fail-closed
 

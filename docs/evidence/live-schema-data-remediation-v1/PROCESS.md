@@ -195,8 +195,10 @@ Separate Human Gate → Apply → Post-Apply GET → Gate closure.
 
 ```text
 #2557 MERGED / LOCKED
-★ Phase 0–2 tooling + Phase 3 Exit Checker + Decision Pack schema READY
-Live capture: HOLD (awaiting Operator signed-in GET → captures/)
+★ Phase 0–2 tooling + Phase 3 Exit Checker + Decision Pack TD+action schema READY
+Live capture: HOLD (operator dump ABSENT under captures/)
+Evidence regenerate from live: BLOCKED (do not invent listIds / significance)
+Phase 3 Exit (rehydrate): HOLD
 STOP before Phase 4 Human Disposition GO
 ```
 

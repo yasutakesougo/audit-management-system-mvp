@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
   "phase": "Phase3_IndependentEvidenceReview_Exit",
-  "generatedAt": "2026-08-29T03:19:42.313Z",
+  "generatedAt": "2026-08-29T03:43:15.735Z",
   "result": "HOLD",
   "unresolvedAmbiguityCount": 4,
   "checks": {
@@ -20,7 +20,7 @@
     },
     "contentSignificanceComplete": {
       "result": "PASS",
-      "detail": "all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence"
+      "detail": "all parents have value∈{TRUE,FALSE,UNKNOWN} with basis+evidence; Case A not UNKNOWN (unless schema-absent)"
     },
     "classificationTraceable": {
       "result": "PASS",

@@ -2,7 +2,7 @@
   "schemaVersion": 3,
   "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
   "phase": "Phase3_DecisionPack_Phase4_Form",
-  "generatedAt": "2026-08-29T03:19:42.312Z",
+  "generatedAt": "2026-08-29T03:43:15.734Z",
   "bulkGo": "PROHIBITED",
   "mutationAuthorityStatus": "NOT_AUTHORIZED",
   "phase4HumanActions": [
@@ -85,10 +85,12 @@
       },
       "recommendedDisposition": "HOLD",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -156,10 +158,12 @@
       },
       "recommendedDisposition": "HOLD",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -214,6 +218,7 @@
       },
       "recommendedDisposition": "PRESERVE",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "PRESERVE",
         "DELETE GO",
@@ -221,6 +226,7 @@
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -275,6 +281,7 @@
       },
       "recommendedDisposition": "PRESERVE",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "PRESERVE",
         "DELETE GO",
@@ -282,6 +289,7 @@
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -336,11 +344,13 @@
       },
       "recommendedDisposition": "SCHEMA RE-EVALUATION",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "SCHEMA RE-EVALUATION",
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -395,11 +405,13 @@
       },
       "recommendedDisposition": "SCHEMA RE-EVALUATION",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "SCHEMA RE-EVALUATION",
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -454,10 +466,12 @@
       },
       "recommendedDisposition": "HOLD",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
@@ -512,10 +526,12 @@
       },
       "recommendedDisposition": "HOLD",
       "requestedHumanAction": null,
+      "targetItemIds": null,
       "allowedHumanActions": [
         "HOLD"
       ],
       "expectedPostState": null,
+      "rollback": null,
       "mutationAuthorityStatus": "NOT_AUTHORIZED",
       "reviewerDecision": null,
       "decisionRationale": null,
