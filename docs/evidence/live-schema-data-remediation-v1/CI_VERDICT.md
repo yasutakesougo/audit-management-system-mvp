@@ -1,56 +1,61 @@
-# LIVE-SCHEMA-DATA-REMEDIATION-V1 — CI Verdict
+# LIVE-SCHEMA-DATA-REMEDIATION-V1 — CI Verdict (Phase 3 tooling tip)
 
 ```text
 Exact Head:
-9c5197075040b54ed669101802a2e8457819d237
+894ed93ad057c637d6d5531dbdee70866dcbdb1d
 
 PR:
-#2557
+#2558
 
 CI Terminal:
 YES
 
 Verdict:
-READY GO
+PHASE3 TOOLING CI OK (Deep EXPECTED RED)
 
-Definition Review:
-PASS / LOCKABLE
+Definition / Evidence Review tooling:
+PASS
+
+Live Capture:
+HOLD (Operator path pending)
+
+Phase 3 Exit (rehydrate):
+HOLD
+
+Phase 4 Human GO:
+NOT STARTED
 ```
 
 ## Required checks
 
-All required checks **PASS** (0 failed, 0 pending).
+All required / core / quality checks **PASS** (0 failed, 0 pending on required lanes).
 
 | Lane | Result |
 |---|---|
 | Core / Preflight | PASS |
 | Quality / Canary | PASS |
-| fast / smoke | PASS |
+| fast / smoke / e2e-smoke (nurse) | PASS |
 | CSP / kiosk / sb-a11y / schedule | PASS |
+| Unit / Typecheck / Lint | PASS |
+
+Full reconciliation: [`CI_RECONCILIATION_894ed93a.md`](./CI_RECONCILIATION_894ed93a.md)
 
 ## E2E Deep (expected baseline red)
 
-6/6 Chromium deep lanes **fail** — Definition-only PR; no app/runtime changes. Same baseline pattern as `main` nightly and LIVE-SCHEMA-MUTATION-V1 PR #2556.
+6/6 Chromium deep lanes **fail** — Phase 3 Exit / Decision Pack docs+ops only; no app/runtime changes.
 
 | Check | Result |
 |---|---|
 | Deep Lane Union Audit | **PASS** |
-| Workflow run | [33133203807](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33133203807) |
-
-## Merge status
-
-| Item | Status |
-|---|---|
-| PR draft → ready | **DONE** |
-| Auto-merge (squash) | **ENABLED** |
-| GitHub merge rollup | **BLOCKED** (E2E Deep job failures) |
-
-Required checks pass; GitHub merge rollup remains red on E2E Deep lanes. **Admin/bypass merge** may be required (same as PR #2556).
+| Failure keys vs `4bfedfed` lock | **34/34 identical** |
+| Failure keys vs `main@acb5ec3f` | **34/34 identical** (via prior lock) |
+| New Deep failures from this tip | **NONE** |
+| PR Deep run | [33231137497](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33231137497) |
 
 ## Authority (unchanged)
 
 ```text
-SharePoint item mutation: NONE
-Schema mutation:          NONE
+SharePoint item mutation: NOT AUTHORIZED
+Schema mutation:          NOT AUTHORIZED
 Deploy:                   NOT AUTHORIZED
 ```
