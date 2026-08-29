@@ -1,12 +1,71 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-29T01:43:36.477Z",
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Phase1_EvidencePack",
+  "correction2": {
+    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-2",
+    "phaseScope": "Phase0_Baseline_Phase1_Evidence_Phase2_Candidates",
+    "structuredContentSignificance": true,
+    "frozenTdRegisterRequired": true,
+    "mechanicalCandidatesOnly": true,
+    "candidateDoesNotAuthorizeCase": true,
+    "caseACandidateIsNotDelete": true,
+    "caseCLane": "SCHEMA_CONTRACT_REASSESSMENT",
+    "factsAreNotAuthority": true,
+    "sharePointMutation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
+  },
+  "generatedAt": "2026-08-29T01:43:36.479Z",
   "sourceGeneratedAt": "2026-08-29T01:43:07.146Z",
+  "sourceInvestigationGeneratedAt": "2026-08-28T00:32:56.611Z",
+  "baselineHead": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
   "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
   "mode": "rehydrate-from-definition-investigation",
   "httpMethods": [
     "GET"
   ],
+  "mutation": false,
+  "dataMutationAuthority": "NOT_YET_AUTHORIZED",
+  "schemaMutation": "NONE",
+  "deploy": "NOT_AUTHORIZED",
+  "liveCaptureStatus": "HOLD",
+  "liveCaptureHoldReason": "No signed-in SharePoint session in Cloud Agent environment. Evidence Pack rehydrated from locked DEFINITION_INVESTIGATION.json observations only. One-shot browser GET still required for Author/Editor/Lifecycle/schema-relevant scalars and verified contentSignificance {value,basis,evidence}.",
+  "frozenTdRegister": {
+    "TD-001": [
+      7,
+      12,
+      15
+    ],
+    "TD-002": [
+      3,
+      4,
+      5
+    ],
+    "TD-003": [
+      2060,
+      2063
+    ],
+    "TD-004": [
+      2084,
+      2085
+    ],
+    "TD-005": [
+      21,
+      22
+    ],
+    "TD-006": [
+      6,
+      11
+    ],
+    "TD-007": [
+      13,
+      14
+    ],
+    "TD-008": [
+      1,
+      2
+    ]
+  },
   "lists": {
     "SupportRecord_Daily": {
       "found": true,
@@ -34,94 +93,24 @@
     "rowsRead": 3868,
     "enumerationComplete": true
   },
-  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
-  "phase": "Phase2_MechanicalCandidates",
-  "correction": {
-    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-1",
-    "caseAContentSignificanceRequired": true,
-    "childEvidenceStrictFailClosed": true,
-    "childEvidenceTrueOnly": true,
-    "titleStatsPresenceRequired": true,
-    "titleStatsStrictBaseline": 8,
-    "expectedDuplicateGroupsStrictBaseline": 8,
-    "caseCRoute": "SCHEMA_CONTRACT_REASSESSMENT — do not route Case C to data remediation delete/merge.",
-    "sharePointMutation": "NONE",
-    "deploy": "NOT_AUTHORIZED"
+  "contentSignificanceCapture": {
+    "verified": false,
+    "fieldsInSchema": [],
+    "shape": "value_basis_evidence",
+    "note": "NOT_CAPTURED — live GET HOLD"
   },
-  "correction2": {
-    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-2",
-    "phaseScope": "Phase0_Baseline_Phase1_Evidence_Phase2_Candidates",
-    "structuredContentSignificance": true,
-    "frozenTdRegisterRequired": true,
-    "mechanicalCandidatesOnly": true,
-    "candidateDoesNotAuthorizeCase": true,
-    "caseACandidateIsNotDelete": true,
-    "caseCLane": "SCHEMA_CONTRACT_REASSESSMENT",
-    "factsAreNotAuthority": true,
-    "sharePointMutation": "NONE",
-    "deploy": "NOT_AUTHORIZED"
+  "fieldInventory": {
+    "contentSignificanceFieldsInSchema": [],
+    "lifecycleFieldsInSchema": [],
+    "archivalFieldsInSchema": [],
+    "schemaRelevantInSchema": [],
+    "authorExpand": false,
+    "editorExpand": false
   },
-  "dataMutationAuthority": "NOT_YET_AUTHORIZED",
-  "schemaMutation": "NONE",
-  "deploy": "NOT_AUTHORIZED",
-  "automaticWinnerSelection": "PROHIBITED",
-  "automaticDuplicateRepair": "PROHIBITED",
   "readCompleteness": "PASS",
   "definition": "PASS",
-  "expectedDuplicateGroups": 8,
-  "duplicateGroupsAccounted": 8,
-  "affectedParentItems": 18,
-  "childReferences": "COMPLETE",
-  "contentSignificanceCapture": "NOT_CAPTURED",
-  "emptyDuplicateCandidates": 0,
-  "caseACandidates": 0,
-  "activeDuplicates": 2,
-  "caseBCandidates": 2,
-  "ambiguousGroups": 4,
-  "schemaContractConflictCandidates": 2,
-  "caseCCandidates": 2,
-  "holds": [
-    {
-      "id": "AMBIGUOUS_GROUP",
-      "detail": "TD-001: human decision required; no auto winner."
-    },
-    {
-      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
-      "detail": "TD-001: Case A blocked — content significance evidence not captured or incomplete."
-    },
-    {
-      "id": "AMBIGUOUS_GROUP",
-      "detail": "TD-002: human decision required; no auto winner."
-    },
-    {
-      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
-      "detail": "TD-002: Case A blocked — content significance evidence not captured or incomplete."
-    },
-    {
-      "id": "SCHEMA_CONTRACT_REASSESSMENT_REQUIRED",
-      "detail": "TD-005: Case C candidate — schema contract reassessment; data remediation delete/merge prohibited."
-    },
-    {
-      "id": "SCHEMA_CONTRACT_REASSESSMENT_REQUIRED",
-      "detail": "TD-006: Case C candidate — schema contract reassessment; data remediation delete/merge prohibited."
-    },
-    {
-      "id": "AMBIGUOUS_GROUP",
-      "detail": "TD-007: human decision required; no auto winner."
-    },
-    {
-      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
-      "detail": "TD-007: Case A blocked — content significance evidence not captured or incomplete."
-    },
-    {
-      "id": "AMBIGUOUS_GROUP",
-      "detail": "TD-008: human decision required; no auto winner."
-    },
-    {
-      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
-      "detail": "TD-008: Case A blocked — content significance evidence not captured or incomplete."
-    }
-  ],
+  "observationsOnly": true,
+  "factsAreNotAuthority": true,
   "groups": [
     {
       "groupId": "TD-001",
@@ -134,6 +123,9 @@
       "titleDisplay": "TEST_LIKE(len=9)",
       "recordDateComparison": "UNVERIFIED",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "classification": "AMBIGUOUS",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -186,77 +178,16 @@
         "12": 0,
         "15": 0
       },
-      "createdModified": [
-        {
-          "Id": 7,
-          "Created": "2025-10-01T12:14:22Z",
-          "Modified": "2025-10-01T12:14:22Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 12,
-          "Created": "2025-10-01T12:20:50Z",
-          "Modified": "2025-10-01T12:20:50Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 15,
-          "Created": "2025-10-01T12:24:42Z",
-          "Modified": "2025-10-01T12:24:42Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "AMBIGUOUS",
-      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
-      "remediationRoute": null,
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "suggestedDisposition": "HOLD pending evidence / human review",
-      "dataRemediationEligible": true,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
-      ],
       "items": [
         {
           "Id": 7,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:14:22Z",
           "Modified": "2025-10-01T12:14:22Z",
           "AuthorId": null,
@@ -297,6 +228,11 @@
           "Id": 12,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:20:50Z",
           "Modified": "2025-10-01T12:20:50Z",
           "AuthorId": null,
@@ -337,6 +273,11 @@
           "Id": 15,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:24:42Z",
           "Modified": "2025-10-01T12:24:42Z",
           "AuthorId": null,
@@ -373,7 +314,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": true
     },
     {
       "groupId": "TD-002",
@@ -386,6 +334,9 @@
       "titleDisplay": "TEST_LIKE(len=5)",
       "recordDateComparison": "UNVERIFIED",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "classification": "AMBIGUOUS",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -438,77 +389,16 @@
         "4": 0,
         "5": 0
       },
-      "createdModified": [
-        {
-          "Id": 3,
-          "Created": "2025-10-01T11:25:52Z",
-          "Modified": "2025-10-01T11:25:52Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 4,
-          "Created": "2025-10-01T11:27:29Z",
-          "Modified": "2025-10-01T11:27:29Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 5,
-          "Created": "2025-10-01T11:28:50Z",
-          "Modified": "2025-10-01T11:28:50Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "AMBIGUOUS",
-      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
-      "remediationRoute": null,
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "suggestedDisposition": "HOLD pending evidence / human review",
-      "dataRemediationEligible": true,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
-      ],
       "items": [
         {
           "Id": 3,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T11:25:52Z",
           "Modified": "2025-10-01T11:25:52Z",
           "AuthorId": null,
@@ -549,6 +439,11 @@
           "Id": 4,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T11:27:29Z",
           "Modified": "2025-10-01T11:27:29Z",
           "AuthorId": null,
@@ -589,6 +484,11 @@
           "Id": 5,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T11:28:50Z",
           "Modified": "2025-10-01T11:28:50Z",
           "AuthorId": null,
@@ -625,7 +525,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": true
     },
     {
       "groupId": "TD-003",
@@ -637,6 +544,9 @@
       "titleDisplay": "DATE(2026-05-12)",
       "recordDateComparison": "SAME",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "CASE_B_CANDIDATE",
+      "lane": "DATA_REMEDIATION",
+      "classification": "ACTIVE_DUPLICATE",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -675,60 +585,16 @@
         "2060": 38,
         "2063": 16
       },
-      "createdModified": [
-        {
-          "Id": 2060,
-          "Created": "2026-05-14T09:33:56Z",
-          "Modified": "2026-05-14T09:55:31Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 2063,
-          "Created": "2026-05-14T09:51:57Z",
-          "Modified": "2026-05-14T09:51:57Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "ACTIVE_DUPLICATE",
-      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
-      "remediationRoute": null,
-      "candidate": "CASE_B_CANDIDATE",
-      "lane": "DATA_REMEDIATION",
-      "suggestedDisposition": "preserve / human data decision (child Gate if needed)",
-      "dataRemediationEligible": true,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "Child rows exist on multiple duplicate parents"
-      ],
       "items": [
         {
           "Id": 2060,
           "RecordDate": "2026-05-12T00:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2026-05-12T00:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2026-05-14T09:33:56Z",
           "Modified": "2026-05-14T09:55:31Z",
           "AuthorId": null,
@@ -769,6 +635,11 @@
           "Id": 2063,
           "RecordDate": "2026-05-12T00:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2026-05-12T00:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2026-05-14T09:51:57Z",
           "Modified": "2026-05-14T09:51:57Z",
           "AuthorId": null,
@@ -805,7 +676,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "Child rows exist on multiple duplicate parents"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": true
     },
     {
       "groupId": "TD-004",
@@ -817,6 +695,9 @@
       "titleDisplay": "DATE_LIKE(len=13)",
       "recordDateComparison": "SAME",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "CASE_B_CANDIDATE",
+      "lane": "DATA_REMEDIATION",
+      "classification": "ACTIVE_DUPLICATE",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -855,60 +736,16 @@
         "2084": 14,
         "2085": 1
       },
-      "createdModified": [
-        {
-          "Id": 2084,
-          "Created": "2026-05-15T00:29:50Z",
-          "Modified": "2026-05-15T00:29:50Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 2085,
-          "Created": "2026-05-15T00:30:10Z",
-          "Modified": "2026-05-15T00:30:10Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "ACTIVE_DUPLICATE",
-      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
-      "remediationRoute": null,
-      "candidate": "CASE_B_CANDIDATE",
-      "lane": "DATA_REMEDIATION",
-      "suggestedDisposition": "preserve / human data decision (child Gate if needed)",
-      "dataRemediationEligible": true,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "Child rows exist on multiple duplicate parents"
-      ],
       "items": [
         {
           "Id": 2084,
           "RecordDate": "2026-05-14T15:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2026-05-14T15:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2026-05-15T00:29:50Z",
           "Modified": "2026-05-15T00:29:50Z",
           "AuthorId": null,
@@ -949,6 +786,11 @@
           "Id": 2085,
           "RecordDate": "2026-05-14T15:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2026-05-14T15:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2026-05-15T00:30:10Z",
           "Modified": "2026-05-15T00:30:10Z",
           "AuthorId": null,
@@ -985,7 +827,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "Child rows exist on multiple duplicate parents"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": true
     },
     {
       "groupId": "TD-005",
@@ -997,6 +846,9 @@
       "titleDisplay": "SHORT(len=1)",
       "recordDateComparison": "DIFFERENT",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "CASE_C_CANDIDATE",
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "classification": "SCHEMA_CONTRACT_CONFLICT",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -1035,60 +887,16 @@
         "21": 0,
         "22": 0
       },
-      "createdModified": [
-        {
-          "Id": 21,
-          "Created": "2025-10-01T14:06:42Z",
-          "Modified": "2025-10-01T14:06:42Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 22,
-          "Created": "2025-10-02T09:36:47Z",
-          "Modified": "2025-10-02T09:36:47Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "SCHEMA_CONTRACT_CONFLICT",
-      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT",
-      "remediationRoute": "SCHEMA_CONTRACT_REASSESSMENT",
-      "candidate": "CASE_C_CANDIDATE",
-      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
-      "suggestedDisposition": "schema contract re-evaluation (no delete/merge)",
-      "dataRemediationEligible": false,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
-      ],
       "items": [
         {
           "Id": 21,
           "RecordDate": "2025-10-01T07:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2025-10-01T07:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T14:06:42Z",
           "Modified": "2025-10-01T14:06:42Z",
           "AuthorId": null,
@@ -1129,6 +937,11 @@
           "Id": 22,
           "RecordDate": "2025-10-02T07:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2025-10-02T07:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2025-10-02T09:36:47Z",
           "Modified": "2025-10-02T09:36:47Z",
           "AuthorId": null,
@@ -1165,7 +978,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": false
     },
     {
       "groupId": "TD-006",
@@ -1177,6 +997,9 @@
       "titleDisplay": "TEST_LIKE(len=11)",
       "recordDateComparison": "DIFFERENT",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "CASE_C_CANDIDATE",
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "classification": "SCHEMA_CONTRACT_CONFLICT",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -1215,60 +1038,16 @@
         "6": 0,
         "11": 0
       },
-      "createdModified": [
-        {
-          "Id": 6,
-          "Created": "2025-10-01T12:04:24Z",
-          "Modified": "2025-10-01T12:04:24Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 11,
-          "Created": "2025-10-01T12:18:45Z",
-          "Modified": "2025-10-01T12:18:45Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "SCHEMA_CONTRACT_CONFLICT",
-      "remediationCase": "C_SCHEMA_CONTRACT_CONFLICT",
-      "remediationRoute": "SCHEMA_CONTRACT_REASSESSMENT",
-      "candidate": "CASE_C_CANDIDATE",
-      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
-      "suggestedDisposition": "schema contract re-evaluation (no delete/merge)",
-      "dataRemediationEligible": false,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
-      ],
       "items": [
         {
           "Id": 6,
           "RecordDate": "2025-10-01T12:04:23Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2025-10-01T12:04:23Z",
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:04:24Z",
           "Modified": "2025-10-01T12:04:24Z",
           "AuthorId": null,
@@ -1309,6 +1088,11 @@
           "Id": 11,
           "RecordDate": "2025-10-01T12:18:45Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2025-10-01T12:18:45Z",
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:18:45Z",
           "Modified": "2025-10-01T12:18:45Z",
           "AuthorId": null,
@@ -1345,7 +1129,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": false
     },
     {
       "groupId": "TD-007",
@@ -1357,6 +1148,9 @@
       "titleDisplay": "TEST_LIKE(len=16)",
       "recordDateComparison": "UNVERIFIED",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "classification": "AMBIGUOUS",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -1395,60 +1189,16 @@
         "13": 0,
         "14": 0
       },
-      "createdModified": [
-        {
-          "Id": 13,
-          "Created": "2025-10-01T12:22:53Z",
-          "Modified": "2025-10-01T12:22:53Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 14,
-          "Created": "2025-10-01T12:24:19Z",
-          "Modified": "2025-10-01T12:24:19Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "AMBIGUOUS",
-      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
-      "remediationRoute": null,
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "suggestedDisposition": "HOLD pending evidence / human review",
-      "dataRemediationEligible": true,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
-      ],
       "items": [
         {
           "Id": 13,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:22:53Z",
           "Modified": "2025-10-01T12:22:53Z",
           "AuthorId": null,
@@ -1489,6 +1239,11 @@
           "Id": 14,
           "RecordDate": null,
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": null,
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T12:24:19Z",
           "Modified": "2025-10-01T12:24:19Z",
           "AuthorId": null,
@@ -1525,7 +1280,14 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": true
     },
     {
       "groupId": "TD-008",
@@ -1537,6 +1299,9 @@
       "titleDisplay": "REDACTED(len=4)",
       "recordDateComparison": "SAME",
       "userIdComparison": "UNVERIFIED",
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "classification": "AMBIGUOUS",
       "contentSignificance": {
         "verified": false,
         "anySignificant": false,
@@ -1575,60 +1340,16 @@
         "1": 0,
         "2": 0
       },
-      "createdModified": [
-        {
-          "Id": 1,
-          "Created": "2025-10-01T06:31:18Z",
-          "Modified": "2025-10-01T06:31:18Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        },
-        {
-          "Id": 2,
-          "Created": "2025-10-01T09:31:24Z",
-          "Modified": "2025-10-01T09:31:24Z",
-          "AuthorId": null,
-          "AuthorTitlePresent": false,
-          "EditorId": null,
-          "EditorTitlePresent": false,
-          "lifecycle": {
-            "status": "UNKNOWN",
-            "reason": "live-get-not-executed"
-          },
-          "archival": {
-            "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
-          }
-        }
-      ],
-      "classification": "AMBIGUOUS",
-      "remediationCase": "B_MEANINGFUL_OR_AMBIGUOUS",
-      "remediationRoute": null,
-      "candidate": "AMBIGUOUS",
-      "lane": "HOLD_REVIEW",
-      "suggestedDisposition": "HOLD pending evidence / human review",
-      "dataRemediationEligible": true,
-      "automaticRemediation": "PROHIBITED",
-      "humanDecisionRequired": true,
-      "humanDecision": null,
-      "holdReasons": [
-        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
-      ],
       "items": [
         {
           "Id": 1,
           "RecordDate": "2025-10-01T07:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2025-10-01T07:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T06:31:18Z",
           "Modified": "2025-10-01T06:31:18Z",
           "AuthorId": null,
@@ -1669,6 +1390,11 @@
           "Id": 2,
           "RecordDate": "2025-10-01T07:00:00Z",
           "UserIdPresent": false,
+          "businessKey": {
+            "titlePresent": true,
+            "recordDate": "2025-10-01T07:00:00Z",
+            "userIdPresent": false
+          },
           "Created": "2025-10-01T09:31:24Z",
           "Modified": "2025-10-01T09:31:24Z",
           "AuthorId": null,
@@ -1705,7 +1431,56 @@
             }
           }
         }
-      ]
+      ],
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ],
+      "humanDecisionRequired": true,
+      "humanDecision": null,
+      "automaticRemediation": "PROHIBITED",
+      "dataRemediationEligible": true
+    }
+  ],
+  "holds": [
+    {
+      "id": "AMBIGUOUS_GROUP",
+      "detail": "TD-001: human decision required; no auto winner."
+    },
+    {
+      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
+      "detail": "TD-001: Case A blocked — content significance evidence not captured or incomplete."
+    },
+    {
+      "id": "AMBIGUOUS_GROUP",
+      "detail": "TD-002: human decision required; no auto winner."
+    },
+    {
+      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
+      "detail": "TD-002: Case A blocked — content significance evidence not captured or incomplete."
+    },
+    {
+      "id": "SCHEMA_CONTRACT_REASSESSMENT_REQUIRED",
+      "detail": "TD-005: Case C candidate — schema contract reassessment; data remediation delete/merge prohibited."
+    },
+    {
+      "id": "SCHEMA_CONTRACT_REASSESSMENT_REQUIRED",
+      "detail": "TD-006: Case C candidate — schema contract reassessment; data remediation delete/merge prohibited."
+    },
+    {
+      "id": "AMBIGUOUS_GROUP",
+      "detail": "TD-007: human decision required; no auto winner."
+    },
+    {
+      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
+      "detail": "TD-007: Case A blocked — content significance evidence not captured or incomplete."
+    },
+    {
+      "id": "AMBIGUOUS_GROUP",
+      "detail": "TD-008: human decision required; no auto winner."
+    },
+    {
+      "id": "CONTENT_SIGNIFICANCE_UNVERIFIED",
+      "detail": "TD-008: Case A blocked — content significance evidence not captured or incomplete."
     }
   ],
   "notes": [
@@ -1714,7 +1489,9 @@
     "CASE_A_CANDIDATE / EMPTY_DUPLICATE_CANDIDATE is not permission to delete.",
     "CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.",
     "Mechanical candidates are not Human-authorized Cases.",
-    "Data mutation requires a separate Human Data Remediation GO (Phase 4)."
-  ],
-  "dataMutation": "NONE"
+    "Data mutation requires a separate Human Data Remediation GO (Phase 4).",
+    "Evidence Pack contains observations and mechanical candidates only.",
+    "Human Decision columns remain blank until Phase 4.",
+    "LIVE CAPTURE HOLD — re-run investigate.browser.js on signed-in /sites/welfare before Phase 4."
+  ]
 }

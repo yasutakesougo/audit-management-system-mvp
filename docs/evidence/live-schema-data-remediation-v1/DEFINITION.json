@@ -25,6 +25,18 @@
     "sharePointMutation": "NONE",
     "deploy": "NOT_AUTHORIZED"
   },
+  "correction2": {
+    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-2",
+    "phaseScope": "Phase0_Baseline_Phase1_Evidence_Phase2_Candidates",
+    "process": "docs/evidence/live-schema-data-remediation-v1/PROCESS.md",
+    "baseline": "docs/evidence/live-schema-data-remediation-v1/BASELINE.json",
+    "baselineHead": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+    "mechanicalCandidatesOnly": true,
+    "caseCLane": "SCHEMA_CONTRACT_REASSESSMENT",
+    "liveCaptureStatusRef": "docs/evidence/live-schema-data-remediation-v1/CAPTURE_STATUS.md",
+    "sharePointMutation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
+  },
   "investigation": {
     "transport": "Browser REST GET-ONLY",
     "readCompleteness": "PASS",

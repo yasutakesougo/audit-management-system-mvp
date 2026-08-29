@@ -1,6 +1,9 @@
 /**
  * LIVE-SCHEMA-DATA-REMEDIATION-V1 — classify GET-only duplicate investigation dumps.
  * Never selects a winner. Never mutates SharePoint.
+ *
+ * Correction-2: Evidence Collection — structured contentSignificance, stable TD IDs,
+ * mechanical CASE_*_CANDIDATE labels (not Human-authorized Cases).
  */
 
 export const LIVE_SCHEMA_DATA_REMEDIATION_ID = 'LIVE-SCHEMA-DATA-REMEDIATION-V1';
@@ -36,8 +39,45 @@ export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1 = {
   deploy: 'NOT_AUTHORIZED',
 };
 
+/**
+ * Correction-2 — Evidence Collection (additive; does not unlock mutation).
+ *
+ * - One-shot evidence fields + structured contentSignificance { value, basis, evidence }
+ * - Frozen TD register (stable groupId by parent ID set)
+ * - Mechanical CASE_*_CANDIDATE only — Human Disposition still required
+ * - Case C lane = SCHEMA_CONTRACT_REASSESSMENT (never data remediation)
+ */
+export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2 = {
+  id: 'LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-2',
+  phaseScope: 'Phase0_Baseline_Phase1_Evidence_Phase2_Candidates',
+  structuredContentSignificance: true,
+  frozenTdRegisterRequired: true,
+  mechanicalCandidatesOnly: true,
+  candidateDoesNotAuthorizeCase: true,
+  caseACandidateIsNotDelete: true,
+  caseCLane: 'SCHEMA_CONTRACT_REASSESSMENT',
+  factsAreNotAuthority: true,
+  sharePointMutation: 'NONE',
+  deploy: 'NOT_AUTHORIZED',
+};
+
 /** Strict preflight baseline — drift fails definition (P1-3). */
 export const EXPECTED_DUPLICATE_GROUP_BASELINE = 8;
+
+/**
+ * Frozen TD register from Definition (#2557) — parent ID sets.
+ * Re-runs must not reshuffle TD labels when the same ID sets appear.
+ */
+export const FROZEN_TD_REGISTER = Object.freeze({
+  'TD-001': Object.freeze([7, 12, 15]),
+  'TD-002': Object.freeze([3, 4, 5]),
+  'TD-003': Object.freeze([2060, 2063]),
+  'TD-004': Object.freeze([2084, 2085]),
+  'TD-005': Object.freeze([21, 22]),
+  'TD-006': Object.freeze([6, 11]),
+  'TD-007': Object.freeze([13, 14]),
+  'TD-008': Object.freeze([1, 2]),
+});
 
 /**
  * True-only evidence gate — literal `true` passes; truthy non-boolean fails closed.
@@ -52,6 +92,29 @@ export function isEvidenceTrue(value) {
  */
 function isBlank(value) {
   return value == null || String(value).trim() === '';
+}
+
+/**
+ * @param {Iterable<number|string>} ids
+ */
+export function idsKey(ids) {
+  return [...ids].map(Number).sort((a, b) => a - b).join(',');
+}
+
+const FROZEN_BY_KEY = new Map(
+  Object.entries(FROZEN_TD_REGISTER).map(([td, ids]) => [idsKey(ids), td]),
+);
+
+/**
+ * Resolve stable TD id from parent item ID set.
+ * @param {Array<number|string>} ids
+ * @param {string|null|undefined} fallbackGroupId
+ */
+export function resolveStableGroupId(ids, fallbackGroupId) {
+  const hit = FROZEN_BY_KEY.get(idsKey(ids || []));
+  if (hit) return hit;
+  if (fallbackGroupId && /^TD-\d{3}$/.test(String(fallbackGroupId))) return String(fallbackGroupId);
+  return `TD-UNREGISTERED-${idsKey(ids || []) || 'empty'}`;
 }
 
 /**
@@ -82,20 +145,60 @@ function compareField(items, field) {
 }
 
 /**
- * Content significance booleans — no payload (P1-1).
+ * Normalize structured + legacy content-significance on one item.
  * @param {Record<string, unknown>} item
  */
 export function assessItemContentSignificance(item) {
-  const verified = item.contentSignificanceVerified === true;
-  const userRowsJSONPresent = item.userRowsJSONPresent === true;
+  const structured = item.contentSignificance && typeof item.contentSignificance === 'object'
+    ? /** @type {Record<string, unknown>} */ (item.contentSignificance)
+    : null;
+
+  const verified = item.contentSignificanceVerified === true
+    || structured?.value === 'TRUE'
+    || structured?.value === 'FALSE';
+
+  const userRowsJSONPresent = item.userRowsJSONPresent === true
+    || structured?.evidence?.userRowsJSONPresent === true;
   const userCountPositive = item.userCountPositive === true
-    || (item.userCount != null && Number(item.userCount) > 0);
+    || (item.userCount != null && Number(item.userCount) > 0)
+    || structured?.evidence?.userCountPositive === true;
   const latestVersionPositive = item.latestVersionPositive === true
-    || (item.latestVersion != null && Number(item.latestVersion) > 0);
+    || (item.latestVersion != null && Number(item.latestVersion) > 0)
+    || structured?.evidence?.latestVersionPositive === true;
   const recordDatePresent = !isBlank(item.RecordDate);
   const userIdPresent = !isBlank(item.UserId);
 
   const hasSignificantContent = userRowsJSONPresent || userCountPositive || latestVersionPositive;
+
+  let structuredValue = 'UNKNOWN';
+  if (structured && typeof structured.value === 'string') {
+    structuredValue = structured.value;
+  } else if (verified) {
+    structuredValue = hasSignificantContent ? 'TRUE' : 'FALSE';
+  }
+
+  const basis = Array.isArray(structured?.basis)
+    ? structured.basis.map(String)
+    : [];
+  if (basis.length === 0) {
+    if (!verified) basis.push('content-significance fields not verified');
+    else {
+      basis.push(userRowsJSONPresent ? 'UserRowsJSON contains business content' : 'UserRowsJSON is empty');
+      basis.push(userCountPositive ? 'UserCount positive' : 'UserCount empty or zero');
+      basis.push(latestVersionPositive ? 'LatestVersion positive' : 'LatestVersion empty or zero');
+    }
+  }
+
+  const evidence = structured?.evidence && typeof structured.evidence === 'object'
+    ? structured.evidence
+    : {
+      itemId: item.Id ?? null,
+      userRowsJSONPresent,
+      userCount: item.userCount ?? null,
+      userCountPositive,
+      latestVersion: item.latestVersion ?? null,
+      latestVersionPositive,
+    };
 
   return {
     verified,
@@ -110,6 +213,11 @@ export function assessItemContentSignificance(item) {
       && !hasSignificantContent
       && !recordDatePresent
       && !userIdPresent,
+    contentSignificance: {
+      value: structuredValue,
+      basis,
+      evidence,
+    },
   };
 }
 
@@ -122,12 +230,59 @@ function assessGroupContentSignificance(items) {
   const anySignificant = perItem.some((s) => s.hasSignificantContent);
   const allInsignificant = allVerified && perItem.every((s) => s.allInsignificant);
 
+  let groupValue = 'UNKNOWN';
+  if (allVerified) groupValue = anySignificant ? 'TRUE' : 'FALSE';
+
   return {
     perItem,
     allVerified,
     anySignificant,
     allInsignificant,
+    groupValue,
   };
+}
+
+/**
+ * Map legacy classification → mechanical candidate (Correction-2).
+ * @param {string} classification
+ * @param {string | null} remediationRoute
+ */
+export function toMechanicalCandidate(classification, remediationRoute) {
+  if (remediationRoute === 'SCHEMA_CONTRACT_REASSESSMENT'
+    || classification === 'SCHEMA_CONTRACT_CONFLICT') {
+    return 'CASE_C_CANDIDATE';
+  }
+  if (classification === 'EMPTY_DUPLICATE_CANDIDATE') return 'CASE_A_CANDIDATE';
+  if (classification === 'ACTIVE_DUPLICATE') return 'CASE_B_CANDIDATE';
+  return 'AMBIGUOUS';
+}
+
+/**
+ * Suggested disposition text — not authority.
+ * @param {string} candidate
+ */
+export function suggestedDispositionForCandidate(candidate) {
+  switch (candidate) {
+    case 'CASE_A_CANDIDATE':
+      return 'archive/delete candidate (Human GO required; not authorized)';
+    case 'CASE_B_CANDIDATE':
+      return 'preserve / human data decision (child Gate if needed)';
+    case 'CASE_C_CANDIDATE':
+      return 'schema contract re-evaluation (no delete/merge)';
+    default:
+      return 'HOLD pending evidence / human review';
+  }
+}
+
+/**
+ * @param {string} candidate
+ */
+export function laneForCandidate(candidate) {
+  if (candidate === 'CASE_C_CANDIDATE') return 'SCHEMA_CONTRACT_REASSESSMENT';
+  if (candidate === 'CASE_A_CANDIDATE' || candidate === 'CASE_B_CANDIDATE') {
+    return 'DATA_REMEDIATION';
+  }
+  return 'HOLD_REVIEW';
 }
 
 /**
@@ -135,6 +290,9 @@ function assessGroupContentSignificance(items) {
  */
 export function classifyDuplicateGroup(group) {
   const items = Array.isArray(group.items) ? group.items : [];
+  const parentItemIds = group.parentItemIds || items.map((item) => item.Id);
+  const groupId = resolveStableGroupId(parentItemIds, group.groupId);
+
   const recordDateComparison = compareField(items, 'RecordDate');
   const userIdComparison = compareField(items, 'UserId');
   const childCounts = items.map((item) => Number(item.childCount) || 0);
@@ -196,9 +354,12 @@ export function classifyDuplicateGroup(group) {
     holdReasons.push('Insufficient evidence for safe automatic classification');
   }
 
+  const candidate = toMechanicalCandidate(classification, remediationRoute);
+  const lane = laneForCandidate(candidate);
+
   return {
-    groupId: group.groupId,
-    parentItemIds: group.parentItemIds || items.map((item) => item.Id),
+    groupId,
+    parentItemIds,
     groupSize: group.groupSize || items.length,
     titleDisplay: redactTitle(group.title),
     recordDateComparison,
@@ -207,6 +368,11 @@ export function classifyDuplicateGroup(group) {
       verified: content.allVerified,
       anySignificant: content.anySignificant,
       allInsignificant: content.allInsignificant,
+      value: content.groupValue,
+      perItem: content.perItem.map((p, i) => ({
+        Id: items[i]?.Id ?? null,
+        ...p.contentSignificance,
+      })),
     },
     childReferences: Object.fromEntries(
       items.map((item) => [String(item.Id), Number(item.childCount) || 0]),
@@ -215,13 +381,25 @@ export function classifyDuplicateGroup(group) {
       Id: item.Id,
       Created: item.Created ?? null,
       Modified: item.Modified ?? null,
+      AuthorId: item.AuthorId ?? null,
+      AuthorTitlePresent: item.AuthorTitlePresent === true,
+      EditorId: item.EditorId ?? null,
+      EditorTitlePresent: item.EditorTitlePresent === true,
+      lifecycle: item.lifecycle ?? { status: 'UNKNOWN' },
+      archival: item.archival ?? { status: 'NOT_PROBED' },
     })),
+    // Legacy labels (Definition Correction-1 compatibility)
     classification,
     remediationCase,
     remediationRoute,
+    // Correction-2 mechanical candidates
+    candidate,
+    lane,
+    suggestedDisposition: suggestedDispositionForCandidate(candidate),
     dataRemediationEligible: remediationRoute !== 'SCHEMA_CONTRACT_REASSESSMENT',
     automaticRemediation: 'PROHIBITED',
     humanDecisionRequired: true,
+    humanDecision: null,
     holdReasons,
   };
 }
@@ -299,6 +477,8 @@ export function classifyDataRemediationInvestigation(dump) {
 
   const groups = Array.isArray(dump?.duplicateGroups) ? dump.duplicateGroups : [];
   const classified = groups.map(classifyDuplicateGroup);
+  // Stable sort by TD id for Decision Pack readability
+  classified.sort((a, b) => String(a.groupId).localeCompare(String(b.groupId)));
 
   // P1-3 + titleStats: strict 8-group baseline with titleStats presence requirement
   const titleStats = dump?.titleStats;
@@ -339,14 +519,25 @@ export function classifyDataRemediationInvestigation(dump) {
     });
   }
 
+  // Frozen TD coverage — warn/HOLD if registered sets missing when count==8
+  const classifiedKeys = new Set(classified.map((g) => idsKey(g.parentItemIds)));
+  for (const [td, ids] of Object.entries(FROZEN_TD_REGISTER)) {
+    if (!classifiedKeys.has(idsKey(ids))) {
+      holds.push({
+        id: 'FROZEN_TD_REGISTER_MISS',
+        detail: `${td} parent ID set ${JSON.stringify(ids)} not present in this dump.`,
+      });
+    }
+  }
+
   for (const group of classified) {
     if (group.remediationRoute === 'SCHEMA_CONTRACT_REASSESSMENT') {
       holds.push({
         id: 'SCHEMA_CONTRACT_REASSESSMENT_REQUIRED',
-        detail: `${group.groupId}: Case C — schema contract reassessment; data remediation delete/merge prohibited.`,
+        detail: `${group.groupId}: Case C candidate — schema contract reassessment; data remediation delete/merge prohibited.`,
       });
     }
-    if (group.classification === 'AMBIGUOUS') {
+    if (group.candidate === 'AMBIGUOUS' || group.classification === 'AMBIGUOUS') {
       holds.push({
         id: 'AMBIGUOUS_GROUP',
         detail: `${group.groupId}: human decision required; no auto winner.`,
@@ -367,10 +558,10 @@ export function classifyDataRemediationInvestigation(dump) {
     );
   }
 
-  const emptyCandidates = classified.filter((g) => g.classification === 'EMPTY_DUPLICATE_CANDIDATE').length;
-  const activeDuplicates = classified.filter((g) => g.classification === 'ACTIVE_DUPLICATE').length;
-  const ambiguousGroups = classified.filter((g) => g.classification === 'AMBIGUOUS').length;
-  const schemaConflicts = classified.filter((g) => g.remediationRoute === 'SCHEMA_CONTRACT_REASSESSMENT').length;
+  const emptyCandidates = classified.filter((g) => g.candidate === 'CASE_A_CANDIDATE').length;
+  const activeDuplicates = classified.filter((g) => g.candidate === 'CASE_B_CANDIDATE').length;
+  const ambiguousGroups = classified.filter((g) => g.candidate === 'AMBIGUOUS').length;
+  const schemaConflicts = classified.filter((g) => g.candidate === 'CASE_C_CANDIDATE').length;
 
   let definition = 'PASS';
   if (readCompleteness !== 'PASS') definition = 'HOLD';
@@ -385,14 +576,16 @@ export function classifyDataRemediationInvestigation(dump) {
     && isEvidenceTrue(child?.enumerationComplete);
 
   notes.push('Automatic winner selection is PROHIBITED.');
-  notes.push('EMPTY_DUPLICATE_CANDIDATE is not permission to delete.');
-  notes.push('Case C (SCHEMA_CONTRACT_CONFLICT) routes to schema reassessment — not delete/merge.');
-  notes.push('Data mutation requires a separate Human Data Remediation GO.');
+  notes.push('CASE_A_CANDIDATE / EMPTY_DUPLICATE_CANDIDATE is not permission to delete.');
+  notes.push('CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.');
+  notes.push('Mechanical candidates are not Human-authorized Cases.');
+  notes.push('Data mutation requires a separate Human Data Remediation GO (Phase 4).');
 
   return {
     id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
-    phase: 'Definition',
+    phase: 'Phase2_MechanicalCandidates',
     correction: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1,
+    correction2: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
     ...LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_BASELINE,
     readCompleteness,
     definition,
@@ -402,9 +595,12 @@ export function classifyDataRemediationInvestigation(dump) {
     childReferences: childEvidenceComplete ? 'COMPLETE' : 'INCOMPLETE',
     contentSignificanceCapture: contentCaptureVerified ? 'VERIFIED' : 'NOT_CAPTURED',
     emptyDuplicateCandidates: emptyCandidates,
+    caseACandidates: emptyCandidates,
     activeDuplicates,
+    caseBCandidates: activeDuplicates,
     ambiguousGroups,
     schemaContractConflictCandidates: schemaConflicts,
+    caseCCandidates: schemaConflicts,
     holds,
     groups: classified,
     notes,
@@ -412,4 +608,221 @@ export function classifyDataRemediationInvestigation(dump) {
     schemaMutation: 'NONE',
     deploy: 'NOT_AUTHORIZED',
   };
+}
+
+/**
+ * Build redacted Evidence Pack (observations + candidates; no raw Titles / display names).
+ * @param {Record<string, unknown>} dump
+ * @param {ReturnType<typeof classifyDataRemediationInvestigation>} classified
+ */
+export function buildEvidencePack(dump, classified) {
+  const byId = new Map(
+    (dump.duplicateGroups || []).map((g) => {
+      const ids = g.parentItemIds || (g.items || []).map((it) => it.Id);
+      return [resolveStableGroupId(ids, g.groupId), g];
+    }),
+  );
+
+  const groups = classified.groups.map((c) => {
+    const raw = byId.get(c.groupId) || {};
+    const rawItems = Array.isArray(raw.items) ? raw.items : [];
+    return {
+      groupId: c.groupId,
+      parentItemIds: c.parentItemIds,
+      groupSize: c.groupSize,
+      titleDisplay: c.titleDisplay,
+      recordDateComparison: c.recordDateComparison,
+      userIdComparison: c.userIdComparison,
+      candidate: c.candidate,
+      lane: c.lane,
+      classification: c.classification,
+      contentSignificance: c.contentSignificance,
+      childReferences: c.childReferences,
+      items: rawItems.map((item) => {
+        const sig = assessItemContentSignificance(item);
+        return {
+          Id: item.Id,
+          RecordDate: item.RecordDate ?? null,
+          UserIdPresent: item.UserId != null && String(item.UserId).trim() !== '',
+          businessKey: item.businessKey ?? {
+            titlePresent: true,
+            recordDate: item.RecordDate ?? null,
+            userIdPresent: item.UserId != null && String(item.UserId).trim() !== '',
+          },
+          Created: item.Created ?? null,
+          Modified: item.Modified ?? null,
+          AuthorId: item.AuthorId ?? null,
+          AuthorTitlePresent: item.AuthorTitlePresent === true,
+          EditorId: item.EditorId ?? null,
+          EditorTitlePresent: item.EditorTitlePresent === true,
+          lifecycle: item.lifecycle ?? { status: 'UNKNOWN' },
+          archival: item.archival ?? { status: 'NOT_PROBED' },
+          schemaRelevant: item.schemaRelevant ?? {},
+          childCount: item.childCount ?? 0,
+          contentSignificanceVerified: sig.verified,
+          userRowsJSONPresent: sig.userRowsJSONPresent,
+          userCountPositive: sig.userCountPositive,
+          latestVersionPositive: sig.latestVersionPositive,
+          contentSignificance: sig.contentSignificance,
+        };
+      }),
+      holdReasons: c.holdReasons,
+      humanDecisionRequired: true,
+      humanDecision: null,
+      automaticRemediation: 'PROHIBITED',
+      dataRemediationEligible: c.dataRemediationEligible,
+    };
+  });
+
+  return {
+    schemaVersion: 2,
+    id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
+    phase: 'Phase1_EvidencePack',
+    correction2: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
+    generatedAt: new Date().toISOString(),
+    sourceGeneratedAt: dump.generatedAt ?? null,
+    sourceInvestigationGeneratedAt: dump.sourceInvestigationGeneratedAt ?? null,
+    baselineHead: dump.baselineHead ?? null,
+    siteUrl: dump.siteUrl ?? null,
+    mode: dump.mode ?? 'file',
+    httpMethods: dump.httpMethods ?? ['GET'],
+    mutation: false,
+    dataMutationAuthority: 'NOT_YET_AUTHORIZED',
+    schemaMutation: 'NONE',
+    deploy: 'NOT_AUTHORIZED',
+    liveCaptureStatus: dump.liveCaptureStatus ?? (dump.mode === 'browser-rest' ? 'CAPTURED' : 'UNKNOWN'),
+    liveCaptureHoldReason: dump.liveCaptureHoldReason ?? null,
+    frozenTdRegister: FROZEN_TD_REGISTER,
+    lists: dump.lists ?? null,
+    titleStats: dump.titleStats ?? null,
+    childRefsSummary: {
+      ok: dump.childRefsSummary?.ok ?? null,
+      parentIdField: dump.childRefsSummary?.parentIdField ?? dump.parentIdFieldUsed ?? null,
+      rowsRead: dump.childRefsSummary?.rowsRead ?? null,
+      enumerationComplete: dump.childRefsSummary?.enumerationComplete ?? null,
+    },
+    contentSignificanceCapture: dump.contentSignificanceCapture ?? null,
+    fieldInventory: dump.fieldInventory ?? null,
+    readCompleteness: classified.readCompleteness,
+    definition: classified.definition,
+    observationsOnly: true,
+    factsAreNotAuthority: true,
+    groups,
+    holds: classified.holds,
+    notes: [
+      ...(classified.notes || []),
+      'Evidence Pack contains observations and mechanical candidates only.',
+      'Human Decision columns remain blank until Phase 4.',
+      dump.liveCaptureStatus === 'HOLD'
+        ? 'LIVE CAPTURE HOLD — re-run investigate.browser.js on signed-in /sites/welfare before Phase 4.'
+        : null,
+    ].filter(Boolean),
+  };
+}
+
+/**
+ * @param {ReturnType<typeof classifyDataRemediationInvestigation>} classified
+ */
+export function buildCandidateClassification(classified) {
+  return {
+    schemaVersion: 2,
+    id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
+    phase: 'Phase2_MechanicalCandidates',
+    correction2: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
+    generatedAt: new Date().toISOString(),
+    readCompleteness: classified.readCompleteness,
+    definition: classified.definition,
+    authority: {
+      itemMutation: 'NOT_AUTHORIZED',
+      schemaMutation: 'NOT_AUTHORIZED',
+      humanDisposition: 'PENDING',
+    },
+    counts: {
+      CASE_A_CANDIDATE: classified.caseACandidates,
+      CASE_B_CANDIDATE: classified.caseBCandidates,
+      CASE_C_CANDIDATE: classified.caseCCandidates,
+      AMBIGUOUS: classified.ambiguousGroups,
+    },
+    rules: {
+      CASE_A_CANDIDATE: '!= DELETE; Human GO required',
+      CASE_C_CANDIDATE: 'lane = SCHEMA_CONTRACT_REASSESSMENT; no delete/merge',
+      mechanicalCandidate: '!= authorized Case',
+    },
+    groups: classified.groups.map((g) => ({
+      groupId: g.groupId,
+      parentItemIds: g.parentItemIds,
+      candidate: g.candidate,
+      lane: g.lane,
+      significance: g.contentSignificance?.value ?? 'UNKNOWN',
+      significanceVerified: g.contentSignificance?.verified === true,
+      classification: g.classification,
+      suggestedDisposition: g.suggestedDisposition,
+      dataRemediationEligible: g.dataRemediationEligible,
+      humanDecision: null,
+      holdReasons: g.holdReasons,
+    })),
+    notes: classified.notes,
+  };
+}
+
+/**
+ * Markdown Decision Pack for Human Review (Phase 3/4).
+ * @param {ReturnType<typeof buildCandidateClassification>} candidates
+ */
+export function buildDecisionPackMarkdown(candidates) {
+  const lines = [
+    '# LIVE-SCHEMA-DATA-REMEDIATION-V1 — Decision Pack',
+    '',
+    '```text',
+    'Phase: 3 Independent Evidence Review → 4 Human Disposition',
+    'Authority: PENDING (blank until Human fills GO/HOLD per row)',
+    'Bulk GO for all 8: PROHIBITED',
+    'CASE_*_CANDIDATE != authorized Case',
+    'CASE_A_CANDIDATE != DELETE',
+    '```',
+    '',
+    'Mechanical candidates only. Fill **Human Decision** per row after Evidence Review.',
+    '',
+    '| TD | Candidate | Significance | State | Suggested disposition | Lane | Human Decision |',
+    '|---|---|---|---|---|---|---|',
+  ];
+
+  for (const g of candidates.groups) {
+    const state = g.candidate === 'CASE_B_CANDIDATE'
+      ? 'active/meaningful'
+      : g.candidate === 'CASE_C_CANDIDATE'
+        ? 'contract conflict'
+        : g.candidate === 'CASE_A_CANDIDATE'
+          ? 'empty candidate'
+          : 'ambiguous';
+    lines.push(
+      `| ${g.groupId} | ${g.candidate} | ${g.significance} | ${state} | ${g.suggestedDisposition} | ${g.lane} | _GO / HOLD_ |`,
+    );
+  }
+
+  lines.push(
+    '',
+    '## Lane split',
+    '',
+    '- **DATA_REMEDIATION** (A/B after Human Case authorization): small-batch mutation only with per-target GO',
+    '- **SCHEMA_CONTRACT_REASSESSMENT** (C): no delete/merge; schema contract track',
+    '- **HOLD_REVIEW**: evidence gap — do not mutate',
+    '',
+    '## Authority (Phase 4 — not yet filled)',
+    '',
+    'Per-row examples (do not treat as granted):',
+    '',
+    '```text',
+    'TD-00N / Item … → Action … → Expected post-state … → Rollback … → Human GO',
+    '```',
+    '',
+    '## Counts',
+    '',
+    '```json',
+    JSON.stringify(candidates.counts, null, 2),
+    '```',
+    '',
+  );
+
+  return `${lines.join('\n')}\n`;
 }

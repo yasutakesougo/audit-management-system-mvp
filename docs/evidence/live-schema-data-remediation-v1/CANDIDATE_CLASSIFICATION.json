@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Phase2_MechanicalCandidates",
+  "correction2": {
+    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-2",
+    "phaseScope": "Phase0_Baseline_Phase1_Evidence_Phase2_Candidates",
+    "structuredContentSignificance": true,
+    "frozenTdRegisterRequired": true,
+    "mechanicalCandidatesOnly": true,
+    "candidateDoesNotAuthorizeCase": true,
+    "caseACandidateIsNotDelete": true,
+    "caseCLane": "SCHEMA_CONTRACT_REASSESSMENT",
+    "factsAreNotAuthority": true,
+    "sharePointMutation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
+  },
+  "generatedAt": "2026-08-29T01:43:36.480Z",
+  "readCompleteness": "PASS",
+  "definition": "PASS",
+  "authority": {
+    "itemMutation": "NOT_AUTHORIZED",
+    "schemaMutation": "NOT_AUTHORIZED",
+    "humanDisposition": "PENDING"
+  },
+  "counts": {
+    "CASE_A_CANDIDATE": 0,
+    "CASE_B_CANDIDATE": 2,
+    "CASE_C_CANDIDATE": 2,
+    "AMBIGUOUS": 4
+  },
+  "rules": {
+    "CASE_A_CANDIDATE": "!= DELETE; Human GO required",
+    "CASE_C_CANDIDATE": "lane = SCHEMA_CONTRACT_REASSESSMENT; no delete/merge",
+    "mechanicalCandidate": "!= authorized Case"
+  },
+  "groups": [
+    {
+      "groupId": "TD-001",
+      "parentItemIds": [
+        7,
+        12,
+        15
+      ],
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "AMBIGUOUS",
+      "suggestedDisposition": "HOLD pending evidence / human review",
+      "dataRemediationEligible": true,
+      "humanDecision": null,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    },
+    {
+      "groupId": "TD-002",
+      "parentItemIds": [
+        3,
+        4,
+        5
+      ],
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "AMBIGUOUS",
+      "suggestedDisposition": "HOLD pending evidence / human review",
+      "dataRemediationEligible": true,
+      "humanDecision": null,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    },
+    {
+      "groupId": "TD-003",
+      "parentItemIds": [
+        2060,
+        2063
+      ],
+      "candidate": "CASE_B_CANDIDATE",
+      "lane": "DATA_REMEDIATION",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "ACTIVE_DUPLICATE",
+      "suggestedDisposition": "preserve / human data decision (child Gate if needed)",
+      "dataRemediationEligible": true,
+      "humanDecision": null,
+      "holdReasons": [
+        "Child rows exist on multiple duplicate parents"
+      ]
+    },
+    {
+      "groupId": "TD-004",
+      "parentItemIds": [
+        2084,
+        2085
+      ],
+      "candidate": "CASE_B_CANDIDATE",
+      "lane": "DATA_REMEDIATION",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "ACTIVE_DUPLICATE",
+      "suggestedDisposition": "preserve / human data decision (child Gate if needed)",
+      "dataRemediationEligible": true,
+      "humanDecision": null,
+      "holdReasons": [
+        "Child rows exist on multiple duplicate parents"
+      ]
+    },
+    {
+      "groupId": "TD-005",
+      "parentItemIds": [
+        21,
+        22
+      ],
+      "candidate": "CASE_C_CANDIDATE",
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "SCHEMA_CONTRACT_CONFLICT",
+      "suggestedDisposition": "schema contract re-evaluation (no delete/merge)",
+      "dataRemediationEligible": false,
+      "humanDecision": null,
+      "holdReasons": [
+        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
+      ]
+    },
+    {
+      "groupId": "TD-006",
+      "parentItemIds": [
+        6,
+        11
+      ],
+      "candidate": "CASE_C_CANDIDATE",
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "SCHEMA_CONTRACT_CONFLICT",
+      "suggestedDisposition": "schema contract re-evaluation (no delete/merge)",
+      "dataRemediationEligible": false,
+      "humanDecision": null,
+      "holdReasons": [
+        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
+      ]
+    },
+    {
+      "groupId": "TD-007",
+      "parentItemIds": [
+        13,
+        14
+      ],
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "AMBIGUOUS",
+      "suggestedDisposition": "HOLD pending evidence / human review",
+      "dataRemediationEligible": true,
+      "humanDecision": null,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    },
+    {
+      "groupId": "TD-008",
+      "parentItemIds": [
+        1,
+        2
+      ],
+      "candidate": "AMBIGUOUS",
+      "lane": "HOLD_REVIEW",
+      "significance": "UNKNOWN",
+      "significanceVerified": false,
+      "classification": "AMBIGUOUS",
+      "suggestedDisposition": "HOLD pending evidence / human review",
+      "dataRemediationEligible": true,
+      "humanDecision": null,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    }
+  ],
+  "notes": [
+    "P1-1: content-significance fields not captured in investigation — Case A labeling blocked.",
+    "Automatic winner selection is PROHIBITED.",
+    "CASE_A_CANDIDATE / EMPTY_DUPLICATE_CANDIDATE is not permission to delete.",
+    "CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.",
+    "Mechanical candidates are not Human-authorized Cases.",
+    "Data mutation requires a separate Human Data Remediation GO (Phase 4)."
+  ]
+}
