@@ -37,6 +37,16 @@
     "sharePointMutation": "NONE",
     "deploy": "NOT_AUTHORIZED"
   },
+  "correction3": {
+    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-3",
+    "holdId": "EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND",
+    "baselineHeadExactMatchRequired": true,
+    "listIdBindOnCapture": true,
+    "knownListIdMismatchHolds": true,
+    "staleEvidenceReuse": "PROHIBITED",
+    "sharePointMutation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
+  },
   "investigation": {
     "transport": "Browser REST GET-ONLY",
     "readCompleteness": "PASS",

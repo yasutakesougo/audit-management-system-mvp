@@ -61,23 +61,29 @@ export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2 = {
   deploy: 'NOT_AUTHORIZED',
 };
 
+/**
+ * Correction-3 — Evidence ↔ Baseline identity binding (additive).
+ *
+ * P1: EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND
+ * - Classifier must load BASELINE.json
+ * - Evidence dump.baselineHead is required and must exactly equal baseline.head
+ * - Captured listIds bind into baseline identity; known listId mismatch → HOLD
+ * - Stale Evidence reuse across HEAD drift is prohibited
+ */
+export const LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_3 = {
+  id: 'LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-3',
+  holdId: 'EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND',
+  baselineHeadExactMatchRequired: true,
+  baselineHeadNullHolds: true,
+  listIdBindOnCapture: true,
+  knownListIdMismatchHolds: true,
+  staleEvidenceReuse: 'PROHIBITED',
+  sharePointMutation: 'NONE',
+  deploy: 'NOT_AUTHORIZED',
+};
+
 /** Strict preflight baseline — drift fails definition (P1-3). */
 export const EXPECTED_DUPLICATE_GROUP_BASELINE = 8;
-
-/**
- * Frozen TD register from Definition (#2557) — parent ID sets.
- * Re-runs must not reshuffle TD labels when the same ID sets appear.
- */
-export const FROZEN_TD_REGISTER = Object.freeze({
-  'TD-001': Object.freeze([7, 12, 15]),
-  'TD-002': Object.freeze([3, 4, 5]),
-  'TD-003': Object.freeze([2060, 2063]),
-  'TD-004': Object.freeze([2084, 2085]),
-  'TD-005': Object.freeze([21, 22]),
-  'TD-006': Object.freeze([6, 11]),
-  'TD-007': Object.freeze([13, 14]),
-  'TD-008': Object.freeze([1, 2]),
-});
 
 /**
  * True-only evidence gate — literal `true` passes; truthy non-boolean fails closed.
@@ -93,6 +99,192 @@ export function isEvidenceTrue(value) {
 function isBlank(value) {
   return value == null || String(value).trim() === '';
 }
+
+/**
+ * Normalize SharePoint list GUID / id for exact string compare.
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+export function normalizeListId(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (s === '' || s === 'null' || s === 'undefined') return null;
+  return s.replace(/^\{/, '').replace(/\}$/, '').toLowerCase();
+}
+
+/**
+ * Correction-3 — verify dump is mechanically bound to Phase 0 BASELINE.json.
+ *
+ * @param {Record<string, unknown> | null | undefined} baseline
+ * @param {Record<string, unknown> | null | undefined} dump
+ */
+export function verifyBaselineIdentity(baseline, dump) {
+  /** @type {Array<{ id: string, detail: string }>} */
+  const holds = [];
+  const expectedHead = baseline && !isBlank(baseline.head) ? String(baseline.head).trim() : null;
+  const observedHead = dump && !isBlank(dump.baselineHead) ? String(dump.baselineHead).trim() : null;
+
+  let headResult = 'PASS';
+  if (!baseline || typeof baseline !== 'object') {
+    headResult = 'HOLD';
+    holds.push({
+      id: 'BASELINE_MISSING',
+      detail: 'BASELINE.json not loaded — Evidence cannot bind to Phase 0 identity.',
+    });
+  } else if (expectedHead == null) {
+    headResult = 'HOLD';
+    holds.push({
+      id: 'BASELINE_HEAD_MISSING',
+      detail: 'BASELINE.json head is null/blank — Phase 0 baseline incomplete.',
+    });
+  } else if (observedHead == null) {
+    headResult = 'HOLD';
+    holds.push({
+      id: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_3.holdId,
+      detail:
+        'Evidence dump.baselineHead is null/absent — cannot prove binding to BASELINE.json head. Stale Evidence reuse prohibited.',
+    });
+  } else if (observedHead !== expectedHead) {
+    headResult = 'HOLD';
+    holds.push({
+      id: 'BASELINE_HEAD_MISMATCH',
+      detail:
+        `Evidence baselineHead=${observedHead} does not exactly match BASELINE.head=${expectedHead}. Stale Evidence reuse prohibited.`,
+    });
+  }
+
+  const baselineLists = (baseline && baseline.lists && typeof baseline.lists === 'object')
+    ? /** @type {Record<string, any>} */ (baseline.lists)
+    : {};
+  const dumpLists = (dump && dump.lists && typeof dump.lists === 'object')
+    ? /** @type {Record<string, any>} */ (dump.lists)
+    : {};
+
+  /** @type {Record<string, object>} */
+  const listDetails = {};
+  let listIdentityResult = 'PASS';
+  const listNames = Object.keys(baselineLists).length > 0
+    ? Object.keys(baselineLists)
+    : ['SupportRecord_Daily', 'DailyRecordRows'];
+
+  for (const name of listNames) {
+    const expected = baselineLists[name] || {};
+    const observed = dumpLists[name] || {};
+    const expectedListId = normalizeListId(expected.listId);
+    const observedListId = normalizeListId(observed.listId ?? observed.Id);
+
+    if (expectedListId == null) {
+      if (observedListId != null) {
+        listDetails[name] = {
+          title: expected.title ?? name,
+          expectedListId: null,
+          observedListId,
+          result: 'CAPTURED',
+          detail: 'Initial listId capture — bind into baseline identity for subsequent runs.',
+        };
+      } else {
+        listDetails[name] = {
+          title: expected.title ?? name,
+          expectedListId: null,
+          observedListId: null,
+          result: 'PENDING_CAPTURE',
+          detail: 'Baseline listId not yet bound; dump also lacks listId.',
+        };
+      }
+      continue;
+    }
+
+    if (observedListId == null) {
+      listIdentityResult = 'HOLD';
+      listDetails[name] = {
+        title: expected.title ?? name,
+        expectedListId,
+        observedListId: null,
+        result: 'HOLD',
+        detail: 'Known baseline listId present but Evidence dump listId missing.',
+      };
+      holds.push({
+        id: 'BASELINE_LIST_ID_MISSING_IN_EVIDENCE',
+        detail: `${name}: expected listId=${expectedListId} but dump listId is null.`,
+      });
+    } else if (observedListId !== expectedListId) {
+      listIdentityResult = 'HOLD';
+      listDetails[name] = {
+        title: expected.title ?? name,
+        expectedListId,
+        observedListId,
+        result: 'HOLD',
+        detail: 'Known listId mismatch — Evidence targets a different list identity.',
+      };
+      holds.push({
+        id: 'BASELINE_LIST_ID_MISMATCH',
+        detail: `${name}: expected listId=${expectedListId} observed=${observedListId}.`,
+      });
+    } else {
+      listDetails[name] = {
+        title: expected.title ?? name,
+        expectedListId,
+        observedListId,
+        result: 'PASS',
+        detail: 'listId exact match.',
+      };
+    }
+  }
+
+  const result = headResult === 'PASS' && listIdentityResult !== 'HOLD' ? 'PASS' : 'HOLD';
+
+  return {
+    correction: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_3,
+    expectedHead,
+    observedHead,
+    result: headResult === 'HOLD' ? 'HOLD' : result,
+    headResult,
+    listIdentityResult,
+    lists: listDetails,
+    holds,
+    staleEvidenceReuse: result === 'HOLD' ? 'PROHIBITED_HOLD' : 'NOT_APPLICABLE',
+  };
+}
+
+/**
+ * Apply first-capture listIds into a baseline object (in-memory bind).
+ * @param {Record<string, any>} baseline
+ * @param {ReturnType<typeof verifyBaselineIdentity>} verification
+ * @returns {{ baseline: Record<string, any>, changed: boolean }}
+ */
+export function bindCapturedListIdsToBaseline(baseline, verification) {
+  const next = JSON.parse(JSON.stringify(baseline));
+  let changed = false;
+  if (!next.lists || typeof next.lists !== 'object') next.lists = {};
+  for (const [name, detail] of Object.entries(verification.lists || {})) {
+    if (detail.result !== 'CAPTURED' || !detail.observedListId) continue;
+    if (!next.lists[name] || typeof next.lists[name] !== 'object') {
+      next.lists[name] = { title: name };
+    }
+    next.lists[name].listId = detail.observedListId;
+    next.lists[name].listIdStatus = 'BOUND';
+    changed = true;
+  }
+  if (changed) {
+    next.correction3Status = 'BASELINE_LIST_IDS_BOUND';
+  }
+  return { baseline: next, changed };
+}
+
+/**
+ * Frozen TD register from Definition (#2557) — parent ID sets.
+ * Re-runs must not reshuffle TD labels when the same ID sets appear.
+ */
+export const FROZEN_TD_REGISTER = Object.freeze({
+  'TD-001': Object.freeze([7, 12, 15]),
+  'TD-002': Object.freeze([3, 4, 5]),
+  'TD-003': Object.freeze([2060, 2063]),
+  'TD-004': Object.freeze([2084, 2085]),
+  'TD-005': Object.freeze([21, 22]),
+  'TD-006': Object.freeze([6, 11]),
+  'TD-007': Object.freeze([13, 14]),
+  'TD-008': Object.freeze([1, 2]),
+});
 
 /**
  * @param {Iterable<number|string>} ids
@@ -405,9 +597,10 @@ export function classifyDuplicateGroup(group) {
 }
 
 /**
- * @param {{ lists?: any, duplicateGroups?: any[], titleStats?: any, childRefsSummary?: any, contentSignificanceCapture?: any }} dump
+ * @param {{ lists?: any, duplicateGroups?: any[], titleStats?: any, childRefsSummary?: any, contentSignificanceCapture?: any, baselineHead?: string | null }} dump
+ * @param {{ baseline?: Record<string, unknown> | null }} [options]
  */
-export function classifyDataRemediationInvestigation(dump) {
+export function classifyDataRemediationInvestigation(dump, options = {}) {
   const lists = dump?.lists || {};
   const holds = [];
   const notes = [];
@@ -416,6 +609,11 @@ export function classifyDataRemediationInvestigation(dump) {
   const child = lists.DailyRecordRows;
 
   let readCompleteness = 'PASS';
+
+  // Correction-3: Baseline ↔ Evidence identity binding (required)
+  const baseline = options.baseline ?? null;
+  const baselineVerification = verifyBaselineIdentity(baseline, dump);
+  holds.push(...baselineVerification.holds);
 
   // P1-2: parent enumeration true-only fail-closed
   if (!isEvidenceTrue(parent?.enumerationComplete)) {
@@ -568,6 +766,7 @@ export function classifyDataRemediationInvestigation(dump) {
   if (classified.length === 0) definition = 'HOLD';
   if (classified.length !== EXPECTED_DUPLICATE_GROUP_BASELINE) definition = 'HOLD';
   if (!titleStatsValid) definition = 'HOLD';
+  if (baselineVerification.result === 'HOLD') definition = 'HOLD';
 
   const childEvidenceComplete =
     isEvidenceTrue(childRefsSummary?.ok)
@@ -580,13 +779,16 @@ export function classifyDataRemediationInvestigation(dump) {
   notes.push('CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.');
   notes.push('Mechanical candidates are not Human-authorized Cases.');
   notes.push('Data mutation requires a separate Human Data Remediation GO (Phase 4).');
+  notes.push('Correction-3: Evidence must bind baselineHead + list identity to BASELINE.json.');
 
   return {
     id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
     phase: 'Phase2_MechanicalCandidates',
     correction: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_1,
     correction2: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
+    correction3: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_3,
     ...LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_BASELINE,
+    baselineVerification,
     readCompleteness,
     definition,
     expectedDuplicateGroups: EXPECTED_DUPLICATE_GROUP_BASELINE,
@@ -679,10 +881,12 @@ export function buildEvidencePack(dump, classified) {
     id: LIVE_SCHEMA_DATA_REMEDIATION_ID,
     phase: 'Phase1_EvidencePack',
     correction2: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_2,
+    correction3: LIVE_SCHEMA_DATA_REMEDIATION_CORRECTION_3,
     generatedAt: new Date().toISOString(),
     sourceGeneratedAt: dump.generatedAt ?? null,
     sourceInvestigationGeneratedAt: dump.sourceInvestigationGeneratedAt ?? null,
     baselineHead: dump.baselineHead ?? null,
+    baselineVerification: classified.baselineVerification ?? null,
     siteUrl: dump.siteUrl ?? null,
     mode: dump.mode ?? 'file',
     httpMethods: dump.httpMethods ?? ['GET'],
@@ -715,6 +919,9 @@ export function buildEvidencePack(dump, classified) {
       'Human Decision columns remain blank until Phase 4.',
       dump.liveCaptureStatus === 'HOLD'
         ? 'LIVE CAPTURE HOLD — re-run investigate.browser.js on signed-in /sites/welfare before Phase 4.'
+        : null,
+      classified.baselineVerification?.result === 'HOLD'
+        ? 'Correction-3 HOLD — baselineHead/list identity not mechanically bound; stale Evidence reuse prohibited.'
         : null,
     ].filter(Boolean),
   };

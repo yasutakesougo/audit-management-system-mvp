@@ -13,9 +13,11 @@ Deploy: NOT AUTHORIZED
 | Item | Status |
 |---|---|
 | Baseline HEAD | `acb5ec3f` (pinned) |
+| Correction-3 baseline ↔ Evidence identity binding | **READY** (classifier loads BASELINE.json; mismatch → HOLD / exit 2) |
 | Tooling (browser script + classify + candidates) | **READY** |
 | Signed-in SharePoint browser GET in this Cloud Agent | **HOLD** (no session / credentials) |
-| Evidence Pack artifact | **EMITTED** (rehydrated observations from locked `DEFINITION_INVESTIGATION.json`) |
+| Evidence Pack artifact | **EMITTED** (rehydrated; `baselineVerification.result=PASS` on pinned head; listIds `PENDING_CAPTURE`) |
+| Evidence Pack `baselineHead` | **BOUND** to `acb5ec3f…` |
 | contentSignificance `{value,basis,evidence}` verified live | **NOT_CAPTURED** |
 | Author / Editor / Lifecycle / archival live fields | **UNKNOWN / NOT_PROBED** |
 | Mechanical candidates (A/B/C/Ambiguous) | **EMITTED** from known child + RecordDate evidence |

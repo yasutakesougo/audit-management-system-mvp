@@ -13,6 +13,16 @@
  * Frozen TD register (parent ID sets) — keep stable across re-runs.
  */
 (async () => {
+  // Correction-3: must match docs/evidence/live-schema-data-remediation-v1/BASELINE.json head
+  const BASELINE_HEAD = 'acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6';
+  const BASELINE_SITE_URL = 'https://isogokatudouhome.sharepoint.com/sites/welfare';
+  // When BASELINE.json listIds are BOUND, paste the same GUIDs here for dump-side identity.
+  // null = first capture (classifier will CAPTURED → bind into BASELINE.json).
+  const BASELINE_LIST_IDS = {
+    SupportRecord_Daily: null,
+    DailyRecordRows: null,
+  };
+
   const FROZEN_TD_REGISTER = {
     'TD-001': [7, 12, 15],
     'TD-002': [3, 4, 5],
@@ -25,7 +35,7 @@
   };
 
   const siteUrl = (typeof _spPageContextInfo !== 'undefined' && _spPageContextInfo.webAbsoluteUrl)
-    || 'https://isogokatudouhome.sharepoint.com/sites/welfare';
+    || BASELINE_SITE_URL;
   const headers = { Accept: 'application/json;odata=nometadata' };
 
   async function getJson(endpoint) {
@@ -364,7 +374,7 @@
     schemaVersion: 2,
     id: 'LIVE-SCHEMA-DATA-REMEDIATION-V1',
     phase: 'Phase1_EvidenceCollection',
-    correction: 'Correction-2',
+    correction: 'Correction-2+3',
     mode: 'browser-rest',
     siteUrl,
     httpMethods: ['GET'],
@@ -373,6 +383,9 @@
     schemaMutation: 'PROHIBITED',
     deploy: 'NOT_AUTHORIZED',
     generatedAt: new Date().toISOString(),
+    // Correction-3: mechanical bind to Phase 0 BASELINE.json
+    baselineHead: BASELINE_HEAD,
+    baselineExpectedListIds: BASELINE_LIST_IDS,
     frozenTdRegister: FROZEN_TD_REGISTER,
     parentSelect: selectWithExpand,
     expand: expandParts,

@@ -15,6 +15,7 @@
   "definitionStatus": "MERGED_LOCKED",
   "correction1Status": "LOCKED",
   "correction2Status": "ADDITIVE_EVIDENCE_COLLECTION",
+  "correction3Status": "BASELINE_EVIDENCE_IDENTITY_BINDING",
   "blockingCondition": "TITLE_DUPLICATES=8",
   "expectedDuplicateGroups": 8,
   "affectedParentItems": 18,

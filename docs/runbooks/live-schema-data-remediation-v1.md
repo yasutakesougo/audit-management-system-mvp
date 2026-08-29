@@ -98,6 +98,36 @@ Lane split Case C off data remediation
 No item / schema mutation
 ```
 
+## Correction-3 (Baseline ↔ Evidence identity — additive)
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Evidence Collection Correction-3
+P1: EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND
+
+Required:
+1. classifier loads BASELINE.json
+2. Evidence dump.baselineHead required
+3. baseline.head === evidence.baselineHead (exact)
+4. mismatch / null → HOLD + exit != 0
+5. captured listId binds into baseline identity
+6. known listId mismatch → HOLD
+7. Evidence Pack.baselineVerification retained
+```
+
+Browser dump must set `baselineHead` to the pinned BASELINE head (`acb5ec3f…`).  
+Classify:
+
+```bash
+node scripts/ops/live-schema-data-remediation-classify.mjs \
+  --input path/to/investigation-raw.json \
+  --baseline docs/evidence/live-schema-data-remediation-v1/BASELINE.json \
+  --out docs/evidence/live-schema-data-remediation-v1/DEFINITION_INVESTIGATION.json \
+  --evidence-pack docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json \
+  --candidates docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json \
+  --decision-pack docs/evidence/live-schema-data-remediation-v1/DECISION_PACK.md
+```
+
 ## After remediation (future)
 
 ```text

@@ -15,10 +15,57 @@
     "sharePointMutation": "NONE",
     "deploy": "NOT_AUTHORIZED"
   },
-  "generatedAt": "2026-08-29T01:43:36.479Z",
-  "sourceGeneratedAt": "2026-08-29T01:43:07.146Z",
-  "sourceInvestigationGeneratedAt": "2026-08-28T00:32:56.611Z",
+  "correction3": {
+    "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-3",
+    "holdId": "EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND",
+    "baselineHeadExactMatchRequired": true,
+    "baselineHeadNullHolds": true,
+    "listIdBindOnCapture": true,
+    "knownListIdMismatchHolds": true,
+    "staleEvidenceReuse": "PROHIBITED",
+    "sharePointMutation": "NONE",
+    "deploy": "NOT_AUTHORIZED"
+  },
+  "generatedAt": "2026-08-29T02:03:10.281Z",
+  "sourceGeneratedAt": "2026-08-29T02:03:10.247Z",
+  "sourceInvestigationGeneratedAt": "2026-08-29T01:43:07.146Z",
   "baselineHead": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+  "baselineVerification": {
+    "correction": {
+      "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1-Correction-3",
+      "holdId": "EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND",
+      "baselineHeadExactMatchRequired": true,
+      "baselineHeadNullHolds": true,
+      "listIdBindOnCapture": true,
+      "knownListIdMismatchHolds": true,
+      "staleEvidenceReuse": "PROHIBITED",
+      "sharePointMutation": "NONE",
+      "deploy": "NOT_AUTHORIZED"
+    },
+    "expectedHead": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+    "observedHead": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+    "result": "PASS",
+    "headResult": "PASS",
+    "listIdentityResult": "PASS",
+    "lists": {
+      "SupportRecord_Daily": {
+        "title": "SupportRecord_Daily",
+        "expectedListId": null,
+        "observedListId": null,
+        "result": "PENDING_CAPTURE",
+        "detail": "Baseline listId not yet bound; dump also lacks listId."
+      },
+      "DailyRecordRows": {
+        "title": "DailyRecordRows",
+        "expectedListId": null,
+        "observedListId": null,
+        "result": "PENDING_CAPTURE",
+        "detail": "Baseline listId not yet bound; dump also lacks listId."
+      }
+    },
+    "holds": [],
+    "staleEvidenceReuse": "NOT_APPLICABLE"
+  },
   "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
   "mode": "rehydrate-from-definition-investigation",
   "httpMethods": [
@@ -29,7 +76,7 @@
   "schemaMutation": "NONE",
   "deploy": "NOT_AUTHORIZED",
   "liveCaptureStatus": "HOLD",
-  "liveCaptureHoldReason": "No signed-in SharePoint session in Cloud Agent environment. Evidence Pack rehydrated from locked DEFINITION_INVESTIGATION.json observations only. One-shot browser GET still required for Author/Editor/Lifecycle/schema-relevant scalars and verified contentSignificance {value,basis,evidence}.",
+  "liveCaptureHoldReason": "No signed-in SharePoint session. Rehydrated observations only. Correction-3 binds baselineHead; listIds PENDING_CAPTURE until live GET.",
   "frozenTdRegister": {
     "TD-001": [
       7,
@@ -141,8 +188,7 @@
             "evidence": {
               "itemId": 7,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -154,8 +200,7 @@
             "evidence": {
               "itemId": 12,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -167,8 +212,7 @@
             "evidence": {
               "itemId": 15,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -200,7 +244,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -219,8 +263,7 @@
             "evidence": {
               "itemId": 7,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -245,7 +288,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -264,8 +307,7 @@
             "evidence": {
               "itemId": 12,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -290,7 +332,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -309,8 +351,7 @@
             "evidence": {
               "itemId": 15,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -352,8 +393,7 @@
             "evidence": {
               "itemId": 3,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -365,8 +405,7 @@
             "evidence": {
               "itemId": 4,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -378,8 +417,7 @@
             "evidence": {
               "itemId": 5,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -411,7 +449,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -430,8 +468,7 @@
             "evidence": {
               "itemId": 3,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -456,7 +493,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -475,8 +512,7 @@
             "evidence": {
               "itemId": 4,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -501,7 +537,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -520,8 +556,7 @@
             "evidence": {
               "itemId": 5,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -562,8 +597,7 @@
             "evidence": {
               "itemId": 2060,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -575,8 +609,7 @@
             "evidence": {
               "itemId": 2063,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -607,7 +640,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -626,8 +659,7 @@
             "evidence": {
               "itemId": 2060,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -652,7 +684,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -671,8 +703,7 @@
             "evidence": {
               "itemId": 2063,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -713,8 +744,7 @@
             "evidence": {
               "itemId": 2084,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -726,8 +756,7 @@
             "evidence": {
               "itemId": 2085,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -758,7 +787,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -777,8 +806,7 @@
             "evidence": {
               "itemId": 2084,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -803,7 +831,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -822,8 +850,7 @@
             "evidence": {
               "itemId": 2085,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -864,8 +891,7 @@
             "evidence": {
               "itemId": 21,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -877,8 +903,7 @@
             "evidence": {
               "itemId": 22,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -909,7 +934,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -928,8 +953,7 @@
             "evidence": {
               "itemId": 21,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -954,7 +978,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -973,8 +997,7 @@
             "evidence": {
               "itemId": 22,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -1015,8 +1038,7 @@
             "evidence": {
               "itemId": 6,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -1028,8 +1050,7 @@
             "evidence": {
               "itemId": 11,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -1060,7 +1081,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -1079,8 +1100,7 @@
             "evidence": {
               "itemId": 6,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -1105,7 +1125,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -1124,8 +1144,7 @@
             "evidence": {
               "itemId": 11,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -1166,8 +1185,7 @@
             "evidence": {
               "itemId": 13,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -1179,8 +1197,7 @@
             "evidence": {
               "itemId": 14,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -1211,7 +1228,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -1230,8 +1247,7 @@
             "evidence": {
               "itemId": 13,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -1256,7 +1272,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -1275,8 +1291,7 @@
             "evidence": {
               "itemId": 14,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -1296,7 +1311,7 @@
         2
       ],
       "groupSize": 2,
-      "titleDisplay": "REDACTED(len=4)",
+      "titleDisplay": "REDACTED(len=17)",
       "recordDateComparison": "SAME",
       "userIdComparison": "UNVERIFIED",
       "candidate": "AMBIGUOUS",
@@ -1317,8 +1332,7 @@
             "evidence": {
               "itemId": 1,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           },
           {
@@ -1330,8 +1344,7 @@
             "evidence": {
               "itemId": 2,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         ]
@@ -1362,7 +1375,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -1381,8 +1394,7 @@
             "evidence": {
               "itemId": 1,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         },
@@ -1407,7 +1419,7 @@
           },
           "archival": {
             "status": "NOT_PROBED",
-            "reason": "live-get-not-executed; recycle bin not probed"
+            "reason": "live-get-not-executed"
           },
           "schemaRelevant": {
             "LatestVersion": "NOT_CAPTURED",
@@ -1426,8 +1438,7 @@
             "evidence": {
               "itemId": 2,
               "source": "DEFINITION_INVESTIGATION.json rehydrate",
-              "liveCapture": "HOLD",
-              "priorContentSignificanceVerified": false
+              "liveCapture": "HOLD"
             }
           }
         }
@@ -1490,6 +1501,7 @@
     "CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.",
     "Mechanical candidates are not Human-authorized Cases.",
     "Data mutation requires a separate Human Data Remediation GO (Phase 4).",
+    "Correction-3: Evidence must bind baselineHead + list identity to BASELINE.json.",
     "Evidence Pack contains observations and mechanical candidates only.",
     "Human Decision columns remain blank until Phase 4.",
     "LIVE CAPTURE HOLD — re-run investigate.browser.js on signed-in /sites/welfare before Phase 4."

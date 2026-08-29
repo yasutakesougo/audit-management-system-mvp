@@ -227,6 +227,26 @@ See [PROCESS.md](./PROCESS.md), [BASELINE.json](./BASELINE.json), [CAPTURE_STATU
 Mechanical labels are `CASE_*_CANDIDATE` / `AMBIGUOUS` only. Human Disposition (Phase 4) is still required.
 Case C stays on **SCHEMA_CONTRACT_REASSESSMENT** — never data remediation delete/merge.
 
+## Correction-3 (Baseline ↔ Evidence identity — additive)
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Evidence Collection Correction-3
+P1: EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND
+```
+
+| Rule | Behavior |
+|---|---|
+| Classifier loads `BASELINE.json` | Required |
+| `dump.baselineHead` required | null → HOLD |
+| `baseline.head` === `dump.baselineHead` | exact match or HOLD |
+| listId first capture | `CAPTURED` → bind into BASELINE |
+| known listId mismatch | HOLD |
+| Evidence Pack | retains `baselineVerification` |
+| CLI | mismatch → `exit != 0` |
+
+Stale Evidence reuse across HEAD / list identity drift is **PROHIBITED**.
+
 ## Next (post-merge — no mutation in this Gate)
 
 This Definition PR **does not authorize** SharePoint item writes, schema mutation, or deploy.

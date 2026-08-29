@@ -15,7 +15,7 @@
     "sharePointMutation": "NONE",
     "deploy": "NOT_AUTHORIZED"
   },
-  "generatedAt": "2026-08-29T01:43:36.480Z",
+  "generatedAt": "2026-08-29T02:03:10.282Z",
   "readCompleteness": "PASS",
   "definition": "PASS",
   "authority": {
@@ -188,6 +188,7 @@
     "CASE_A_CANDIDATE / EMPTY_DUPLICATE_CANDIDATE is not permission to delete.",
     "CASE_C_CANDIDATE routes to schema reassessment — not delete/merge.",
     "Mechanical candidates are not Human-authorized Cases.",
-    "Data mutation requires a separate Human Data Remediation GO (Phase 4)."
+    "Data mutation requires a separate Human Data Remediation GO (Phase 4).",
+    "Correction-3: Evidence must bind baselineHead + list identity to BASELINE.json."
   ]
 }

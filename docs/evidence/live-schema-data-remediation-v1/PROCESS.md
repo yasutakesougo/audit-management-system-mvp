@@ -4,6 +4,8 @@
 LIVE-SCHEMA-DATA-REMEDIATION-V1
 Correction-2:
 Evidence Collection Process Lock
+Correction-3:
+Baseline ↔ Evidence identity binding
 Facts:
 != Authority
 CASE_*_CANDIDATE:
@@ -19,7 +21,7 @@ NOT AUTHORIZED
 ```
 
 This process separates **evidence**, **mechanical candidates**, **human disposition**, **authorized mutation**, and **schema apply**.  
-It does **not** replace the locked Definition ([DEFINITION.md](./DEFINITION.md) + Correction-1). Correction-2 is **additive**.
+It does **not** replace the locked Definition ([DEFINITION.md](./DEFINITION.md) + Correction-1). Correction-2/3 are **additive**.
 
 ## Critical path
 
@@ -61,6 +63,30 @@ Pin and re-check only:
 Artifact: [BASELINE.json](./BASELINE.json)
 
 If HEAD or list identity drifts vs baseline → **HOLD** (do not reuse stale Evidence).
+
+### Correction-3 — mechanical bind (required)
+
+Classifier **must** load `BASELINE.json` and require Evidence dump `baselineHead`:
+
+| Check | Pass | Fail |
+|---|---|---|
+| `baseline.head` === `dump.baselineHead` (exact) | PASS | HOLD (`BASELINE_HEAD_MISMATCH` / `EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND`) |
+| Baseline `listId` null + dump has listId | `CAPTURED` → bind into BASELINE | — |
+| Baseline `listId` set + dump matches | PASS | — |
+| Baseline `listId` set + dump differs/missing | — | HOLD (`BASELINE_LIST_ID_MISMATCH`) |
+
+Evidence Pack must retain:
+
+```text
+baselineVerification:
+  expectedHead
+  observedHead
+  result
+  listIdentityResult
+  lists
+```
+
+Mismatch → classify `definition=HOLD` and CLI `exit != 0`. Stale Evidence reuse is **PROHIBITED**.
 
 ## Phase 1 — One-shot GET-only Evidence Collection
 
