@@ -27,6 +27,8 @@
 
 子行件数は `SupportRecord_Daily` の移行判断に必要なため、上記 2 リストの存在確認と `ItemCount` のみを追加計測します。これ以外のリストは探索しません。
 
+接続検証（READ ONLY）: `Get-PnPWeb` で Exact Site Binding を確認します。
+
 ---
 
 ## 実行手順
@@ -37,6 +39,9 @@
 - PnP.PowerShell モジュール
 - SharePoint サイトへの読み取り権限
 - `-SiteUrl` は必須（組織固有 URL をソースに持たない）
+- **Exact Site Binding (C6)**: `-ExpectedSiteUrl` または環境変数 `CURRENT_DATA_LIVE_MEASURE_EXPECTED_SITE_URL` が必須。`-SiteUrl` と正規化後に完全一致すること
+- 接続後の `Get-PnPWeb.Url` もその正規化 URL と完全一致。既存 PnP コンテキストは一致時のみ再利用、不一致なら中断
+- 許可形は `https://<host>/(sites|teams)/<sitename>` のみ（サブサイト・テナントルート・query/fragment 不可）
 - `-ClientId` は引数、または環境変数 `PNP_CLIENT_ID` / `VITE_MSAL_CLIENT_ID` / `VITE_AAD_CLIENT_ID`
 
 ### コマンド
@@ -45,11 +50,13 @@
 # 対話ログイン（ブラウザ）
 pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 `
   -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" `
+  -ExpectedSiteUrl "https://<tenant>.sharepoint.com/sites/<site>" `
   -ClientId "<entra-app-client-id>"
 
 # デバイスログイン（CICD/サーバー）
 pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 `
   -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" `
+  -ExpectedSiteUrl "https://<tenant>.sharepoint.com/sites/<site>" `
   -ClientId "<entra-app-client-id>" `
   -UseDeviceLogin
 ```
@@ -143,9 +150,21 @@ pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 `
 
 ---
 
+## Exact Site Binding
+
+計測は **1 つのサイトコレクションにだけ** 束縛します。
+
+| チェック | 失敗時 |
+|:---|:---|
+| `-SiteUrl` と ExpectedSiteUrl の正規化一致 | 接続前に中断 |
+| 既存 PnP コンテキストの `Get-PnPWeb.Url` | 不一致なら再利用せず中断 |
+| 新規接続後の `Get-PnPWeb.Url` | 不一致なら計測せず中断 |
+
+出力 JSON の `SiteBinding` に `BoundSiteUrl` / `BoundWebId` / `Verified` を記録します（artifacts は gitignore）。ソースには実サイト URL を書きません。
+
 ## 備考
 
-- 本計測は READ ONLY です。`Get-PnPList`, `Get-PnPListItem`, `Get-PnPField` のみを使用しています。
+- 本計測は READ ONLY です。`Get-PnPList`, `Get-PnPListItem`, `Get-PnPField`, `Get-PnPWeb`（Exact Site Binding 検証）のみを使用しています。
 - 件数が多いリスト（数万件以上）の場合、`-PageSize 5000` でページング取得しますが、実行時間が長くなる可能性があります。
 - 重複キー・孤児候補は **件数のみ** 出力します。識別キーの raw sample は保持しません。
 - 実際の数値は上記スクリプトを実行した後、出力された JSON/CSV から転記してください。

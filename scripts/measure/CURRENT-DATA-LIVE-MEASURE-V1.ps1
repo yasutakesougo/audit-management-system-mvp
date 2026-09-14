@@ -25,17 +25,23 @@
   本スクリプトは SharePoint へ一切書き込みません（READ ONLY）。
   組織固有の SiteUrl / ClientId はソースに持ちません。
 
-.EXAMPLE
-  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -ClientId "<entra-app-client-id>"
+  Exact Site Binding (C6):
+    -SiteUrl と -ExpectedSiteUrl（または環境変数 CURRENT_DATA_LIVE_MEASURE_EXPECTED_SITE_URL）
+    が同一の正規化 URL であること。接続後の Get-PnPWeb.Url もその URL と完全一致すること。
+    既存 PnP コンテキストは一致時のみ再利用し、不一致なら中断する。
 
 .EXAMPLE
-  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -UseDeviceLogin
+  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -ExpectedSiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -ClientId "<entra-app-client-id>"
+
+.EXAMPLE
+  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -ExpectedSiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -UseDeviceLogin
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [string]$SiteUrl,
+    [string]$ExpectedSiteUrl = "",
     [string]$ClientId = "",
     [string]$OutputDir = "./artifacts/live-measure-v1",
     [switch]$UseDeviceLogin,
@@ -72,6 +78,75 @@ function Resolve-ClientId([string]$ExplicitClientId) {
         }
     }
     throw "ClientId is required. Pass -ClientId or set PNP_CLIENT_ID / VITE_MSAL_CLIENT_ID / VITE_AAD_CLIENT_ID."
+}
+
+function ConvertTo-CanonicalSiteUrl {
+    param([Parameter(Mandatory = $true)][string]$Url)
+    $raw = $Url.Trim()
+    if ($raw -notmatch '^https://') {
+        throw "Exact Site Binding: URL must start with https://."
+    }
+    $uri = $null
+    try {
+        $uri = [Uri]$raw
+    } catch {
+        throw "Exact Site Binding: invalid URL."
+    }
+    if (-not $uri.IsAbsoluteUri) {
+        throw "Exact Site Binding: URL must be absolute."
+    }
+    if ($uri.Scheme -ne "https") {
+        throw "Exact Site Binding: URL scheme must be https."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($uri.UserInfo)) {
+        throw "Exact Site Binding: userinfo is not allowed."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($uri.Query) -or -not [string]::IsNullOrWhiteSpace($uri.Fragment)) {
+        throw "Exact Site Binding: query/fragment is not allowed."
+    }
+    if ([string]::IsNullOrWhiteSpace($uri.Host)) {
+        throw "Exact Site Binding: host is required."
+    }
+    $path = $uri.AbsolutePath.TrimEnd("/")
+    if ($path -match '(^|/)\.\.(/|$)') {
+        throw "Exact Site Binding: path traversal is not allowed."
+    }
+    if ($path -notmatch '^/(sites|teams)/[^/]+$') {
+        throw "Exact Site Binding: URL must be exactly https://<host>/(sites|teams)/<sitename> with no extra path."
+    }
+    return ("https://{0}{1}" -f $uri.Host.ToLowerInvariant(), $path.ToLowerInvariant())
+}
+
+function Resolve-ExpectedSiteUrl([string]$ExplicitExpectedSiteUrl) {
+    $candidates = @(
+        $ExplicitExpectedSiteUrl,
+        $env:CURRENT_DATA_LIVE_MEASURE_EXPECTED_SITE_URL
+    )
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            return $candidate.Trim()
+        }
+    }
+    throw "ExpectedSiteUrl is required for Exact Site Binding. Pass -ExpectedSiteUrl or set CURRENT_DATA_LIVE_MEASURE_EXPECTED_SITE_URL to the same URL as -SiteUrl."
+}
+
+function Get-ConnectedWeb {
+    $web = Get-PnPWeb -ErrorAction Stop
+    if ($null -eq $web -or [string]::IsNullOrWhiteSpace([string]$web.Url) -or $null -eq $web.Id) {
+        throw "Exact Site Binding: Get-PnPWeb did not return Url and Id."
+    }
+    return $web
+}
+
+function Assert-ExactSiteBinding {
+    param(
+        [Parameter(Mandatory = $true)][string]$BoundSiteUrl,
+        [Parameter(Mandatory = $true)][string]$ConnectedWebUrl
+    )
+    $connectedCanonical = ConvertTo-CanonicalSiteUrl -Url $ConnectedWebUrl
+    if ($connectedCanonical -cne $BoundSiteUrl) {
+        throw "Exact Site Binding failed: connected web does not match the bound site. Measurement aborted."
+    }
 }
 
 function Get-InternalFieldName {
@@ -119,22 +194,34 @@ function Get-DateOnlyString($Value) {
 }
 
 # ──────────────────────────────────────────────────────────────
-# Connect
+# Exact Site Binding + Connect
 # ──────────────────────────────────────────────────────────────
 $resolvedClientId = Resolve-ClientId -ExplicitClientId $ClientId
+$boundSiteUrl = ConvertTo-CanonicalSiteUrl -Url $SiteUrl
+$expectedCanonical = ConvertTo-CanonicalSiteUrl -Url (Resolve-ExpectedSiteUrl -ExplicitExpectedSiteUrl $ExpectedSiteUrl)
+if ($boundSiteUrl -cne $expectedCanonical) {
+    throw "Exact Site Binding failed: -SiteUrl and ExpectedSiteUrl do not match after canonicalization."
+}
+
 $ctx = $null
 try { $ctx = Get-PnPContext -ErrorAction SilentlyContinue } catch {}
-if (-not $ctx) {
-    Write-Info "Connecting to SharePoint (READ ONLY) ..."
-    if ($UseDeviceLogin) {
-        Connect-PnPOnline -Url $SiteUrl -DeviceLogin -ClientId $resolvedClientId
-    } else {
-        Connect-PnPOnline -Url $SiteUrl -Interactive -ClientId $resolvedClientId
-    }
-    Write-Ok "Connected."
+if ($ctx) {
+    Write-Info "Existing PnP connection found; verifying Exact Site Binding ..."
+    $connectedWeb = Get-ConnectedWeb
+    Assert-ExactSiteBinding -BoundSiteUrl $boundSiteUrl -ConnectedWebUrl ([string]$connectedWeb.Url)
+    Write-Ok "Reusing existing PnP connection (Exact Site Binding verified)."
 } else {
-    Write-Ok "Reusing existing PnP connection."
+    Write-Info "Connecting to bound SharePoint site (READ ONLY) ..."
+    if ($UseDeviceLogin) {
+        Connect-PnPOnline -Url $boundSiteUrl -DeviceLogin -ClientId $resolvedClientId
+    } else {
+        Connect-PnPOnline -Url $boundSiteUrl -Interactive -ClientId $resolvedClientId
+    }
+    $connectedWeb = Get-ConnectedWeb
+    Assert-ExactSiteBinding -BoundSiteUrl $boundSiteUrl -ConnectedWebUrl ([string]$connectedWeb.Url)
+    Write-Ok "Connected (Exact Site Binding verified)."
 }
+$boundWebId = [string]$connectedWeb.Id
 
 # ──────────────────────────────────────────────────────────────
 # Common measurement function
@@ -267,6 +354,12 @@ if (Test-ListExists "Users_Master") {
 # ──────────────────────────────────────────────────────────────
 $allResults = [ordered]@{
     Timestamp              = (Get-Date).ToString("o")
+    SiteBinding            = [ordered]@{
+        Mode         = "EXACT"
+        BoundSiteUrl = $boundSiteUrl
+        BoundWebId   = $boundWebId
+        Verified     = $true
+    }
     ReadSurface            = [ordered]@{
         PrimaryLists              = @("Users_Master", "Staff_Master", "Org_Master", "Daily_Attendance", "SupportRecord_Daily", "DailyActivityRecords")
         AuxiliaryChildListCandidates = @("DailyRecordRows", "SupportRecord_DailyRows")
