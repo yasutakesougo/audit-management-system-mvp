@@ -6,31 +6,37 @@
   CURRENT-DATA-LIVE-MEASURE-V1 — 対象 SharePoint リストの READ ONLY 計測。
 
 .DESCRIPTION
-  以下 6 リストについて、List existence / Item count / earliest Created / latest Modified /
+  以下 6 primary lists について、List existence / Item count / earliest Created / latest Modified /
   key field availability / duplicate key count / missing key count を共通計測し、
   リスト別の個別計測も実施します。
 
-  対象:
-    - Users_Master
-    - Staff_Master
-    - Org_Master
-    - Daily_Attendance
-    - SupportRecord_Daily
-    - DailyActivityRecords
+  READ surface（契約）:
+    Primary (6):
+      - Users_Master
+      - Staff_Master
+      - Org_Master
+      - Daily_Attendance
+      - SupportRecord_Daily
+      - DailyActivityRecords
+    Auxiliary child-list candidates (exact 2, READ ONLY only):
+      - DailyRecordRows
+      - SupportRecord_DailyRows
 
   本スクリプトは SharePoint へ一切書き込みません（READ ONLY）。
+  組織固有の SiteUrl / ClientId はソースに持ちません。
 
 .EXAMPLE
-  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>"
+  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -ClientId "<entra-app-client-id>"
 
 .EXAMPLE
-  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -UseDeviceLogin
+  pwsh ./scripts/measure/CURRENT-DATA-LIVE-MEASURE-V1.ps1 -SiteUrl "https://<tenant>.sharepoint.com/sites/<site>" -UseDeviceLogin
 #>
 
 [CmdletBinding()]
 param(
-    [string]$SiteUrl = "https://isogokatudouhome.sharepoint.com/sites/welfare",
-    [string]$ClientId = "ef918e68-3755-4ce9-9dac-af0495f89450",
+    [Parameter(Mandatory = $true)]
+    [string]$SiteUrl,
+    [string]$ClientId = "",
     [string]$OutputDir = "./artifacts/live-measure-v1",
     [switch]$UseDeviceLogin,
     [switch]$NoExport
@@ -51,6 +57,21 @@ function Ensure-Directory([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) {
         New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }
+}
+
+function Resolve-ClientId([string]$ExplicitClientId) {
+    $candidates = @(
+        $ExplicitClientId,
+        $env:PNP_CLIENT_ID,
+        $env:VITE_MSAL_CLIENT_ID,
+        $env:VITE_AAD_CLIENT_ID
+    )
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            return $candidate.Trim()
+        }
+    }
+    throw "ClientId is required. Pass -ClientId or set PNP_CLIENT_ID / VITE_MSAL_CLIENT_ID / VITE_AAD_CLIENT_ID."
 }
 
 function Get-InternalFieldName {
@@ -100,14 +121,15 @@ function Get-DateOnlyString($Value) {
 # ──────────────────────────────────────────────────────────────
 # Connect
 # ──────────────────────────────────────────────────────────────
+$resolvedClientId = Resolve-ClientId -ExplicitClientId $ClientId
 $ctx = $null
 try { $ctx = Get-PnPContext -ErrorAction SilentlyContinue } catch {}
 if (-not $ctx) {
-    Write-Info "Connecting to $SiteUrl ..."
+    Write-Info "Connecting to SharePoint (READ ONLY) ..."
     if ($UseDeviceLogin) {
-        Connect-PnPOnline -Url $SiteUrl -DeviceLogin -ClientId $ClientId
+        Connect-PnPOnline -Url $SiteUrl -DeviceLogin -ClientId $resolvedClientId
     } else {
-        Connect-PnPOnline -Url $SiteUrl -Interactive -ClientId $ClientId
+        Connect-PnPOnline -Url $SiteUrl -Interactive -ClientId $resolvedClientId
     }
     Write-Ok "Connected."
 } else {
@@ -135,7 +157,6 @@ function Measure-Common {
         KeyFieldAvailable   = $false
         DuplicateKeyCount   = 0
         MissingKeyCount     = 0
-        DuplicateKeys       = @()
         Notes               = @()
     }
 
@@ -210,9 +231,11 @@ function Measure-Common {
     }
 
     $result.MissingKeyCount = $missingKeys
-    $dupKeys = $keyGroups.GetEnumerator() | Where-Object { $_.Value -gt 1 } | ForEach-Object { "$($_.Key)=$($_.Value)" }
-    $result.DuplicateKeys = @($dupKeys)
-    $result.DuplicateKeyCount = $result.DuplicateKeys.Count
+    $duplicateKeyCount = 0
+    foreach ($entry in $keyGroups.GetEnumerator()) {
+        if ($entry.Value -gt 1) { $duplicateKeyCount++ }
+    }
+    $result.DuplicateKeyCount = $duplicateKeyCount
 
     Write-Ok "$ListName`: count=$($result.ItemCount), key='$keyField', missing=$missingKeys, duplicate=$($result.DuplicateKeyCount)"
 
@@ -243,9 +266,13 @@ if (Test-ListExists "Users_Master") {
 # Individual measurements
 # ──────────────────────────────────────────────────────────────
 $allResults = [ordered]@{
-    Timestamp   = (Get-Date).ToString("o")
-    SiteUrl     = $SiteUrl
-    Lists       = [ordered]@{}
+    Timestamp              = (Get-Date).ToString("o")
+    ReadSurface            = [ordered]@{
+        PrimaryLists              = @("Users_Master", "Staff_Master", "Org_Master", "Daily_Attendance", "SupportRecord_Daily", "DailyActivityRecords")
+        AuxiliaryChildListCandidates = @("DailyRecordRows", "SupportRecord_DailyRows")
+        Mode                      = "READ ONLY"
+    }
+    Lists                  = [ordered]@{}
 }
 
 # ── Users_Master ──
@@ -321,7 +348,6 @@ $dailyAttDetail = [ordered]@{
     MissingUserCodeCount       = 0
     MissingRecordDateCount     = 0
     TargetKeyDuplicateCount    = 0
-    TargetKeyDuplicateSamples  = @()
 }
 
 if ($commonDailyAtt.Exists -and $commonDailyAtt.ItemCount -gt 0) {
@@ -354,26 +380,43 @@ if ($commonDailyAtt.Exists -and $commonDailyAtt.ItemCount -gt 0) {
     }
     $dailyAttDetail.MissingUserCodeCount   = $missingUser
     $dailyAttDetail.MissingRecordDateCount = $missingDate
-    $dupTargets = $targetGroups.GetEnumerator() | Where-Object { $_.Value -gt 1 } | ForEach-Object { "$($_.Key)=$($_.Value)" }
-    $dailyAttDetail.TargetKeyDuplicateCount = $dupTargets.Count
-    $dailyAttDetail.TargetKeyDuplicateSamples = @($dupTargets | Select-Object -First 20)
+    $targetDupCount = 0
+    foreach ($entry in $targetGroups.GetEnumerator()) {
+        if ($entry.Value -gt 1) { $targetDupCount++ }
+    }
+    $dailyAttDetail.TargetKeyDuplicateCount = $targetDupCount
     Write-Ok "Daily_Attendance: dateRange=$($dailyAttDetail.DateRange.Min) ~ $($dailyAttDetail.DateRange.Max), missingUser=$missingUser, missingDate=$missingDate, targetDup=$($dailyAttDetail.TargetKeyDuplicateCount)"
 }
 $allResults.Lists["Daily_Attendance"] = $dailyAttDetail
 
 # ── SupportRecord_Daily ──
 $commonSupportDaily = Measure-Common -ListName "SupportRecord_Daily" -KeyCandidates @("Title") -DateCandidates @("RecordDate")
+$auxiliaryChildListCandidates = @("DailyRecordRows", "SupportRecord_DailyRows")
+$auxiliaryChildLists = foreach ($c in $auxiliaryChildListCandidates) {
+    $exists = Test-ListExists $c
+    [ordered]@{
+        ListName  = $c
+        Exists    = $exists
+        ItemCount = if ($exists) { Get-ItemCountEstimate -ListName $c } else { 0 }
+        Mode      = "READ ONLY"
+    }
+}
+$childRowTotal = 0
+foreach ($aux in $auxiliaryChildLists) {
+    if ($aux.Exists) { $childRowTotal += $aux.ItemCount }
+}
+
 $supportDetail = [ordered]@{
     Common                      = $commonSupportDaily
     ParentCount                 = $commonSupportDaily.ItemCount
     DateRange                   = @{ Min = $null; Max = $null }
     ParentKeyDuplicateCount     = 0
-    ParentKeyDuplicateSamples   = @()
     EmbeddedRowTotal            = 0
     EmbeddedParseFailureCount   = 0
-    ChildRowTotal               = 0
+    AuxiliaryChildLists         = @($auxiliaryChildLists)
+    ChildRowTotal               = $childRowTotal
     ConversionPlannedCount      = 0
-    ChildListName               = $null
+    ConversionPlannedCountDefinition = "EmbeddedRowTotal + ChildRowTotal (child-row equivalents planned for normalization)"
 }
 
 if ($commonSupportDaily.Exists -and $commonSupportDaily.ItemCount -gt 0) {
@@ -387,7 +430,6 @@ if ($commonSupportDaily.Exists -and $commonSupportDaily.ItemCount -gt 0) {
     $parentKeyGroups = @{}
     $embeddedTotal = 0
     $parseFailures = 0
-    $parentsWithRows = 0
 
     foreach ($p in $parents) {
         $title = [string]$p[$titleField]
@@ -401,7 +443,6 @@ if ($commonSupportDaily.Exists -and $commonSupportDaily.ItemCount -gt 0) {
         if ($jsonField) {
             $json = [string]$p[$jsonField]
             if (-not [string]::IsNullOrWhiteSpace($json)) {
-                $parentsWithRows++
                 try {
                     $rows = $json | ConvertFrom-Json -ErrorAction Stop
                     if ($rows -is [System.Array]) {
@@ -421,30 +462,24 @@ if ($commonSupportDaily.Exists -and $commonSupportDaily.ItemCount -gt 0) {
         $supportDetail.DateRange.Min = $sortedDates[0]
         $supportDetail.DateRange.Max = $sortedDates[-1]
     }
-    $dupParents = $parentKeyGroups.GetEnumerator() | Where-Object { $_.Value -gt 1 } | ForEach-Object { "$($_.Key)=$($_.Value)" }
-    $supportDetail.ParentKeyDuplicateCount   = $dupParents.Count
-    $supportDetail.ParentKeyDuplicateSamples = @($dupParents | Select-Object -First 20)
+    $parentDupCount = 0
+    foreach ($entry in $parentKeyGroups.GetEnumerator()) {
+        if ($entry.Value -gt 1) { $parentDupCount++ }
+    }
+    $supportDetail.ParentKeyDuplicateCount   = $parentDupCount
     $supportDetail.EmbeddedRowTotal          = $embeddedTotal
     $supportDetail.EmbeddedParseFailureCount = $parseFailures
-
-    # Child rows
-    $childListCandidates = @("DailyRecordRows", "SupportRecord_DailyRows")
-    $childList = $null
-    foreach ($c in $childListCandidates) {
-        if (Test-ListExists $c) { $childList = $c; break }
-    }
-    $supportDetail.ChildListName = $childList
-    if ($childList) {
-        $childCount = Get-ItemCountEstimate -ListName $childList
-        $supportDetail.ChildRowTotal = $childCount
-        Write-Ok "SupportRecord_Daily child list '$childList' has $childCount rows."
-    } else {
-        Write-Warn "SupportRecord_Daily child list not found (looked for $($childListCandidates -join ', '))."
-    }
-
-    $supportDetail.ConversionPlannedCount = $parentsWithRows + $supportDetail.ChildRowTotal
-    Write-Ok "SupportRecord_Daily: dateRange=$($supportDetail.DateRange.Min) ~ $($supportDetail.DateRange.Max), embeddedRows=$embeddedTotal, parseFailures=$parseFailures, conversionPlanned=$($supportDetail.ConversionPlannedCount)"
 }
+
+$supportDetail.ConversionPlannedCount = $supportDetail.EmbeddedRowTotal + $supportDetail.ChildRowTotal
+foreach ($aux in $auxiliaryChildLists) {
+    if ($aux.Exists) {
+        Write-Ok "Auxiliary child list '$($aux.ListName)' has $($aux.ItemCount) rows (READ ONLY)."
+    } else {
+        Write-Warn "Auxiliary child list '$($aux.ListName)' not found."
+    }
+}
+Write-Ok "SupportRecord_Daily: dateRange=$($supportDetail.DateRange.Min) ~ $($supportDetail.DateRange.Max), embeddedRows=$($supportDetail.EmbeddedRowTotal), parseFailures=$($supportDetail.EmbeddedParseFailureCount), childRows=$($supportDetail.ChildRowTotal), conversionPlanned=$($supportDetail.ConversionPlannedCount)"
 $allResults.Lists["SupportRecord_Daily"] = $supportDetail
 
 # ── DailyActivityRecords ──
@@ -454,7 +489,6 @@ $dailyActDetail = [ordered]@{
     DateRange             = @{ Min = $null; Max = $null }
     MissingUserKeyCount   = 0
     OrphanCandidateCount  = 0
-    OrphanSamples         = @()
 }
 
 if ($commonDailyAct.Exists -and $commonDailyAct.ItemCount -gt 0) {
@@ -466,7 +500,6 @@ if ($commonDailyAct.Exists -and $commonDailyAct.ItemCount -gt 0) {
     $dates = New-Object System.Collections.Generic.List[string]
     $missingUser = 0
     $orphan = 0
-    $orphanSamples = New-Object System.Collections.Generic.List[string]
 
     foreach ($item in $items) {
         $u = [string]$item[$userField]
@@ -476,7 +509,6 @@ if ($commonDailyAct.Exists -and $commonDailyAct.ItemCount -gt 0) {
             $missingUser++
         } elseif ($null -ne $usersMasterKeySet -and -not $usersMasterKeySet.ContainsKey($u)) {
             $orphan++
-            if ($orphanSamples.Count -lt 20) { $orphanSamples.Add("$u (ID=$($item['ID']))") }
         }
     }
 
@@ -487,7 +519,6 @@ if ($commonDailyAct.Exists -and $commonDailyAct.ItemCount -gt 0) {
     }
     $dailyActDetail.MissingUserKeyCount  = $missingUser
     $dailyActDetail.OrphanCandidateCount = $orphan
-    $dailyActDetail.OrphanSamples        = @($orphanSamples)
     Write-Ok "DailyActivityRecords: dateRange=$($dailyActDetail.DateRange.Min) ~ $($dailyActDetail.DateRange.Max), missingUser=$missingUser, orphans=$orphan"
 }
 $allResults.Lists["DailyActivityRecords"] = $dailyActDetail
@@ -532,6 +563,10 @@ if (-not $NoExport) {
             Support_ParseFailures   = if ($listName -eq "SupportRecord_Daily") { $r.EmbeddedParseFailureCount } else { $null }
             Support_ChildRows       = if ($listName -eq "SupportRecord_Daily") { $r.ChildRowTotal } else { $null }
             Support_ConversionPlanned = if ($listName -eq "SupportRecord_Daily") { $r.ConversionPlannedCount } else { $null }
+            Support_DailyRecordRows_Exists = if ($listName -eq "SupportRecord_Daily") { ($r.AuxiliaryChildLists | Where-Object { $_.ListName -eq "DailyRecordRows" }).Exists } else { $null }
+            Support_DailyRecordRows_Count  = if ($listName -eq "SupportRecord_Daily") { ($r.AuxiliaryChildLists | Where-Object { $_.ListName -eq "DailyRecordRows" }).ItemCount } else { $null }
+            Support_SupportRecord_DailyRows_Exists = if ($listName -eq "SupportRecord_Daily") { ($r.AuxiliaryChildLists | Where-Object { $_.ListName -eq "SupportRecord_DailyRows" }).Exists } else { $null }
+            Support_SupportRecord_DailyRows_Count  = if ($listName -eq "SupportRecord_Daily") { ($r.AuxiliaryChildLists | Where-Object { $_.ListName -eq "SupportRecord_DailyRows" }).ItemCount } else { $null }
             DailyAct_DateMin        = if ($listName -eq "DailyActivityRecords") { $r.DateRange.Min } else { $null }
             DailyAct_DateMax        = if ($listName -eq "DailyActivityRecords") { $r.DateRange.Max } else { $null }
             DailyAct_MissingUser    = if ($listName -eq "DailyActivityRecords") { $r.MissingUserKeyCount } else { $null }
