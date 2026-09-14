@@ -1,0 +1,172 @@
+[
+  {
+    "classname": "agenda-happy-path.spec.ts",
+    "name": "Agenda happy path › links dashboard summary, timeline, and schedule day view via shared seeds",
+    "key": "agenda-happy-path.spec.ts::Agenda happy path › links dashboard summary, timeline, and schedule day view via shared seeds"
+  },
+  {
+    "classname": "call-logs.usability.spec.ts",
+    "name": "call-logs usability › keyboard users can skip to main and reach call-log controls (dark/empty)",
+    "key": "call-logs.usability.spec.ts::call-logs usability › keyboard users can skip to main and reach call-log controls (dark/empty)"
+  },
+  {
+    "classname": "call-logs.usability.spec.ts",
+    "name": "call-logs usability › keyboard users can skip to main and reach call-log controls (dark/populated)",
+    "key": "call-logs.usability.spec.ts::call-logs usability › keyboard users can skip to main and reach call-log controls (dark/populated)"
+  },
+  {
+    "classname": "call-logs.usability.spec.ts",
+    "name": "call-logs usability › keyboard users can skip to main and reach call-log controls (light/empty)",
+    "key": "call-logs.usability.spec.ts::call-logs usability › keyboard users can skip to main and reach call-log controls (light/empty)"
+  },
+  {
+    "classname": "call-logs.usability.spec.ts",
+    "name": "call-logs usability › keyboard users can skip to main and reach call-log controls (light/populated)",
+    "key": "call-logs.usability.spec.ts::call-logs usability › keyboard users can skip to main and reach call-log controls (light/populated)"
+  },
+  {
+    "classname": "call-logs.usability.spec.ts",
+    "name": "call-logs usability › mobile keeps layout within viewport and uses stacked filter bar (dark/populated)",
+    "key": "call-logs.usability.spec.ts::call-logs usability › mobile keeps layout within viewport and uses stacked filter bar (dark/populated)"
+  },
+  {
+    "classname": "call-logs.usability.spec.ts",
+    "name": "call-logs usability › mobile keeps layout within viewport and uses stacked filter bar (light/populated)",
+    "key": "call-logs.usability.spec.ts::call-logs usability › mobile keeps layout within viewport and uses stacked filter bar (light/populated)"
+  },
+  {
+    "classname": "dashboard.sp-lane.error.spec.ts",
+    "name": "Dashboard - SP Lane Error Classification › classifies network error when offline",
+    "key": "dashboard.sp-lane.error.spec.ts::Dashboard - SP Lane Error Classification › classifies network error when offline"
+  },
+  {
+    "classname": "exception-center.transport-missing-driver-flow.spec.ts",
+    "name": "ExceptionCenter transport missing-driver child flow › flat/grouped rendering and child deep-link landing remain consistent",
+    "key": "exception-center.transport-missing-driver-flow.spec.ts::ExceptionCenter transport missing-driver child flow › flat/grouped rendering and child deep-link landing remain consistent"
+  },
+  {
+    "classname": "exception-center.usability.spec.ts",
+    "name": "exception-center usability › keyboard users can skip to main and reach table controls (dark)",
+    "key": "exception-center.usability.spec.ts::exception-center usability › keyboard users can skip to main and reach table controls (dark)"
+  },
+  {
+    "classname": "exception-center.usability.spec.ts",
+    "name": "exception-center usability › keyboard users can skip to main and reach table controls (light)",
+    "key": "exception-center.usability.spec.ts::exception-center usability › keyboard users can skip to main and reach table controls (light)"
+  },
+  {
+    "classname": "exception-center.usability.spec.ts",
+    "name": "exception-center usability › mobile keeps table scroll inside container (dark)",
+    "key": "exception-center.usability.spec.ts::exception-center usability › mobile keeps table scroll inside container (dark)"
+  },
+  {
+    "classname": "exception-center.usability.spec.ts",
+    "name": "exception-center usability › mobile keeps table scroll inside container (light)",
+    "key": "exception-center.usability.spec.ts::exception-center usability › mobile keeps table scroll inside container (light)"
+  },
+  {
+    "classname": "fortress.spec.ts",
+    "name": "Users Fortress - Validation Error Handling › gracefully handles malformed Id and UserID from SharePoint",
+    "key": "fortress.spec.ts::Users Fortress - Validation Error Handling › gracefully handles malformed Id and UserID from SharePoint"
+  },
+  {
+    "classname": "fortress.spec.ts",
+    "name": "Users Fortress - Validation Error Handling › handles missing essential fields by displaying fallback data",
+    "key": "fortress.spec.ts::Users Fortress - Validation Error Handling › handles missing essential fields by displaying fallback data"
+  },
+  {
+    "classname": "hub-entry-experience.ssot.spec.ts",
+    "name": "hub entry experience ssot e2e › admin: visible admin card navigates to an allowed admin route",
+    "key": "hub-entry-experience.ssot.spec.ts::hub entry experience ssot e2e › admin: visible admin card navigates to an allowed admin route"
+  },
+  {
+    "classname": "hub-entry-experience.ssot.spec.ts",
+    "name": "hub entry experience ssot e2e › viewer: card/nav visibility aligns with route guard",
+    "key": "hub-entry-experience.ssot.spec.ts::hub entry experience ssot e2e › viewer: card/nav visibility aligns with route guard"
+  },
+  {
+    "classname": "irc-reliability.spec.ts",
+    "name": "Integrated Resource Calendar Reliability › Seed Constant Display: lanes remain visible during event fetch failure",
+    "key": "irc-reliability.spec.ts::Integrated Resource Calendar Reliability › Seed Constant Display: lanes remain visible during event fetch failure"
+  },
+  {
+    "classname": "isp-editor.integration.spec.ts",
+    "name": "ISP Editor — integration › /isp-editor/:userId renders the editor page",
+    "key": "isp-editor.integration.spec.ts::ISP Editor — integration › /isp-editor/:userId renders the editor page"
+  },
+  {
+    "classname": "isp-editor.integration.spec.ts",
+    "name": "ISP Editor — integration › progress bar updates when copying from previous",
+    "key": "isp-editor.integration.spec.ts::ISP Editor — integration › progress bar updates when copying from previous"
+  },
+  {
+    "classname": "isp-editor.integration.spec.ts",
+    "name": "ISP Editor — integration › save button is visible and clickable when userId is provided",
+    "key": "isp-editor.integration.spec.ts::ISP Editor — integration › save button is visible and clickable when userId is provided"
+  },
+  {
+    "classname": "isp-editor.integration.spec.ts",
+    "name": "ISP Editor — integration › shows error banner on SP failure but still renders tabs (mock fallback)",
+    "key": "isp-editor.integration.spec.ts::ISP Editor — integration › shows error banner on SP failure but still renders tabs (mock fallback)"
+  },
+  {
+    "classname": "nurse-dashboard-happy-path.spec.ts",
+    "name": "Nurse Dashboard – happy path (dev fixture) › shows seeded nurse dashboard summary and tasks",
+    "key": "nurse-dashboard-happy-path.spec.ts::Nurse Dashboard – happy path (dev fixture) › shows seeded nurse dashboard summary and tasks"
+  },
+  {
+    "classname": "support-date-governance.spec.ts",
+    "name": "Support Date Governance — E2E Propagation › Reverse-Bridge suggestions in Step 8 populate monitoring text fields",
+    "key": "support-date-governance.spec.ts::Support Date Governance — E2E Propagation › Reverse-Bridge suggestions in Step 8 populate monitoring text fields"
+  },
+  {
+    "classname": "transport-assignments-repository-flow.spec.ts",
+    "name": "Transport assignments repository flow › blocks save when coordination errors are present",
+    "key": "transport-assignments-repository-flow.spec.ts::Transport assignments repository flow › blocks save when coordination errors are present"
+  },
+  {
+    "classname": "transport-assignments-repository-flow.spec.ts",
+    "name": "Transport assignments repository flow › detects and handles concurrency conflicts via repository ETags",
+    "key": "transport-assignments-repository-flow.spec.ts::Transport assignments repository flow › detects and handles concurrency conflicts via repository ETags"
+  },
+  {
+    "classname": "transport-assignments-save-reflects-in-today.spec.ts",
+    "name": "Transport assignments save reflects in today › assign/save and unassign/save are reflected in today transport vehicle board",
+    "key": "transport-assignments-save-reflects-in-today.spec.ts::Transport assignments save reflects in today › assign/save and unassign/save are reflected in today transport vehicle board"
+  },
+  {
+    "classname": "transport-assignments-week-bulk-apply-reflects-in-today.spec.ts",
+    "name": "Transport assignments week bulk apply reflects in today › bulk apply + save reflects in today board and does not overwrite existing assignment",
+    "key": "transport-assignments-week-bulk-apply-reflects-in-today.spec.ts::Transport assignments week bulk apply reflects in today › bulk apply + save reflects in today board and does not overwrite existing assignment"
+  },
+  {
+    "classname": "transport-course-users-update-reflects-in-transport-assignments.spec.ts",
+    "name": "Users TransportCourse update reflects in transport assignments › updating TransportCourse on /users is reflected as fixed-course default on /transport/assignments",
+    "key": "transport-course-users-update-reflects-in-transport-assignments.spec.ts::Users TransportCourse update reflects in transport assignments › updating TransportCourse on /users is reflected as fixed-course default on /transport/assignments"
+  },
+  {
+    "classname": "users-basic-edit-flow.spec.ts",
+    "name": "users basic info edit flow › edits furigana from the basic info tab",
+    "key": "users-basic-edit-flow.spec.ts::users basic info edit flow › edits furigana from the basic info tab"
+  },
+  {
+    "classname": "users-crud.integration.spec.ts",
+    "name": "Users CRUD integration (full lifecycle) › full CRUD flow: add → list → edit → delete",
+    "key": "users-crud.integration.spec.ts::Users CRUD integration (full lifecycle) › full CRUD flow: add → list → edit → delete"
+  },
+  {
+    "classname": "users-dashboard-happy-path.spec.ts",
+    "name": "users dashboard happy path (seeded) › renders seeded list and navigates via detail CTA",
+    "key": "users-dashboard-happy-path.spec.ts::users dashboard happy path (seeded) › renders seeded list and navigates via detail CTA"
+  },
+  {
+    "classname": "users-search-filter.spec.ts",
+    "name": "users search &amp; filter (seeded) › search narrows rows and filters by severity/active flags",
+    "key": "users-search-filter.spec.ts::users search &amp; filter (seeded) › search narrows rows and filters by severity/active flags"
+  },
+  {
+    "classname": "users.usability.spec.ts",
+    "name": "users usability › provides a skip link to jump focus into main content",
+    "key": "users.usability.spec.ts::users usability › provides a skip link to jump focus into main content"
+  }
+]

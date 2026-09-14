@@ -1,44 +1,22 @@
 {
   "schemaVersion": 1,
   "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
-  "phase": "Definition",
-  "exactHead": "9c5197075040b54ed669101802a2e8457819d237",
-  "pr": 2557,
-  "generatedAt": "2026-08-28T01:55:00.000Z",
+  "exactHead": "894ed93ad057c637d6d5531dbdee70866dcbdb1d",
+  "pr": 2558,
   "ciTerminal": true,
-  "verdict": "READY GO",
-  "definitionReview": "PASS / LOCKABLE",
-  "requiredChecks": {
-    "failed": 0,
-    "pending": 0,
-    "status": "PASS"
+  "verdict": "PHASE3_TOOLING_CI_OK",
+  "requiredCoreQuality": "PASS",
+  "e2eDeep": "EXPECTED_RED_MATCH",
+  "failureKeyIdentity": "34/34 identical vs 4bfedfed lock and main@acb5ec3f",
+  "deepLaneUnionAudit": "PASS",
+  "deepRunId": 33231137497,
+  "liveCapture": "HOLD",
+  "phase3ExitRehydrate": "HOLD",
+  "humanDisposition": "NOT_STARTED",
+  "authority": {
+    "itemMutation": "NOT_AUTHORIZED",
+    "schemaMutation": "NOT_AUTHORIZED",
+    "deploy": "NOT_AUTHORIZED"
   },
-  "lanes": {
-    "core": "PASS",
-    "preflight": "PASS",
-    "quality": "PASS",
-    "canary": "PASS",
-    "fast": "PASS",
-    "smoke": "PASS",
-    "csp": "PASS",
-    "kiosk-e2e": "PASS",
-    "storybook-a11y": "PASS",
-    "schedule-guardrails": "PASS"
-  },
-  "e2eDeep": {
-    "chromiumLanesFailed": 6,
-    "chromiumLanesTotal": 6,
-    "status": "EXPECTED RED (baseline)",
-    "deepLaneUnionAudit": "PASS",
-    "runId": 33133203807
-  },
-  "merge": {
-    "prReady": true,
-    "autoMergeEnabled": true,
-    "githubMergeState": "BLOCKED",
-    "reason": "E2E Deep lane job failures block GitHub merge rollup; required checks pass. Admin/bypass merge may be needed (same pattern as LIVE-SCHEMA-MUTATION-V1 PR #2556)."
-  },
-  "dataMutation": "NONE",
-  "schemaMutation": "NONE",
-  "deploy": "NOT AUTHORIZED"
+  "reconciliationPath": "docs/evidence/live-schema-data-remediation-v1/CI_RECONCILIATION_894ed93a.md"
 }
