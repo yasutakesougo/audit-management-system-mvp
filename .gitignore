@@ -94,4 +94,5 @@ sp-telemetry*.backup.json
 lane-assertion-result.json
 .token.local
 artifacts/purge-backups/
+/artifacts/live-measure-v1/
 .cleanup-audit/
