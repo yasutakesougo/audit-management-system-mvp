@@ -53,7 +53,7 @@ describe('SharePointExecutionRecordRepository', () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
-        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U001' }] }) };
       }
       if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
         return { ok: true, json: async () => ({ value: [] }) };
@@ -106,7 +106,7 @@ describe('SharePointExecutionRecordRepository', () => {
 
     mockSpFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ value: [{ Id: 123 }] }),
+      json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U001' }] }),
     });
 
     await repoNoFields.upsertRecord(record);
@@ -184,7 +184,7 @@ describe('SharePointExecutionRecordRepository', () => {
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
       // Ensure parent lookup returns existing parent
       if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
-        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U500' }] }) };
       }
       // Existing child row lookup returns empty so repo goes to create
       if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
@@ -245,7 +245,7 @@ describe('SharePointExecutionRecordRepository', () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
-        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U001' }] }) };
       }
       if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
         return {
@@ -326,7 +326,7 @@ describe('SharePointExecutionRecordRepository', () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
-        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U001' }] }) };
       }
       if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
         return {
@@ -387,7 +387,7 @@ describe('SharePointExecutionRecordRepository', () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
-        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U001' }] }) };
       }
       if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
         return {
@@ -446,7 +446,7 @@ describe('SharePointExecutionRecordRepository', () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.includes('SupportRecord_Daily') && url.includes('/items?$filter=')) {
-        return { ok: true, json: async () => ({ value: [{ Id: 123 }] }) };
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2024-01-01-U001' }] }) };
       }
       if (url.includes('DailyRecordRows') && url.includes('/items?$filter=')) {
         return { ok: true, json: async () => ({ value: [] }) };
@@ -461,17 +461,42 @@ describe('SharePointExecutionRecordRepository', () => {
     await repoWithFreshFields.upsertRecord(makeRecord('S002'));
 
     const parentLookupCalls = mockSpFetch.mock.calls.filter((call) =>
-      String(call[0]).includes('SupportRecord_Daily') && String(call[0]).includes('/items?$filter='),
+      String(call[0]).includes('SupportRecord_Daily') &&
+      String(call[0]).includes('/items?$filter=') &&
+      decodeURIComponent(String(call[0])).includes('Title eq'),
     );
 
     expect(parentLookupCalls).toHaveLength(1);
   });
 
-  it('uses a delimited RowKey prefix with multiple user candidates when fetching records for one user/date', async () => {
+  it('retrieves records through the indexed parent date range and separate numeric ParentID queries', async () => {
     mockSpFetch.mockReset();
-    mockSpFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ value: [] }),
+    mockSpFetch.mockImplementation(async (url: string) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              { Id: 123, Title: '2026-05-25-17', RecordDate: '2026-05-25T00:00:00Z' },
+              { Id: 456, Title: '2026-05-25-U017', RecordDate: '2026-05-25T00:00:00Z' },
+            ],
+          }),
+        };
+      }
+      if (decoded.includes('DailyRecordRows') && decoded.includes('Parent_x0020_ID eq 123')) {
+        return {
+          ok: true,
+          json: async () => ({ value: [{ Id: 1, Title: '2026-05-25-17-0', User_x0020_ID: '17', RowNo: '0', Status: 'completed' }] }),
+        };
+      }
+      if (decoded.includes('DailyRecordRows') && decoded.includes('Parent_x0020_ID eq 456')) {
+        return {
+          ok: true,
+          json: async () => ({ value: [{ Id: 2, Title: '2026-05-25-U017-0', User_x0020_ID: 'U017', RowNo: '0', Status: 'completed' }] }),
+        };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
     });
 
     const repoWithFreshFields = new SharePointExecutionRecordRepository({
@@ -479,39 +504,44 @@ describe('SharePointExecutionRecordRepository', () => {
       getListFieldInternalNames: mockGetFields,
     });
 
-    await repoWithFreshFields.getRecords('2026-05-25', '17');
+    const records = await repoWithFreshFields.getRecords('2026-05-25', '17');
+    const decodedUrls = mockSpFetch.mock.calls.map(([requestUrl]) => decodeURIComponent(String(requestUrl)));
+    const parentUrl = decodedUrls.find((url) => url.includes('SupportRecord_Daily') && url.includes('$filter='));
+    const childUrls = decodedUrls.filter((url) => url.includes('DailyRecordRows') && url.includes('$filter='));
 
-    const recordsCall = mockSpFetch.mock.calls.find((call) => {
-      const url = decodeURIComponent(String(call[0]));
-      return url.includes('DailyRecordRows') && url.includes('$filter=');
-    });
-
-    expect(recordsCall).toBeDefined();
-    const decodedUrl = decodeURIComponent(String(recordsCall![0]));
-    expect(decodedUrl).toContain("startswith(Title, '2026-05-25-17-')");
-    expect(decodedUrl).toContain("startswith(Title, '2026-05-25-U017-')");
+    expect(parentUrl).toContain("RecordDate ge '2026-05-25'");
+    expect(parentUrl).toContain("RecordDate lt '2026-05-26'");
+    expect(parentUrl).not.toContain("RecordDate eq '2026-05-25'");
+    expect(childUrls).toHaveLength(2);
+    expect(childUrls.some((url) => url.includes('Parent_x0020_ID eq 123'))).toBe(true);
+    expect(childUrls.some((url) => url.includes('Parent_x0020_ID eq 456'))).toBe(true);
+    expect(childUrls.every((url) => !url.includes("Parent_x0020_ID eq '"))).toBe(true);
+    expect(childUrls.every((url) => !url.includes(' or '))).toBe(true);
+    expect(childUrls.every((url) => !url.includes('startswith('))).toBe(true);
+    expect(records).toHaveLength(1);
   });
 
-  it('returns the queried concrete key from getRecord for legacy fallback mutation', async () => {
+  it('resolves an existing record by ParentID and client-side row identity without a Title filter', async () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string) => {
       const decoded = decodeURIComponent(url);
-      if (decoded.includes('DailyRecordRows') && decoded.includes("Title eq '2026-05-20-6-0'")) {
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2026-05-20-6' }] }) };
+      }
+      if (decoded.includes('DailyRecordRows') && decoded.includes('Parent_x0020_ID eq 123')) {
         return {
           ok: true,
           json: async () => ({
-            value: [
-              {
-                Id: 1,
-                Title: '2026-05-20-6-0',
-                User_x0020_ID: 'U006',
-                RowNo: '0',
-                Status: 'completed',
-                Memo: 'legacy memo',
-                Payload: 'legacy memo',
-                Recorded_x0020_At: '2026-05-20T12:00:00Z',
-              },
-            ],
+            value: [{
+              Id: 1,
+              Title: '2026-05-20-6-0',
+              User_x0020_ID: 'U006',
+              RowNo: '0',
+              Status: 'completed',
+              Memo: 'legacy memo',
+              Payload: 'legacy memo',
+              Recorded_x0020_At: '2026-05-20T12:00:00Z',
+            }],
           }),
         };
       }
@@ -519,6 +549,9 @@ describe('SharePointExecutionRecordRepository', () => {
     });
 
     const record = await repo.getRecord('2026-05-20', '6', '0');
+    const childUrls = mockSpFetch.mock.calls
+      .map(([requestUrl]) => decodeURIComponent(String(requestUrl)))
+      .filter((url) => url.includes('DailyRecordRows') && url.includes('$filter='));
 
     expect(record).toEqual(expect.objectContaining({
       date: '2026-05-20',
@@ -526,6 +559,161 @@ describe('SharePointExecutionRecordRepository', () => {
       scheduleItemId: '0',
       memo: 'legacy memo',
     }));
+    expect(childUrls).toHaveLength(1);
+    expect(childUrls[0]).toContain('Parent_x0020_ID eq 123');
+    expect(childUrls[0]).not.toContain('Title eq');
+  });
+
+  it('keeps a no-parent read empty and never creates a parent', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [] }) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    const repoWithFreshFields = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+
+    await expect(repoWithFreshFields.getRecords('2026-05-25', '17')).resolves.toEqual([]);
+    expect(mockSpFetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+  });
+
+  it('propagates parent retrieval failures instead of treating them as zero records', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      if (url.includes('SupportRecord_Daily') && url.includes('$filter=')) {
+        return { ok: false, status: 500, statusText: 'List View Threshold', json: async () => ({}) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    const repoWithFreshFields = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+
+    await expect(repoWithFreshFields.getRecords('2026-05-25', '17')).rejects.toThrow('Parent lookup failed');
+  });
+
+  it('fails closed when the resolved RecordDate field is not present in the parent schema', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockResolvedValue({ ok: true, json: async () => ({ value: [] }) });
+    const getFields = vi.fn(async (listTitle: string) => (
+      listTitle === 'SupportRecord_Daily'
+        ? new Set(['Title'])
+        : new Set(['Title', EXECUTION_RECORD_FIELDS.parentId, EXECUTION_RECORD_FIELDS.rowKey])
+    ));
+    const repoWithInvalidParentSchema = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: getFields,
+    });
+
+    await expect(repoWithInvalidParentSchema.getRecords('2026-05-25', '17'))
+      .rejects.toThrow('Recovery schema fields');
+  });
+
+  it('fails closed when the resolved ParentID field is not present in the child schema', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockResolvedValue({ ok: true, json: async () => ({ value: [] }) });
+    const getFields = vi.fn(async (listTitle: string) => (
+      listTitle === 'SupportRecord_Daily'
+        ? new Set(['Title', 'RecordDate'])
+        : new Set(['Title'])
+    ));
+    const repoWithInvalidChildSchema = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: getFields,
+    });
+
+    await expect(repoWithInvalidChildSchema.getRecords('2026-05-25', '17'))
+      .rejects.toThrow('Recovery schema fields');
+  });
+
+  it('rejects a non-numeric parent ID instead of emitting a quoted or unsafe child query', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: '123', Title: '2026-05-25-17' }] }) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+    const repoWithInvalidParentId = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+
+    await expect(repoWithInvalidParentId.getRecords('2026-05-25', '17'))
+      .rejects.toThrow('parent ID is not numeric');
+    expect(mockSpFetch.mock.calls.some(([url]) => String(url).includes('DailyRecordRows'))).toBe(false);
+  });
+
+  it('fails closed when a matched parent has no numeric identity', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Title: '2026-05-25-17' }] }) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+    const repoWithUnresolvedParent = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+
+    await expect(repoWithUnresolvedParent.getRecords('2026-05-25', '17'))
+      .rejects.toThrow('parent ID is not numeric');
+  });
+
+  it('propagates child retrieval failures after a valid parent is resolved', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 123, Title: '2026-05-25-17' }] }) };
+      }
+      if (decoded.includes('DailyRecordRows') && decoded.includes('Parent_x0020_ID eq 123')) {
+        return { ok: false, status: 500, statusText: 'List View Threshold', json: async () => ({}) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+    const repoWithChildFailure = new SharePointExecutionRecordRepository({
+      spFetch: mockSpFetch,
+      getListFieldInternalNames: mockGetFields,
+    });
+
+    await expect(repoWithChildFailure.getRecords('2026-05-25', '17'))
+      .rejects.toThrow('Child lookup failed');
+  });
+
+  it('uses the existing half-open date contract across month and year boundaries', async () => {
+    for (const [date, nextDate] of [['2024-01-31', '2024-02-01'], ['2024-12-31', '2025-01-01']]) {
+      mockSpFetch.mockReset();
+      mockSpFetch.mockImplementation(async (url: string) => {
+        const decoded = decodeURIComponent(url);
+        if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+          return { ok: true, json: async () => ({ value: [] }) };
+        }
+        return { ok: true, json: async () => ({ value: [] }) };
+      });
+      const boundaryRepo = new SharePointExecutionRecordRepository({
+        spFetch: mockSpFetch,
+        getListFieldInternalNames: mockGetFields,
+      });
+
+      await boundaryRepo.getRecords(date, '17');
+      const parentUrl = mockSpFetch.mock.calls
+        .map(([requestUrl]) => decodeURIComponent(String(requestUrl)))
+        .find((url) => url.includes('SupportRecord_Daily') && url.includes('$filter='));
+      expect(parentUrl).toContain(`RecordDate ge '${date}'`);
+      expect(parentUrl).toContain(`RecordDate lt '${nextDate}'`);
+      expect(parentUrl).not.toContain('RecordDate eq');
+    }
   });
 
   describe('mapToDomain fallback', () => {
@@ -1102,14 +1290,8 @@ describe('SharePointExecutionRecordRepository', () => {
         triggeredBipIds: [],
       };
 
-      await repoStrict.upsertRecord(record);
-
-      const upsertCall = mockSpFetch.mock.calls.find(call => call[1]?.method === 'POST');
-      const body = JSON.parse(upsertCall![1]!.body as string);
-      
-      expect(Object.keys(body)).not.toContain('undefined');
-      expect(body.RowNo).toBeUndefined();
-      expect(body.StaffName).toBeUndefined();
+      await expect(repoStrict.upsertRecord(record)).rejects.toThrow('Recovery schema fields');
+      expect(mockSpFetch.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
     });
 
     it('ensureParentRecord uses resolved parent date field (Date) when RecordDate is missing', async () => {
