@@ -36,6 +36,11 @@ type SharePointRecordLookup = {
   record: ExecutionRecord;
 };
 
+type ParentCandidate = {
+  id: number;
+  title: string;
+};
+
 /**
  * SharePointExecutionRecordRepository — 17行記録の SharePoint 永続化アダプター
  * スキーマドリフト（Payload vs Memo等）を動的に解決する。
@@ -58,6 +63,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   private entityTypes = new Map<string, string>();
   private parentRecordIds = new Map<string, number>();
   private parentRecordPromises = new Map<string, Promise<number>>();
+  private recoverySchemaValidationPromise: Promise<void> | null = null;
 
   private escapeODataString(value: string): string {
     return value.replace(/'/g, "''");
@@ -189,6 +195,135 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return Array.from(fields).join(',');
   }
 
+  private getNextDateIso(dateIso: string): string {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
+      throw new Error(`[ExecutionRepo] Invalid execution date for parent lookup: ${dateIso}`);
+    }
+
+    const date = new Date(dateIso);
+    date.setDate(date.getDate() + 1);
+    const nextDateIso = date.toISOString().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDateIso)) {
+      throw new Error(`[ExecutionRepo] Failed to serialize next execution date: ${dateIso}`);
+    }
+    return nextDateIso;
+  }
+
+  private async validateRecoverySchemaFields(rf: ResolvedRowsFields): Promise<void> {
+    if (this.recoverySchemaValidationPromise) {
+      return this.recoverySchemaValidationPromise;
+    }
+
+    this.recoverySchemaValidationPromise = (async () => {
+      const pf = this.resolvedParentFields;
+      if (!pf?.title || !pf.recordDate || !rf.parentId || !rf.rowKey) {
+        throw new Error('[ExecutionRepo] Recovery schema fields could not be resolved.');
+      }
+
+      if (!this.getListFieldInternalNames) return;
+
+      let parentFieldNames: Set<string>;
+      let childFieldNames: Set<string>;
+      try {
+        [parentFieldNames, childFieldNames] = await Promise.all([
+          this.getListFieldInternalNames(this.parentListTitle),
+          this.getListFieldInternalNames(this.childListTitle),
+        ]);
+      } catch (error) {
+        void error;
+        throw new Error('[ExecutionRepo] Recovery schema field resolution failed.');
+      }
+
+      if (
+        !parentFieldNames?.has(pf.title) ||
+        !parentFieldNames.has(pf.recordDate) ||
+        !childFieldNames?.has(rf.parentId) ||
+        !childFieldNames.has(rf.rowKey)
+      ) {
+        throw new Error('[ExecutionRepo] Recovery schema fields are not present in SharePoint.');
+      }
+    })();
+
+    try {
+      await this.recoverySchemaValidationPromise;
+    } catch (error) {
+      this.recoverySchemaValidationPromise = null;
+      throw error;
+    }
+  }
+
+  private async resolveParentCandidates(
+    normalizedDate: string,
+    userId: string,
+    rf: ResolvedRowsFields,
+  ): Promise<ParentCandidate[]> {
+    await this.validateRecoverySchemaFields(rf);
+    const pf = this.resolvedParentFields;
+    if (!pf || !this.resolvedParentPath) {
+      throw new Error('[ExecutionRepo] Parent schema path could not be resolved.');
+    }
+
+    const nextDate = this.getNextDateIso(normalizedDate);
+    const filter = `${pf.recordDate} ge '${this.escapeODataString(normalizedDate)}' and ${pf.recordDate} lt '${this.escapeODataString(nextDate)}'`;
+    const select = ['Id', pf.title, pf.recordDate].filter((field, index, fields) => fields.indexOf(field) === index).join(',');
+    const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
+    const response = await this.spFetch(url);
+    if (!response.ok) {
+      throw new Error(`[ExecutionRepo] Parent lookup failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data: SharePointResponse<JsonRecord> = await response.json();
+    const candidates = new Set(
+      buildExecutionUserIdCandidates(userId).map((candidate) => `${normalizedDate}-${candidate}`),
+    );
+    const matches: ParentCandidate[] = [];
+
+    for (const item of data.value ?? []) {
+      const title = readSharePointText(item[pf.title]);
+      if (!candidates.has(title)) continue;
+
+      const id = item.Id;
+      if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) {
+        throw new Error('[ExecutionRepo] Resolved parent ID is not numeric.');
+      }
+      matches.push({ id, title });
+    }
+
+    return matches;
+  }
+
+  private async getRowsByParentId(rf: ResolvedRowsFields, parentId: number): Promise<JsonRecord[]> {
+    if (!Number.isSafeInteger(parentId) || parentId <= 0) {
+      throw new Error('[ExecutionRepo] ParentID must be a positive numeric integer.');
+    }
+    if (!this.resolvedChildPath) {
+      throw new Error('[ExecutionRepo] Child schema path could not be resolved.');
+    }
+
+    const filter = `${rf.parentId} eq ${parentId}`;
+    const select = this.getSelectFields(rf);
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
+    const response = await this.spFetch(url);
+    if (!response.ok) {
+      throw new Error(`[ExecutionRepo] Child lookup failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data: SharePointResponse<JsonRecord> = await response.json();
+    return data.value ?? [];
+  }
+
+  private mergeExecutionRecords(records: ExecutionRecord[]): ExecutionRecord[] {
+    const merged = new Map<string, ExecutionRecord>();
+    for (const record of records) {
+      const normalizedScheduleItemId = normalizeScheduleItemId(record.scheduleItemId);
+      const key = normalizedScheduleItemId
+        ? `${normalizeExecutionDate(record.date)}\u0000${normalizedScheduleItemId}`
+        : `${normalizeExecutionDate(record.date)}\u0000${normalizeExecutionUserId(record.userId)}\u0000${record.id}`;
+      if (!merged.has(key)) merged.set(key, record);
+    }
+    return Array.from(merged.values());
+  }
+
   private async ensureParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
     const cachedId = this.parentRecordIds.get(dailyKey);
     if (cachedId) return cachedId;
@@ -265,27 +400,28 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     normalizedUserId: string,
     normalizedScheduleItemId: string,
   ): Promise<SharePointRecordLookup | undefined> {
-    const filter = `${rf.rowKey} eq '${this.escapeODataString(rowKey)}'`;
-    const select = this.getSelectFields(rf);
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
+    const parents = await this.resolveParentCandidates(normalizedDate, normalizedUserId, rf);
+    for (const parent of parents) {
+      const rows = await this.getRowsByParentId(rf, parent.id);
+      for (const item of rows) {
+        const mapped = this.mapToDomain(item, rf);
+        const itemRowKey = readSharePointText(item[rf.rowKey]);
+        const itemScheduleItemId = normalizeScheduleItemId(mapped.scheduleItemId);
+        if (itemRowKey !== rowKey && itemScheduleItemId !== normalizedScheduleItemId) continue;
 
-    const response = await this.spFetch(url);
-    if (!response.ok) return undefined;
+        return {
+          internalId: item.Id as number,
+          record: {
+            ...mapped,
+            date: normalizedDate,
+            userId: normalizedUserId,
+            scheduleItemId: normalizedScheduleItemId,
+          },
+        };
+      }
+    }
 
-    const data: SharePointResponse<JsonRecord> = await response.json();
-    if (!data.value || data.value.length === 0) return undefined;
-
-    const item = data.value[0];
-    const mapped = this.mapToDomain(item, rf);
-    return {
-      internalId: item.Id as number,
-      record: {
-        ...mapped,
-        date: normalizedDate,
-        userId: normalizedUserId,
-        scheduleItemId: normalizedScheduleItemId,
-      },
-    };
+    return undefined;
   }
 
   async getRecordsInRange(userId: string, from: string, to: string): Promise<ExecutionRecord[]> {
@@ -315,28 +451,14 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   async getRecords(date: string, userId: string): Promise<ExecutionRecord[]> {
     const normalizedDate = normalizeExecutionDate(date);
     const rf = await this.getResolvedFields();
-    
-    // Build user ID candidates including both current userId and any logical representations
-    const userCandidates = buildExecutionUserIdCandidates(userId);
-    const startswithFilters = userCandidates.map(candidate => {
-      const dailyKey = `${normalizedDate}-${candidate}`;
-      const rowKeyPrefix = `${dailyKey}-`;
-      return `startswith(${rf.rowKey}, '${rowKeyPrefix}')`;
-    });
 
-    const filter = startswithFilters.join(' or ');
-    const select = this.getSelectFields(rf);
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
-
-    const response = await this.spFetch(url);
-    if (!response.ok) {
-      throw new Error(`[ExecutionRepo] getRecords failed: ${response.status} ${response.statusText}`);
+    const parents = await this.resolveParentCandidates(normalizedDate, userId, rf);
+    const rows: JsonRecord[] = [];
+    for (const parent of parents) {
+      rows.push(...await this.getRowsByParentId(rf, parent.id));
     }
 
-    const data: SharePointResponse<JsonRecord> = await response.json();
-    if (!data.value) return [];
-    
-    const records = data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
+    const records = this.mergeExecutionRecords(rows.map((item) => this.mapToDomain(item, rf)));
     
     // Sync to local store for reactive UI updates
     if (this.store) {
@@ -375,7 +497,6 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const dailyKey = `${normalizedDate}-${normalizedUserId}`;
     const rowKey = `${dailyKey}-${normalizedScheduleItemId}`;
 
-    const parentPromise = this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
     const existingPromise = this.getRecordLookupByRowKey(
       rf,
       rowKey,
@@ -413,7 +534,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       memo: finalMemo,
     };
 
-    const parentId = await parentPromise;
+    const parentId = await this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
     await childFieldsPromise;
 
     const rawBody: Record<string, unknown> = {
