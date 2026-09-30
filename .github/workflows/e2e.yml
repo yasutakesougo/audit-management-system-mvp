@@ -14,7 +14,7 @@ jobs:
         tz: ['Asia/Tokyo', 'America/Los_Angeles']
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Prepare artifact suffix
         id: artifact
         shell: bash
@@ -22,7 +22,7 @@ jobs:
           suffix="${{ matrix.tz }}"
           suffix="${suffix//\//-}"
           echo "suffix=$suffix" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -61,13 +61,13 @@ jobs:
           fi
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report-${{ steps.artifact.outputs.suffix }}
           path: playwright-report
       - name: Upload E2E results
         if: always() && steps.junit.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: junit-${{ steps.artifact.outputs.suffix }}
           path: junit

@@ -35,8 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.inputs.skip_build != 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -46,7 +46,7 @@ jobs:
         run: npm run lint
       - name: Upload lint results on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: lint-errors-${{ github.run_number }}
           path: |
@@ -60,8 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.inputs.skip_build != 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -71,7 +71,7 @@ jobs:
         run: npm run typecheck
       - name: Upload typecheck errors on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: typecheck-errors-${{ github.run_number }}
           path: |
@@ -93,8 +93,8 @@ jobs:
       (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
       (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -127,7 +127,7 @@ jobs:
             --sha "${{ github.sha }}"
       - name: Upload test coverage on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: vitest-coverage-${{ github.run_number }}
           path: coverage/
@@ -144,8 +144,8 @@ jobs:
       (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
       (needs.typecheck.result == 'success' || needs.typecheck.result == 'skipped')
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -170,7 +170,7 @@ jobs:
       # ✅ Stabilize schedule tests
       VITE_SCHEDULES_TZ: Asia/Tokyo
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Print E2E env
         run: |
@@ -178,7 +178,7 @@ jobs:
           echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
           echo "VITE_SKIP_SHAREPOINT=$VITE_SKIP_SHAREPOINT"
           echo "VITE_SCHEDULES_TZ=$VITE_SCHEDULES_TZ"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -189,7 +189,7 @@ jobs:
         run: echo "version=$(npx playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -305,7 +305,7 @@ jobs:
 
       - name: Upload Playwright artifacts (always)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-artifacts-smoke-${{ github.run_number }}
           path: |
@@ -316,7 +316,7 @@ jobs:
 
       - name: Upload JUnit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: junit-e2e-smoke-${{ github.run_number }}
           path: test-results/junit-e2e-smoke-*.xml
@@ -325,7 +325,7 @@ jobs:
 
       - name: Upload failure artifacts
         if: failure() || steps.smoke_core.outcome == 'failure' || steps.smoke_all.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-failure-artifacts-${{ github.run_number }}
           path: |
@@ -360,7 +360,7 @@ jobs:
 
       - name: Upload flaky test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: flaky-test-report-smoke-${{ github.run_number }}
           path: reports/flaky-tests.md
@@ -374,7 +374,7 @@ jobs:
 
       - name: Upload stability metrics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: stability-metrics-${{ github.run_number }}
           path: stability-metrics.json

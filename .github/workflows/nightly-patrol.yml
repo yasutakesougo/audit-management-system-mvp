@@ -25,12 +25,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -326,7 +326,7 @@ jobs:
 
       - name: Upload nightly act warning artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: nightly-act-warning-${{ github.run_number }}
           path: |
@@ -336,7 +336,7 @@ jobs:
 
       - name: Upload nightly coverage artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: nightly-coverage-${{ github.run_number }}
           path: |
@@ -346,7 +346,7 @@ jobs:
 
       - name: Upload lane assertion result
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: lane-assertion-result-${{ github.run_number }}
           path: docs/nightly-patrol/lane-assertion-result.json
@@ -354,7 +354,7 @@ jobs:
 
       - name: Upload Guardian Purge Artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: guardian-purge-results-${{ github.run_number }}
           path: |
@@ -434,7 +434,7 @@ jobs:
 
       - name: Upload generated patrol reports
         if: ${{ always() && steps.report_secret_scan.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: nightly-patrol-reports-${{ github.run_number }}
           path: |

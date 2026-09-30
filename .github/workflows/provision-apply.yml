@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
@@ -72,7 +72,7 @@ jobs:
           Write-Host 'XML helper guard passed.'
 
       - name: Setup Node (for tooling if needed)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -218,7 +218,7 @@ jobs:
 
       - name: Upload changes.json artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: provision-changes
           path: ${{ github.workspace }}/provision/changes.json

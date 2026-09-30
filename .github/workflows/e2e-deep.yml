@@ -122,12 +122,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.SOURCE_HEAD_SHA }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: 'npm'
@@ -140,7 +140,7 @@ jobs:
         run: echo "version=$(npx playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -439,7 +439,7 @@ jobs:
 
       - name: Upload Playwright HTML report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: playwright-report/
@@ -448,7 +448,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: |
@@ -461,7 +461,7 @@ jobs:
 
       - name: Upload bootstrap diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-bootstrap-diagnostics-${{ github.run_id }}-${{ matrix.artifact_suffix }}-${{ github.run_attempt }}
           path: |
@@ -472,7 +472,7 @@ jobs:
 
       - name: Upload JUnit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml
@@ -481,7 +481,7 @@ jobs:
 
       - name: Upload lane Playwright JSON results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: results-json-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: test-results/results.json
@@ -490,7 +490,7 @@ jobs:
 
       - name: Upload Deep E2E taxonomy
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: taxonomy-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/deep-e2e-taxonomy-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
@@ -499,7 +499,7 @@ jobs:
 
       - name: Upload lane coverage manifest
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/deep-e2e-coverage-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
@@ -508,7 +508,7 @@ jobs:
 
       - name: Upload lane cancellation audit
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cancel-audit-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: deep-cancel-audit.json
@@ -517,7 +517,7 @@ jobs:
 
       - name: Upload artifacts on partial failure
         if: failure() || steps.deep_tests.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: failure-artifacts-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: |
@@ -554,7 +554,7 @@ jobs:
 
       - name: Upload flaky test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: flaky-test-report-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/flaky-tests.md
@@ -577,12 +577,12 @@ jobs:
       actions: read
     steps:
       - name: Checkout exact source head
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.SOURCE_HEAD_SHA }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: 'npm'
@@ -613,45 +613,45 @@ jobs:
             > expected-integration-inventory.json
 
       - name: Download lane taxonomies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: taxonomy-deep-${{ github.run_id }}-*
           path: lane-artifacts
 
       - name: Download lane coverage manifests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: coverage-deep-${{ github.run_id }}-*
           path: lane-artifacts
 
       - name: Download lane JUnit reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: junit-e2e-deep-${{ github.run_id }}-*
           path: lane-artifacts
 
       - name: Download lane Playwright JSON results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         continue-on-error: true
         with:
           pattern: results-json-deep-${{ github.run_id }}-*
           path: lane-artifacts
 
       - name: Download lane cancellation audits
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: cancel-audit-deep-${{ github.run_id }}-*
           path: lane-artifacts
 
       - name: Download lane bootstrap diagnostics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: e2e-bootstrap-diagnostics-${{ github.run_id }}-*
           path: lane-artifacts
 
       - name: Download Integration evidence
         if: needs.deep-tests-integration.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         continue-on-error: true
         with:
           name: integration-results-${{ github.run_number }}
@@ -691,7 +691,7 @@ jobs:
 
       - name: Upload union taxonomy and coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: taxonomy-deep-union-${{ github.run_id }}
           path: |
@@ -714,12 +714,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.SOURCE_HEAD_SHA }}
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: 'npm'
@@ -732,7 +732,7 @@ jobs:
         run: echo "version=$(npx playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
       
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
@@ -791,7 +791,7 @@ jobs:
       
       - name: Upload integration test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: integration-results-${{ github.run_number }}
           path: |
