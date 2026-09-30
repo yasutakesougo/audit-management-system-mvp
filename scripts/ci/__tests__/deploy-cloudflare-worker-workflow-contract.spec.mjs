@@ -145,8 +145,8 @@ describe("deploy-cloudflare-worker workflow contract", () => {
     );
     expectContains(
       workflow,
-      "- name: Verify fixed clean main SHA",
-      "sha verification step",
+      "- name: Verify canonical baseline identities",
+      "canonical identity verification step",
     );
     expectContains(
       workflow,
