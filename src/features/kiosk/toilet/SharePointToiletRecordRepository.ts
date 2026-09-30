@@ -95,13 +95,14 @@ export class SharePointToiletRecordRepository implements IToiletRecordRepository
     const recordDateField = this.rfFallback('recordDate');
     const isDeletedField = this.rfFallback('isDeleted');
 
-    // Calculate the next day's date string (e.g. "2026-05-29" -> "2026-05-30")
-    // Simple local-date OData range query (e.g. ge '2026-05-29' and lt '2026-05-30')
-    const date = new Date(dateIso);
-    date.setDate(date.getDate() + 1);
-    const nextDateIso = date.toISOString().slice(0, 10);
+    // RecordDate is a SharePoint DateTime field. Query the JST local day as a
+    // UTC range so SharePoint does not receive a date-only value for DateTime.
+    const start = new Date(`${dateIso}T00:00:00+09:00`);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const startDateTime = start.toISOString();
+    const endDateTime = end.toISOString();
 
-    const filter = `(${recordDateField} ge '${dateIso}') and (${recordDateField} lt '${nextDateIso}') and (${isDeletedField} eq false or ${isDeletedField} eq null)`;
+    const filter = `(${recordDateField} ge '${startDateTime}') and (${recordDateField} lt '${endDateTime}') and (${isDeletedField} eq false or ${isDeletedField} eq null)`;
     
     // OData query
     const select = [

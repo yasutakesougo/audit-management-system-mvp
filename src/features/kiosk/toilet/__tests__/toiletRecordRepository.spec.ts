@@ -187,6 +187,44 @@ describe('ToiletRecord Repository & Factory Tests', () => {
 
   // ── 2. SharePointToiletRecordRepository ──
   describe('SharePointToiletRecordRepository', () => {
+    it('uses a UTC DateTime range when SharePoint RecordDate is a DateTime field', async () => {
+      const mockSpFetch = vi.fn().mockImplementation(async (url: string) => {
+        const decodedUrl = decodeURIComponent(url);
+        if (decodedUrl.includes("RecordDate ge '2026-05-26'") || decodedUrl.includes("RecordDate lt '2026-05-27'")) {
+          return { ok: false, statusText: 'The date value is invalid for a DateTime field' };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            value: [
+              {
+                Id: 101,
+                Title: 'toilet-datetime-1',
+                UserId: 'I005',
+                RecordDate: '2026-05-26T07:00:00Z',
+                OccurredAt: '2026-05-26T10:00:00Z',
+                ToiletType: 'urination',
+                Amount: 'normal',
+                Memo: 'DateTime fallback',
+                IsDeleted: false,
+              },
+            ],
+          }),
+        };
+      });
+
+      const mockGetFields = vi.fn().mockResolvedValue(new Set([
+        'UserId', 'RecordDate', 'OccurredAt', 'ToiletType', 'Amount', 'Memo', 'RecorderName', 'Source', 'IsDeleted',
+      ]));
+
+      const repo = new SharePointToiletRecordRepository(mockSpFetch, mockGetFields);
+
+      await expect(repo.listByDate('2026-05-26')).resolves.toHaveLength(1);
+      expect(mockSpFetch).toHaveBeenCalledTimes(1);
+      expect(decodeURIComponent(mockSpFetch.mock.calls[0][0])).toContain("RecordDate ge '2026-05-25T15:00:00.000Z'");
+      expect(decodeURIComponent(mockSpFetch.mock.calls[0][0])).toContain("RecordDate lt '2026-05-26T15:00:00.000Z'");
+    });
+
     it('should list records using spFetch and filter by JST local-day UTC range', async () => {
       const mockSpFetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -222,12 +260,14 @@ describe('ToiletRecord Repository & Factory Tests', () => {
       expect(url).toContain("/lists/getbytitle('ToiletRecords')/items");
       const decodedUrl = decodeURIComponent(url);
 
-      // 1. Should not use exact date equality filter
+      // 1. Should not use exact date equality or date-only range filters
       expect(decodedUrl).not.toContain("RecordDate eq '2026-05-26'");
+      expect(decodedUrl).not.toContain("RecordDate ge '2026-05-26'");
+      expect(decodedUrl).not.toContain("RecordDate lt '2026-05-27'");
 
-      // 2. Should use YYYY-MM-DD date range query
-      expect(decodedUrl).toContain("RecordDate ge '2026-05-26'");
-      expect(decodedUrl).toContain("RecordDate lt '2026-05-27'");
+      // 2. Should use a JST local-day expressed as a UTC DateTime range
+      expect(decodedUrl).toContain("RecordDate ge '2026-05-25T15:00:00.000Z'");
+      expect(decodedUrl).toContain("RecordDate lt '2026-05-26T15:00:00.000Z'");
 
       // 4. IsDeleted condition should be eq false or eq null
       expect(decodedUrl).toContain("IsDeleted eq false or IsDeleted eq null");
