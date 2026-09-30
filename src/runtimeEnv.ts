@@ -1,5 +1,5 @@
 [eval]:1
-process.stdout.write(require('fs').readFileSync(src/main.tsx, 'utf8'))
+process.stdout.write(require('fs').readFileSync(src/runtimeEnv.ts, 'utf8'))
                                                 ^
 
 ReferenceError: src is not defined
