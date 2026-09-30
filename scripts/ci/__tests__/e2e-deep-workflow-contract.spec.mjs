@@ -121,4 +121,31 @@ describe("E2E Deep workflow evidence contract", () => {
     assert.match(workflow, /"checkout_sha": "\$\(git rev-parse HEAD\)"/);
     assert.match(workflow, /--run-attempt "\$\{\{ github\.run_attempt \}\}"/);
   });
+
+  it("propagates deterministic SharePoint E2E config through every preview phase", () => {
+    const requiredEnv = [
+      "VITE_SP_RESOURCE: 'https://contoso.sharepoint.com'",
+      "VITE_SP_SITE_RELATIVE: '/sites/Audit'",
+      "VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read'",
+    ];
+
+    for (const value of requiredEnv) {
+      assert.match(workflow, new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    }
+
+    const buildStep = workflow.match(/- name: Build application \(preview mode\)[\s\S]*?(?=\n      - name:)/)?.[0] ?? "";
+    const previewStep = workflow.match(/- name: Start preview server[\s\S]*?(?=\n      - name:)/)?.[0] ?? "";
+    const deepTestStep = workflow.match(/- name: Run deep E2E tests \(non-smoke\)[\s\S]*?(?=\n      - name:)/)?.[0] ?? "";
+
+    for (const step of [buildStep, previewStep, deepTestStep]) {
+      assert.match(step, /VITE_SP_RESOURCE:/);
+      assert.match(step, /VITE_SP_SITE_RELATIVE:/);
+      assert.match(step, /VITE_SP_SCOPE_DEFAULT:/);
+    }
+
+    assert.match(workflow, /VITE_SP_RESOURCE: process\.env\.VITE_SP_RESOURCE/);
+    assert.match(workflow, /VITE_SP_SITE_RELATIVE: process\.env\.VITE_SP_SITE_RELATIVE/);
+    assert.match(workflow, /VITE_SP_SCOPE_DEFAULT: process\.env\.VITE_SP_SCOPE_DEFAULT/);
+    assert.doesNotMatch(workflow, /VITE_SP_RESOURCE: 'https:\/\/contoso\.sharepoint\.com',[\s\S]{0,300}VITE_SP_SITE_RELATIVE: '\/sites\/Audit',[\s\S]{0,300}VITE_MSAL_CLIENT_ID/);
+  });
 });
