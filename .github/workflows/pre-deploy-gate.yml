@@ -123,7 +123,7 @@ jobs:
           echo "✅ fresh nightly artifacts found"
 
       - name: Upload Nightly artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: nightly-patrol-${{ github.run_id }}
           path: docs/nightly-patrol/

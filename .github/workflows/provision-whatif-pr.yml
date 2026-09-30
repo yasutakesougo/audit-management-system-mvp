@@ -85,7 +85,7 @@ jobs:
             -EmitChanges
 
       - name: Upload WhatIf changes artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: provision-changes
           path: provision/changes.json

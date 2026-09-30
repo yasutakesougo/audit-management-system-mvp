@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload purge evidence
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: userbenefit-zombie-purge-${{ github.run_number }}-${{ inputs.mode }}-${{ inputs.list }}
           path: docs/nightly-patrol/userbenefit-*.json

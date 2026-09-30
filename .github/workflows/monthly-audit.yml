@@ -45,7 +45,7 @@ jobs:
           fi
       - name: Upload audit result artifact
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sp-manifest-audit-${{ github.run_number }}
           path: /tmp/sp-audit-result.txt

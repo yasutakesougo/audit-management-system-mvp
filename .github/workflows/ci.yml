@@ -400,7 +400,7 @@ jobs:
 
       - name: Upload unit shard audit artifact
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: unit-shard-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
           path: unit-shard-cancel-audit.json
