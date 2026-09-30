@@ -57,9 +57,9 @@ jobs:
           set -euo pipefail
 
           git fetch origin main --prune
+          echo "equivalent_source_fix=${EQUIVALENT_SOURCE_SHA}"
           node scripts/ci/verify-deploy-gate-baseline.mjs \
             --canonical-sha "${CANONICAL_SHA}" \
-            --equivalent-source-sha "${EQUIVALENT_SOURCE_SHA}" \
             --expected-tree-sha "${EXPECTED_TREE_SHA}" \
             --expected-toilet-repository-blob "${EXPECTED_TOILET_REPOSITORY_BLOB}" \
             --expected-toilet-test-blob "${EXPECTED_TOILET_TEST_BLOB}" \
@@ -193,9 +193,9 @@ jobs:
           set -euo pipefail
 
           git fetch origin main --prune
+          echo "equivalent_source_fix=${EQUIVALENT_SOURCE_SHA}"
           node scripts/ci/verify-deploy-gate-baseline.mjs \
             --canonical-sha "${CANONICAL_SHA}" \
-            --equivalent-source-sha "${EQUIVALENT_SOURCE_SHA}" \
             --expected-tree-sha "${EXPECTED_TREE_SHA}" \
             --expected-toilet-repository-blob "${EXPECTED_TOILET_REPOSITORY_BLOB}" \
             --expected-toilet-test-blob "${EXPECTED_TOILET_TEST_BLOB}" \
