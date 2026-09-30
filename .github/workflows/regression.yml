@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload Vitest core artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: vitest-core-${{ github.run_number }}
           path: |
@@ -103,7 +103,7 @@ jobs:
 
       - name: Upload Vitest hydration artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: vitest-hydration-${{ github.run_number }}
           path: |
@@ -131,7 +131,7 @@ jobs:
 
       - name: Upload Vitest schedules artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: vitest-schedules-${{ github.run_number }}
           path: |
@@ -159,7 +159,7 @@ jobs:
 
       - name: Upload Vitest pages artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: vitest-pages-${{ github.run_number }}
           path: |
@@ -211,7 +211,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-smoke-${{ github.run_number }}
           path: |

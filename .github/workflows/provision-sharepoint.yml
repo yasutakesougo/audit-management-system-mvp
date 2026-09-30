@@ -153,7 +153,7 @@ jobs:
 
       - name: Upload WhatIf changes artifact
         if: ${{ fromJSON(github.event.inputs.whatIf || 'false') == true }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: provision-changes
           path: provision/changes.json

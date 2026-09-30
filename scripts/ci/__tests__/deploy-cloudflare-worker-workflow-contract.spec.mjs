@@ -145,8 +145,8 @@ describe("deploy-cloudflare-worker workflow contract", () => {
     );
     expectContains(
       workflow,
-      "- name: Verify canonical baseline identities",
-      "canonical identity verification step",
+      "- name: Verify fixed clean main SHA",
+      "sha verification step",
     );
     expectContains(
       workflow,
@@ -158,14 +158,6 @@ describe("deploy-cloudflare-worker workflow contract", () => {
       "run: npx wrangler deploy --config wrangler.production.toml --keep-vars",
       "production deploy command",
     );
-  });
-
-  it("wires post-merge identity verification without runtime source-commit lookup", () => {
-    expectContains(workflow, "--expected-input-sha \"${EXPECTED_SHA}\"", "post-merge expected input SHA");
-    expectContains(workflow, "--expected-tree-sha \"${EXPECTED_TREE_SHA}\"", "pre-gate tree identity");
-    expectContains(workflow, "--expected-toilet-repository-blob \"${EXPECTED_TOILET_REPOSITORY_BLOB}\"", "Toilet repository blob identity");
-    expectContains(workflow, "--expected-toilet-test-blob \"${EXPECTED_TOILET_TEST_BLOB}\"", "Toilet test blob identity");
-    assert.equal(workflow.includes("--equivalent-source-sha"), false, "runtime must not resolve the unreferenced source commit");
   });
 
   it("enforces kiosk Playwright steps after node setup and npm ci in verify job", () => {

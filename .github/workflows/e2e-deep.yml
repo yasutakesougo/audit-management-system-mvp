@@ -439,7 +439,7 @@ jobs:
 
       - name: Upload Playwright HTML report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: playwright-report/
@@ -448,7 +448,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: |
@@ -461,7 +461,7 @@ jobs:
 
       - name: Upload bootstrap diagnostics
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-bootstrap-diagnostics-${{ github.run_id }}-${{ matrix.artifact_suffix }}-${{ github.run_attempt }}
           path: |
@@ -472,7 +472,7 @@ jobs:
 
       - name: Upload JUnit report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: test-results/junit-e2e-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}.xml
@@ -481,7 +481,7 @@ jobs:
 
       - name: Upload lane Playwright JSON results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: results-json-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: test-results/results.json
@@ -490,7 +490,7 @@ jobs:
 
       - name: Upload Deep E2E taxonomy
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: taxonomy-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/deep-e2e-taxonomy-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
@@ -499,7 +499,7 @@ jobs:
 
       - name: Upload lane coverage manifest
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/deep-e2e-coverage-${{ github.run_id }}-${{ matrix.artifact_suffix }}.json
@@ -508,7 +508,7 @@ jobs:
 
       - name: Upload lane cancellation audit
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cancel-audit-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: deep-cancel-audit.json
@@ -517,7 +517,7 @@ jobs:
 
       - name: Upload artifacts on partial failure
         if: failure() || steps.deep_tests.outcome == 'failure'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: failure-artifacts-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: |
@@ -554,7 +554,7 @@ jobs:
 
       - name: Upload flaky test report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: flaky-test-report-deep-${{ github.run_id }}-${{ matrix.artifact_suffix }}
           path: reports/flaky-tests.md
@@ -691,7 +691,7 @@ jobs:
 
       - name: Upload union taxonomy and coverage
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: taxonomy-deep-union-${{ github.run_id }}
           path: |
@@ -791,7 +791,7 @@ jobs:
       
       - name: Upload integration test artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: integration-results-${{ github.run_number }}
           path: |
