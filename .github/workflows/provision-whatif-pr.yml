@@ -21,7 +21,7 @@ jobs:
       github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install PnP.PowerShell
         shell: pwsh
@@ -85,14 +85,14 @@ jobs:
             -EmitChanges
 
       - name: Upload WhatIf changes artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: provision-changes
           path: provision/changes.json
           if-no-files-found: warn
 
       - name: Comment / Update PR with WhatIf summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');

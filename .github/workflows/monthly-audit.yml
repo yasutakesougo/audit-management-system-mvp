@@ -9,8 +9,8 @@ jobs:
   npm-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - run: npm ci
@@ -20,8 +20,8 @@ jobs:
     name: SP Manifest vs ListKeys Consistency
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Install dependencies
@@ -45,7 +45,7 @@ jobs:
           fi
       - name: Upload audit result artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sp-manifest-audit-${{ github.run_number }}
           path: /tmp/sp-audit-result.txt
