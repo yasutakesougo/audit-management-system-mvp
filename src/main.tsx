@@ -2,6 +2,7 @@ import { clearEnvCache, getRuntimeEnv, isDev } from '@/env';
 import { shouldSkipLogin } from '@/lib/env';
 import { isDebugFlag } from '@/lib/debugFlag';
 import { guardProdMisconfig } from '@/lib/envGuards';
+import { resolveRuntimeEnv } from './runtimeEnv';
 import '@/styles/kiosk.css';
 import '@/styles/print.css';
 import React from 'react';
@@ -44,11 +45,6 @@ declare global {
 
 // NOTE: Do NOT call guardProdMisconfig() here - it needs runtime env to be loaded first!
 // Call it after ensureRuntimeEnv() completes below.
-
-const RUNTIME_PATH_KEYS = new Set(['RUNTIME_ENV_PATH', 'VITE_RUNTIME_ENV_PATH']);
-
-
-
 
 // 🔧 DOM lib との型競合回避のため、assertion ベースに変更
 const runOnIdle = (callback: () => void, timeout = 200): void => {
@@ -102,7 +98,7 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
   }
 };
 
-const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
+export const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
   const baseEnv = getRuntimeEnv();
 
   if (typeof window === 'undefined') {
@@ -110,12 +106,11 @@ const ensureRuntimeEnv = async (): Promise<EnvRecord> => {
   }
 
   const existing = window.__ENV__ ?? {};
-  const hasRuntimeOverrides = Object.keys(existing).some((key) => !RUNTIME_PATH_KEYS.has(key));
-  const runtimeOverrides = hasRuntimeOverrides
-    ? { ...existing }
-    : await loadRuntimeEnvFile({ ...baseEnv, ...existing });
-
-  const merged = { ...baseEnv, ...runtimeOverrides } satisfies EnvRecord;
+  const merged = await resolveRuntimeEnv({
+    buildEnv: baseEnv,
+    workerInlineEnv: existing,
+    loadRuntimeEnv: () => loadRuntimeEnvFile({ ...baseEnv, ...existing }),
+  });
   window.__ENV__ = merged;
   clearEnvCache();
 
