@@ -1,8 +1,9 @@
-/**
+/** 
  * Record domain routes: /records/*, /billing, /handoff-timeline, /meeting-minutes/*
  */
 import HubLanding from '@/app/hubs/HubLanding';
 import { withHubAudienceGuard } from '@/app/hubs/hubRouting';
+import ProtectedRoute from '@/app/ProtectedRoute';
 import AdminSurfaceRouteGuard from '@/components/AdminSurfaceRouteGuard';
 import RequireAudience from '@/components/RequireAudience';
 import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
@@ -75,10 +76,12 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'billing',
     element: (
-      withHubAudienceGuard(
-        'billing',
-        <SuspendedBillingPage />,
-      )
+      <ProtectedRoute>
+        {withHubAudienceGuard(
+          'billing',
+          <SuspendedBillingPage />,
+        )}
+      </ProtectedRoute>
     ),
   },
   {
