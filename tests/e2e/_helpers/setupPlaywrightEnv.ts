@@ -4,7 +4,7 @@
  * Responsibilities:
  * - Reset browser storage (localStorage/sessionStorage) before each spec
  * - Inject shared baseline __ENV__ values (feature flags, auth mocks, etc.)
- * - Allow per-spec overrides via `envOverrides` / `storageOverrides`
+ * - Allow per-spec overrides via envOverrides / storageOverrides
  *
  * Required call order for every E2E spec (do not skip):
  *   1. Register mocks (Graph / MSAL / SharePoint / REST / etc.)
@@ -13,21 +13,22 @@
  *   4. Execute interactions + assertions
  *
  * Boot helpers MUST call this helper before applying their own seeds, and
- * feature flags MUST flow through `envOverrides` (never mutate window.__ENV__
+ * feature flags MUST flow through envOverrides (never mutate window.__ENV__
  * directly). This contract keeps test worlds deterministic and prevents
  * cross-spec bleed.
  */
 import type { Page } from '@playwright/test';
 
-const BASE_ENV: Record<string, string> = {
+export const getPlaywrightBaseEnv = (spStubLane = process.env.DEEP_LANE === 'sp-stub'): Record<string, string> => ({
   NODE_ENV: 'development',
   VITE_APP_ENV: 'e2e',
   VITE_E2E: '1',
   VITE_E2E_MSAL_MOCK: '1',
   VITE_SKIP_LOGIN: '1',
-  VITE_DEMO_MODE: '1',
-  VITE_SKIP_SHAREPOINT: '1',
-  VITE_FORCE_SHAREPOINT: '0',
+  VITE_DEMO_MODE: spStubLane ? '0' : '1',
+  VITE_SKIP_SHAREPOINT: spStubLane ? '0' : '1',
+  VITE_FORCE_SHAREPOINT: spStubLane ? '1' : '0',
+  VITE_DATA_PROVIDER: spStubLane ? 'sharepoint' : 'memory',
   // Ensure SharePoint adapter is selected by default in E2E (spfxContextAvailable will be injected)
   VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1',
   MODE: 'development',
@@ -38,7 +39,9 @@ const BASE_ENV: Record<string, string> = {
   // MSAL: Mock mode, so these are just placeholders
   VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678',
   VITE_MSAL_TENANT_ID: 'common',
-};
+});
+
+const BASE_ENV = getPlaywrightBaseEnv();
 
 const BASE_STORAGE: Record<string, string> = {
   skipLogin: '1',
