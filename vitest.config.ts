@@ -26,6 +26,7 @@ export default defineConfig({
       '**/dist/**',
       'tests/e2e/**',
       'tests/integration/**', // Playwright integration tests, not Vitest
+      'tests/production/**/*.spec.ts',
       'tests/regression/**',
       'tests/unit/briefing.edge.spec.ts',
       'tests/unit/spClient.schedule.spec.ts',
