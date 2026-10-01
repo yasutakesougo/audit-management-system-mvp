@@ -14,6 +14,18 @@ describe('DataProviderUserRepository Contract Compliance', () => {
     repo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
   });
 
+  it('reads the same Users_Master identity that the fixture seeds', async () => {
+    await provider.seed('Users_Master', [
+      { Id: 1, UserID: 'UX-001', FullName: 'Fixture User 1' },
+      { Id: 2, UserID: 'UX-014', FullName: 'Fixture User 2' },
+      { Id: 3, UserID: 'UX-020', FullName: 'Fixture User 3' },
+    ]);
+
+    const users = await repo.getAll();
+
+    expect(users.map((user) => user.UserID)).toEqual(['UX-001', 'UX-014', 'UX-020']);
+  });
+
   describe('Clearable Update Contract', () => {
     it('treats undefined as "no change" (skip field)', async () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original', UsageStatus: 'init' }]);
