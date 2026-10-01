@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import ProtectedRoute from '@/app/ProtectedRoute';
 import { recordRoutes } from '../recordRoutes';
 
 describe('recordRoutes', () => {
@@ -8,5 +9,12 @@ describe('recordRoutes', () => {
 
     expect(route).toBeDefined();
     expect(route?.element).toBeTruthy();
+  });
+
+  it('protects the direct billing route with the shared authentication gate', () => {
+    const route = recordRoutes.find(item => item.path === 'billing');
+
+    expect(route).toBeDefined();
+    expect(route?.element?.type).toBe(ProtectedRoute);
   });
 });
