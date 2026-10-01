@@ -9,6 +9,7 @@ coverage
 test-results
 test-results.json
 tests/.auth/storageState.json
+tests/.auth/production-storageState.json
 tmp/
 reports/flaky-tests.md
 stability-metrics.json
