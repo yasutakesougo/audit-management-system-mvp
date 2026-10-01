@@ -52,7 +52,7 @@ jobs:
           echo "::endgroup::"
       - name: Upsert PR comment with links
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           COVERAGE_LINK: ${{ steps.norm.outputs.cov }}
           LIGHTHOUSE_LINK: ${{ steps.norm.outputs.lh }}
