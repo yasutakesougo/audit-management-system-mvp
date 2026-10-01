@@ -11,6 +11,8 @@ const USER_APPLY_NAME = '鈴木 美子';
 const USER_KEEP_ID = 'U001';
 const USER_KEEP_NAME = '田中 太郎';
 
+test.use({ timezoneId: 'Asia/Tokyo' });
+
 test.describe('Transport assignments week bulk apply reflects in today', () => {
   test('bulk apply + save reflects in today board and does not overwrite existing assignment', async ({ page }) => {
     await setupSharePointStubs(page, {
