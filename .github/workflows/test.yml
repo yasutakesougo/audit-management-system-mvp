@@ -32,12 +32,12 @@ jobs:
       E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.ref || github.head_ref || github.ref }}
       - name: Detect changes (paths-filter)
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             playwright:
@@ -74,7 +74,7 @@ jobs:
               - 'vitest.config.*'
               - '.github/workflows/test.yml'
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: "npm"
@@ -190,7 +190,7 @@ jobs:
           npx playwright test tests/e2e/a11y-complex-page.spec.ts --project=chromium --reporter=line
       - name: Upload a11y test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: a11y-test-results
           path: |
@@ -199,7 +199,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload a11y baseline (json)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: a11y-baseline
           path: test-results/a11y-baseline/**/*.json
@@ -216,7 +216,7 @@ jobs:
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
       - name: Upload perf summary artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: perf-summary
           path: |
@@ -287,7 +287,7 @@ jobs:
 
       - name: Upload quality completion artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quality-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
           path: quality-cancel-audit.json
@@ -310,9 +310,9 @@ jobs:
       E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: "npm"
@@ -390,7 +390,7 @@ jobs:
 
       - name: Upload quality_extended completion artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quality-extended-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
           path: quality-extended-cancel-audit.json
@@ -421,9 +421,9 @@ jobs:
       VITE_SP_SCOPE_DEFAULT: ${{ vars.VITE_SP_SCOPE_DEFAULT || (vars.VITE_SP_RESOURCE && format('{0}/.default', vars.VITE_SP_RESOURCE)) || secrets.VITE_SP_SCOPE_DEFAULT || 'https://contoso.sharepoint.com/.default' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: "npm"
@@ -539,7 +539,7 @@ jobs:
           CANARY_LHCI_LOG_PATH: reports/quality-gates/canary-lhci.log
       - name: Upload canary classification artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: canary-classification-${{ github.run_number }}-${{ github.run_attempt }}
           path: reports/quality-gates/
