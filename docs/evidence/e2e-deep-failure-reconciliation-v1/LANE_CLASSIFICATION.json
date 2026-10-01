@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "id": "E2E-DEEP-FAILURE-RECONCILIATION-V1",
+  "generatedAt": "2026-08-27T05:42:00.000Z",
+  "boundary": {
+    "productionCodeChange": false,
+    "pr2549Commits": false,
+    "workflowRerun": false,
+    "deploy": false,
+    "sharePointMutation": false,
+    "mode": "read-only-investigation"
+  },
+  "subjects": {
+    "pr": {
+      "number": 2549,
+      "title": "fix(daily): DAILY-RECORD-PERSISTENCE-V1 — Correction-9 atomic snapshot + spFetch classifier",
+      "headSha": "43655e8693b7dda4e34562abd2dfa041cf8fb9bc",
+      "baseSha": "1c8f4505ca27cb538aa722b1117c1eafcdf58880",
+      "e2eDeepRunId": "33041195913",
+      "e2eDeepUrl": "https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33041195913"
+    },
+    "main": {
+      "headSha": "1c8f4505ca27cb538aa722b1117c1eafcdf58880",
+      "e2eDeepRunId": "33037472202",
+      "e2eDeepEvent": "schedule",
+      "e2eDeepUrl": "https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/33037472202"
+    }
+  },
+  "union": {
+    "prFailed": 34,
+    "mainFailed": 34,
+    "failureKeysOnlyPr": [],
+    "failureKeysOnlyMain": [],
+    "allSpecsDigest": "6b5f6fe8025ace1807a571c11fa704ec9ae612cce1265f5ba15f60d565094163",
+    "ownedSpecCount": 190,
+    "junitTestCount": 333,
+    "trueFlakyCount": 0,
+    "bootstrapStatus": "pass",
+    "deepLaneUnionAudit": "success"
+  },
+  "pr2549DiffAttribution": {
+    "lanesCausedByPrDiff": 0,
+    "changedPathsOverlapFailingSpecs": false,
+    "dailyRecordPersistenceE2eInGeneralLane": "pass"
+  },
+  "lanes": [
+    {
+      "lane": "app-a11y",
+      "runtimeMode": "demo",
+      "primaryClass": "stale expectation",
+      "prDiffCaused": false,
+      "mainPreexisting": true,
+      "failureKeyDelta": { "onlyPr": 0, "onlyMain": 0, "shared": 11 },
+      "junit": { "tests": 13, "failures": 11, "skipped": 0 },
+      "setupFailureStep": "none",
+      "contributing": [],
+      "evidence": [
+        "skip-to-main-link is asserted in usability specs but does not exist anywhere under src/",
+        "exception-center-page testid is asserted but ExceptionCenterPage.tsx has no data-testid",
+        "call-log-list is rendered only when filteredLogs.length > 0; empty mobile cases passed"
+      ]
+    },
+    {
+      "lane": "fixture-memory",
+      "runtimeMode": "demo-memory",
+      "primaryClass": "fixture drift",
+      "prDiffCaused": false,
+      "mainPreexisting": true,
+      "failureKeyDelta": { "onlyPr": 0, "onlyMain": 0, "shared": 10 },
+      "junit": { "tests": 14, "failures": 10, "skipped": 1 },
+      "setupFailureStep": "none",
+      "contributing": ["environment contract", "stale expectation"],
+      "evidence": [
+        "users-dashboard-happy-path expected 3 seeded rows and received 4",
+        "fortress.spec.ts injects SharePoint malformed Users_Master into a memory-provider lane",
+        "nurse-dashboard-root exists only in src/testids.ts and is never attached to a component"
+      ]
+    },
+    {
+      "lane": "sp-stub",
+      "runtimeMode": "sp-stub",
+      "primaryClass": "stale expectation",
+      "prDiffCaused": false,
+      "mainPreexisting": true,
+      "failureKeyDelta": { "onlyPr": 0, "onlyMain": 0, "shared": 7 },
+      "junit": { "tests": 15, "failures": 7, "skipped": 0 },
+      "setupFailureStep": "none",
+      "contributing": ["environment contract"],
+      "evidence": [
+        "ISP editor heading expectation is 個別支援計画 前回比較・更新エディタ; production title is 個別支援計画 比較・更新エディタ",
+        "error-banner locator('[role=alert]') hits strict-mode 2-element collision",
+        "dashboard schedules-sp-lane data-state expected error, received empty string under offline simulation"
+      ]
+    },
+    {
+      "lane": "transport-date-check",
+      "runtimeMode": "demo",
+      "primaryClass": "environment contract",
+      "prDiffCaused": false,
+      "mainPreexisting": true,
+      "failureKeyDelta": { "onlyPr": 0, "onlyMain": 0, "shared": 3 },
+      "junit": { "tests": 3, "failures": 3, "skipped": 0 },
+      "setupFailureStep": "none",
+      "contributing": ["fixture drift"],
+      "evidence": [
+        "all three specs call setupSharePointStubs with frozen 2026-03-25 while the lane builds VITE_SKIP_SHAREPOINT=1 VITE_DEMO_MODE=1 VITE_DATA_PROVIDER=memory",
+        "week bulk-apply summary received 月〜金 変更なし instead of 水 1件",
+        "vehicle card 1 received empty assignment chrome instead of 鈴木 美子"
+      ]
+    },
+    {
+      "lane": "implementation-hot",
+      "runtimeMode": "demo",
+      "primaryClass": "environment contract",
+      "prDiffCaused": false,
+      "mainPreexisting": true,
+      "failureKeyDelta": { "onlyPr": 0, "onlyMain": 0, "shared": 2 },
+      "junit": { "tests": 14, "failures": 2, "skipped": 0 },
+      "setupFailureStep": "none",
+      "contributing": ["fixture drift"],
+      "evidence": [
+        "staff-form.flow.spec.ts (12/12) passed against demo staff including 佐藤 花子",
+        "transport-assignments-repository-flow.spec.ts stubs Staff_Master Role=driver 佐藤 but lane is demo/memory so the SP stub is unused",
+        "both failures timed out 120s waiting for getByRole('option', { name: /佐藤/ })"
+      ]
+    },
+    {
+      "lane": "general",
+      "runtimeMode": "demo-memory",
+      "primaryClass": "stale expectation",
+      "prDiffCaused": false,
+      "mainPreexisting": true,
+      "failureKeyDelta": { "onlyPr": 0, "onlyMain": 0, "shared": 1 },
+      "junit": { "tests": 274, "failures": 1, "skipped": 62 },
+      "setupFailureStep": "none",
+      "contributing": ["fixture drift"],
+      "evidence": [
+        "only failure: support-date-governance Reverse-Bridge expects 確信度: 中",
+        "buildReverseBridgeSuggestions returns confidence none when recordCount===0 and the chip is not rendered",
+        "the test stubs SupportRecord_Daily: [] and Reverse-Bridge reads Zustand executionStore, not the SP list",
+        "daily persistence E2E in this lane all passed (daily.table, daily.records-flow, daily-pdca.integration, records-daily, procedure-17row-bridge)"
+      ]
+    }
+  ]
+}
