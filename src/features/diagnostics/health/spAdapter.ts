@@ -114,25 +114,17 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
       return items ?? [];
     },
 
-    async createItem(listTitle: string, body: Record<string, unknown>) {
-      const result = await callSp(() =>
-        client.createItem(listTitle, body)
-      );
-      const id = typeof result === "object" && result !== null && "Id" in result
-        ? (result as Record<string, unknown>).Id
-        : typeof result === "object" && result !== null && "id" in result
-        ? (result as Record<string, unknown>).id
-        : undefined;
-      if (!id) throw new Error(`CreateItem response missing Id: ${JSON.stringify(result)}`);
-      return { id: Number(id) };
+    // Defense in depth: an accidental direct caller cannot send a write.
+    async createItem() {
+      throw new Error("WRITE_DIAGNOSTICS_DISABLED: explicit Human GO requires a separate write workflow.");
     },
 
-    async updateItem(listTitle: string, id: number, body: Record<string, unknown>) {
-      await callSp(() => client.updateItem(listTitle, id, body));
+    async updateItem() {
+      throw new Error("WRITE_DIAGNOSTICS_DISABLED: explicit Human GO requires a separate write workflow.");
     },
 
-    async deleteItem(listTitle: string, id: number) {
-      await callSp(() => client.deleteItem(listTitle, id));
+    async deleteItem() {
+      throw new Error("WRITE_DIAGNOSTICS_DISABLED: explicit Human GO requires a separate write workflow.");
     },
   };
 }

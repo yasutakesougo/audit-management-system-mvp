@@ -223,10 +223,10 @@ describe('Health Checks — SharePoint throttling classification', () => {
   });
 
   // ------------------------------------------------------------------
-  // 6. permissions.create — throttling on createItem
+  // 6. Write diagnostics are disabled, including throttling-prone probes.
   // ------------------------------------------------------------------
-  describe('permissions.create — throttling on create check', () => {
-    it('classifies SpThrottleRedirectError on createItem as WARN (no retry amplification)', async () => {
+  describe('permissions.create — disabled write check', () => {
+    it('does not call or retry a throttling-prone create probe', async () => {
       const sp = makePassingSpAdapter();
       const createFn = vi.fn().mockRejectedValue(makeThrottleError());
       sp.createItem = createFn;
@@ -237,21 +237,20 @@ describe('Health Checks — SharePoint throttling classification', () => {
       );
 
       const createCheck = results.find(
-        (r) => r.key === 'permissions.create.user_benefit_profile_ext'
+        (r) => r.key === 'permissions.write.skipped.user_benefit_profile_ext'
       );
       expect(createCheck).toBeDefined();
       expect(createCheck?.status).toBe('warn');
-      expect(createCheck?.summary).toContain('スロットリング');
-      // safeWithRetry should NOT retry when isThrottled is true
-      expect(createFn).toHaveBeenCalledTimes(1);
+      expect(createCheck?.detail).toBe('WRITE_DIAGNOSTICS_DISABLED');
+      expect(createFn).not.toHaveBeenCalled();
     });
   });
 
   // ------------------------------------------------------------------
-  // 7. Ensure existing transient HTTP status handling is preserved
+  // 7. No update retry is authorized by a diagnostic run.
   // ------------------------------------------------------------------
-  describe('existing transient HTTP status handling preserved', () => {
-    it('still classifies HTTP 429 on update as WARN with retries', async () => {
+  describe('write retries disabled', () => {
+    it('does not call or retry an HTTP 429 update probe', async () => {
       const sp = makePassingSpAdapter();
       const updateFn = vi.fn().mockRejectedValue(
         makeHttpError(429, 'Too Many Requests')
@@ -264,11 +263,11 @@ describe('Health Checks — SharePoint throttling classification', () => {
       );
 
       const updateCheck = results.find(
-        (r) => r.key === 'permissions.update.user_benefit_profile_ext'
+        (r) => r.key === 'permissions.write.skipped.user_benefit_profile_ext'
       );
       expect(updateCheck?.status).toBe('warn');
-      // 429 is retryable, so safeWithRetry should attempt maxRetries+1 = 3 times
-      expect(updateFn).toHaveBeenCalledTimes(3);
+      expect(updateCheck?.detail).toBe('WRITE_DIAGNOSTICS_DISABLED');
+      expect(updateFn).not.toHaveBeenCalled();
     });
   });
 });

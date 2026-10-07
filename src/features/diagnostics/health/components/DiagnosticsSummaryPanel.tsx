@@ -115,7 +115,7 @@ export function DiagnosticsSummaryPanel({
       </Stack>
 
       <Typography variant="caption" color="text.secondary">
-        💾 ボタン「SharePoint に保存」でこの情報を記録します
+        READ ONLY：診断結果は保存せず、「サマリーをコピー」または「JSONをコピー」で共有してください。
       </Typography>
     </Paper>
   );
