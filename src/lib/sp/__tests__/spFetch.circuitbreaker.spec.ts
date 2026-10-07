@@ -15,6 +15,9 @@ describe('spFetch Throttle Circuit Breaker', () => {
     VITE_SP_SITE_URL: 'https://tenant.sharepoint.com/sites/test',
     VITE_SP_SITE_RELATIVE: '/sites/test',
     VITE_SP_RESOURCE: 'https://tenant.sharepoint.com',
+    VITE_DEMO_MODE: '0',
+    VITE_SKIP_LOGIN: '0',
+    VITE_E2E: '0',
     VITE_E2E_MSAL_MOCK: '0',
     VITE_SKIP_SHAREPOINT: '0',
   };
