@@ -1,6 +1,4 @@
 import { readEnv } from "@/lib/env";
-import { useSP } from "@/lib/spClient";
-import { recordHealthDiagnostics } from "@/sharepoint/healthReportAdapter";
 import {
     Alert,
     Box,
@@ -26,8 +24,6 @@ import {
   clearSpHealthSignal,
   type SpHealthReasonCode,
 } from "@/features/sp/health/spHealthSignalStore";
-import { GovernanceAdvisePanel } from "../remediation/components/GovernanceAdvisePanel";
-import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 import { SpRemediationCard } from "@/features/sp/health/remediation/SpRemediationCard";
 import { useNightlySignalIngestion } from "@/features/sp/health/hooks/useNightlySignalIngestion";
 import { SelfHealingResultsPanel } from "@/features/sp/health/remediation/SelfHealingResultsPanel";
@@ -96,7 +92,6 @@ export function HealthDiagnosisPage(props: {
   const [activeTab, setActiveTab] = React.useState<string | "all">("all");
   const [filterState, setFilterState] = React.useState<HealthFilterState>({ level: 'all', resource: '' });
   const [searchParams] = useSearchParams();
-  const sp = useSP();
 
   // ── Nightly Signal Ingestion ──────────────────────────────────────────
   useNightlySignalIngestion();
@@ -129,51 +124,12 @@ export function HealthDiagnosisPage(props: {
   // ── Signal バナー ──────────────────────────────────────────────────────────
   const currentSignal = useSpHealthSignal();
 
-  // Save state management
-  const [savingState, setSavingState] = React.useState<{
-    saving: boolean;
-    success: boolean;
-    error: string | null;
-  }>({
-    saving: false,
-    success: false,
-    error: null,
-  });
-
-  // ─────────────────────────────────────────────────────────────
-  // Title 生成: "health:<tenant>:<site>"
-  // ─────────────────────────────────────────────────────────────
   const generateDiagnosticsTitle = (): string => {
     const tenant = readEnv('VITE_SP_TENANT', 'unknown-tenant');
     const site = readEnv('VITE_SP_SITE', 'unknown-site');
     return `health:${tenant}:${site}`;
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // SharePoint に診断結果を記録 - Toast 通知対応
-  // ─────────────────────────────────────────────────────────────
-  const handleRecordToSharePoint = async () => {
-    if (!report) return;
-
-    setSavingState({ saving: true, success: false, error: null });
-
-    try {
-      const siteUrl = readEnv('VITE_SP_SITE_URL', '');
-      await recordHealthDiagnostics(sp, report, siteUrl);
-
-      // ✅ Success: Show toast and auto-dismiss after 3s
-      setSavingState({ saving: false, success: true, error: null });
-      setTimeout(() => {
-        setSavingState((p) => ({ ...p, success: false }));
-      }, 3000);
-
-
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setSavingState({ saving: false, success: false, error: msg });
-      console.error('[HealthDiagnosisPage] Failed to record to SharePoint:', err);
-    }
-  };
 
   const categoryLabels: Record<string, string> = {
     all: "すべて",
@@ -262,13 +218,6 @@ export function HealthDiagnosisPage(props: {
           <SpRemediationCard />
         )}
 
-        {currentSignal?.reasonCode === 'sp_index_pressure' && currentSignal.listName && (
-          <SpIndexPressurePanel 
-            listName={currentSignal.listName} 
-            onRefresh={run}
-          />
-        )}
-
         {/* highlight バナー（?highlight= クエリがある場合） */}
         {highlightCode && (
           <Alert severity="info" onClose={() => {}}>
@@ -311,19 +260,11 @@ export function HealthDiagnosisPage(props: {
             </Button>
             <Button
               variant="contained"
-              disabled={!report || savingState.saving}
-              onClick={handleRecordToSharePoint}
+              disabled
               size="small"
               data-testid="diagnostics-save"
             >
-              {savingState.saving ? (
-                <Stack direction="row" spacing={0.5} alignItems="center">
-                  <CircularProgress size={18} color="inherit" />
-                  <span>保存中...</span>
-                </Stack>
-              ) : (
-                "SharePoint に保存"
-              )}
+              SharePoint 保存は無効
             </Button>
             <Button
               variant="outlined"
@@ -353,18 +294,11 @@ export function HealthDiagnosisPage(props: {
           </Stack>
         </Stack>
 
-        {/* トースト通知: 保存成功 / 失敗 */}
-        {savingState.success && (
-          <Alert severity="success" onClose={() => setSavingState((p) => ({ ...p, success: false }))} data-testid="diagnostics-save-alert">
-            ✅ 診断結果を SharePoint に保存しました
-          </Alert>
-        )}
-
-        {savingState.error && (
-          <Alert severity="error" onClose={() => setSavingState((p) => ({ ...p, error: null }))} data-testid="diagnostics-save-alert">
-            ❌ 保存に失敗しました: {savingState.error}
-          </Alert>
-        )}
+        <Alert severity="info" data-testid="diagnostics-readonly-notice">
+          READ ONLY：診断は読み取り専用です。作成・更新・削除・結果のSharePoint保存は無効です。
+          このページからの列・インデックス修復も無効です。
+          書込みには別の明示的なHuman GOが必要です。
+        </Alert>
 
         {/* ローカル stub モード注記 */}
         {!props.ctx.isProductionLike && (
@@ -399,8 +333,6 @@ export function HealthDiagnosisPage(props: {
 
         <SilentDriftSummaryCard />
         <DriftObservabilityPanel />
-
-        <GovernanceAdvisePanel />
 
         {/* 診断結果サマリーパネル */}
         {report && (

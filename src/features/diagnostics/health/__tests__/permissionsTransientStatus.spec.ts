@@ -30,26 +30,26 @@ const testSpec: ListSpec = {
   updateItem: {},
 };
 
-function makeSpAdapter(updateError: Error & { status: number }) {
-  const updateItem = vi.fn().mockRejectedValue(updateError);
+function makeSpAdapter(readError: Error & { status: number }) {
+  const getItemsTop1 = vi.fn().mockRejectedValue(readError);
 
   const sp: SpAdapter = {
     getCurrentUser: vi.fn().mockResolvedValue({ id: 1, title: 'Test User' }),
     getWebTitle: vi.fn().mockResolvedValue('Test Site'),
     getListByTitle: vi.fn().mockResolvedValue({ id: '1', title: 'PermissionsTransientTest' }),
     getFields: vi.fn().mockResolvedValue([]),
-    getItemsTop1: vi.fn().mockResolvedValue([]),
+    getItemsTop1,
     createItem: vi.fn().mockResolvedValue({ id: 101 }),
-    updateItem,
+    updateItem: vi.fn(),
     deleteItem: vi.fn().mockResolvedValue(undefined),
   };
 
-  return { sp, updateItem };
+  return { sp, getItemsTop1 };
 }
 
 describe('Health Checks — permissions transient status handling', () => {
-  it('treats HTTP 429 on Update as WARN and retries', async () => {
-    const { sp, updateItem } = makeSpAdapter(
+  it('treats HTTP 429 on Read as WARN without write probes', async () => {
+    const { sp, getItemsTop1 } = makeSpAdapter(
       makeHttpError(429, 'APIリクエストに失敗しました (429 TOO MANY REQUESTS)')
     );
 
@@ -58,16 +58,19 @@ describe('Health Checks — permissions transient status handling', () => {
       sp
     );
 
-    const updateCheck = results.find(
-      (r) => r.key === 'permissions.update.permissions_transient'
+    const readCheck = results.find(
+      (r) => r.key === 'permissions.read.permissions_transient'
     );
-    expect(updateCheck?.status).toBe('warn');
-    expect(updateCheck?.summary).toContain('一時的エラー');
-    expect(updateItem).toHaveBeenCalledTimes(3);
+    expect(readCheck?.status).toBe('warn');
+    expect(readCheck?.summary).toContain('一時的エラー');
+    expect(getItemsTop1).toHaveBeenCalledTimes(1);
+    expect(sp.createItem).not.toHaveBeenCalled();
+    expect(sp.updateItem).not.toHaveBeenCalled();
+    expect(sp.deleteItem).not.toHaveBeenCalled();
   });
 
-  it('keeps HTTP 403 on Update as FAIL without retry', async () => {
-    const { sp, updateItem } = makeSpAdapter(
+  it('keeps HTTP 403 on Read as FAIL without retry', async () => {
+    const { sp, getItemsTop1 } = makeSpAdapter(
       makeHttpError(403, 'APIリクエストに失敗しました (403 FORBIDDEN)')
     );
 
@@ -76,11 +79,12 @@ describe('Health Checks — permissions transient status handling', () => {
       sp
     );
 
-    const updateCheck = results.find(
-      (r) => r.key === 'permissions.update.permissions_transient'
+    const readCheck = results.find(
+      (r) => r.key === 'permissions.read.permissions_transient'
     );
-    expect(updateCheck?.status).toBe('fail');
-    expect(updateCheck?.summary).toContain('権限がありません');
-    expect(updateItem).toHaveBeenCalledTimes(1);
+    expect(readCheck?.status).toBe('fail');
+    expect(readCheck?.summary).toContain('権限がありません');
+    expect(getItemsTop1).toHaveBeenCalledTimes(1);
+    expect(sp.createItem).not.toHaveBeenCalled();
   });
 });

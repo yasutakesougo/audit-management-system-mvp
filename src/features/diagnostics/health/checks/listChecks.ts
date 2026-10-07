@@ -1,9 +1,9 @@
 import { HealthCheckResult, HealthContext, ListSpec, SpFieldSpec } from "../types";
 import { SpAdapter } from "../spAdapter";
 import { resolveInternalNamesDetailed, ResolutionResult } from '@/lib/sp/helpers';
-import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
+import type { DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import { decideGovernanceAction } from '@/features/diagnostics/governance/governanceEngine';
-import { pass, fail, warn, safe, safeWithRetry, summarizeHttpStatus, isTransientPermissionStatus } from "./utils";
+import { pass, fail, warn, safe, summarizeHttpStatus, isTransientPermissionStatus } from "./utils";
 
 /**
  * 実行時に欠落していても致命的エラー（FAIL）とせず、警告（WARN）で済ませる列の判定。
@@ -16,7 +16,7 @@ export async function runAllListChecks(
   sp: SpAdapter,
   results: HealthCheckResult[]
 ): Promise<void> {
-  // --- D/E) Lists, Schema, Permissions (CRUD) ---
+  // --- D/E) Lists, Schema, Permissions (Read only) ---
   for (const spec of ctx.listSpecs()) {
     await runListChecks(results, sp, spec, ctx);
   }
@@ -182,13 +182,8 @@ async function runListChecks(
       spec.requiredFields.map(f => [f.internalName, (f as SpFieldSpec).candidates ?? [f.internalName]])
     );
     const available = new Set(fields.v.map(f => f.internalName));
-    const resolution = resolveInternalNamesDetailed(available, candidates, {
-      onDrift: (fieldName, resolutionType, driftType) => {
-        const fieldSpec = spec.requiredFields.find(f => f.internalName === fieldName);
-        const severity = fieldSpec?.isSilent ? 'silent' : undefined;
-        emitDriftRecord(spec.resolvedTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, severity);
-      }
-    });
+    // Keep drift evidence in this report without firing persistence observers.
+    const resolution = resolveInternalNamesDetailed(available, candidates);
     fieldStatus = resolution.fieldStatus;
     const { missing } = resolution;
 
@@ -402,233 +397,15 @@ async function runListChecks(
     );
   }
 
-  // Permissions: Create/Update/Delete (safe test item)
-  if (spec.isReadOnly) {
-    results.push(
-      pass({
-        key: `permissions.write.skipped.${spec.key}`,
-        label: `権限：Write（${spec.displayName}）`,
-        category: "permissions",
-        summary: "このリストは、アプリ側設定で「読み取り専用」として定義されています（書き込みテストをスキップ）。",
-      })
-    );
-    return;
-  }
-
-  const stamp = new Date().toISOString();
-  
-  const mapToPhysical = (obj: Record<string, unknown>) => {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj)) {
-      const resolved = fieldStatus[k]?.resolvedName || k;
-      out[resolved] = v;
-    }
-    return out;
-  };
-
-  const createBody = mapToPhysical(spec.createItem);
-  const updateBody = mapToPhysical(spec.updateItem);
-  const physicalTitle = fieldStatus["Title"]?.resolvedName || "Title";
-  
-  if (typeof createBody[physicalTitle] === "string") {
-    createBody[physicalTitle] = `[healthcheck] ${createBody[physicalTitle]} ${stamp}`;
-  } else {
-    createBody[physicalTitle] = `[healthcheck] ${stamp}`;
-  }
-
-  const created = isSkipSharePoint
-    ? { ok: true as const, v: { id: 1 }, status: 200, attempts: 1 }
-    : await safeWithRetry(
-        () => sp.createItem(spec.resolvedTitle, createBody),
-        {
-          maxRetries: 2,
-          baseDelayMs: 260,
-          jitterMs: 140,
-        },
-        isTransientPermissionStatus,
-      );
-  if (!created.ok) {
-    if (isTransientPermissionStatus(created.status) || created.isThrottled) {
-      const retryCount = Math.max(0, created.attempts - 1);
-      results.push(
-        warn({
-          key: `permissions.create.${spec.key}`,
-          label: `権限：Create（${spec.displayName}）`,
-          category: "permissions",
-          summary: created.isThrottled
-            ? `一時的エラー：SharePoint 側の一時的なスロットリングを検知しました。`
-            : `作成（Create）確認中に一時的エラー（${summarizeHttpStatus(created.status)}）を検出しました。`,
-          detail: created.isThrottled
-            ? `SharePoint throttling detected. Retry after the tenant recovers. (Error: ${created.err})`
-            : retryCount > 0
-              ? `${created.err} (自動リトライ ${retryCount} 回後も解消せず)`
-              : created.err,
-          evidence: { listTitle: spec.resolvedTitle, payload: createBody },
-          nextActions: [
-            {
-              kind: "doc",
-              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
-              value: "Health 診断を 5〜10 分後に再実行してください。",
-            },
-          ],
-        })
-      );
-    } else {
-      results.push(
-        fail({
-          key: `permissions.create.${spec.key}`,
-          label: `権限：Create（${spec.displayName}）`,
-          category: "permissions",
-          summary: "作成（Create）権限がありません。【要管理者対応】",
-          detail: created.err,
-          evidence: { listTitle: spec.resolvedTitle, payload: createBody },
-          nextActions: [
-            {
-              kind: "copy",
-              label: "【カテゴリ: Create】管理者に作成権限を付与するよう依頼する",
-              value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
-            },
-          ],
-        })
-      );
-    }
-    return;
-  } else {
-    results.push(
-      pass({
-        key: `permissions.create.${spec.key}`,
-        label: `権限：Create（${spec.displayName}）`,
-        category: "permissions",
-        summary: "作成（Create）を確認しました。",
-        evidence: { id: created.v.id },
-      })
-    );
-  }
-
-  await new Promise((r) => setTimeout(r, 500));
-
-  const updated = isSkipSharePoint
-    ? { ok: true as const, status: 200, attempts: 1 }
-    : await safeWithRetry(
-        () => sp.updateItem(spec.resolvedTitle, created.v!.id, updateBody),
-        {
-          maxRetries: 2,
-          baseDelayMs: 220,
-          jitterMs: 120,
-        }
-      );
-  if (!updated.ok) {
-    if (isTransientPermissionStatus(updated.status) || updated.isThrottled) {
-      const retryCount = Math.max(0, updated.attempts - 1);
-      results.push(
-        warn({
-          key: `permissions.update.${spec.key}`,
-          label: `権限：Update（${spec.displayName}）`,
-          category: "permissions",
-          summary: updated.isThrottled
-            ? `一時的エラー：SharePoint 側の一時的なスロットリングを検知しました。`
-            : `更新（Update）確認中に一時的エラー（${summarizeHttpStatus(updated.status)}）を検出しました。`,
-          detail: updated.isThrottled
-            ? `SharePoint throttling detected. Retry after the tenant recovers. (Error: ${updated.err})`
-            : retryCount > 0
-              ? `${updated.err} (自動リトライ ${retryCount} 回後も解消せず)`
-              : updated.err,
-          evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
-          nextActions: [
-            {
-              kind: "doc",
-              label: "時間をおいて再実行する（429/5xx またはスロットリングは一時エラー）",
-              value: "Health 診断を 5〜10 分後に再実行してください。",
-            },
-          ],
-        })
-      );
-    } else {
-      results.push(
-        fail({
-          key: `permissions.update.${spec.key}`,
-          label: `権限：Update（${spec.displayName}）`,
-          category: "permissions",
-          summary: "更新（Update）権限がありません。【要管理者対応】",
-          detail: updated.err,
-          evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
-          nextActions: [
-            {
-              kind: "copy",
-              label: "【カテゴリ: Update】管理者に更新権限を付与するよう依頼する",
-              value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
-            },
-          ],
-        })
-      );
-    }
-  } else {
-    results.push(
-      pass({
-        key: `permissions.update.${spec.key}`,
-        label: `権限：Update（${spec.displayName}）`,
-        category: "permissions",
-        summary: "更新（Update）を確認しました。",
-        evidence: { id: created.v.id },
-      })
-    );
-  }
-
-  const deleted = isSkipSharePoint
-    ? { ok: true as const, status: 200, attempts: 1 }
-    : await safeWithRetry(
-        () => sp.deleteItem(spec.resolvedTitle, created.v!.id),
-        {
-          maxRetries: 2,
-          baseDelayMs: 260,
-          jitterMs: 140,
-        },
-        isTransientPermissionStatus,
-      );
-  if (!deleted.ok) {
-    if (spec.isDeleteOptional) {
-      results.push(
-        pass({
-          key: `permissions.delete.${spec.key}`,
-          label: `権限：Delete（${spec.displayName}）`,
-          category: "permissions",
-          summary: "削除（Delete）権限は制限されています（安全設計上の期待値です）。",
-          evidence: { id: created.v.id, listTitle: spec.resolvedTitle, status: deleted.status },
-        })
-      );
-    } else {
-      results.push(
-        warn({
-          key: `permissions.delete.${spec.key}`,
-          label: `権限：Delete（${spec.displayName}）`,
-          category: "permissions",
-          summary:
-            "削除（Delete）に失敗しました（運用上これが許容される場合もあります）。",
-          detail:
-            isTransientPermissionStatus(deleted.status) && deleted.attempts > 1
-              ? `${deleted.err} (自動リトライ ${deleted.attempts - 1} 回後も解消せず)`
-              : deleted.err,
-          evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
-          nextActions: [
-            {
-              kind: "copy",
-              label: "管理者に確認: 削除権限の可否",
-              value:
-                "Delete 権限が運用方針で不要な場合もあります。管理者に確認ください。",
-            },
-          ],
-        })
-      );
-    }
-  } else {
-    results.push(
-      pass({
-        key: `permissions.delete.${spec.key}`,
-        label: `権限：Delete（${spec.displayName}）`,
-        category: "permissions",
-        summary: "削除（Delete）を確認しました。",
-        evidence: { id: created.v.id },
-      })
-    );
-  }
+  // Diagnostics never authorize mutations, regardless of mode or autonomy level.
+  results.push(
+    warn({
+      key: `permissions.write.skipped.${spec.key}`,
+      label: `権限：Write（${spec.displayName}）`,
+      category: "permissions",
+      summary: "読み取り専用診断のため、作成・更新・削除は実行していません（書込み権限は未検証）。",
+      detail: "WRITE_DIAGNOSTICS_DISABLED",
+      evidence: { mode: "READ_ONLY", writeExecuted: false, listTitle: spec.resolvedTitle },
+    })
+  );
 }
