@@ -2,7 +2,7 @@
  * toAdminSummary — Teams / チャット共有向けフォーマット（福祉事業所向け・3段テンプレ）
  * Extracted from HealthDiagnosisPage.tsx for testability.
  */
-import type { HealthReport } from './types';
+import type { HealthCheckResult, HealthReport } from './types';
 
 export function toAdminSummary(report: HealthReport): string {
   const categoryOrder: Record<string, number> = {
@@ -18,10 +18,26 @@ export function toAdminSummary(report: HealthReport): string {
   const overall = String(report.overall || "unknown").toLowerCase();
   const generatedAt = report.generatedAt || "";
 
+  const isExpectedSkippedWrite = (result: HealthCheckResult): boolean =>
+    result.status === "warn" &&
+    result.key.startsWith("permissions.write.skipped.") &&
+    result.detail === "WRITE_DIAGNOSTICS_DISABLED" &&
+    result.evidence?.mode === "READ_ONLY" &&
+    result.evidence?.writeExecuted === false;
+  const skippedWrites = (report.results || []).filter(isExpectedSkippedWrite);
+  const unverifiedWrites = skippedWrites.length
+    ? [
+        "【未実施（READ ONLY）】",
+        `- WARN: ${skippedWrites.length}リストの書込み診断を省略（書込み権限は未検証）`,
+      ]
+    : [];
+
   const issues = (report.results || [])
-    .filter((r) => r.status !== "pass")
+    .filter((r) => r.status !== "pass" && !isExpectedSkippedWrite(r))
     .sort(
-      (a, b) => (categoryOrder[a.category] ?? 99) - (categoryOrder[b.category] ?? 99)
+      (a, b) =>
+        Number(b.status === "fail") - Number(a.status === "fail") ||
+        (categoryOrder[a.category] ?? 99) - (categoryOrder[b.category] ?? 99)
     )
     .slice(0, 5)
     .map((r) => {
@@ -65,7 +81,10 @@ export function toAdminSummary(report: HealthReport): string {
       `生成: ${generatedAt}`,
       "",
       "【要対応（上位）】",
-      ...(issues.length ? issues : ["- WARN が検出されています"]),
+      ...(issues.length
+        ? issues
+        : [skippedWrites.length ? "- 対応が必要な診断結果はありません（書込み権限は未検証）。" : "- WARN が検出されています"]),
+      ...unverifiedWrites,
       "",
       "【管理者へ】",
       "- リスト/列/権限を確認し、必要に応じて修正",
@@ -89,6 +108,7 @@ export function toAdminSummary(report: HealthReport): string {
     "",
     "【要対応（上位）】",
     ...(issues.length ? issues : ["- FAIL が検出されています"]),
+    ...unverifiedWrites,
     "",
     "【管理者対応手順】",
     "- SharePoint でリストと必須列の存在を確認",

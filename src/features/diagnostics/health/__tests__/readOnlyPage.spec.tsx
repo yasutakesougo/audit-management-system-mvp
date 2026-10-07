@@ -86,4 +86,20 @@ describe('read-only diagnostic page', () => {
     await renderPage();
     expect(screen.queryByRole('button', { name: /今すぐ修復/ })).not.toBeInTheDocument();
   });
+
+  it('does not instruct administrators to use the disabled save button for a WARN report', async () => {
+    const warningReport: HealthReport = {
+      ...report, overall: 'warn', counts: { pass: 0, warn: 1, fail: 0 },
+      results: [{ key: 'permissions.write.skipped.test', label: 'Write skipped', category: 'permissions',
+        status: 'warn', summary: 'Write permissions are unverified', detail: 'WRITE_DIAGNOSTICS_DISABLED',
+        evidence: { mode: 'READ_ONLY', writeExecuted: false }, nextActions: [] }],
+    };
+    await act(async () => {
+      render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><HealthDiagnosisPage ctx={ctx} report={warningReport} loading={false} error={null} run={async () => {}} /></MemoryRouter>);
+    });
+    expect(screen.getByText('診断結果サマリー', { exact: false })).toBeVisible();
+    expect(screen.getByTestId('diagnostics-save')).toBeDisabled();
+    expect(screen.queryByText(/ボタン「SharePoint に保存」/)).not.toBeInTheDocument();
+    expect(screen.getByText(/診断結果は保存せず/)).toBeVisible();
+  });
 });

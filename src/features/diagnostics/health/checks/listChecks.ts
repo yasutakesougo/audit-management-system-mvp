@@ -213,6 +213,33 @@ async function runListChecks(
       }
     );
 
+    const silentDrifted = spec.requiredFields
+      .filter((f) => {
+        const status = fieldStatus[f.internalName];
+        return f.isSilent && status?.isDrifted && status.resolvedName !== f.internalName;
+      })
+      .map((f) => ({
+        expected: f.internalName,
+        actual: fieldStatus[f.internalName].resolvedName,
+        driftType: fieldStatus[f.internalName].driftType,
+      }));
+    if (silentDrifted.length > 0) {
+      results.push(
+        pass({
+          key: `schema.fields.${spec.key}.silent`,
+          label: `スキーマ（抑制対象の乖離）：${spec.displayName}`,
+          category: "schema",
+          summary: `${silentDrifted.length}個の抑制対象列の乖離を検出しました（読み取り専用・非永続化）。`,
+          evidence: {
+            listTitle: spec.resolvedTitle,
+            silentDrifted,
+            mode: "READ_ONLY",
+            persisted: false,
+          },
+        })
+      );
+    }
+
     // 4. Report Results
     if (fatalMissingEssential.length > 0) {
       results.push(
@@ -332,7 +359,9 @@ async function runListChecks(
           key: `schema.fields.${spec.key}`,
           label: `スキーマ：${spec.displayName}`,
           category: "schema",
-          summary: "すべての期待列が物理名と一致しています。",
+          summary: silentDrifted.length > 0
+            ? "警告対象の期待列は解決済みです。抑制対象の乖離は証跡に記録しています。"
+            : "すべての期待列が物理名と一致しています。",
           evidence: { listTitle: spec.resolvedTitle },
         })
       );

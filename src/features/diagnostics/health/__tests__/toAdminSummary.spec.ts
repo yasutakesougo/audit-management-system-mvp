@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toAdminSummary } from '../toAdminSummary';
-import type { HealthReport } from '../types';
+import type { HealthCheckResult, HealthReport } from '../types';
 
 // ── ヘルパー ───────────────────────────────────────────────────
 
@@ -18,6 +18,52 @@ const mkReport = (overrides: Partial<HealthReport> = {}): HealthReport => ({
     permissions: { overall: 'pass', counts: { pass: 0, warn: 0, fail: 0 } },
   },
   ...overrides,
+});
+
+const skippedWrite = (key: string): HealthCheckResult => ({
+  key: `permissions.write.skipped.${key}`, label: `Write ${key}`, category: 'permissions',
+  status: 'warn', summary: `Expected write skip ${key}`, detail: 'WRITE_DIAGNOSTICS_DISABLED',
+  evidence: { mode: 'READ_ONLY', writeExecuted: false }, nextActions: [],
+});
+
+describe('P2-C02 expected skipped-write warnings', () => {
+  it('retains a later Read FAIL with six lists instead of filling the five-issue budget with skips', () => {
+    const skips = Array.from({ length: 6 }, (_, i) => skippedWrite(`list${i}`));
+    const readFailure: HealthCheckResult = { key: 'permissions.read.list6', label: 'Read list6',
+      category: 'permissions', status: 'fail', summary: 'Read denied on last list', detail: 'Forbidden', nextActions: [] };
+    const summary = toAdminSummary(mkReport({ overall: 'fail', counts: { pass: 0, warn: 6, fail: 1 }, results: [...skips, readFailure] }));
+    expect(summary).toContain('FAIL [permissions] Read denied on last list');
+    expect(summary.split('\n').find(line => line.startsWith('- FAIL'))).toContain('Read denied on last list');
+    expect(summary).not.toContain('Expected write skip list0');
+    expect(summary).toContain('書込み権限は未検証');
+    expect(summary).toContain('WARN:6');
+    expect(skips.every(result => result.status === 'warn')).toBe(true);
+  });
+
+  it('keeps expected skips visible as unverified WARN without presenting them as actionable permission failures', () => {
+    const skip = skippedWrite('only');
+    const summary = toAdminSummary(mkReport({ overall: 'warn', counts: { pass: 0, warn: 1, fail: 0 }, results: [skip] }));
+    expect(summary).toContain('書込み権限は未検証');
+    expect(summary).toContain('判定: 🟡 WARN');
+    expect(summary).not.toContain('判定: ✅ PASS');
+    expect(summary).not.toContain('Expected write skip only');
+    expect(skip.status).toBe('warn');
+  });
+
+  it('does not suppress a real failure whose key has the skipped-write prefix', () => {
+    const failure = { ...skippedWrite('broken'), status: 'fail' as const, summary: 'Unexpected write-boundary failure' };
+    const summary = toAdminSummary(mkReport({ overall: 'fail', counts: { pass: 0, warn: 0, fail: 1 }, results: [failure] }));
+    expect(summary).toContain('FAIL [permissions] Unexpected write-boundary failure');
+  });
+
+  it('places a real FAIL before ordinary warnings from earlier categories', () => {
+    const warning: HealthCheckResult = { key: 'auth.warning', label: 'Auth warning', category: 'auth',
+      status: 'warn', summary: 'Temporary auth warning', nextActions: [] };
+    const failure: HealthCheckResult = { key: 'permissions.read.last', label: 'Read failure', category: 'permissions',
+      status: 'fail', summary: 'Read denied', nextActions: [] };
+    const summary = toAdminSummary(mkReport({ overall: 'fail', counts: { pass: 0, warn: 1, fail: 1 }, results: [warning, failure] }));
+    expect(summary.split('\n').find(line => /^- (FAIL|WARN)/.test(line))).toBe('- FAIL [permissions] Read denied');
+  });
 });
 
 // ── 全体構造 ───────────────────────────────────────────────────

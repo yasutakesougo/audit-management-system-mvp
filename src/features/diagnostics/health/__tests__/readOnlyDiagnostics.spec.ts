@@ -87,6 +87,48 @@ describe('DIAGNOSTIC-SAFETY-V1', () => {
     } finally { unsubscribe(); }
   });
 
+  it.each([
+    { label: 'case', actual: 'fullname', candidates: ['FullName'], driftType: 'case_mismatch' },
+    { label: 'suffix', actual: 'FullName0', candidates: ['FullName'], driftType: 'suffix_mismatch' },
+    { label: 'fallback', actual: 'LegacyName', candidates: ['FullName', 'LegacyName'], driftType: 'fallback' },
+  ])('retains $label silent drift as non-persisted report evidence without a schema WARN', async (example) => {
+    const sp = adapter();
+    sp.getFields.mockResolvedValue([{ internalName: example.actual, staticName: example.actual }]);
+    const events: unknown[] = [];
+    const unsubscribe = driftEventBus.subscribe(event => events.push(event));
+    try {
+      const results = await runHealthChecks({ ...context, listSpecs: () => [{ ...spec,
+        requiredFields: [{ internalName: 'FullName', isSilent: true, candidates: example.candidates }],
+      }] }, sp);
+      const schema = results.filter(result => result.category === 'schema');
+      expect(schema.every(result => result.status === 'pass')).toBe(true);
+      expect(schema.flatMap(result => (result.evidence?.silentDrifted ?? []) as unknown[])).toEqual([
+        { expected: 'FullName', actual: example.actual, driftType: example.driftType },
+      ]);
+      expect(schema.some(result => result.summary === 'すべての期待列が物理名と一致しています。')).toBe(false);
+      expect(events).toEqual([]);
+      expectNoWrites(sp);
+    } finally { unsubscribe(); }
+  });
+
+  it('retains silent evidence even when the same list has a missing essential field', async () => {
+    const sp = adapter();
+    sp.getFields.mockResolvedValue([{ internalName: 'fullname', staticName: 'fullname' }]);
+    const events: unknown[] = [];
+    const unsubscribe = driftEventBus.subscribe(event => events.push(event));
+    try {
+      const results = await runHealthChecks({ ...context, listSpecs: () => [{ ...spec, requiredFields: [
+        { internalName: 'FullName', isSilent: true }, { internalName: 'RequiredField', isEssential: true },
+      ] }] }, sp);
+      expect(results.find(result => result.key === 'schema.fields.support_record_daily')?.status).toBe('fail');
+      expect(results.flatMap(result => (result.evidence?.silentDrifted ?? []) as unknown[])).toEqual([
+        { expected: 'FullName', actual: 'fullname', driftType: 'case_mismatch' },
+      ]);
+      expect(events).toEqual([]);
+      expectNoWrites(sp);
+    } finally { unsubscribe(); }
+  });
+
   it('page-load hook and manual rerun are read-only', async () => {
     const sp = adapter();
     auth.adapter = sp;
