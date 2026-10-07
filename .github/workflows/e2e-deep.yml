@@ -44,6 +44,12 @@ env:
   VITE_DEV_HARNESS: '1'
   VITE_SCHEDULES_TZ: 'Asia/Tokyo'
   VITE_FEATURE_SCHEDULES: '1'
+  # Deterministic E2E SharePoint contract. The sp-stub lane intercepts requests
+  # in Playwright, while build-time modules still require a valid config.
+  VITE_SP_RESOURCE: 'https://contoso.sharepoint.com'
+  VITE_SP_SITE_RELATIVE: '/sites/Audit'
+  VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read'
+  VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1'
   VITE_MSAL_CLIENT_ID: 'dummy-client-id'
   VITE_MSAL_TENANT_ID: 'dummy-tenant-id'
 
@@ -184,6 +190,10 @@ jobs:
           VITE_SCHEDULES_TZ: ${{ matrix.timezone }}
           VITE_FEATURE_SCHEDULES: '1'
           VITE_FEATURE_SCHEDULES_WEEK_V2: '1'
+          VITE_SP_RESOURCE: 'https://contoso.sharepoint.com'
+          VITE_SP_SITE_RELATIVE: '/sites/Audit'
+          VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read'
+          VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1'
         run: |
           npm run build
           node --input-type=module <<'NODE'
@@ -201,8 +211,10 @@ jobs:
             VITE_FEATURE_SCHEDULES: process.env.VITE_FEATURE_SCHEDULES,
             VITE_FEATURE_SCHEDULES_WEEK_V2: process.env.VITE_FEATURE_SCHEDULES_WEEK_V2,
             VITE_SCHEDULES_TZ: process.env.VITE_SCHEDULES_TZ,
-            VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
-            VITE_SP_SITE_RELATIVE: '/sites/Audit',
+            VITE_SP_RESOURCE: process.env.VITE_SP_RESOURCE,
+            VITE_SP_SITE_RELATIVE: process.env.VITE_SP_SITE_RELATIVE,
+            VITE_SP_SCOPE_DEFAULT: process.env.VITE_SP_SCOPE_DEFAULT,
+            VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: process.env.VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX,
             VITE_MSAL_CLIENT_ID: '00000000-0000-0000-0000-000000000000',
             VITE_MSAL_TENANT_ID: '00000000-0000-0000-0000-000000000000',
           };
@@ -219,6 +231,10 @@ jobs:
           VITE_DEMO_MODE: ${{ matrix.demo_mode }}
           VITE_FEATURE_USERS_SP: ${{ matrix.feature_users_sp }}
           VITE_SCHEDULES_TZ: ${{ matrix.timezone }}
+          VITE_SP_RESOURCE: 'https://contoso.sharepoint.com'
+          VITE_SP_SITE_RELATIVE: '/sites/Audit'
+          VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read'
+          VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1'
         run: |
           echo "Starting preview for lane=${{ matrix.lane }} preview_env=${{ matrix.preview_env }} runtime_mode=${{ matrix.runtime_mode }} tz=${{ matrix.timezone }}"
           nohup npm run preview -- --host 127.0.0.1 --port 5173 --strictPort > /tmp/e2e-preview.log 2>&1 &
@@ -236,6 +252,9 @@ jobs:
           EXPECT_DEMO_MODE: ${{ matrix.demo_mode }}
           EXPECT_DATA_PROVIDER: ${{ matrix.data_provider }}
           EXPECT_FEATURE_USERS_SP: ${{ matrix.feature_users_sp }}
+          EXPECT_SP_RESOURCE: 'https://contoso.sharepoint.com'
+          EXPECT_SP_SITE_RELATIVE: '/sites/Audit'
+          EXPECT_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read'
         run: |
           runtime_file="$(mktemp)"
           curl -fsS http://127.0.0.1:5173/env.runtime.json > "$runtime_file"
@@ -248,6 +267,9 @@ jobs:
             VITE_DEMO_MODE: process.env.EXPECT_DEMO_MODE,
             VITE_DATA_PROVIDER: process.env.EXPECT_DATA_PROVIDER,
             VITE_FEATURE_USERS_SP: process.env.EXPECT_FEATURE_USERS_SP,
+            VITE_SP_RESOURCE: process.env.EXPECT_SP_RESOURCE,
+            VITE_SP_SITE_RELATIVE: process.env.EXPECT_SP_SITE_RELATIVE,
+            VITE_SP_SCOPE_DEFAULT: process.env.EXPECT_SP_SCOPE_DEFAULT,
           };
           const mismatches = Object.entries(expected).filter(
             ([key, value]) => String(runtime[key] ?? '') !== String(value),
@@ -305,6 +327,10 @@ jobs:
           VITE_SCHEDULES_TZ: ${{ matrix.timezone }}
           VITE_FEATURE_SCHEDULES: '1'
           VITE_FEATURE_SCHEDULES_WEEK_V2: '1'
+          VITE_SP_RESOURCE: 'https://contoso.sharepoint.com'
+          VITE_SP_SITE_RELATIVE: '/sites/Audit'
+          VITE_SP_SCOPE_DEFAULT: 'https://contoso.sharepoint.com/AllSites.Read'
+          VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: '1'
         run: |
           mapfile -t TEST_PATTERNS < lane-specs.txt
           if [ -n "${{ github.event.inputs.test_pattern }}" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
