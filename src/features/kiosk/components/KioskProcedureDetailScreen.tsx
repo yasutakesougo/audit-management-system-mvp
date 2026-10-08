@@ -173,8 +173,21 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [textMemo, setTextMemo] = useState<string>('');
   const [showObservations] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const formIdentityKey = `${selectedDateIso}\u0000${resolvedUserId}\u0000${scheduleItemId}\u0000${String(slotKey ?? '')}`;
+  const formIdentityKeyRef = React.useRef(formIdentityKey);
 
-  // 以前の保存記録からステートを復元する（1回限り）
+  // slot/date/user が変わったら観察入力をリセット（同一 route element で slot だけ変わるケース）
+  React.useEffect(() => {
+    if (formIdentityKeyRef.current === formIdentityKey) return;
+    formIdentityKeyRef.current = formIdentityKey;
+    setSelectedMood('');
+    setSelectedAction('');
+    setSelectedResult('');
+    setTextMemo('');
+    setIsInitialized(false);
+  }, [formIdentityKey]);
+
+  // 以前の保存記録からステートを復元する（identity ごとに1回限り）
   React.useEffect(() => {
     const isRecordLoading = isLoading || isUserLoading || !resolvedUserId;
     if (isRecordLoading || isInitialized) return;

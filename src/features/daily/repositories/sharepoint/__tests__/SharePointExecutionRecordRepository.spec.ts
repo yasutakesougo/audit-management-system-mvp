@@ -564,6 +564,87 @@ describe('SharePointExecutionRecordRepository', () => {
     expect(childUrls[0]).not.toContain('Title eq');
   });
 
+  it('matches canonical procedure-N lookups to legacy raw schedule identities', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 321, Title: '2026-05-21-U001' }] }) };
+      }
+      if (decoded.includes('DailyRecordRows') && decoded.includes('Parent_x0020_ID eq 321')) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [{
+              Id: 77,
+              Title: '2026-05-21-U001-1',
+              User_x0020_ID: 'U001',
+              RowNo: '1',
+              Status: 'completed',
+              Memo: 'legacy procedure row',
+              Payload: 'legacy procedure row',
+              Recorded_x0020_At: '2026-05-21T09:00:00Z',
+            }],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    const record = await repo.getRecord('2026-05-21', 'U001', 'procedure-1');
+    expect(record).toEqual(expect.objectContaining({
+      date: '2026-05-21',
+      userId: 'U001',
+      scheduleItemId: '1',
+      memo: 'legacy procedure row',
+    }));
+  });
+
+  it('deletes through parent-first lookup instead of Title eq filters', async () => {
+    mockSpFetch.mockReset();
+    mockSpFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      const decoded = decodeURIComponent(url);
+      if (decoded.includes('SupportRecord_Daily') && decoded.includes('$filter=')) {
+        return { ok: true, json: async () => ({ value: [{ Id: 321, Title: '2026-05-21-U001' }] }) };
+      }
+      if (decoded.includes('DailyRecordRows') && decoded.includes('Parent_x0020_ID eq 321')) {
+        return {
+          ok: true,
+          json: async () => ({
+            value: [{
+              Id: 77,
+              Title: '2026-05-21-U001-1',
+              User_x0020_ID: 'U001',
+              RowNo: '1',
+              Status: 'completed',
+              Memo: 'to delete',
+              Payload: 'to delete',
+              Recorded_x0020_At: '2026-05-21T09:00:00Z',
+            }],
+          }),
+        };
+      }
+      if (decoded.includes('/items(77)') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({}) };
+      }
+      return { ok: true, json: async () => ({ value: [] }) };
+    });
+
+    await repo.deleteRecord('2026-05-21', 'U001', 'procedure-1');
+
+    const decodedCalls = mockSpFetch.mock.calls.map(([requestUrl, init]) => ({
+      url: decodeURIComponent(String(requestUrl)),
+      method: init?.method,
+      headers: init?.headers,
+    }));
+    expect(decodedCalls.some((call) => call.url.includes('Title eq'))).toBe(false);
+    expect(decodedCalls.some((call) => (
+      call.url.includes('/items(77)') &&
+      call.method === 'POST' &&
+      Boolean(call.headers && (call.headers as Record<string, string>)['X-HTTP-Method'] === 'DELETE')
+    ))).toBe(true);
+  });
+
   it('keeps a no-parent read empty and never creates a parent', async () => {
     mockSpFetch.mockReset();
     mockSpFetch.mockImplementation(async (url: string) => {

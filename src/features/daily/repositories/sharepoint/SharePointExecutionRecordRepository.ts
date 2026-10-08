@@ -401,13 +401,23 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     normalizedScheduleItemId: string,
   ): Promise<SharePointRecordLookup | undefined> {
     const parents = await this.resolveParentCandidates(normalizedDate, normalizedUserId, rf);
+    const lookupProcedureRow = extractProcedureRowKey(normalizedScheduleItemId);
     for (const parent of parents) {
       const rows = await this.getRowsByParentId(rf, parent.id);
       for (const item of rows) {
         const mapped = this.mapToDomain(item, rf);
         const itemRowKey = readSharePointText(item[rf.rowKey]);
         const itemScheduleItemId = normalizeScheduleItemId(mapped.scheduleItemId);
-        if (itemRowKey !== rowKey && itemScheduleItemId !== normalizedScheduleItemId) continue;
+        const itemProcedureRow =
+          extractProcedureRowKey(itemScheduleItemId) || extractProcedureRowKey(itemRowKey);
+        const exactMatch =
+          itemRowKey === rowKey || itemScheduleItemId === normalizedScheduleItemId;
+        // Canonical kiosk keys are procedure-N; legacy rows may store raw N / row-N.
+        const procedureRowMatch =
+          Boolean(lookupProcedureRow) &&
+          Boolean(itemProcedureRow) &&
+          lookupProcedureRow === itemProcedureRow;
+        if (!exactMatch && !procedureRowMatch) continue;
 
         return {
           internalId: item.Id as number,
@@ -415,7 +425,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
             ...mapped,
             date: normalizedDate,
             userId: normalizedUserId,
-            scheduleItemId: normalizedScheduleItemId,
+            // Keep the persisted schedule identity when only the procedure-row
+            // matched, so update/delete target the concrete legacy key.
+            scheduleItemId: exactMatch ? normalizedScheduleItemId : itemScheduleItemId || normalizedScheduleItemId,
           },
         };
       }
@@ -612,17 +624,18 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rf = await this.getResolvedFields();
     const rowKey = `${normalizedDate}-${normalizedUserId}-${normalizedScheduleItemId}`;
 
-    const filter = `${rf.rowKey} eq '${rowKey}'`;
-    const searchUrl = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
-    const searchResp = await this.spFetch(searchUrl);
-    if (!searchResp.ok) {
-      throw new Error(`[ExecutionRepo] delete lookup failed: ${searchResp.status} ${searchResp.statusText}`);
-    }
-    const searchData: SharePointResponse<JsonRecord> = await searchResp.json();
+    // Same parent-first path as get/upsert so legacy Title / procedure-N aliases
+    // remain deletable after LVT recovery (Title filter is no longer reliable).
+    const existingLookup = await this.getRecordLookupByRowKey(
+      rf,
+      rowKey,
+      normalizedDate,
+      normalizedUserId,
+      normalizedScheduleItemId,
+    );
 
-    if (searchData.value && searchData.value.length > 0) {
-      const internalId = searchData.value[0].Id;
-      const deleteUrl = `${this.resolvedChildPath}/items(${internalId})`;
+    if (existingLookup) {
+      const deleteUrl = `${this.resolvedChildPath}/items(${existingLookup.internalId})`;
       const deleteResp = await this.spFetch(deleteUrl, {
         method: 'POST',
         headers: {
@@ -635,9 +648,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       }
     }
 
-    // Sync to local store
+    // Sync to local store using both requested and resolved identities.
     if (this.store && this.store.deleteRecord) {
       this.store.deleteRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
+      const resolvedScheduleItemId = normalizeScheduleItemId(existingLookup?.record.scheduleItemId);
+      if (resolvedScheduleItemId && resolvedScheduleItemId !== normalizedScheduleItemId) {
+        this.store.deleteRecord(normalizedDate, normalizedUserId, resolvedScheduleItemId);
+      }
     }
   }
 

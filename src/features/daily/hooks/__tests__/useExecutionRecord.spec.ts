@@ -288,4 +288,53 @@ describe('useExecutionRecord', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mockGetRecord).not.toHaveBeenCalled();
   });
+
+  it('continues fallback candidates when an earlier getRecord rejects', async () => {
+    mockGetRecord.mockImplementation(async (_date, userId, scheduleItemId) => {
+      if (userId === 'canonical-user' && scheduleItemId === 'canonical-slot') {
+        throw new Error('List View Threshold');
+      }
+      if (userId === 'legacy-user' && scheduleItemId === 'legacy-slot') {
+        return legacyRecord;
+      }
+      return undefined;
+    });
+
+    const { result } = renderHook(() =>
+      useExecutionRecord(
+        '2026-05-07',
+        'canonical-user',
+        'canonical-slot',
+        fallbackScheduleItemIds,
+        fallbackUserIds,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.record).toEqual(legacyRecord);
+  });
+
+  it('keeps fail-closed error when every candidate getRecord rejects', async () => {
+    mockGetRecord.mockRejectedValue(new Error('List View Threshold'));
+
+    const { result } = renderHook(() =>
+      useExecutionRecord(
+        '2026-05-07',
+        'canonical-user',
+        'canonical-slot',
+        fallbackScheduleItemIds,
+        fallbackUserIds,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error).toEqual(expect.objectContaining({ message: 'List View Threshold' }));
+    expect(mockGetRecord.mock.calls.length).toBeGreaterThan(1);
+  });
 });

@@ -61,29 +61,34 @@ export function useExecutionRecord(
       return;
     }
 
-    try {
-      let resolved: ExecutionRecord | undefined;
-      for (const candidateUserId of userIds) {
-        for (const candidateScheduleItemId of scheduleItemIds) {
+    let resolved: ExecutionRecord | undefined;
+    let lastError: Error | null = null;
+
+    // Candidate failures must not abort the whole lookup. Kiosk detail builds a
+    // fan-out of userId/scheduleItemId aliases; one transient SharePoint miss
+    // should not freeze the observation form behind "保存状態未確認".
+    for (const candidateUserId of userIds) {
+      for (const candidateScheduleItemId of scheduleItemIds) {
+        try {
           const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
           if (seq !== requestSeqRef.current) return;
           if (candidateRecord) {
             resolved = candidateRecord;
+            lastError = null;
             break;
           }
+        } catch (err) {
+          if (seq !== requestSeqRef.current) return;
+          lastError = err instanceof Error ? err : new Error('Failed to fetch execution record');
         }
-        if (resolved) break;
       }
+      if (resolved) break;
+    }
 
-      if (seq === requestSeqRef.current) {
-        setRecord(resolved);
-        setIsLoading(false);
-      }
-    } catch (err) {
-      if (seq === requestSeqRef.current) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch execution record'));
-        setIsLoading(false);
-      }
+    if (seq === requestSeqRef.current) {
+      setRecord(resolved);
+      setError(resolved ? null : lastError);
+      setIsLoading(false);
     }
   }, [date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
 
