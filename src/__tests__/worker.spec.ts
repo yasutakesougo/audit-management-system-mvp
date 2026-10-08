@@ -3,12 +3,13 @@ import worker from '../worker';
 
 describe('Cloudflare Worker - SharePoint Proxy', () => {
   const defaultEnv = {
-    ASSETS: { fetch: vi.fn() },
+    ASSETS: { fetch: vi.fn().mockResolvedValue(new Response(null, { status: 404 })) },
     VITE_SP_RESOURCE: 'https://example.sharepoint.com',
     VITE_SP_SITE_RELATIVE: '/sites/welfare',
   };
 
   beforeEach(() => {
+    defaultEnv.ASSETS.fetch.mockClear();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -21,6 +22,80 @@ describe('Cloudflare Worker - SharePoint Proxy', () => {
 
   const decodeJwtPayload = (token: string): Record<string, unknown> =>
     JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString('utf8')) as Record<string, unknown>;
+
+  describe('read-only diagnostic proxy', () => {
+    const target = 'https://app.example/api/sp-proxy-readonly?url=https%3A%2F%2Fexample.sharepoint.com%2Fsites%2Fwelfare%2F_api%2Fweb%2Flists';
+    it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'MERGE'])('rejects %s before upstream fetch', async (method) => {
+      const upstream = vi.fn();
+      vi.stubGlobal('fetch', upstream);
+      const response = await worker.fetch(new Request(target, { method }), defaultEnv);
+      expect(response.status).toBe(405);
+      expect(upstream).not.toHaveBeenCalled();
+      expect(defaultEnv.ASSETS.fetch).not.toHaveBeenCalled();
+    });
+    it.each(['GET', 'HEAD', 'OPTIONS'])('rejects overrides even for %s', async (method) => {
+      const upstream = vi.fn();
+      vi.stubGlobal('fetch', upstream);
+      const response = await worker.fetch(new Request(target, { method, headers: { 'X-HTTP-Method': 'MERGE' } }), defaultEnv);
+      expect(response.status).toBe(400);
+      expect(upstream).not.toHaveBeenCalled();
+    });
+    it.each(['GET', 'DELETE', ''])('rejects any override value (%s)', async (override) => {
+      const upstream = vi.fn();
+      vi.stubGlobal('fetch', upstream);
+      const response = await worker.fetch(new Request(target, { headers: { 'X-HTTP-Method': override } }), defaultEnv);
+      expect(response.status).toBe(400);
+      expect(upstream).not.toHaveBeenCalled();
+    });
+    it('requires auth and rejects an unrelated origin without upstream access', async () => {
+      const upstream = vi.fn();
+      vi.stubGlobal('fetch', upstream);
+      const unauthenticated = await worker.fetch(new Request(target), defaultEnv);
+      expect(unauthenticated.status).toBe(401);
+      const unrelated = await worker.fetch(new Request(target.replace('example.sharepoint.com', 'other.sharepoint.com'), {
+        headers: { Authorization: 'Bearer synthetic-token' },
+      }), defaultEnv);
+      expect(unrelated.status).toBe(403);
+      expect(upstream).not.toHaveBeenCalled();
+    });
+    it.each(['GET', 'HEAD'])('forwards authenticated %s using existing target validation', async (method) => {
+      const upstream = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+      vi.stubGlobal('fetch', upstream);
+      const response = await worker.fetch(new Request(target, { method, headers: { Authorization: 'Bearer synthetic-token' } }), defaultEnv);
+      expect(response.status).toBe(200);
+      expect(upstream).toHaveBeenCalledTimes(1);
+      expect(upstream.mock.calls[0][0].method).toBe(method);
+      expect(upstream.mock.calls[0][0].headers.has('x-http-method')).toBe(false);
+    });
+    it('allows OPTIONS without upstream access', async () => {
+      const upstream = vi.fn();
+      vi.stubGlobal('fetch', upstream);
+      const response = await worker.fetch(new Request(target, { method: 'OPTIONS' }), defaultEnv);
+      expect(response.status).toBe(204);
+      expect(upstream).not.toHaveBeenCalled();
+    });
+    it('preserves a business write on the existing proxy', async () => {
+      // Node requires duplex for streams; Cloudflare accepts Request.body directly.
+      const NativeRequest = Request;
+      vi.stubGlobal('Request', class extends NativeRequest {
+        constructor(input: RequestInfo | URL, init?: RequestInit) {
+          super(input, { ...init, duplex: 'half' } as RequestInit);
+        }
+      });
+      const upstream = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+      vi.stubGlobal('fetch', upstream);
+      const response = await worker.fetch(new Request(target.replace('/api/sp-proxy-readonly?', '/api/sp-proxy?'), {
+        method: 'POST',
+        headers: { Authorization: 'Bearer synthetic-token', 'X-HTTP-Method': 'MERGE' },
+        body: '{}',
+      }), defaultEnv);
+      expect(response.status).toBe(204);
+      expect(upstream).toHaveBeenCalledTimes(1);
+      expect(upstream.mock.calls[0][0].method).toBe('POST');
+      expect(upstream.mock.calls[0][0].headers.get('x-http-method')).toBe('MERGE');
+      expect(await upstream.mock.calls[0][0].text()).toBe('{}');
+    });
+  });
 
   it('returns 204 for OPTIONS request without auth', async () => {
     const request = new Request('https://app.example/api/sp-proxy', {

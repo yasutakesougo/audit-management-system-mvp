@@ -5,7 +5,7 @@ import { SettingsProvider } from '@/features/settings';
 import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { useEffect } from 'react';
+import React, { useEffect, useSyncExternalStore } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
 import { routerFutureFlags } from './app/routerFuture';
@@ -19,6 +19,7 @@ import { DataLayerGuard } from './components/DataLayerGuard';
 import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 import { RemediationAuditMonitor } from '@/features/sp/health/remediation/RemediationAuditMonitor';
 import { DemoProcedureSeeder } from '@/features/demo/DemoProcedureSeeder';
+import { bindDiagnosticReadonlyRouter, getDiagnosticReadonlyBoundary, subscribeDiagnosticReadonlyBoundary } from '@/lib/diagnosticReadonly';
 
 import { isSharePointThrottleError } from '@/lib/sp';
 import Box from '@mui/material/Box';
@@ -58,6 +59,10 @@ export const ToastNotifierBridge: React.FC = () => {
   return null;
 };
 
+const subscribeToRoute = (notify: () => void) => router.subscribe(notify);
+const currentPathname = () => router.state.location.pathname;
+bindDiagnosticReadonlyRouter(router);
+
 function App() {
   useEffect(() => {
     hydrateStaffAttendanceFromStorage();
@@ -70,7 +75,10 @@ function App() {
     return () => clearInterval(saveInterval);
   }, []);
 
-  const isKiosk = typeof window !== 'undefined' && window.location.pathname.startsWith('/kiosk');
+  const pathname = useSyncExternalStore(subscribeToRoute, currentPathname, currentPathname);
+  const isKiosk = pathname.startsWith('/kiosk');
+  const isDiagnosticReadonly = useSyncExternalStore(subscribeDiagnosticReadonlyBoundary, getDiagnosticReadonlyBoundary, getDiagnosticReadonlyBoundary);
+  const routeView = <RouterProvider router={router} future={routerFutureFlags} />;
 
   return (
     <MsalProvider>
@@ -85,14 +93,13 @@ function App() {
               </Box>
               <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                 <ToastProvider>
-                  {!isKiosk && <DriftMonitor />}
-                  {!isKiosk && <RemediationAuditMonitor />}
-                  <SpInitBridge />
+                  {!isKiosk && !isDiagnosticReadonly && <DriftMonitor />}
+                  {!isKiosk && !isDiagnosticReadonly && <RemediationAuditMonitor />}
+                  {!isDiagnosticReadonly && <SpInitBridge />}
                   <DemoProcedureSeeder />
                   <ToastNotifierBridge />
-                  <DataLayerGuard>
-                    <RouterProvider router={router} future={routerFutureFlags} />
-                  </DataLayerGuard>
+                  {/* Diagnostics reads via its SP client, without business-provider bootstrap. */}
+                  {isDiagnosticReadonly ? routeView : <DataLayerGuard>{routeView}</DataLayerGuard>}
                 </ToastProvider>
               </Box>
             </Box>

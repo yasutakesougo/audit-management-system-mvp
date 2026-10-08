@@ -6,6 +6,7 @@
  */
 
 import { isDebugFlag } from '@/lib/debugFlag';
+import { getDiagnosticReadonlyBoundary, getDiagnosticReadonlyBoundaryEpoch, isReadonlyHttpMethod, DIAGNOSTIC_READONLY_PROXY_HEADER, DiagnosticReadonlyTransportUnsupportedError } from '@/lib/diagnosticReadonly';
 import { auditLog } from '@/lib/debugLogger';
 import type { EnvRecord } from '@/lib/env';
 import { isE2eMsalMockEnabled, readBool, shouldSkipLogin, skipSharePoint } from '@/lib/env';
@@ -359,8 +360,11 @@ export function createSpFetch(deps: SpFetchDeps) {
     return `${base}${path}`;
   };
 
-  const resolveUrl = (targetPath: string) => {
+  const resolveUrl = (targetPath: string, diagnosticReadonly: boolean) => {
     const directUrl = resolveDirectUrl(targetPath);
+    if (diagnosticReadonly) {
+      return `/api/sp-proxy-readonly?url=${encodeURIComponent(directUrl)}`;
+    }
     if (!readBool('VITE_SP_USE_PROXY', false, config)) {
       return directUrl;
     }
@@ -368,6 +372,16 @@ export function createSpFetch(deps: SpFetchDeps) {
   };
 
   return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {
+    // Pin the boundary before auth/retries, including requests spanning navigation.
+    let diagnosticReadonly = false;
+    const initialBoundaryEpoch = getDiagnosticReadonlyBoundaryEpoch();
+    const enforceReadonlyBoundary = () => {
+      diagnosticReadonly ||= getDiagnosticReadonlyBoundary() || getDiagnosticReadonlyBoundaryEpoch() !== initialBoundaryEpoch;
+      if (diagnosticReadonly && (!isReadonlyHttpMethod(init.method ?? 'GET') || new Headers(init.headers).has('x-http-method'))) {
+        throw new Error('DIAGNOSTIC_READ_ONLY');
+      }
+    };
+    enforceReadonlyBoundary();
     if (isThrottleCircuitOpen()) {
       throw new SpThrottleRedirectError(
         '[SharePoint] Throttled: circuit breaker is open. Request suppressed to avoid request storm.'
@@ -436,7 +450,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
 
-    const url = resolveUrl(resolvedPath);
+    let url = resolveUrl(resolvedPath, diagnosticReadonly);
     const isProxyRequest = url.startsWith('/api/sp-proxy');
     const correlationEnabled = isProxyRequest && isSpProxyCorrelationEnabled(config);
     const diagnosticId = correlationEnabled ? createSpProxyDiagnosticId() : undefined;
@@ -516,9 +530,17 @@ export function createSpFetch(deps: SpFetchDeps) {
           }
         }
 
+        // Auth, queueing or retry delays may span a route transition. Reject
+        // writes outside the retry catch, so a boundary rejection never retries.
+        enforceReadonlyBoundary();
+        url = resolveUrl(resolvedPath, diagnosticReadonly);
+
         try {
           // eslint-disable-next-line no-restricted-globals
           const response = await fetch(url, { ...init, headers, signal: mergedSignal });
+          if (diagnosticReadonly && response.headers.get(DIAGNOSTIC_READONLY_PROXY_HEADER) !== '1') {
+            throw new DiagnosticReadonlyTransportUnsupportedError();
+          }
 
           // After the browser follows redirects naturally, check the final URL
           // for SharePoint throttle indicators. This is safe in both dev (Vite proxy)
@@ -659,6 +681,10 @@ export function createSpFetch(deps: SpFetchDeps) {
         } catch (error) {
           // If the error already has a status, it was thrown by raiseHttpError
           // and should NOT be retried here (as it would be treated as a network error).
+          if (error instanceof DiagnosticReadonlyTransportUnsupportedError) {
+            span.error('DiagnosticReadonlyTransportUnsupported', attempt - 1);
+            throw error;
+          }
           if (error && typeof error === 'object' && 'status' in error) {
             throw error;
           }

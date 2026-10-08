@@ -4,9 +4,61 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path, { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig, loadEnv } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { defineConfig, loadEnv, type Plugin, type Connect } from 'vite'
+import worker from './src/worker'
 
 import { buildCspConfig } from './scripts/csp-headers.mjs'
+
+export function diagnosticReadonlyProxyPlugin(env: Record<string, string>): Plugin {
+  const middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname !== '/api/sp-proxy-readonly') { next(); return; }
+    const headers = new Headers();
+    Object.entries(req.headers).forEach(([key, value]) => {
+      if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(',') : value);
+    });
+    // Reuse Worker auth, target validation and read-only enforcement. Never
+    // proxy diagnostics through the existing business transport or a fallback.
+    void worker.fetch(new Request(url, { method: req.method, headers }), {
+      ASSETS: { fetch: async () => new Response(null, { status: 404 }) },
+      VITE_SP_RESOURCE: env.VITE_SP_RESOURCE,
+      VITE_SP_SITE_RELATIVE: env.VITE_SP_SITE_RELATIVE,
+      VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE: env.VITE_SP_LIST_BILLING_ORDERS_SITE_RELATIVE,
+    }).then(async (response) => {
+      res.statusCode = response.status;
+      response.headers.forEach((value, key) => res.setHeader(key, value));
+      res.end(req.method === 'HEAD' ? undefined : Buffer.from(await response.arrayBuffer()));
+    }).catch(() => {
+      if (res.headersSent) { res.destroy(); return; }
+      res.statusCode = 502;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'diagnostic_readonly_proxy_failed' }));
+    });
+  };
+  const install = (middlewares: Connect.Server) => {
+    // Vite's CORS middleware consumes OPTIONS before plugin middleware. A
+    // narrowly scoped override guard must run first; all other traffic retains
+    // Vite's existing CORS and host-validation behavior.
+    middlewares.stack.unshift({ route: '', handle: (req, res, next) => {
+      if (new URL(req.url ?? '/', 'http://localhost').pathname === '/api/sp-proxy-readonly'
+        && req.headers['x-http-method'] !== undefined) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('X-Diagnostic-Readonly-Proxy', '1');
+        res.end(JSON.stringify({ error: 'diagnostic_method_override_rejected' }));
+        return;
+      }
+      next();
+    } });
+    middlewares.use(middleware);
+  };
+  return {
+    name: 'diagnostic-readonly-proxy',
+    configureServer(server) { install(server.middlewares); },
+    configurePreviewServer(server) { install(server.middlewares); },
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error -- import.meta is supported in the Vite Node runtime
@@ -75,6 +127,7 @@ export default defineConfig(({ mode }) => {
       __APP_COMMIT_SHA__: JSON.stringify(resolveCommitSha()),
     },
     plugins: [
+      diagnosticReadonlyProxyPlugin(env),
       react(),
       {
         name: 'boot-beacon',

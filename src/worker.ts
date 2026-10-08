@@ -3,6 +3,8 @@
  * SPA fallback + COOP header for MSAL popup authentication
  */
 
+import { isReadonlyHttpMethod, DIAGNOSTIC_READONLY_PROXY_HEADER } from './lib/diagnosticReadonly';
+
 interface Env {
   ASSETS: {
     fetch: (request: Request) => Promise<Response>;
@@ -488,7 +490,17 @@ const proxyRejectionDiagnostic = (
   retryClass: retryClassForStatus(extra.status),
 });
 
-const handleSharePointProxy = async (request: Request, env: Env): Promise<Response> => {
+const handleSharePointProxy = async (request: Request, env: Env, readOnly = false): Promise<Response> => {
+  if (readOnly) {
+    if (request.headers.has('x-http-method')) {
+      return jsonResponse(400, { error: 'diagnostic_method_override_rejected' });
+    }
+    if (!isReadonlyHttpMethod(request.method)) {
+      const response = jsonResponse(405, { error: 'diagnostic_read_only' });
+      response.headers.set('Allow', 'GET, HEAD, OPTIONS');
+      return response;
+    }
+  }
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
   }
@@ -632,6 +644,12 @@ export default {
 
     if (url.pathname === '/api/firebase/exchange') {
       return handleFirebaseExchange(request, env);
+    }
+
+    if (url.pathname === '/api/sp-proxy-readonly') {
+      const response = await handleSharePointProxy(request, env, true);
+      response.headers.set(DIAGNOSTIC_READONLY_PROXY_HEADER, '1');
+      return response;
     }
 
     if (url.pathname === '/api/sp-proxy') {
