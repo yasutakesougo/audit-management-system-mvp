@@ -19,7 +19,7 @@ import { DataLayerGuard } from './components/DataLayerGuard';
 import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 import { RemediationAuditMonitor } from '@/features/sp/health/remediation/RemediationAuditMonitor';
 import { DemoProcedureSeeder } from '@/features/demo/DemoProcedureSeeder';
-import { isDiagnosticReadonlyPath } from '@/lib/diagnosticReadonly';
+import { bindDiagnosticReadonlyRouter, getDiagnosticReadonlyBoundary, subscribeDiagnosticReadonlyBoundary } from '@/lib/diagnosticReadonly';
 
 import { isSharePointThrottleError } from '@/lib/sp';
 import Box from '@mui/material/Box';
@@ -60,12 +60,8 @@ export const ToastNotifierBridge: React.FC = () => {
 };
 
 const subscribeToRoute = (notify: () => void) => router.subscribe(notify);
-const currentPathname = () => {
-  const pending = router.state.navigation.location?.pathname;
-  // Enter the boundary before a diagnostic loader completes. Keep it active
-  // while leaving diagnostics, until the new location actually commits.
-  return pending && isDiagnosticReadonlyPath(pending) ? pending : router.state.location.pathname;
-};
+const currentPathname = () => router.state.location.pathname;
+bindDiagnosticReadonlyRouter(router);
 
 function App() {
   useEffect(() => {
@@ -81,7 +77,7 @@ function App() {
 
   const pathname = useSyncExternalStore(subscribeToRoute, currentPathname, currentPathname);
   const isKiosk = pathname.startsWith('/kiosk');
-  const isDiagnosticReadonly = isDiagnosticReadonlyPath(pathname);
+  const isDiagnosticReadonly = useSyncExternalStore(subscribeDiagnosticReadonlyBoundary, getDiagnosticReadonlyBoundary, getDiagnosticReadonlyBoundary);
   const routeView = <RouterProvider router={router} future={routerFutureFlags} />;
 
   return (

@@ -6,7 +6,7 @@
  */
 
 import { isDebugFlag } from '@/lib/debugFlag';
-import { isDiagnosticReadonlyPath, isReadonlyHttpMethod } from '@/lib/diagnosticReadonly';
+import { getDiagnosticReadonlyBoundary, getDiagnosticReadonlyBoundaryEpoch, isReadonlyHttpMethod, DIAGNOSTIC_READONLY_PROXY_HEADER, DiagnosticReadonlyTransportUnsupportedError } from '@/lib/diagnosticReadonly';
 import { auditLog } from '@/lib/debugLogger';
 import type { EnvRecord } from '@/lib/env';
 import { isE2eMsalMockEnabled, readBool, shouldSkipLogin, skipSharePoint } from '@/lib/env';
@@ -374,8 +374,9 @@ export function createSpFetch(deps: SpFetchDeps) {
   return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {
     // Pin the boundary before auth/retries, including requests spanning navigation.
     let diagnosticReadonly = false;
+    const initialBoundaryEpoch = getDiagnosticReadonlyBoundaryEpoch();
     const enforceReadonlyBoundary = () => {
-      diagnosticReadonly ||= typeof window !== 'undefined' && isDiagnosticReadonlyPath(window.location.pathname);
+      diagnosticReadonly ||= getDiagnosticReadonlyBoundary() || getDiagnosticReadonlyBoundaryEpoch() !== initialBoundaryEpoch;
       if (diagnosticReadonly && (!isReadonlyHttpMethod(init.method ?? 'GET') || new Headers(init.headers).has('x-http-method'))) {
         throw new Error('DIAGNOSTIC_READ_ONLY');
       }
@@ -537,6 +538,9 @@ export function createSpFetch(deps: SpFetchDeps) {
         try {
           // eslint-disable-next-line no-restricted-globals
           const response = await fetch(url, { ...init, headers, signal: mergedSignal });
+          if (diagnosticReadonly && response.headers.get(DIAGNOSTIC_READONLY_PROXY_HEADER) !== '1') {
+            throw new DiagnosticReadonlyTransportUnsupportedError();
+          }
 
           // After the browser follows redirects naturally, check the final URL
           // for SharePoint throttle indicators. This is safe in both dev (Vite proxy)
@@ -677,6 +681,10 @@ export function createSpFetch(deps: SpFetchDeps) {
         } catch (error) {
           // If the error already has a status, it was thrown by raiseHttpError
           // and should NOT be retried here (as it would be treated as a network error).
+          if (error instanceof DiagnosticReadonlyTransportUnsupportedError) {
+            span.error('DiagnosticReadonlyTransportUnsupported', attempt - 1);
+            throw error;
+          }
           if (error && typeof error === 'object' && 'status' in error) {
             throw error;
           }

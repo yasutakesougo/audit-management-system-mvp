@@ -3,7 +3,7 @@
  * SPA fallback + COOP header for MSAL popup authentication
  */
 
-import { isReadonlyHttpMethod } from './lib/diagnosticReadonly';
+import { isReadonlyHttpMethod, DIAGNOSTIC_READONLY_PROXY_HEADER } from './lib/diagnosticReadonly';
 
 interface Env {
   ASSETS: {
@@ -647,7 +647,9 @@ export default {
     }
 
     if (url.pathname === '/api/sp-proxy-readonly') {
-      return handleSharePointProxy(request, env, true);
+      const response = await handleSharePointProxy(request, env, true);
+      response.headers.set(DIAGNOSTIC_READONLY_PROXY_HEADER, '1');
+      return response;
     }
 
     if (url.pathname === '/api/sp-proxy') {
