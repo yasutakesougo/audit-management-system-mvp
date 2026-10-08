@@ -1,4 +1,5 @@
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type {
   KioskNavigationPayload,
@@ -15,6 +16,9 @@ export function recordKioskTelemetry(
   eventName: KioskTelemetryEventName,
   payload: KioskNavigationPayload
 ): void {
+  const automatic = eventName === 'ux_kiosk_session_started' || eventName === 'ux_visible_refresh_completed';
+  const canWrite = automatic ? automaticTelemetryWriteGuard() : () => true;
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -29,7 +33,9 @@ export function recordKioskTelemetry(
     };
 
     // 非同期で送信（成否に関わらずメインスレッドをブロックしない）
-    addDoc(collection(getDb(), 'telemetry'), docData).catch((err) => {
+    const target = collection(getDb(), 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, docData).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[kiosk-telemetry] write failed', err);
     });

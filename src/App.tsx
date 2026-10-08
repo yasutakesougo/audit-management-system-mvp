@@ -20,6 +20,7 @@ import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 import { RemediationAuditMonitor } from '@/features/sp/health/remediation/RemediationAuditMonitor';
 import { DemoProcedureSeeder } from '@/features/demo/DemoProcedureSeeder';
 import { bindDiagnosticReadonlyRouter, getDiagnosticReadonlyBoundary, subscribeDiagnosticReadonlyBoundary } from '@/lib/diagnosticReadonly';
+import { bindKioskAutomaticTelemetryRouter } from '@/lib/kioskAutomaticTelemetryBoundary';
 
 import { isSharePointThrottleError } from '@/lib/sp';
 import Box from '@mui/material/Box';
@@ -62,6 +63,7 @@ export const ToastNotifierBridge: React.FC = () => {
 const subscribeToRoute = (notify: () => void) => router.subscribe(notify);
 const currentPathname = () => router.state.location.pathname;
 bindDiagnosticReadonlyRouter(router);
+bindKioskAutomaticTelemetryRouter(router);
 
 function App() {
   useEffect(() => {
