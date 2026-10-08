@@ -1325,6 +1325,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   describe('SharePoint Throttle Circuit Breaker UX Alert', () => {
     it('shows inline warning Alert with countdown and disabled button when circuit breaker is active', async () => {
+      mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
       // Open the circuit breaker manually at t=0
       const startTime = Date.now();
       openThrottleCircuit(startTime);

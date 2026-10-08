@@ -274,10 +274,10 @@ export const KioskProcedureListScreen: React.FC = () => {
     retryCount
   );
 
-  // Monitor circuit breaker status and remaining cooldown seconds (read-only)
+  // Monitor circuit breaker status and remaining cooldown seconds (SharePoint only)
   useEffect(() => {
     const checkThrottle = () => {
-      const active = isThrottleCircuitOpen();
+      const active = executionRepositoryKind === 'sharepoint' && isThrottleCircuitOpen();
       setIsThrottleActive(active);
       if (active) {
         const state = getSharePointThrottleCircuitBreakerState();
@@ -292,7 +292,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     return () => {
       clearInterval(timer);
     };
-  }, []);
+  }, [executionRepositoryKind]);
 
   // When breaker closes, automatically reset states and trigger a fresh fetch
   const prevThrottleActiveRef = React.useRef(isThrottleActive);
@@ -344,7 +344,10 @@ export const KioskProcedureListScreen: React.FC = () => {
     const fetchRecords = async () => {
       const dateStr = selectedDateIso;
       if (!dateStr) return;
-      if (isThrottleCircuitOpen()) {
+      const isSharePoint = executionRepositoryKind === 'sharepoint';
+      // Throttle circuit is SharePoint-only. Local/memory kiosk must keep
+      // procedure status and save entry usable even if a prior SP storm opened the breaker.
+      if (isSharePoint && isThrottleCircuitOpen()) {
         console.warn('[Kiosk] Circuit breaker is open. Aborting execution record fetch to suppress storm.');
         if (active) {
           setShowFetchError(false);
@@ -354,7 +357,6 @@ export const KioskProcedureListScreen: React.FC = () => {
         }
         return;
       }
-      const isSharePoint = executionRepositoryKind === 'sharepoint';
       // Deduplicate user IDs that would produce the same SharePoint query candidates.
       // If not SharePoint, we keep all candidates to support local mock/Zustand stores.
       const queryUserIds = isSharePoint
