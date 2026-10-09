@@ -9,6 +9,8 @@ import { setupSharePointStubs } from './setupSharePointStubs';
 const FEATURE_ENV: Record<string, string> = {
   VITE_FEATURE_USERS_CRUD: '1',
   VITE_FEATURE_USERS_SP: '1',
+  VITE_FORCE_SHAREPOINT: 'true',
+  VITE_SKIP_SHAREPOINT: '1',
 };
 
 const FEATURE_STORAGE: Record<string, string> = {

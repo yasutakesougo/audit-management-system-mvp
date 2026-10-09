@@ -11,6 +11,7 @@ import { useUsersStore } from '../../store';
 import type { IUserMaster, IUserMasterCreateDto } from '../../types';
 import { getCurrentUserRepositoryKind } from '../../repositoryFactory';
 import { useUsersDemoSeed } from '../../useUsersDemoSeed';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import { buildErrorMessage } from '../utils';
 import type { UsersTab } from './useUsersPanelTabs';
 
@@ -54,9 +55,13 @@ export type UseUsersPanelCrudReturn = {
 export function useUsersPanelCrud(
   setActiveTabRef: React.MutableRefObject<(tab: UsersTab) => void>,
 ): UseUsersPanelCrudReturn {
-  // Demo モードの場合のみシードを実行
+  // Demo またはfixture-memoryのDataProvider経路でシードを実行
   const repositoryKind = getCurrentUserRepositoryKind();
-  useUsersDemoSeed(repositoryKind === 'demo');
+  const { type: providerType } = useDataProvider();
+  useUsersDemoSeed(
+    repositoryKind === 'demo' ||
+      (repositoryKind === 'real' && providerType === 'memory'),
+  );
   const { data, status, create, terminate, refresh, error } = useUsersStore();
 
   // ---- State ----

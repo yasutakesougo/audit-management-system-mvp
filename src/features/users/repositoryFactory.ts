@@ -25,6 +25,9 @@ const factory = createRepositoryFactory<UserRepository, UserRepositoryFactoryOpt
     // E2E環境やデバッグ時に確実にデモモードを選択するための明示的なチェック
     const forceDemo = (import.meta as ImportMeta).env.VITE_FORCE_DEMO === '1' || (import.meta as ImportMeta).env.VITE_FORCE_DEMO === 'true';
     if (forceDemo) return true;
+    const forceUsersSp = typeof window !== 'undefined' &&
+      window.localStorage.getItem('feature:forceUsersSp') === '1';
+    if (forceUsersSp) return false;
     return defaultShouldUseDemo();
   },
   createReal: (options) => {
