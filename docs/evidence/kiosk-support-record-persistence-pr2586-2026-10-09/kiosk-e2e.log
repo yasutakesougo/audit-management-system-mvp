@@ -1,0 +1,693 @@
+
+> audit-management-system-mvp@0.1.0 test:e2e
+> playwright test tests/e2e/kiosk-home-smoke.spec.ts tests/e2e/kiosk-user-selection.spec.ts tests/e2e/kiosk-procedure-list.spec.ts tests/e2e/kiosk-procedure-detail.spec.ts tests/e2e/kiosk-toilet.spec.ts --project=chromium --workers=1 --retries=0
+
+[2m[WebServer] [22m(node:30764) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:30845) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 36 tests using 1 worker
+
+(node:30879) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30879) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:34:7 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › should preserve provider/kiosk/date query params across main kiosk procedure flow (3.1s)
+  ✓   2 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:74:7 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › should display kiosk home page with action buttons and no sidebar (1.1s)
+  ✓   3 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:101:7 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › should navigate to user selection and maintain search params (1.1s)
+  ✓   4 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:106:7 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › should navigate to attendance (check-in) and maintain search params (1.1s)
+  ✓   5 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:112:7 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › should navigate to attendance (check-out) and maintain search params (1.1s)
+  ✓   6 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:118:7 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › should navigate to today schedule and maintain search params (1.1s)
+  ✓   7 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:126:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should display kiosk navigation bar with all actions (1.2s)
+  ✓   8 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:138:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should open call log drawer from navigation (1.1s)
+  ✓   9 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:145:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should open handoff dialog from navigation (1.2s)
+  ✓  10 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:151:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should navigate to records from navigation and maintain params (1.2s)
+  ✓  11 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:156:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should navigate to coffee billing from navigation and maintain params (1.3s)
+  ✓  12 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:161:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should keep coffee billing navigation active on /billing route (1.3s)
+  ✓  13 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:169:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should keep schedule navigation active after schedule route redirects (2.1s)
+  ✓  14 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:179:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should keep exit FAB above the bottom navigation (1.0s)
+  ✓  15 [chromium] › tests/e2e/kiosk-home-smoke.spec.ts:188:9 › Kiosk Home Smoke (memory provider for local kiosk flow checks) › Kiosk Navigation Bar › should not display regular footer actions twice (1.0s)
+  ✓  16 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:42:7 › Kiosk Procedure Detail › should display procedure details and navigate back (2.3s)
+  ✓  17 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:58:7 › Kiosk Procedure Detail › should save procedure record and reflect in list (4.2s)
+  ✓  18 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:77:7 › Kiosk Procedure Detail › should propagate date URL parameter to detail and back on save (4.2s)
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Auto-created state for list: Diagnostics_Reports
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserTransport_Settings
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile_Ext
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(23)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(23)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 34 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 38 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=Title%20eq%20%272026-10-09-U-023%27&$select=Id
+[Stub Request] POST /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: SupportPlanningSheet_Master
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(23)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(23)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%2723%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27U-023%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 34 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%2723%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(23)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(23)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27U-023%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 38 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+Saved Request Payload: {"Title":"2026-10-09-U-023-procedure-2","Parent_x0020_ID":1,"User_x0020_ID":"U-023","Status":"completed","Recorded_x0020_At":"2026-10-09T03:01:26.116Z","RowNo":2}
+  ✓  19 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:90:7 › Kiosk Procedure Detail › should save second procedure without colliding with first procedure record (5.1s)
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Auto-created state for list: Diagnostics_Reports
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: SupportPlanningSheet_Master
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserTransport_Settings
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile_Ext
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%276%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=Title%20eq%20%272026-10-09-I005%27&$select=Id
+[Stub Request] POST /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items
+[Stub Request] POST /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%276%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%201&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+  ✓  20 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:203:9 › Kiosk user 6 SharePoint persistence › save and reload observation content (new record) (5.6s)
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Auto-created state for list: Diagnostics_Reports
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: SupportPlanningSheet_Master
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserTransport_Settings
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile_Ext
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%276%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=Title%20eq%20%272026-10-09-I005%27&$select=Id
+[Stub Request] POST /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items(61)
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%276%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+  ✓  21 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:203:9 › Kiosk user 6 SharePoint persistence › save and reload observation content (1) (5.5s)
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Auto-created state for list: Diagnostics_Reports
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: SupportPlanningSheet_Master
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserTransport_Settings
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Auto-created state for list: UserBenefit_Profile_Ext
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%276%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=Title%20eq%20%272026-10-09-I005%27&$select=Id
+[Stub Request] POST /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items(61)
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 52 fields for list: SupportPlanningSheet_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%276%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays&%24orderby=ID+asc&%24top=200
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportPlanningSheet_Master')/items?%24filter=UserCode+eq+%27I005%27+and+IsCurrent+eq+true&%24orderby=Created+desc&%24top=100
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Diagnostics_Reports')/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000
+[Stub] Returning 33 fields for list: Diagnostics_Reports
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: Users_Master
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserTransport_Settings')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserTransport_Settings
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('UserBenefit_Profile_Ext')/fields?$select=InternalName&$top=5000
+[Stub] Returning 59 fields for list: UserBenefit_Profile_Ext
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('Users_Master')/items(6)?%24select=Id%2CTitle%2CModified%2CCreated%2CUserID%2CUserCode%2CFullName%2CFurigana%2CFullNameKana%2CContractDate%2CServiceStartDate%2CServiceEndDate%2CIsHighIntensitySupportTarget%2CIsSupportProcedureTarget%2CIsActive%2CUsageStatus%2CAttendanceDays
+[Stub Request] GET /sites/demo/_api/web/lists?$select=Title,Id
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/fields?$select=InternalName&$top=5000
+[Stub] Returning 17 fields for list: SupportRecord_Daily
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/fields?$select=InternalName&$top=5000
+[Stub] Returning 20 fields for list: DailyRecordRows
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('SupportRecord_Daily')/items?$filter=RecordDate%20ge%20%272026-10-09%27%20and%20RecordDate%20lt%20%272026-10-10%27&$select=Id,Title,RecordDate
+[Stub Request] GET /sites/demo/_api/web/lists/getbytitle('DailyRecordRows')/items?$filter=Parent_x0020_ID%20eq%2060&$select=Id,Title,Created,Modified,Parent_x0020_ID,User_x0020_ID,Status,Payload,Recorded_x0020_At,RowNo,Memo,StaffName,BipsJSON
+  ✓  22 [chromium] › tests/e2e/kiosk-procedure-detail.spec.ts:203:9 › Kiosk user 6 SharePoint persistence › save and reload observation content (row-1) (5.4s)
+  ✓  23 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:32:7 › Kiosk Procedure List › should display user name and procedure list (1.1s)
+  ✓  24 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:37:7 › Kiosk Procedure List › should parse and display selected date from URL parameter (2.2s)
+  ✓  25 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:44:7 › Kiosk Procedure List › should navigate back to user selection from procedure list (3.2s)
+  ✓  26 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:58:7 › Kiosk Procedure List › should prioritize query userId over route param and avoid setup CTA when support start date is resolved (2.2s)
+  ✓  27 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:73:7 › Kiosk Procedure List › should display procedure as recorded when its status is skipped (2.1s)
+  ✓  28 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:89:7 › Kiosk Procedure List › should boot successfully with highlight and list query parameters without crashing (2.1s)
+  ✓  29 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:98:7 › Kiosk Procedure List › should boot user selection with diagnostic query parameters without crashing (2.2s)
+  ✓  30 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:107:7 › Kiosk Procedure List › should preserve diagnostic params and clear stale kiosk state params during navigation (2.3s)
+  ✓  31 [chromium] › tests/e2e/kiosk-procedure-list.spec.ts:136:7 › Kiosk Procedure List › should preserve diagnostic params when navigating back to user selection from procedure list (4.1s)
+  ✓  32 [chromium] › tests/e2e/kiosk-toilet.spec.ts:41:7 › Kiosk Toilet (memory provider; not production SharePoint proof) › should save a toilet record and display the same record after reload (2.6s)
+  ✓  33 [chromium] › tests/e2e/kiosk-toilet.spec.ts:76:7 › Kiosk Toilet (memory provider; not production SharePoint proof) › should correct a toilet record and refresh the displayed latest record (3.0s)
+  ✓  34 [chromium] › tests/e2e/kiosk-user-selection.spec.ts:29:7 › Kiosk User Selection › should navigate to user selection and show user cards (1.3s)
+  ✓  35 [chromium] › tests/e2e/kiosk-user-selection.spec.ts:47:7 › Kiosk User Selection › should not automatically jump when wizard search params are appended (2.1s)
+  ✓  36 [chromium] › tests/e2e/kiosk-user-selection.spec.ts:55:7 › Kiosk User Selection › should navigate back to kiosk home from user selection (1.3s)
+
+  36 passed (1.4m)

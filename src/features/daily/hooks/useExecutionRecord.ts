@@ -21,6 +21,7 @@ export function useExecutionRecord(
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
 
   const getRecordRef = useRef(getRecord);
   const upsertRecordRef = useRef(upsertRecord);
@@ -35,6 +36,15 @@ export function useExecutionRecord(
 
   const fallbackScheduleKey = (fallbackScheduleItemIds ?? EMPTY_IDS).join('\u0000');
   const fallbackUserKey = (fallbackUserIds ?? EMPTY_IDS).join('\u0000');
+  const identityKey = JSON.stringify([date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
+  const identityGenerationRef = useRef({ key: identityKey, generation: 0 });
+  if (identityGenerationRef.current.key !== identityKey) {
+    identityGenerationRef.current = {
+      key: identityKey,
+      generation: identityGenerationRef.current.generation + 1,
+    };
+  }
+  const identityGeneration = identityGenerationRef.current.generation;
 
   const fetchRecord = useCallback(async () => {
     const seq = ++requestSeqRef.current;
@@ -57,39 +67,59 @@ export function useExecutionRecord(
 
     if (!date || userIds.length === 0 || scheduleItemIds.length === 0) {
       setRecord(undefined);
+      setLoadedIdentityKey(identityKey);
       setIsLoading(false);
       return;
     }
 
-    try {
-      let resolved: ExecutionRecord | undefined;
-      for (const candidateUserId of userIds) {
-        for (const candidateScheduleItemId of scheduleItemIds) {
+    let resolved: ExecutionRecord | undefined;
+    let lastError: Error | null = null;
+
+    // Candidate failures must not abort the whole lookup. Kiosk detail builds a
+    // fan-out of userId/scheduleItemId aliases; one transient SharePoint miss
+    // should not freeze the observation form behind "保存状態未確認".
+    for (const candidateUserId of userIds) {
+      for (const candidateScheduleItemId of scheduleItemIds) {
+        try {
           const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
           if (seq !== requestSeqRef.current) return;
           if (candidateRecord) {
             resolved = candidateRecord;
+            lastError = null;
             break;
           }
+        } catch (err) {
+          if (seq !== requestSeqRef.current) return;
+          lastError = err instanceof Error ? err : new Error('Failed to fetch execution record');
         }
-        if (resolved) break;
       }
-
-      if (seq === requestSeqRef.current) {
-        setRecord(resolved);
-        setIsLoading(false);
-      }
-    } catch (err) {
-      if (seq === requestSeqRef.current) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch execution record'));
-        setIsLoading(false);
-      }
+      if (resolved) break;
     }
-  }, [date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
+
+    if (seq === requestSeqRef.current) {
+      setRecord(resolved);
+      setError(resolved ? null : lastError);
+      setLoadedIdentityKey(identityKey);
+      setIsLoading(false);
+    }
+  }, [date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey, identityKey]);
 
   useEffect(() => {
     void fetchRecord();
   }, [fetchRecord]);
+
+  const assertMutationIdentityReady = useCallback(() => {
+    const currentIdentity = identityGenerationRef.current;
+    if (
+      currentIdentity.key !== identityKey ||
+      currentIdentity.generation !== identityGeneration ||
+      loadedIdentityKey !== identityKey ||
+      isLoading ||
+      error
+    ) {
+      throw new Error('Execution record identity is not ready for mutation');
+    }
+  }, [error, identityGeneration, identityKey, isLoading, loadedIdentityKey]);
 
   const resolveMutationTarget = useCallback(() => {
     const targetDate = record?.date || date;
@@ -105,6 +135,7 @@ export function useExecutionRecord(
 
   const setStatus = useCallback(
     async (status: RecordStatus) => {
+      assertMutationIdentityReady();
       const target = resolveMutationTarget();
       const next: ExecutionRecord = {
         id: target.id,
@@ -120,11 +151,12 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next);
     },
-    [record, resolveMutationTarget],
+    [assertMutationIdentityReady, record, resolveMutationTarget],
   );
 
   const setMemo = useCallback(
     async (memo: string) => {
+      assertMutationIdentityReady();
       if (!record) return;
       const next = {
         ...record,
@@ -134,11 +166,12 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next, { memoMode: 'overwrite' });
     },
-    [record],
+    [assertMutationIdentityReady, record],
   );
 
   const saveRecord = useCallback(
     async (status: RecordStatus, memo?: string, triggeredBipIds?: string[]) => {
+      assertMutationIdentityReady();
       const target = resolveMutationTarget();
       const next: ExecutionRecord = {
         id: target.id,
@@ -154,14 +187,25 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next, { memoMode: 'overwrite' });
     },
-    [record, resolveMutationTarget],
+    [assertMutationIdentityReady, record, resolveMutationTarget],
   );
 
   const deleteRecordFn = useCallback(async () => {
+    assertMutationIdentityReady();
     const target = resolveMutationTarget();
     await deleteRecordRef.current(target.date, target.userId, target.scheduleItemId);
     setRecord(undefined);
-  }, [resolveMutationTarget]);
+  }, [assertMutationIdentityReady, resolveMutationTarget]);
 
-  return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, error, refresh: fetchRecord } as const;
+  // Effects run after render. On an identity transition the previous lookup may
+  // already be idle; never expose that idle state as completion of the new one.
+  // Otherwise kiosk form hydration can initialize with an empty/stale record.
+  const isCurrentIdentityLoaded = loadedIdentityKey === identityKey;
+  return {
+    record: isCurrentIdentityLoaded ? record : undefined,
+    setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn,
+    isLoading: isLoading || !isCurrentIdentityLoaded,
+    error: isCurrentIdentityLoaded ? error : null,
+    refresh: fetchRecord,
+  } as const;
 }

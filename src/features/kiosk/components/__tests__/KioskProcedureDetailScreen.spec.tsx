@@ -52,12 +52,13 @@ const makeExecutionRecordHookResult = (
 // Mock dependencies
 const mockNavigate = vi.fn();
 const mockUseLocation = vi.fn(() => ({ search: '?kiosk=1&provider=memory' }));
+const mockUseParams = vi.fn(() => ({ userId: 'U001', slotKey: '0' }));
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useParams: () => ({ userId: 'U001', slotKey: '0' }),
+    useParams: () => mockUseParams(),
     useLocation: () => mockUseLocation(),
   };
 });
@@ -75,7 +76,15 @@ const mockProcedures = [
     instruction: '体温と血圧を測ります。',
     activityDetail: '体温と血圧を測る',
     instructionDetail: '測定の声かけと記録を行う',
-  }
+  },
+  {
+    id: 'P002',
+    time: '11:00',
+    activity: '昼食準備',
+    instruction: '配膳を手伝います。',
+    activityDetail: '配膳を手伝う',
+    instructionDetail: '安全に配慮して見守る',
+  },
 ];
 
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
@@ -123,6 +132,7 @@ vi.mock('../../hooks/useKioskAttendance', () => ({
 describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseParams.mockReturnValue({ userId: 'U001', slotKey: '0' });
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
     mockUseUser.mockReturnValue({ data: makeUser(), status: 'success' });
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
@@ -282,6 +292,121 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByText('手順記録の内容を1つ以上入力してください。')).toBeInTheDocument();
     });
     expect(mockSaveRecord).not.toHaveBeenCalled();
+  });
+
+  it('resets observation chips when the procedure slot identity changes', async () => {
+    mockUseParams.mockReturnValue({ userId: 'U001', slotKey: '0' });
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
+    fireEvent.click(screen.getByTestId('action-chip-見守り'));
+    fireEvent.click(screen.getByTestId('result-chip-改善した'));
+    fireEvent.change(screen.getByTestId('kiosk-observation-memo'), {
+      target: { value: 'スロット0のメモ' },
+    });
+    expect(screen.getByTestId('mood-chip-不安そう').className).toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('action-chip-見守り').className).toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('result-chip-改善した').className).toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('スロット0のメモ');
+
+    mockUseParams.mockReturnValue({ userId: 'U001', slotKey: '1' });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('11:00 - 昼食準備')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('mood-chip-不安そう').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('action-chip-見守り').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('result-chip-改善した').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+  });
+
+  it('resets observation chips and memo when the selected date changes', async () => {
+    mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory&date=2026-05-28' });
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
+    fireEvent.click(screen.getByTestId('action-chip-見守り'));
+    fireEvent.click(screen.getByTestId('result-chip-改善した'));
+    fireEvent.change(screen.getByTestId('kiosk-observation-memo'), {
+      target: { value: '前日のメモ' },
+    });
+
+    mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory&date=2026-05-29' });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(mockUseExecutionRecord).toHaveBeenLastCalledWith(
+      '2026-05-29', 'U001', 'procedure-1', expect.any(Array), expect.any(Array),
+    ));
+    expect(screen.getByTestId('mood-chip-不安そう').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('action-chip-見守り').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('result-chip-改善した').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+  });
+
+  it('resets observation chips and memo when the selected user changes', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
+    fireEvent.click(screen.getByTestId('action-chip-見守り'));
+    fireEvent.click(screen.getByTestId('result-chip-改善した'));
+    fireEvent.change(screen.getByTestId('kiosk-observation-memo'), {
+      target: { value: '利用者U001のメモ' },
+    });
+
+    mockUseParams.mockReturnValue({ userId: 'U002', slotKey: '0' });
+    mockUseUser.mockReturnValue({ data: makeUser({ Id: 2, UserID: 'U002', FullName: '佐藤 花子' }), status: 'success' });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('佐藤 花子 様')).toBeInTheDocument());
+    expect(screen.getByTestId('mood-chip-不安そう').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('action-chip-見守り').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('result-chip-改善した').className).not.toContain('MuiChip-filledWarning');
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+  });
+
+  it('disables save while a refreshed execution-record lookup is loading', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    const saveButton = screen.getByTestId('kiosk-observation-submit');
+    await waitFor(() => expect(saveButton).toBeEnabled());
+
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({ isLoading: true }));
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
   });
 
   it('shows unknown saved-state feedback and blocks save when the execution record cannot be loaded', () => {

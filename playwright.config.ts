@@ -32,10 +32,10 @@ const webServerEnvVars = {
         // E2E/MSAL モック時は SharePoint 実環境前提の検証をスキップさせる
         VITE_E2E: process.env.VITE_E2E ?? '1',
         VITE_E2E_MSAL_MOCK: process.env.VITE_E2E_MSAL_MOCK ?? '1',
-        VITE_FORCE_DEMO: '1',
+        VITE_FORCE_DEMO: process.env.VITE_FORCE_DEMO ?? '1',
       }
     : {
-        VITE_FORCE_DEMO: '1',
+        VITE_FORCE_DEMO: process.env.VITE_FORCE_DEMO ?? '1',
       }),
 };
 
