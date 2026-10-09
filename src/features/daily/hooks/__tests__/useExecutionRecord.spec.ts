@@ -356,4 +356,95 @@ describe('useExecutionRecord', () => {
     expect(result.current.record).toBeUndefined();
     expect(result.current.error?.message).toBe('Unconfirmed canonical lookup');
   });
+
+  it.each([
+    {
+      changedField: 'user',
+      nextIdentity: { date: '2026-05-07', userId: 'user-2', scheduleItemId: 'slot-1' },
+    },
+    {
+      changedField: 'date',
+      nextIdentity: { date: '2026-05-08', userId: 'user-1', scheduleItemId: 'slot-1' },
+    },
+    {
+      changedField: 'procedure',
+      nextIdentity: { date: '2026-05-07', userId: 'user-1', scheduleItemId: 'slot-2' },
+    },
+  ])('rejects stale and pending saves after the $changedField identity changes', async ({ nextIdentity }) => {
+    const initialIdentity = { date: '2026-05-07', userId: 'user-1', scheduleItemId: 'slot-1' };
+    const initialRecord: ExecutionRecord = {
+      id: '2026-05-07-user-1-slot-1',
+      ...initialIdentity,
+      status: 'completed',
+      triggeredBipIds: [],
+      memo: 'existing record',
+      recordedBy: 'Staff A',
+      recordedAt: '2026-05-07T09:00:00.000Z',
+    };
+    let resolveNextLookup: (record: ExecutionRecord | undefined) => void = () => {};
+    const nextLookup = new Promise<ExecutionRecord | undefined>((resolve) => {
+      resolveNextLookup = resolve;
+    });
+    const toLookupKey = (date: unknown, userId: unknown, scheduleItemId: unknown) =>
+      `${String(date)}\u0000${String(userId)}\u0000${String(scheduleItemId)}`;
+    const initialLookupKey = toLookupKey(
+      initialIdentity.date,
+      initialIdentity.userId,
+      initialIdentity.scheduleItemId,
+    );
+    const nextLookupKey = toLookupKey(
+      nextIdentity.date,
+      nextIdentity.userId,
+      nextIdentity.scheduleItemId,
+    );
+
+    mockGetRecord.mockImplementation(async (date, userId, scheduleItemId) => {
+      const key = toLookupKey(date, userId, scheduleItemId);
+      if (key === initialLookupKey) return initialRecord;
+      if (key === nextLookupKey) return nextLookup;
+      return undefined;
+    });
+
+    const { result, rerender } = renderHook(
+      ({ identity }) => useExecutionRecord(identity.date, identity.userId, identity.scheduleItemId),
+      { initialProps: { identity: initialIdentity } },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const callbackCapturedForInitialIdentity = result.current.saveRecord;
+
+    rerender({ identity: nextIdentity });
+    await waitFor(() => expect(result.current.isLoading).toBe(true));
+
+    await expect(callbackCapturedForInitialIdentity('completed', 'stale memo'))
+      .rejects.toThrow('Execution record identity is not ready for mutation');
+    await expect(result.current.saveRecord('completed', 'early memo'))
+      .rejects.toThrow('Execution record identity is not ready for mutation');
+    expect(mockUpsertRecord).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveNextLookup(undefined);
+      await nextLookup;
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(callbackCapturedForInitialIdentity('completed', 'late stale memo'))
+      .rejects.toThrow('Execution record identity is not ready for mutation');
+    expect(mockUpsertRecord).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.saveRecord('completed', 'new identity memo');
+    });
+
+    expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
+    expect(mockUpsertRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: nextIdentity.date,
+        userId: nextIdentity.userId,
+        scheduleItemId: nextIdentity.scheduleItemId,
+        memo: 'new identity memo',
+      }),
+      { memoMode: 'overwrite' },
+    );
+  });
 });

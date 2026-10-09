@@ -37,6 +37,14 @@ export function useExecutionRecord(
   const fallbackScheduleKey = (fallbackScheduleItemIds ?? EMPTY_IDS).join('\u0000');
   const fallbackUserKey = (fallbackUserIds ?? EMPTY_IDS).join('\u0000');
   const identityKey = JSON.stringify([date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
+  const identityGenerationRef = useRef({ key: identityKey, generation: 0 });
+  if (identityGenerationRef.current.key !== identityKey) {
+    identityGenerationRef.current = {
+      key: identityKey,
+      generation: identityGenerationRef.current.generation + 1,
+    };
+  }
+  const identityGeneration = identityGenerationRef.current.generation;
 
   const fetchRecord = useCallback(async () => {
     const seq = ++requestSeqRef.current;
@@ -100,6 +108,19 @@ export function useExecutionRecord(
     void fetchRecord();
   }, [fetchRecord]);
 
+  const assertMutationIdentityReady = useCallback(() => {
+    const currentIdentity = identityGenerationRef.current;
+    if (
+      currentIdentity.key !== identityKey ||
+      currentIdentity.generation !== identityGeneration ||
+      loadedIdentityKey !== identityKey ||
+      isLoading ||
+      error
+    ) {
+      throw new Error('Execution record identity is not ready for mutation');
+    }
+  }, [error, identityGeneration, identityKey, isLoading, loadedIdentityKey]);
+
   const resolveMutationTarget = useCallback(() => {
     const targetDate = record?.date || date;
     const targetUserId = record?.userId || userId;
@@ -114,6 +135,7 @@ export function useExecutionRecord(
 
   const setStatus = useCallback(
     async (status: RecordStatus) => {
+      assertMutationIdentityReady();
       const target = resolveMutationTarget();
       const next: ExecutionRecord = {
         id: target.id,
@@ -129,11 +151,12 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next);
     },
-    [record, resolveMutationTarget],
+    [assertMutationIdentityReady, record, resolveMutationTarget],
   );
 
   const setMemo = useCallback(
     async (memo: string) => {
+      assertMutationIdentityReady();
       if (!record) return;
       const next = {
         ...record,
@@ -143,11 +166,12 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next, { memoMode: 'overwrite' });
     },
-    [record],
+    [assertMutationIdentityReady, record],
   );
 
   const saveRecord = useCallback(
     async (status: RecordStatus, memo?: string, triggeredBipIds?: string[]) => {
+      assertMutationIdentityReady();
       const target = resolveMutationTarget();
       const next: ExecutionRecord = {
         id: target.id,
@@ -163,14 +187,15 @@ export function useExecutionRecord(
       setRecord(next);
       await upsertRecordRef.current(next, { memoMode: 'overwrite' });
     },
-    [record, resolveMutationTarget],
+    [assertMutationIdentityReady, record, resolveMutationTarget],
   );
 
   const deleteRecordFn = useCallback(async () => {
+    assertMutationIdentityReady();
     const target = resolveMutationTarget();
     await deleteRecordRef.current(target.date, target.userId, target.scheduleItemId);
     setRecord(undefined);
-  }, [resolveMutationTarget]);
+  }, [assertMutationIdentityReady, resolveMutationTarget]);
 
   // Effects run after render. On an identity transition the previous lookup may
   // already be idle; never expose that idle state as completion of the new one.

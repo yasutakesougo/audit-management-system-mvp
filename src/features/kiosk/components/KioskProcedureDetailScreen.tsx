@@ -175,6 +175,9 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const formIdentityKey = `${selectedDateIso}\u0000${resolvedUserId}\u0000${scheduleItemId}\u0000${String(slotKey ?? '')}`;
   const formIdentityKeyRef = React.useRef(formIdentityKey);
+  const isFormIdentityTransitioning = formIdentityKeyRef.current !== formIdentityKey;
+  const isRecordMutationBlocked =
+    isLoading || isFormIdentityTransitioning || !isInitialized || isUserLoading || !resolvedUserId || Boolean(recordLoadError);
 
   // slot/date/user が変わったら観察入力をリセット（同一 route element で slot だけ変わるケース）
   React.useEffect(() => {
@@ -213,7 +216,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!userId || isUserLoading || !resolvedUserId || recordLoadError) return;
+    if (!userId || isRecordMutationBlocked) return;
     const finalMemo = serializeMemo();
     if (!finalMemo.trim()) {
       setShowValidationError(true);
@@ -235,7 +238,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (recordLoadError) return;
+    if (isRecordMutationBlocked) return;
     setIsDeleting(true);
     try {
       await deleteRecord();
@@ -254,7 +257,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   // Show initial loading state only. 
   // Background re-fetches (triggered by store updates) should not unmount the entire UI,
   // otherwise the History Drawer state will be reset.
-  if (isUserLoading || (isLoading && !isInitialized)) {
+  if (isUserLoading || isFormIdentityTransitioning || (isLoading && !isInitialized)) {
     return (
       <Box sx={{ 
         p: 4, 
@@ -566,7 +569,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                   color="error"
                   onClick={() => setDeleteDialogOpen(true)}
                   sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem', mr: 'auto' }}
-                  disabled={isSaving || isDeleting || isRecordStatusUnknown || isAbsent}
+                  disabled={isSaving || isDeleting || isRecordMutationBlocked || isRecordStatusUnknown || isAbsent}
                   data-testid="kiosk-observation-revert"
                 >
                   記録を取り消す
@@ -586,7 +589,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 color="primary"
                 onClick={handleSave}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
-                disabled={isSaving || isDeleting || isRecordStatusUnknown || isAbsent}
+                disabled={isSaving || isDeleting || isRecordMutationBlocked || isRecordStatusUnknown || isAbsent}
                 data-testid="kiosk-observation-submit"
               >
                 記録を保存する
@@ -653,7 +656,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             variant="outlined"
             color="secondary"
             onClick={() => setDeleteDialogOpen(false)}
-            disabled={isDeleting}
+            disabled={isDeleting || isRecordMutationBlocked}
             sx={{ borderRadius: 3, px: 3 }}
           >
             キャンセル

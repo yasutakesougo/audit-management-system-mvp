@@ -389,6 +389,26 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
   });
 
+  it('disables save while a refreshed execution-record lookup is loading', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    const saveButton = screen.getByTestId('kiosk-observation-submit');
+    await waitFor(() => expect(saveButton).toBeEnabled());
+
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({ isLoading: true }));
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+  });
+
   it('shows unknown saved-state feedback and blocks save when the execution record cannot be loaded', () => {
     mockUseExecutionRecord.mockReturnValue(
       makeExecutionRecordHookResult({
