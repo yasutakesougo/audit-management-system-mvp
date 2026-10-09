@@ -1,0 +1,67 @@
+{
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Phase0_BaselineFix",
+  "correction": "Correction-2 Evidence Collection (additive)",
+  "repository": "yasutakesougo/audit-management-system-mvp",
+  "branch": "main",
+  "head": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+  "originMain": "acb5ec3f97f7a1d7ee27c3ba0cf0a61f92894ee6",
+  "latestRelevantMerge": {
+    "pr": 2557,
+    "title": "LIVE-SCHEMA-DATA-REMEDIATION-V1 Definition (+ Correction-1)",
+    "mergedAt": "2026-08-28T02:05:05Z"
+  },
+  "definition": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "definitionStatus": "MERGED_LOCKED",
+  "correction1Status": "LOCKED",
+  "correction2Status": "ADDITIVE_EVIDENCE_COLLECTION",
+  "correction3Status": "BASELINE_EVIDENCE_IDENTITY_BINDING",
+  "blockingCondition": "TITLE_DUPLICATES=8",
+  "expectedDuplicateGroups": 8,
+  "affectedParentItems": 18,
+  "frozenTdRegister": {
+    "TD-001": [7, 12, 15],
+    "TD-002": [3, 4, 5],
+    "TD-003": [2060, 2063],
+    "TD-004": [2084, 2085],
+    "TD-005": [21, 22],
+    "TD-006": [6, 11],
+    "TD-007": [13, 14],
+    "TD-008": [1, 2]
+  },
+  "siteUrl": "https://isogokatudouhome.sharepoint.com/sites/welfare",
+  "lists": {
+    "SupportRecord_Daily": {
+      "title": "SupportRecord_Daily",
+      "listId": null,
+      "listIdStatus": "CAPTURE_AT_EVIDENCE"
+    },
+    "DailyRecordRows": {
+      "title": "DailyRecordRows",
+      "listId": null,
+      "listIdStatus": "CAPTURE_AT_EVIDENCE"
+    }
+  },
+  "authority": {
+    "httpMethods": ["GET"],
+    "itemMutation": "NOT_AUTHORIZED",
+    "schemaMutation": "NOT_AUTHORIZED",
+    "schemaApply": "NOT_AUTHORIZED",
+    "deploy": "NOT_AUTHORIZED",
+    "dataMutationAuthority": "NOT_YET_AUTHORIZED"
+  },
+  "identityRecheck": [
+    "repository",
+    "branch",
+    "HEAD",
+    "origin/main",
+    "target list identity",
+    "schema identity"
+  ],
+  "staleEvidencePolicy": "If HEAD or list identity drifts vs this baseline, HOLD — do not reuse prior Evidence Pack without re-collection.",
+  "parallelMaintenancePrs": [2551, 2552, 2541],
+  "notes": [
+    "Phase 0 pins identity only; does not authorize mutation.",
+    "Open PRs #2551/#2552/#2541 are parallel maintenance — not this critical path."
+  ]
+}
