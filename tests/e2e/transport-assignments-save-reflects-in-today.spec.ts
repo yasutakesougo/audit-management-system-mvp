@@ -6,6 +6,8 @@ import { selectMuiOptionByLabel } from './utils/muiSelect';
 const TARGET_USER_ID = 'U002';
 const TARGET_USER_NAME = '鈴木 美子';
 
+test.use({ timezoneId: 'Asia/Tokyo' });
+
 test.describe('Transport assignments save reflects in today', () => {
   test('assign/save and unassign/save are reflected in today transport vehicle board', async ({ page }) => {
     const today = new Intl.DateTimeFormat('sv-SE', {
