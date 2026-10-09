@@ -337,4 +337,23 @@ describe('useExecutionRecord', () => {
     expect(result.current.error).toEqual(expect.objectContaining({ message: 'List View Threshold' }));
     expect(mockGetRecord.mock.calls.length).toBeGreaterThan(1);
   });
+
+  it('keeps an unresolved lookup error when later candidates return no record', async () => {
+    mockGetRecord.mockRejectedValueOnce(new Error('Unconfirmed canonical lookup'));
+    mockGetRecord.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useExecutionRecord(
+        '2026-05-07',
+        'canonical-user',
+        'canonical-slot',
+        fallbackScheduleItemIds,
+        fallbackUserIds,
+      ),
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error?.message).toBe('Unconfirmed canonical lookup');
+  });
 });

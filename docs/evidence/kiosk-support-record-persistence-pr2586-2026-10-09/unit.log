@@ -1,0 +1,13 @@
+
+> audit-management-system-mvp@0.1.0 test
+> vitest run tests/unit/indexAuditCli.spec.ts tests/unit/indexAuditToken.spec.ts src/features/daily/hooks/__tests__/useExecutionRecord.spec.ts src/features/daily/repositories/sharepoint/__tests__/SharePointExecutionRecordRepository.spec.ts src/features/kiosk/components/__tests__/KioskProcedureDetailScreen.spec.tsx src/features/kiosk/components/__tests__/KioskProcedureListScreen.spec.tsx
+
+
+ RUN  v4.1.7 /Users/yasutakesougo/.codex/worktrees/kiosk-record-persistence-2586/audit-management-system-mvp
+
+
+ Test Files  6 passed (6)
+      Tests  124 passed (124)
+   Start at  12:00:49
+   Duration  4.43s (transform 2.30s, setup 4.24s, import 1.60s, tests 6.79s, environment 2.03s)
+

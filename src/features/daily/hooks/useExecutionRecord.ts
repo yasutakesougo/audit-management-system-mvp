@@ -21,6 +21,7 @@ export function useExecutionRecord(
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
 
   const getRecordRef = useRef(getRecord);
   const upsertRecordRef = useRef(upsertRecord);
@@ -35,6 +36,7 @@ export function useExecutionRecord(
 
   const fallbackScheduleKey = (fallbackScheduleItemIds ?? EMPTY_IDS).join('\u0000');
   const fallbackUserKey = (fallbackUserIds ?? EMPTY_IDS).join('\u0000');
+  const identityKey = JSON.stringify([date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
 
   const fetchRecord = useCallback(async () => {
     const seq = ++requestSeqRef.current;
@@ -57,6 +59,7 @@ export function useExecutionRecord(
 
     if (!date || userIds.length === 0 || scheduleItemIds.length === 0) {
       setRecord(undefined);
+      setLoadedIdentityKey(identityKey);
       setIsLoading(false);
       return;
     }
@@ -88,9 +91,10 @@ export function useExecutionRecord(
     if (seq === requestSeqRef.current) {
       setRecord(resolved);
       setError(resolved ? null : lastError);
+      setLoadedIdentityKey(identityKey);
       setIsLoading(false);
     }
-  }, [date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey]);
+  }, [date, userId, scheduleItemId, fallbackScheduleKey, fallbackUserKey, identityKey]);
 
   useEffect(() => {
     void fetchRecord();
@@ -168,5 +172,15 @@ export function useExecutionRecord(
     setRecord(undefined);
   }, [resolveMutationTarget]);
 
-  return { record, setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn, isLoading, error, refresh: fetchRecord } as const;
+  // Effects run after render. On an identity transition the previous lookup may
+  // already be idle; never expose that idle state as completion of the new one.
+  // Otherwise kiosk form hydration can initialize with an empty/stale record.
+  const isCurrentIdentityLoaded = loadedIdentityKey === identityKey;
+  return {
+    record: isCurrentIdentityLoaded ? record : undefined,
+    setStatus, setMemo, saveRecord, deleteRecord: deleteRecordFn,
+    isLoading: isLoading || !isCurrentIdentityLoaded,
+    error: isCurrentIdentityLoaded ? error : null,
+    refresh: fetchRecord,
+  } as const;
 }

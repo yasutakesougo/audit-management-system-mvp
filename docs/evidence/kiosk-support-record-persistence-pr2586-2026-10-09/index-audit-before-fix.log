@@ -1,0 +1,86 @@
+
+> audit-management-system-mvp@0.1.0 test
+> vitest run tests/unit/indexAuditCli.spec.ts
+
+
+ RUN  v4.1.7 /Users/yasutakesougo/.codex/worktrees/kiosk-record-persistence-2586/audit-management-system-mvp
+
+stderr | tests/unit/indexAuditCli.spec.ts
+[env] Environment validation failed (non-fatal): {
+  VITE_MSAL_CLIENT_ID: [ 'Invalid input: expected string, received undefined' ],
+  VITE_MSAL_TENANT_ID: [ 'Invalid input: expected string, received undefined' ]
+}
+
+ ❯ tests/unit/indexAuditCli.spec.ts (4 tests | 3 failed) 1167ms
+     × fails when required indexes are missing 194ms
+     × fails when SharePoint rejects the index read 191ms
+     × fails when the audit cannot complete its HTTP request 187ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/indexAuditCli.spec.ts > Index Audit CLI gate > fails when required indexes are missing
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ tests/unit/indexAuditCli.spec.ts:56:27
+     54|     const result = runAudit('missing');
+     55|     expect(result.report?.results.some(item => item.status === 'missin…
+     56|     expect(result.status).toBe(1);
+       |                           ^
+     57|   });
+     58|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/unit/indexAuditCli.spec.ts > Index Audit CLI gate > fails when SharePoint rejects the index read
+AssertionError: expected '[]\n\n📊 Index pressure report writte…' to contain '403'
+
+- Expected
++ Received
+
+- 403
++ []
++
++ 📊 Index pressure report written to /private/var/folders/gk/rylr99yd5_5bt9w4079dt3s80000gn/T/index-audit-test-XfL2qS/docs/nightly-patrol/index-pressure.json
++
+
+ ❯ tests/unit/indexAuditCli.spec.ts:61:27
+     59|   it('fails when SharePoint rejects the index read', () => {
+     60|     const result = runAudit('denied');
+     61|     expect(result.output).toContain('403');
+       |                           ^
+     62|     expect(result.status).toBe(1);
+     63|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/unit/indexAuditCli.spec.ts > Index Audit CLI gate > fails when the audit cannot complete its HTTP request
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ tests/unit/indexAuditCli.spec.ts:68:27
+     66|     const result = runAudit('network');
+     67|     expect(result.output).toContain('Synthetic network failure');
+     68|     expect(result.status).toBe(1);
+       |                           ^
+     69|   });
+     70| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+   Start at  12:00:10
+   Duration  1.82s (transform 218ms, setup 563ms, import 7ms, tests 1.17s, environment 0ms)
+

@@ -1,0 +1,10 @@
+{
+  "compliantUsages": 57,
+  "node24CompliantWorkflows": 29,
+  "nonCompliantEntries": [],
+  "nonCompliantUsages": 0,
+  "nonCompliantWorkflows": 0,
+  "scannedWorkflows": 37,
+  "setupNodeUsages": 57,
+  "targetWorkflows": 29
+}

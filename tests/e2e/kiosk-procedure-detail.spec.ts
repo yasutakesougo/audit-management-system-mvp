@@ -194,3 +194,142 @@ test.describe('Kiosk Procedure Detail', () => {
     }
   });
 });
+
+// Synthetic SharePoint HTTP acceptance. The boot helper clears browser storage
+// on every document load; only the HTTP stub's parent/child state survives reload.
+// This proves repository readback, not persistence in the production tenant.
+test.describe('Kiosk user 6 SharePoint persistence', () => {
+  for (const legacySlot of [undefined, '1', 'row-1']) {
+    test(`save and reload observation content (${legacySlot ?? 'new record'})`, async ({ page }, testInfo) => {
+      const pageErrors: string[] = [];
+      page.on('pageerror', error => pageErrors.push(String(error)));
+      const date = '2026-10-09';
+      const memo = '合成E2E記録: 利用者6の保存・再取得確認';
+      const serializedMemo = `【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】${memo}`;
+      const parentFields = ['Title', 'RecordDate', 'ReporterName', 'ReporterRole', 'User_x0020_Rows_x0020_JSON', 'UserCount'];
+      const rowFields = ['Title', 'Parent_x0020_ID', 'User_x0020_ID', 'Status', 'Payload', 'Recorded_x0020_At', 'RowNo', 'Memo', 'StaffName', 'BipsJSON'];
+      const writes: Array<{ method: string; path: string; body: Record<string, unknown> }> = [];
+      page.on('request', request => {
+        if (!['POST', 'PATCH'].includes(request.method())) return;
+        const path = decodeURIComponent(new URL(request.url()).pathname);
+        if (!/getbytitle\('(SupportRecord_Daily|DailyRecordRows)'\)\/items/.test(path)) return;
+        writes.push({
+          method: request.headers()['x-http-method'] ?? request.method(),
+          path,
+          body: request.postDataJSON() as Record<string, unknown>,
+        });
+      });
+
+      await setupSharePointStubs(page, {
+        currentUser: { status: 200, body: { Id: 12345, Title: 'Synthetic E2E Staff' } },
+        fallback: { status: 200, body: { value: [] } },
+        lists: [
+          {
+            name: 'Users_Master',
+            items: [{ Id: 6, UserID: 'I005', FullName: '合成利用者6', IsActive: true, UsageStatus: '利用中', ServiceStartDate: '2026-01-01' }],
+          },
+          {
+            name: 'SupportRecord_Daily',
+            fields: parentFields.map(InternalName => ({ InternalName })),
+            items: legacySlot ? [{ Id: 60, Title: `${date}-I005`, RecordDate: date }] : [],
+          },
+          {
+            name: 'DailyRecordRows',
+            fields: rowFields.map(InternalName => ({ InternalName })),
+            items: legacySlot ? [{
+              Id: 61,
+              Title: `${date}-I005-${legacySlot}`,
+              Parent_x0020_ID: 60,
+              User_x0020_ID: 'I005',
+              Status: 'completed',
+              RowNo: 1,
+              Memo: '既存の合成記録',
+              Payload: '既存の合成記録',
+              Recorded_x0020_At: '2026-10-09T00:00:00.000Z',
+            }] : [],
+          },
+        ],
+      });
+      await bootKiosk(page, {
+        route: `/kiosk/users/6/procedures?date=${date}&provider=sharepoint`,
+        userId: '6',
+        procedures: [
+          { id: 'procedure-1', time: '09:30', activity: '合成手順1', instruction: '合成支援1' },
+          { id: 'procedure-2', time: '10:00', activity: '合成手順2', instruction: '合成支援2' },
+        ],
+        envOverrides: {
+          VITE_SKIP_SHAREPOINT: '0',
+          VITE_FORCE_SHAREPOINT: '1',
+          VITE_FORCE_DEMO: '0',
+          VITE_DEMO_MODE: '0',
+          VITE_SKIP_LOGIN: '0',
+        },
+        storageOverrides: { demo: '0', skipLogin: '0' },
+      });
+
+      await expect(page.locator('#app-main-container')).toHaveAttribute('data-provider', 'sharepoint');
+      await expect(page.locator('h1')).toContainText('合成利用者6');
+      const firstCard = page.getByTestId('kiosk-procedure-card-0');
+      const secondCard = page.getByTestId('kiosk-procedure-card-1');
+      await firstCard.click();
+      await expect(page.getByTestId('kiosk-observation-submit')).toBeEnabled();
+      await expect(page.getByTestId('kiosk-observation-memo')).toHaveValue(legacySlot ? '既存の合成記録' : '');
+      await page.getByTestId('mood-chip-落ち着いていた').click();
+      await page.getByTestId('action-chip-見守り').click();
+      await page.getByTestId('result-chip-改善した').click();
+      await page.getByTestId('kiosk-observation-memo').fill(memo);
+      await page.getByTestId('kiosk-observation-submit').click();
+      await expect(page.getByText('記録を保存しました')).toBeVisible();
+      await expect(page).toHaveURL(/\/kiosk\/users\/6\/procedures\?date=2026-10-09&provider=sharepoint$/);
+      await expect(firstCard.getByText('記録済み', { exact: true })).toBeVisible();
+      await expect(page.getByTestId('kiosk-procedure-record-summary-0-memo')).toContainText(memo);
+      await expect(secondCard.getByText('未実施', { exact: true })).toBeVisible();
+
+      const readback = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return response.request().method() === 'GET' &&
+          decodeURIComponent(url.pathname).endsWith("getbytitle('DailyRecordRows')/items") &&
+          url.searchParams.get('$filter')?.includes('Parent_x0020_ID eq') === true;
+      });
+      await page.reload();
+      const readbackResponse = await readback;
+      expect(readbackResponse.ok()).toBe(true);
+      const persistedRows = (await readbackResponse.json()).value as Array<Record<string, unknown>>;
+      expect(persistedRows).toHaveLength(1);
+      expect(persistedRows[0]).toMatchObject({
+        User_x0020_ID: 'I005',
+        Status: 'completed',
+        Memo: serializedMemo,
+        RowNo: 1,
+      });
+      await expect(firstCard.getByText('記録済み', { exact: true })).toBeVisible();
+      await expect(page.getByTestId('kiosk-procedure-record-summary-0-memo')).toContainText(memo);
+      await expect(page.getByTestId('kiosk-procedure-record-summary-0-mood')).toContainText('落ち着いていた');
+      await expect(page.getByTestId('kiosk-procedure-record-summary-0-action')).toContainText('見守り');
+      await expect(page.getByTestId('kiosk-procedure-record-summary-0-result')).toContainText('改善した');
+      await expect(secondCard.getByText('未実施', { exact: true })).toBeVisible();
+      await firstCard.click();
+      await expect(page.getByTestId('kiosk-observation-memo')).toHaveValue(memo);
+      await page.reload();
+      await expect(page.getByTestId('kiosk-observation-memo')).toHaveValue(memo);
+      await expect(page.getByTestId('kiosk-saved-record-summary-mood')).toContainText('落ち着いていた');
+      await expect(page.getByTestId('kiosk-saved-record-summary-action')).toContainText('見守り');
+      await expect(page.getByTestId('kiosk-saved-record-summary-result')).toContainText('改善した');
+
+      const rowWrites = writes.filter(write => write.path.includes("getbytitle('DailyRecordRows')"));
+      expect(rowWrites).toHaveLength(1);
+      expect(rowWrites[0].method).toBe(legacySlot ? 'MERGE' : 'POST');
+      expect(rowWrites[0].body).toMatchObject({ User_x0020_ID: 'I005', RowNo: 1, Memo: serializedMemo });
+      expect(rowWrites[0].body.Title).toBe(`${date}-I005-${legacySlot ?? 'procedure-1'}`);
+      if (legacySlot) {
+        expect(rowWrites[0].path).toMatch(/\/items\(61\)$/);
+        expect(writes.filter(write => write.path.includes("getbytitle('SupportRecord_Daily')"))).toHaveLength(0);
+      }
+      await testInfo.attach('synthetic-sharepoint-readback.json', {
+        body: JSON.stringify({ legacySlot: legacySlot ?? null, writes, persistedRows }, null, 2),
+        contentType: 'application/json',
+      });
+      expect(pageErrors).toEqual([]);
+    });
+  }
+});

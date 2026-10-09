@@ -22,7 +22,7 @@ jobs:
       VITE_E2E_MSAL_MOCK: '1'
       VITE_SKIP_LOGIN: '1'
       VITE_SKIP_SHAREPOINT: '1'
-      VITE_FORCE_DEMO: '1'
+      VITE_FORCE_DEMO: '0'
       VITE_DEMO_MODE: '1'
       VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678'
       VITE_MSAL_TENANT_ID: 'common'

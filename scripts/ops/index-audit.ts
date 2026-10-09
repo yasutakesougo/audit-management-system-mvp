@@ -139,6 +139,7 @@ async function main() {
   }
 
   const results: any[] = [];
+  let auditFailed = false;
   
   // Dynamic mapping: KNOWN_REQUIRED_INDEXED_FIELDS keys are List Titles (usually)
   // We need to find the registry entry that resolves to that title.
@@ -177,7 +178,8 @@ async function main() {
     });
     
     if (!res.ok) {
-      if (!isJson) console.error(`  ❌ Failed to fetch indexes: ${res.status}`);
+      console.error(`  ❌ Failed to fetch indexes for ${resolvedTitle}: ${res.status}`);
+      auditFailed = true;
       continue;
     }
     
@@ -219,6 +221,7 @@ async function main() {
       }
     }
 
+    if (missingFields.length > 0) auditFailed = true;
     if (isJson) {
       results.push({
         kind: "index_pressure",
@@ -237,8 +240,10 @@ async function main() {
   }
 
   writeReport(report);
+  if (auditFailed) process.exitCode = 1;
 }
 
 main().catch((err) => {
   console.error('💥 index-audit failed unexpectedly:', err);
+  process.exitCode = 1;
 });
