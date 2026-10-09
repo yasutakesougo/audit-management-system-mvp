@@ -142,7 +142,7 @@ jobs:
       - name: Index Audit (Prevent Schema Drift)
         id: index_audit
         env:
-          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+          SP_TOKEN: ${{ secrets.INDEX_AUDIT_SP_TOKEN }}
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE || secrets.VITE_SP_RESOURCE }}
           VITE_SP_SITE_RELATIVE: ${{ vars.VITE_SP_SITE_RELATIVE || secrets.VITE_SP_SITE_RELATIVE }}
         run: |
