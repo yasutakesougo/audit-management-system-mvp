@@ -18,11 +18,11 @@ jobs:
       pull-requests: write # Danger Needs permission to write comments on PRs
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       # 依存関係はプロジェクトに合わせる（pnpm等を使っていれば適宜変更）
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           
