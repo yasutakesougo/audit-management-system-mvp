@@ -62,8 +62,18 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userId, slotKey } = useParams<{ userId: string; slotKey: string }>();
-  const { data: user, status } = useUser(userId || '');
-  const isUserLoading = status === 'loading' || status === 'idle';
+  const { data: fetchedUser, status } = useUser(userId || '');
+  const user = React.useMemo(() => {
+    const lookup = String(userId ?? '').trim();
+    if (!lookup || !fetchedUser) return null;
+    const matchesRouteId = String(fetchedUser.UserID ?? '').trim() === lookup
+      || String(fetchedUser.Id ?? '').trim() === lookup;
+    return matchesRouteId ? fetchedUser : null;
+  }, [fetchedUser, userId]);
+  const canonicalUserId = String(user?.UserID ?? '').trim();
+  const isUserResultFresh = status === 'success' && Boolean(user);
+  const isUserFreshnessUnconfirmed = Boolean(user && !isUserResultFresh);
+  const isUserLoading = (status === 'loading' || status === 'idle') && !user;
   const procedureRepo = useProcedureData();
   
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
@@ -115,8 +125,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     [procedure, slotKey],
   );
   const fallbackUserIds = React.useMemo(
-    () => (isUserLoading ? [] : buildExecutionUserIdCandidates(deepLinkUserId, userId)),
-    [deepLinkUserId, isUserLoading, userId],
+    () => (isUserResultFresh && !isUserLoading && canonicalUserId ? buildExecutionUserIdCandidates(canonicalUserId) : []),
+    [canonicalUserId, isUserLoading, isUserResultFresh],
   );
 
   const abcSlotId = React.useMemo(() => {
@@ -141,19 +151,67 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   }, [abcSlotId, deepLinkUserId, returnRouteUserId, selectedDateIso, slotKey]);
   // isUserLoading 中は空文字を渡し、確定前の userId が saveRecord のクロージャに
   // 束縛されて Zustand に誤ったキーで保存されるのを防ぐ
-  const resolvedUserId = isUserLoading ? '' : deepLinkUserId;
-  const { record, saveRecord, deleteRecord, isLoading, error: recordLoadError, refresh: refreshRecord } = useExecutionRecord(
+  const resolvedUserId = isUserLoading || !isUserResultFresh || !canonicalUserId ? '' : canonicalUserId;
+  const { record: fetchedRecord, saveRecord, deleteRecord, isLoading, error: recordLoadError, refresh: refreshRecord } = useExecutionRecord(
     selectedDateIso,
     resolvedUserId,
     scheduleItemId,
     fallbackScheduleItemIds,
     fallbackUserIds,
   );
+  const recordScheduleItemCandidates = React.useMemo(
+    () => new Set([scheduleItemId, ...fallbackScheduleItemIds].map(normalizeScheduleItemId).filter(Boolean)),
+    [fallbackScheduleItemIds, scheduleItemId],
+  );
+  const recordUserIdCandidates = React.useMemo(
+    () => new Set([resolvedUserId, ...fallbackUserIds].map((candidate) => candidate.trim()).filter(Boolean)),
+    [fallbackUserIds, resolvedUserId],
+  );
+  const record = fetchedRecord
+    && fetchedRecord.date === selectedDateIso
+    && recordUserIdCandidates.has(String(fetchedRecord.userId ?? '').trim())
+    && recordScheduleItemCandidates.has(normalizeScheduleItemId(fetchedRecord.scheduleItemId))
+    ? fetchedRecord
+    : undefined;
+  const hasMismatchedRecord = Boolean(fetchedRecord && !record);
+  const hasCurrentFetchedRecord = Boolean(fetchedRecord && record && !hasMismatchedRecord);
+  const recordQueryKey = JSON.stringify([selectedDateIso, resolvedUserId, scheduleItemId]);
+  const [recordQueryState, setRecordQueryState] = React.useState(() => ({
+    key: recordQueryKey,
+    observedLoading: isLoading,
+    ready: !isLoading,
+  }));
+  if (recordQueryState.key !== recordQueryKey) {
+    setRecordQueryState({
+      key: recordQueryKey,
+      observedLoading: isLoading,
+      ready: !isLoading && hasCurrentFetchedRecord,
+    });
+  }
+  const isRecordQueryReady = recordQueryState.key === recordQueryKey && recordQueryState.ready;
+  React.useEffect(() => {
+    if (recordQueryState.key !== recordQueryKey) return;
+    setRecordQueryState((current) => {
+      if (current.key !== recordQueryKey) return current;
+      if (isLoading) {
+        return current.observedLoading && !current.ready
+          ? current
+          : { key: recordQueryKey, observedLoading: true, ready: false };
+      }
+      if (current.observedLoading && !current.ready) {
+        return { ...current, ready: true };
+      }
+      if (hasCurrentFetchedRecord && !current.ready) {
+        return { ...current, ready: true };
+      }
+      return current;
+    });
+  }, [hasCurrentFetchedRecord, isLoading, recordQueryKey, recordQueryState.key, recordQueryState.observedLoading, recordQueryState.ready]);
   
   const { isAbsent } = useKioskAttendance(
     resolvedUserId,
     selectedDateIso,
-    historyUserIds
+    isUserResultFresh ? historyUserIds : [],
   );
 
   const [isSaving, setIsSaving] = useState(false);
@@ -166,45 +224,79 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [showDeleteError, setShowDeleteError] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // 観察チップ用ステート
-  const [selectedMood, setSelectedMood] = useState<string>('');
-  const [selectedAction, setSelectedAction] = useState<string>('');
-  const [selectedResult, setSelectedResult] = useState<string>('');
-  const [textMemo, setTextMemo] = useState<string>('');
-  const [showObservations] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const formIdentityKey = `${selectedDateIso}\u0000${resolvedUserId}\u0000${scheduleItemId}\u0000${String(slotKey ?? '')}`;
+  // Keep the main-branch transition guard, but key the form to the matched
+  // cached identity so a freshness-only change does not erase the user's draft.
+  const formIdentityKey = JSON.stringify([
+    selectedDateIso,
+    canonicalUserId,
+    scheduleItemId,
+    String(slotKey ?? ''),
+    String(userId ?? '').trim(),
+  ]);
   const formIdentityKeyRef = React.useRef(formIdentityKey);
   const isFormIdentityTransitioning = formIdentityKeyRef.current !== formIdentityKey;
-  const isRecordMutationBlocked =
-    isLoading || isFormIdentityTransitioning || !isInitialized || isUserLoading || !resolvedUserId || Boolean(recordLoadError);
 
-  // slot/date/user が変わったら観察入力をリセット（同一 route element で slot だけ変わるケース）
+  // Keep editable content scoped to the exact user/procedure/date context.
+  const formContextKey = formIdentityKey;
+  const createEmptyFormState = (key: string) => ({
+    key,
+    initialized: false,
+    mood: '',
+    action: '',
+    result: '',
+    memo: '',
+  });
+  const [formState, setFormState] = useState(() => createEmptyFormState(formContextKey));
   React.useEffect(() => {
     if (formIdentityKeyRef.current === formIdentityKey) return;
     formIdentityKeyRef.current = formIdentityKey;
-    setSelectedMood('');
-    setSelectedAction('');
-    setSelectedResult('');
-    setTextMemo('');
-    setIsInitialized(false);
-  }, [formIdentityKey]);
+    setFormState(createEmptyFormState(formContextKey));
+  }, [formContextKey, formIdentityKey]);
+  if (formState.key !== formContextKey) {
+    setFormState(createEmptyFormState(formContextKey));
+  }
+  const currentFormState = formState.key === formContextKey ? formState : createEmptyFormState(formContextKey);
+  const { mood: selectedMood, action: selectedAction, result: selectedResult, memo: textMemo } = currentFormState;
+  const isInitialized = currentFormState.initialized;
+  const updateFormState = (updates: Partial<typeof currentFormState>) => {
+    setFormState((current) => current.key === formContextKey ? { ...current, ...updates } : current);
+  };
+  const [showObservations] = useState(true);
 
-  // 以前の保存記録からステートを復元する（identity ごとに1回限り）
+  // Restore saved fields only after this exact record query succeeded.
   React.useEffect(() => {
-    const isRecordLoading = isLoading || isUserLoading || !resolvedUserId;
-    if (isRecordLoading || isInitialized) return;
-    
-    if (record) {
-      const parsedMemo = parseKioskProcedureMemo(record.memo);
-      setSelectedMood(parsedMemo.mood);
-      setSelectedAction(parsedMemo.action);
-      setSelectedResult(parsedMemo.result);
-      setTextMemo(parsedMemo.memo);
-    }
-    
-    setIsInitialized(true);
-  }, [record, isLoading, isUserLoading, resolvedUserId, isInitialized]);
+    if (
+      !isRecordQueryReady
+      || isLoading
+      || isUserLoading
+      || !resolvedUserId
+      || hasMismatchedRecord
+      || recordLoadError
+      || currentFormState.initialized
+    ) return;
+
+    const parsedMemo = record ? parseKioskProcedureMemo(record.memo) : null;
+    setFormState((current) => {
+      if (current.key !== formContextKey || current.initialized) return current;
+      return {
+        ...current,
+        initialized: true,
+        mood: parsedMemo?.mood ?? '',
+        action: parsedMemo?.action ?? '',
+        result: parsedMemo?.result ?? '',
+        memo: parsedMemo?.memo ?? '',
+      };
+    });
+  }, [currentFormState.initialized, formContextKey, hasMismatchedRecord, isLoading, isRecordQueryReady, isUserLoading, record, recordLoadError, resolvedUserId]);
+
+  const isRecordStatusUnknown = Boolean(recordLoadError)
+    || !resolvedUserId
+    || !isUserResultFresh
+    || hasMismatchedRecord
+    || !isRecordQueryReady
+    || !isInitialized
+    || isLoading;
+  const isRecordMutationBlocked = isRecordStatusUnknown || isFormIdentityTransitioning;
 
   const serializeMemo = () => {
     return serializeKioskProcedureMemo({
@@ -216,7 +308,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!userId || isRecordMutationBlocked) return;
+    if (!userId || isUserLoading || !canonicalUserId || !resolvedUserId || isRecordMutationBlocked || isAbsent) return;
     const finalMemo = serializeMemo();
     if (!finalMemo.trim()) {
       setShowValidationError(true);
@@ -238,7 +330,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (isRecordMutationBlocked) return;
+    if (isUserLoading || !canonicalUserId || !resolvedUserId || isRecordMutationBlocked || isAbsent) return;
     setIsDeleting(true);
     try {
       await deleteRecord();
@@ -295,7 +387,6 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const staffTask = procedure.instructionDetail || parts.slice(1).join('。') || '適宜見守り、必要に応じて声掛けを行います';
 
   const isCompleted = record?.status === 'completed';
-  const isRecordStatusUnknown = Boolean(recordLoadError);
 
   return (
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -330,7 +421,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 },
               })
             }
-            disabled={!abcSlotId || isAbsent}
+            disabled={!abcSlotId || isAbsent || !isUserResultFresh}
             sx={{ fontWeight: 'bold', borderRadius: 3 }}
             data-testid="kiosk-procedure-detail-abc-record"
           >
@@ -341,6 +432,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             color="primary"
             startIcon={<HistoryIcon />}
             onClick={() => setShowHistory(true)}
+            disabled={!isUserResultFresh}
             sx={{ fontWeight: 'bold', borderRadius: 3 }}
           >
             履歴・傾向を見る
@@ -366,6 +458,18 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           <Typography variant="body2">
             欠席日のため、この手順の保存・取消・ABC記録はできません。欠席を解除する場合は、利用者選択画面から操作してください。
           </Typography>
+        </Alert>
+      )}
+
+      {isUserFreshnessUnconfirmed && (
+        <Alert
+          severity={status === 'error' ? 'warning' : 'info'}
+          sx={{ mb: 3 }}
+          data-testid="kiosk-user-freshness-unconfirmed-alert"
+        >
+          {status === 'error'
+            ? '利用者の最新情報を取得できませんでした。表示中の情報はキャッシュで、最新情報は未確認です。'
+            : '利用者の最新情報を確認中です。表示中の情報はキャッシュです。'}
         </Alert>
       )}
 
@@ -424,18 +528,24 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       {isRecordStatusUnknown && (
         <Alert
           severity="error"
-          action={
+          action={(recordLoadError || hasMismatchedRecord) ? (
             <Button color="inherit" size="small" onClick={() => void refreshRecord()}>
               再読み込み
             </Button>
-          }
+          ) : undefined}
           sx={{ mb: 4, borderRadius: 2, alignItems: 'center' }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            実施記録の読み込みに失敗しました
+            {recordLoadError
+              ? '実施記録の読み込みに失敗しました'
+              : hasMismatchedRecord
+                ? '実施記録を確認できません'
+              : '実施記録を確認中です'}
           </Typography>
           <Typography variant="body2">
-            保存済みかどうかを確認できません。再読み込みするまで記録の保存・取消はできません。
+            {recordLoadError || hasMismatchedRecord
+              ? '保存済みかどうかを確認できません。再読み込みするまで記録の保存・取消はできません。'
+              : '保存状態が確認できるまで、記録の保存・取消はできません。'}
           </Typography>
         </Alert>
       )}
@@ -480,7 +590,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                     <Chip
                       key={chip}
                       label={chip}
-                      onClick={() => setSelectedMood(active ? '' : chip)}
+                      onClick={() => updateFormState({ mood: active ? '' : chip })}
+                      disabled={isRecordStatusUnknown}
                       color={active ? 'warning' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
                       sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
@@ -503,7 +614,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                     <Chip
                       key={chip}
                       label={chip}
-                      onClick={() => setSelectedAction(active ? '' : chip)}
+                      onClick={() => updateFormState({ action: active ? '' : chip })}
+                      disabled={isRecordStatusUnknown}
                       color={active ? 'warning' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
                       sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
@@ -526,7 +638,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                     <Chip
                       key={chip}
                       label={chip}
-                      onClick={() => setSelectedResult(active ? '' : chip)}
+                      onClick={() => updateFormState({ result: active ? '' : chip })}
+                      disabled={isRecordStatusUnknown}
                       color={active ? 'warning' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
                       sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
@@ -549,7 +662,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 variant="outlined"
                 placeholder="様子や対応について、その他の補足事項があれば入力してください"
                 value={textMemo}
-                onChange={(e) => setTextMemo(e.target.value)}
+                onChange={(e) => updateFormState({ memo: e.target.value })}
+                disabled={isRecordStatusUnknown}
                 sx={{
                   bgcolor: 'background.paper',
                   borderRadius: 3,
@@ -569,7 +683,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                   color="error"
                   onClick={() => setDeleteDialogOpen(true)}
                   sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem', mr: 'auto' }}
-                  disabled={isSaving || isDeleting || isRecordMutationBlocked || isRecordStatusUnknown || isAbsent}
+                  disabled={isSaving || isDeleting || isRecordMutationBlocked || isAbsent}
                   data-testid="kiosk-observation-revert"
                 >
                   記録を取り消す
@@ -589,7 +703,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 color="primary"
                 onClick={handleSave}
                 sx={{ py: 1.5, px: 4, borderRadius: 3, fontSize: '1.1rem', fontWeight: 'bold' }}
-                disabled={isSaving || isDeleting || isRecordMutationBlocked || isRecordStatusUnknown || isAbsent}
+                disabled={isSaving || isDeleting || isRecordMutationBlocked || isAbsent}
                 data-testid="kiosk-observation-submit"
               >
                 記録を保存する
@@ -665,7 +779,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             variant="contained"
             color="error"
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={isDeleting || isSaving || isRecordStatusUnknown || isAbsent || !resolvedUserId}
             sx={{ borderRadius: 3, px: 3, fontWeight: 'bold' }}
             autoFocus
             data-testid="kiosk-observation-revert-confirm"

@@ -234,6 +234,129 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('renders a matching cached user while the individual user lookup is still loading', async () => {
+    mockRouteUserId = '17';
+    mockUseUser.mockReturnValue({ data: null, status: 'loading', error: null });
+    mockUseUsers.mockReturnValue({
+      data: [{ Id: 17, UserID: 'U017', FullName: '対象利用者' }],
+      status: 'success',
+      error: null,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('対象利用者 様')).toBeInTheDocument();
+    expect(screen.getByText('朝のバイタルチェック')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
+    expect(screen.getByText('実施状況: 未確認')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-user-freshness-unconfirmed-alert')).toBeInTheDocument();
+    await waitFor(() => expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U017'));
+
+    mockUseUser.mockReturnValue({
+      data: { Id: 17, UserID: 'U017', FullName: '更新後の利用者' },
+      status: 'success',
+      error: null,
+    });
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+    expect(screen.getByText('更新後の利用者 様')).toBeInTheDocument();
+    expect(screen.queryByText('対象利用者 様')).toBeNull();
+  });
+
+  it('uses the matching cached user when the individual user lookup fails', () => {
+    mockRouteUserId = '17';
+    mockUseUser.mockReturnValue({ data: null, status: 'error', error: new Error('lookup failed') });
+    mockUseUsers.mockReturnValue({
+      data: [{ Id: 17, UserID: 'U017', FullName: '対象利用者' }],
+      status: 'success',
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('対象利用者 様')).toBeInTheDocument();
+    expect(screen.getByText('朝のバイタルチェック')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-user-freshness-unconfirmed-alert')).toBeInTheDocument();
+    expect(screen.getByText('実施状況: 未確認')).toBeInTheDocument();
+    expect(within(screen.getByTestId('kiosk-procedure-card-0')).queryByText('未実施')).toBeNull();
+    expect(within(screen.getByTestId('kiosk-procedure-card-0')).queryByTestId('kiosk-procedure-record-summary-0')).toBeNull();
+  });
+
+  it('does not use an individual lookup result that belongs to a different URL user', () => {
+    mockRouteUserId = '17';
+    mockUseUser.mockReturnValue({
+      data: { Id: 18, UserID: 'U018', FullName: '別利用者' },
+      status: 'success',
+      error: null,
+    });
+    mockUseUsers.mockReturnValue({
+      data: [
+        { Id: 17, UserID: 'U017', FullName: '対象利用者' },
+        { Id: 18, UserID: 'U018', FullName: '別利用者' },
+      ],
+      status: 'success',
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('対象利用者 様')).toBeInTheDocument();
+    expect(screen.queryByText('別利用者 様')).toBeNull();
+    expect(mockGetStoreRecords).toHaveBeenCalledWith(expect.any(String), 'U017');
+    expect(mockGetStoreRecords).not.toHaveBeenCalledWith(expect.any(String), 'U018');
+  });
+
+  it('shows procedure content without treating record state as unperformed when canonical UserID is missing', async () => {
+    mockRouteUserId = '17';
+    mockKioskAttendance = {
+      isAbsent: true,
+      reason: 'test-only',
+      isLoading: false,
+      isError: false,
+    };
+    mockUseUser.mockReturnValue({
+      data: { Id: 17, FullName: '対象利用者' },
+      status: 'success',
+      error: null,
+    });
+    mockUseUsers.mockReturnValue({
+      data: [{ Id: 17, FullName: '対象利用者' }],
+      status: 'success',
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/17/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('対象利用者 様')).toBeInTheDocument();
+    expect(screen.getByText('朝のバイタルチェック')).toBeInTheDocument();
+    expect(screen.getByText('実施状況: 未確認')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-user-code-unavailable-alert')).toBeInTheDocument();
+    expect(screen.queryByTestId('kiosk-absence-banner')).toBeNull();
+    expect(await screen.findByTestId('kiosk-uncertain-chip-0')).toBeInTheDocument();
+    expect(within(screen.getByTestId('kiosk-procedure-card-0')).queryByText('未実施')).toBeNull();
+    expect(mockGetRecords).not.toHaveBeenCalled();
+    expect(mockGetStoreRecords).not.toHaveBeenCalled();
+  });
+
   it('shows saved record summary on recorded procedure cards', async () => {
     mockGetRecords.mockResolvedValue([
       {
@@ -421,7 +544,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
     mockGetByUser.mockReturnValue(procedures17);
     mockUseUser.mockReturnValue({
-      data: { FullName: '対象 利用者', UserID: 'U017' },
+      data: { Id: 17, FullName: '対象 利用者', UserID: 'U017' },
       status: 'success',
     });
     mockGetRecords.mockImplementation(async (_date, userId) => {
@@ -466,7 +589,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
     mockGetByUser.mockReturnValue(procedures17);
     mockUseUser.mockReturnValue({
-      data: { FullName: '対象 利用者', UserID: 'U017' },
+      data: { Id: 17, FullName: '対象 利用者', UserID: 'U017' },
       status: 'success',
     });
     mockGetRecords.mockImplementation(async (_date, userId) => {
@@ -747,7 +870,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('Case 1: renders supportStartDate from planningSheet when planningSheet.supportStartDate is present', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: '2026-04-01' }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -768,7 +891,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('Case 2: renders ServiceStartDate from user master when planningSheet.supportStartDate is not present', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: '2026-04-01' }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -789,7 +912,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('Case 3: renders appliedFrom from planningSheet when supportStartDate and ServiceStartDate are both absent', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -810,7 +933,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('Case 4: renders unset message when planningSheetId, supportStartDate, ServiceStartDate and appliedFrom are all absent', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockGetByUser.mockReturnValue([
@@ -834,7 +957,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('Loading case: renders confirmation message during loading when planningSheetId is present but data is not loaded yet', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -855,7 +978,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('Fallback lookup case: renders supportStartDate from useCurrentPlanningSheet when planningSheet is absent but currentSheet is loaded', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -882,7 +1005,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not show setup CTA even when support start date is unset', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -903,7 +1026,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not show planning draft review CTA even when planning sheet status is draft', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: '2026-04-01' }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -925,7 +1048,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not show planning draft review CTA when planning sheet status is active', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: '2026-04-01' }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -966,7 +1089,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not show setup CTA when support start date is from planning sheet', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: '2026-04-01' },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: '2026-04-01' }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -987,7 +1110,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not show provisional review CTA even for fallback source', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -1009,7 +1132,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not show setup CTA even when support start date is invalid', async () => {
     mockUseUser.mockReturnValue({
-      data: { FullName: '田中 太郎', ServiceStartDate: undefined },
+      data: asUser({ FullName: '田中 太郎', ServiceStartDate: undefined }),
       status: 'success',
     });
     mockUsePlanningSheetData.mockReturnValue({
@@ -1258,7 +1381,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     // Now, transition user to success
     userState = {
-      data: { FullName: '田中 太郎', UserID: 'U001' } as any,
+      data: { Id: 17, FullName: '田中 太郎', UserID: 'U001' } as any,
       status: 'success',
     };
 
