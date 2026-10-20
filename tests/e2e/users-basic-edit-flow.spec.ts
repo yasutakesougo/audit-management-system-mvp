@@ -47,7 +47,7 @@ test.describe('users basic info edit flow', () => {
       .locator('dt', { hasText: 'ふりがな' })
       .first()
       .locator('xpath=following-sibling::*[1]');
-    await expect(furiganaValue).toHaveText('未登録');
+    await expect(furiganaValue).toHaveText('たなか たろう');
 
     const editButton = targetRow.locator('[aria-label="編集"]');
     await scrollAndClick(editButton, page, { testInfo, label: 'users-edit-btn' });
