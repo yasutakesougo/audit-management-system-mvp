@@ -122,6 +122,13 @@ export const KioskProcedureListScreen: React.FC = () => {
     status: usersStatus,
     error: usersError,
   } = useUsersQuery({ selectMode: 'core' });
+  const matchesUserLookup = React.useCallback((candidate: typeof userByNumericId | undefined) => {
+    const lookup = String(userLookupId).trim();
+    if (!lookup || !candidate) return false;
+    return String(candidate.Id ?? '').trim() === lookup
+      || String(candidate.UserID ?? '').trim() === lookup;
+  }, [userLookupId]);
+  const matchingNumericUser = matchesUserLookup(userByNumericId) ? userByNumericId : null;
   const userByCode = React.useMemo(() => {
     const lookup = String(userLookupId).trim();
     if (!lookup) return null;
@@ -131,10 +138,20 @@ export const KioskProcedureListScreen: React.FC = () => {
       return String(candidate.Id ?? '').trim() === lookup;
     }) ?? null;
   }, [userLookupId, users]);
-  const user = userByNumericId ?? userByCode;
-  const isUserLoading = numericUserLookupId != null
-    ? (numericUserStatus === 'loading' || numericUserStatus === 'idle')
-    : (usersStatus === 'loading' || usersStatus === 'idle');
+  const user = matchingNumericUser ?? userByCode;
+  const hasIndividualUserLookup = numericUserLookupId != null || Boolean(matchingNumericUser);
+  const hasFreshUserResult = hasIndividualUserLookup
+    ? numericUserStatus === 'success' && Boolean(matchingNumericUser)
+    : usersStatus === 'success' && Boolean(userByCode);
+  const isUserFreshnessUnconfirmed = Boolean(user && !hasFreshUserResult);
+  const previousUserLookupIdRef = React.useRef(userLookupId);
+  const userLookupJustChanged = previousUserLookupIdRef.current !== userLookupId;
+  if (userLookupJustChanged) previousUserLookupIdRef.current = userLookupId;
+  const isUserLoading = user
+    ? false
+    : numericUserLookupId != null
+      ? (userLookupJustChanged || numericUserStatus === 'loading' || numericUserStatus === 'idle')
+      : (usersStatus === 'loading' || usersStatus === 'idle');
   const isUserAuthRequired = React.useMemo(
     () => isAuthRequiredError(numericUserError) || isAuthRequiredError(usersError),
     [numericUserError, usersError],
@@ -242,9 +259,11 @@ export const KioskProcedureListScreen: React.FC = () => {
 
 
   const { getRecords: getStoreRecords } = useExecutionStore();
+  const canonicalUserId = String(user?.UserID ?? '').trim();
+  const hasCanonicalUserId = Boolean(canonicalUserId);
   const executionUserIdCandidates = React.useMemo(
-    () => buildExecutionUserIdCandidates(queryUserIdFromSearch, user?.UserID, userId),
-    [queryUserIdFromSearch, user?.UserID, userId],
+    () => canonicalUserId ? buildExecutionUserIdCandidates(canonicalUserId, userLookupId) : [],
+    [canonicalUserId, userLookupId],
   );
   const storeRecords = React.useMemo(() => {
     const deduped = new Map<string, ExecutionRecord>();
@@ -339,6 +358,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   // 実施記録の取得
   useEffect(() => {
     if (isUserLoading) return;
+    if (!canonicalUserId) return;
 
     let active = true;
     const fetchRecords = async () => {
@@ -509,6 +529,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   }, [
     executionUserIdCandidates,
     isUserLoading,
+    canonicalUserId,
     executionRepo,
     selectedDateIso,
     executionRepositoryKind,
@@ -535,6 +556,10 @@ export const KioskProcedureListScreen: React.FC = () => {
   // 進捗サマリーの計算
   const totalCount = procedures.length;
   const recordedRecordsByProcedure = React.useMemo(() => {
+    if (!hasCanonicalUserId || !hasFreshUserResult) {
+      return procedures.map(() => undefined);
+    }
+
     const allCandidateRecords =
       executionRepositoryKind === 'sharepoint' && hasFetchedRecords
         ? fetchFailed
@@ -580,7 +605,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
       return undefined;
     });
-  }, [executionRepositoryKind, hasFetchedRecords, fetchFailed, storeRecords, records, procedures, hasRecordInput]);
+  }, [executionRepositoryKind, hasFetchedRecords, fetchFailed, storeRecords, records, procedures, hasRecordInput, hasCanonicalUserId, hasFreshUserResult]);
   const doneCount = recordedRecordsByProcedure.filter((r) => r?.status === 'completed').length;
   const recordedCount = recordedRecordsByProcedure.filter(Boolean).length;
   const progress = totalCount > 0 ? (recordedCount / totalCount) * 100 : 0;
@@ -662,9 +687,13 @@ export const KioskProcedureListScreen: React.FC = () => {
         {/* 進捗サマリー */}
         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {absenceState.isAbsent ? '実施状況: 欠席（記録対象外）' : `実施状況: ${recordedCount} / ${totalCount}`}
+            {!hasCanonicalUserId || !hasFreshUserResult
+              ? '実施状況: 未確認'
+              : absenceState.isAbsent
+                ? '実施状況: 欠席（記録対象外）'
+                : `実施状況: ${recordedCount} / ${totalCount}`}
           </Typography>
-          {!absenceState.isAbsent && (
+          {hasCanonicalUserId && hasFreshUserResult && !absenceState.isAbsent && (
             <>
               <LinearProgress
                 variant="determinate"
@@ -680,7 +709,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       </Box>
 
       {/* 欠席バナー */}
-      {absenceState.isAbsent && (
+      {hasCanonicalUserId && hasFreshUserResult && absenceState.isAbsent && (
         <Alert
           severity="info"
           sx={{ mb: 3, borderRadius: 2 }}
@@ -699,6 +728,24 @@ export const KioskProcedureListScreen: React.FC = () => {
             }
             {absenceState.reason && `（理由: ${absenceState.reason}）`}
           </Typography>
+        </Alert>
+      )}
+
+      {!hasCanonicalUserId && (
+        <Alert severity="warning" sx={{ mb: 3 }} data-testid="kiosk-user-code-unavailable-alert">
+          利用者コードを確認できないため、当日の実施状態は未確認です。
+        </Alert>
+      )}
+
+      {isUserFreshnessUnconfirmed && (
+        <Alert
+          severity={numericUserStatus === 'error' || usersStatus === 'error' ? 'warning' : 'info'}
+          sx={{ mb: 3 }}
+          data-testid="kiosk-user-freshness-unconfirmed-alert"
+        >
+          {numericUserStatus === 'error' || usersStatus === 'error'
+            ? '利用者の最新情報を取得できませんでした。表示中の情報はキャッシュで、最新情報は未確認です。'
+            : '利用者の最新情報を確認中です。表示中の情報はキャッシュです。'}
         </Alert>
       )}
 
@@ -748,11 +795,13 @@ export const KioskProcedureListScreen: React.FC = () => {
         {procedures.map((step, index) => {
           const recordedRecord = recordedRecordsByProcedure[index];
           const isRecorded = Boolean(recordedRecord);
-          const isLoadFailed = fetchFailed || isThrottleActive || absenceState.isError;
+          const isLoadFailed = fetchFailed || isThrottleActive || absenceState.isError || !hasCanonicalUserId || !hasFreshUserResult;
 
           let statusType: 'recorded' | 'unrecorded' | 'uncertain' | 'uncertain_local' | 'absent' = 'unrecorded';
           if (isRecorded) {
             statusType = isLoadFailed ? 'uncertain_local' : 'recorded';
+          } else if (!hasCanonicalUserId || !hasFreshUserResult) {
+            statusType = 'uncertain';
           } else if (absenceState.isAbsent) {
             statusType = 'absent';
           } else if (isLoadFailed) {

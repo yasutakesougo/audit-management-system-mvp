@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
 import { resolveProcedureUserQueryCandidates } from '../../utils/resolveProcedureUserQuery';
+import { formatDateIso } from '@/lib/dateFormat';
 import type { IUserMaster } from '@/features/users/types';
 import type { useExecutionRecord as useExecutionRecordHook } from '@/features/daily/hooks/useExecutionRecord';
 import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
@@ -24,7 +25,7 @@ const makeUser = (overrides: Partial<IUserMaster> = {}): IUserMaster => ({
 
 const makeExecutionRecord = (overrides: Partial<ExecutionRecord> = {}): ExecutionRecord => ({
   id: 'rec-1',
-  date: '2026-05-28',
+  date: formatDateIso(new Date()),
   userId: 'U001',
   scheduleItemId: 'P001',
   status: 'completed',
@@ -52,7 +53,8 @@ const makeExecutionRecordHookResult = (
 // Mock dependencies
 const mockNavigate = vi.fn();
 const mockUseLocation = vi.fn(() => ({ search: '?kiosk=1&provider=memory' }));
-const mockUseParams = vi.fn(() => ({ userId: 'U001', slotKey: '0' }));
+let mockRouteUserId = 'U001';
+const mockUseParams = vi.fn(() => ({ userId: mockRouteUserId, slotKey: '0' }));
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -132,7 +134,8 @@ vi.mock('../../hooks/useKioskAttendance', () => ({
 describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior tests)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseParams.mockReturnValue({ userId: 'U001', slotKey: '0' });
+    mockRouteUserId = 'U001';
+    mockUseParams.mockImplementation(() => ({ userId: mockRouteUserId, slotKey: '0' }));
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
     mockUseUser.mockReturnValue({ data: makeUser(), status: 'success' });
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
@@ -159,6 +162,200 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('田中 太郎 様')).toBeInTheDocument();
     expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
     expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
+  });
+
+  it('does not look up or save execution records without a canonical user code', () => {
+    mockRouteUserId = '1';
+    mockUseUser.mockReturnValue({ data: makeUser({ UserID: '' }), status: 'success' });
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('田中 太郎 様')).toBeInTheDocument();
+    expect(mockUseExecutionRecord).toHaveBeenCalledWith(
+      expect.any(String),
+      '',
+      'procedure-1',
+      expect.any(Array),
+      [],
+    );
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+    expect(mockSaveRecord).not.toHaveBeenCalled();
+  });
+
+  it('keeps cached user content visible after lookup failure but leaves identity and execution state unconfirmed', () => {
+    mockUseUser.mockReturnValue({ data: makeUser(), status: 'error' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ memo: 'cached-record-must-not-show' }),
+    }));
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('田中 太郎 様')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-user-freshness-unconfirmed-alert')).toBeInTheDocument();
+    expect(mockUseExecutionRecord).toHaveBeenCalledWith(expect.any(String), '', 'procedure-1', expect.any(Array), []);
+    expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('cached-record-must-not-show')).toBeNull();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-procedure-detail-abc-record')).toBeDisabled();
+  });
+
+  it('hides a record returned for another user and keeps its status unconfirmed', () => {
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ userId: 'U999', memo: '別利用者の記録内容' }),
+    }));
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('別利用者の記録内容')).toBeNull();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+  });
+
+  it('clears the previous user form and blocks actions until the new user record lookup completes', async () => {
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ memo: 'previous-user-test-memo' }),
+    }));
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('previous-user-test-memo'));
+
+    mockRouteUserId = 'U002';
+    mockUseUser.mockReturnValue({ data: makeUser({ Id: 2, UserID: 'U002', FullName: '別利用者' }), status: 'success' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ memo: 'previous-user-test-memo' }),
+      isLoading: true,
+    }));
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('previous-user-test-memo')).toBeNull();
+
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue(''));
+    expect(screen.queryByDisplayValue('previous-user-test-memo')).toBeNull();
+    fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: 'new-user-only-test' } });
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+    await waitFor(() => expect(mockSaveRecord).toHaveBeenCalledWith('completed', '【メモ】new-user-only-test'));
+  });
+
+  it('drops the old-code record when the same route resolves to a new canonical user code', async () => {
+    mockRouteUserId = '1';
+    mockUseUser.mockReturnValue({ data: makeUser({ Id: 1, UserID: 'U001' }), status: 'success' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ memo: 'old-code-test-memo' }),
+    }));
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('old-code-test-memo'));
+
+    mockUseUser.mockReturnValue({ data: makeUser({ Id: 1, UserID: 'U009' }), status: 'success' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ userId: 'U001', memo: 'old-code-test-memo' }),
+      isLoading: true,
+    }));
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(mockUseExecutionRecord).toHaveBeenLastCalledWith(
+      expect.any(String),
+      'U009',
+      'procedure-1',
+      expect.any(Array),
+      expect.arrayContaining(['U009']),
+    );
+    expect(screen.queryByDisplayValue('old-code-test-memo')).toBeNull();
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue(''));
+    expect(screen.queryByDisplayValue('old-code-test-memo')).toBeNull();
+  });
+
+  it('hides a same-user record from a different selected date', () => {
+    mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory&date=2026-05-07' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ date: '2026-05-06', memo: 'previous-date-test-memo' }),
+    }));
+
+    render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('previous-date-test-memo')).toBeNull();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+  });
+
+  it('disables an already-open cancellation confirmation if record status becomes unknown', () => {
+    const currentRecord = makeExecutionRecord({ memo: 'current-record-test-memo' });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({ record: currentRecord }));
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('kiosk-observation-revert'));
+    expect(screen.getByTestId('kiosk-observation-revert-confirm')).toBeEnabled();
+
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: currentRecord,
+      error: new Error('refresh failed'),
+    }));
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>
+    );
+
+    const confirmButton = screen.getByTestId('kiosk-observation-revert-confirm');
+    expect(confirmButton).toBeDisabled();
+    fireEvent.click(confirmButton);
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
   });
 
   it('saves with serialized memo from the main "記録を保存する" action', async () => {
