@@ -23,6 +23,7 @@ import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUs
 import { useKioskAttendance } from '../hooks/useKioskAttendance';
 import { KioskProcedureRecordSummary } from './KioskProcedureRecordSummary';
 
+const EMPTY_ATTENDANCE_CANDIDATES: string[] = [];
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
 const RESULT_CHIPS = ['改善した', '変化なし', '悪化した', '途中で落ち着いた'];
@@ -211,7 +212,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const { isAbsent } = useKioskAttendance(
     resolvedUserId,
     selectedDateIso,
-    isUserResultFresh ? historyUserIds : [],
+    isUserResultFresh ? historyUserIds : EMPTY_ATTENDANCE_CANDIDATES,
   );
 
   const [isSaving, setIsSaving] = useState(false);
