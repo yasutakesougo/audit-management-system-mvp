@@ -2,8 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { DailyRecordSaver } from './Saver';
 import { DailyRecordDataAccess } from './DataAccess';
-import type { ResolvedParentFields, ResolvedRowsFields } from '../../constants';
-import type { SaveDailyRecordInput } from '../../../../domain/legacy/DailyRecordRepository';
+import type { ResolvedParentFields, ResolvedRowsFields } from '../constants';
+import type { SaveDailyRecordInput } from '../../../domain/legacy/DailyRecordRepository';
 import * as persistence from '../../../domain/persistence/dailyRecordPersistence';
 
 const jsonResponse = (value: unknown, status = 200): Response =>
@@ -143,7 +143,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({ Id: 1000 + childBodies.length });
       }
 
-      if (url.includes('items(42)') && httpMethod === 'MERGE') {
+      if (url.includes('items(42)') && httpMethod === 'MERGE' && init) {
         parentMerges.push(JSON.parse(String(init.body)));
         return new Response(null, { status: 204 });
       }
@@ -274,7 +274,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         }
         return jsonResponse({ Id: 2000 + childPosts });
       }
-      if (url.includes('items(7)') && httpMethod === 'MERGE') {
+      if (url.includes('items(7)') && httpMethod === 'MERGE' && init) {
         parentMerges.push(JSON.parse(String(init.body)));
         return new Response(null, { status: 204 });
       }
@@ -322,7 +322,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         childBodies.push(JSON.parse(String(init.body)));
         return jsonResponse({ Id: 901 });
       }
-      if (url.includes('items(90)') && httpMethod === 'MERGE') {
+      if (url.includes('items(90)') && httpMethod === 'MERGE' && init) {
         merges.push(JSON.parse(String(init.body)));
         return new Response(null, { status: 204 });
       }
@@ -415,7 +415,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         childBodies.push(JSON.parse(String(init.body)));
         return jsonResponse({ Id: 901 });
       }
-      if (target.includes('items(10)') && httpMethod === 'MERGE') {
+      if (target.includes('items(10)') && httpMethod === 'MERGE' && init) {
         merges.push(JSON.parse(String(init.body)));
         return new Response(null, { status: 204 });
       }
@@ -468,7 +468,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         childBodies.push(JSON.parse(String(init.body)));
         return jsonResponse({ Id: 901 });
       }
-      if (target.includes('items(10)') && httpMethod === 'MERGE') {
+      if (target.includes('items(10)') && httpMethod === 'MERGE' && init) {
         merges.push(JSON.parse(String(init.body)));
         return new Response(null, { status: 204 });
       }
