@@ -249,8 +249,15 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       </MemoryRouter>
     );
 
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    expect(screen.getByText('別利用者 様')).toBeInTheDocument();
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
     expect(screen.queryByDisplayValue('previous-user-test-memo')).toBeNull();
+    expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-procedure-detail-abc-record')).toBeDisabled();
 
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
     rerender(
@@ -299,7 +306,13 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect.arrayContaining(['U009']),
     );
     expect(screen.queryByDisplayValue('old-code-test-memo')).toBeNull();
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
+    expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-procedure-detail-abc-record')).toBeDisabled();
 
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
     rerender(
@@ -584,6 +597,66 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByTestId('action-chip-見守り').className).not.toContain('MuiChip-filledWarning');
     expect(screen.getByTestId('result-chip-改善した').className).not.toContain('MuiChip-filledWarning');
     expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+  });
+
+  it('shows procedure content during the initial record lookup while blocking record actions until restoration', async () => {
+    const savedRecord = makeExecutionRecord({
+      memo: '【様子】落ち着いていた\n【対応】見守り\n【変化】改善した\n【メモ】照合後に復元するメモ',
+    });
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: savedRecord,
+      isLoading: true,
+    }));
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
+    expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
+    for (const prefix of ['mood-chip-', 'action-chip-', 'result-chip-']) {
+      for (const chip of screen.getAllByTestId(new RegExp(`^${prefix}`))) {
+        expect(chip).toHaveClass('Mui-disabled');
+      }
+    }
+    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+    expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
+    for (const testId of [
+      'kiosk-observation-submit',
+      'kiosk-observation-revert',
+      'kiosk-procedure-detail-abc-record',
+    ]) {
+      const button = screen.getByTestId(testId);
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+    }
+    expect(mockSaveRecord).not.toHaveBeenCalled();
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({ record: savedRecord }));
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('照合後に復元するメモ');
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeEnabled();
+      expect(screen.getByTestId('kiosk-observation-revert')).toBeEnabled();
+      expect(screen.getByTestId('kiosk-procedure-detail-abc-record')).toBeEnabled();
+    });
+    expect(screen.getByTestId('mood-chip-落ち着いていた')).toHaveClass('MuiChip-filledWarning');
+    expect(screen.getByTestId('action-chip-見守り')).toHaveClass('MuiChip-filledWarning');
+    expect(screen.getByTestId('result-chip-改善した')).toHaveClass('MuiChip-filledWarning');
+    expect(screen.queryByText('保存状態未確認')).toBeNull();
+    expect(screen.getByTestId('kiosk-saved-record-summary')).toHaveTextContent('照合後に復元するメモ');
   });
 
   it('disables save while a refreshed execution-record lookup is loading', async () => {

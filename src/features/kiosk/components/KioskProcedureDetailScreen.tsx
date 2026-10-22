@@ -349,7 +349,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   // Show initial loading state only. 
   // Background re-fetches (triggered by store updates) should not unmount the entire UI,
   // otherwise the History Drawer state will be reset.
-  if (isUserLoading || isFormIdentityTransitioning || (isLoading && !isInitialized)) {
+  if (isUserLoading || isFormIdentityTransitioning) {
     return (
       <Box sx={{ 
         p: 4, 
@@ -421,7 +421,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 },
               })
             }
-            disabled={!abcSlotId || isAbsent || !isUserResultFresh}
+            disabled={!abcSlotId || isAbsent || !isUserResultFresh || (isLoading && !isInitialized)}
             sx={{ fontWeight: 'bold', borderRadius: 3 }}
             data-testid="kiosk-procedure-detail-abc-record"
           >
