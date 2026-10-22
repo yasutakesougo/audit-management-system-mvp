@@ -1,6 +1,7 @@
 name: storybook-a11y
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -11,6 +12,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Configure manual offline runtime
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          cat <<'OFFLINE_ENV' >> "$GITHUB_ENV"
+          VITE_E2E=1
+          VITE_E2E_MSAL_MOCK=1
+          VITE_SKIP_LOGIN=1
+          VITE_SKIP_SHAREPOINT=1
+          VITE_FORCE_SHAREPOINT=0
+          VITE_DATA_PROVIDER=memory
+          VITE_DEMO_MODE=1
+          VITE_FORCE_DEMO=1
+          VITE_FEATURE_SCHEDULES_SP=0
+          VITE_FEATURE_SCHEDULES_GRAPH=0
+          VITE_SCHEDULES_SAVE_MODE=mock
+          VITE_MSAL_CLIENT_ID=dummy
+          VITE_MSAL_TENANT_ID=dummy
+          VITE_SP_RESOURCE=https://contoso.sharepoint.com
+          VITE_SP_SITE_RELATIVE=/sites/Audit
+          VITE_SP_SCOPE_DEFAULT=https://contoso.sharepoint.com/AllSites.Read
+          NOTIFY_WEBHOOK_URL=
+          TEAMS_WEBHOOK_URL=
+          VITE_TELEMETRY_URL=
+          OFFLINE_ENV
 
       - uses: actions/setup-node@v4
         with:

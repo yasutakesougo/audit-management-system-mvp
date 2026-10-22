@@ -6,11 +6,6 @@ on:
     branches: [main, develop]
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
-    inputs:
-      ref:
-        description: "Target ref (branch or tag)"
-        required: false
-        default: ""
 
 concurrency:
   group: quality-gates-${{ github.ref }}
@@ -18,6 +13,8 @@ concurrency:
 
 jobs:
   quality:
+    name: ${{ github.event_name == 'workflow_dispatch' && 'quality (PR/push only)' || 'quality' }}
+    if: github.event_name != 'workflow_dispatch'
     outputs:
       ci_full: ${{ steps.changes.outputs.ci_full }}
     runs-on: ubuntu-latest
@@ -34,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.head_ref || github.ref }}
+          ref: ${{ github.head_ref || github.ref }}
       - name: Detect changes (paths-filter)
         id: changes
         uses: dorny/paths-filter@v3
@@ -561,3 +558,245 @@ jobs:
         run: node scripts/notify.mjs --only-on-fail --title "canary(schedule)" --files reports/quality-gates/canary-classification.md,reports/perf-summary.md
         env:
           NOTIFY_LAST_EXIT_CODE: ${{ steps.canary.outputs.exit_code }}
+
+  quality-manual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      E2E_FEATURE_SCHEDULE_NAV: '1'
+      E2E_FEATURE_SCHEDULE_ACCEPTANCE: '1'
+      E2E_FEATURE_SCHEDULE_WEEK_MONTH_TAB: '1'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+    - name: Configure manual offline runtime
+      if: github.event_name == 'workflow_dispatch'
+      shell: bash
+      run: |
+        cat <<'OFFLINE_ENV' >> "$GITHUB_ENV"
+        VITE_E2E=1
+        VITE_E2E_MSAL_MOCK=1
+        VITE_SKIP_LOGIN=1
+        VITE_SKIP_SHAREPOINT=1
+        VITE_FORCE_SHAREPOINT=0
+        VITE_DATA_PROVIDER=memory
+        VITE_DEMO_MODE=1
+        VITE_FORCE_DEMO=1
+        VITE_FEATURE_SCHEDULES_SP=0
+        VITE_FEATURE_SCHEDULES_GRAPH=0
+        VITE_SCHEDULES_SAVE_MODE=mock
+        VITE_MSAL_CLIENT_ID=dummy
+        VITE_MSAL_TENANT_ID=dummy
+        VITE_SP_RESOURCE=https://contoso.sharepoint.com
+        VITE_SP_SITE_RELATIVE=/sites/Audit
+        VITE_SP_SCOPE_DEFAULT=https://contoso.sharepoint.com/AllSites.Read
+        NOTIFY_WEBHOOK_URL=
+        TEAMS_WEBHOOK_URL=
+        VITE_TELEMETRY_URL=
+        OFFLINE_ENV
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24
+        cache: npm
+    - name: Install deps
+      run: npm ci
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
+    - name: Typecheck
+      run: npm run typecheck
+    - name: Lint
+      run: npm run lint
+    - name: Schedules mini tests (optional)
+      run: npm run test:schedule:mini
+      continue-on-error: true
+    - name: Attendance mini tests (optional)
+      run: npm run test:attendance:mini
+      continue-on-error: true
+    - name: Daily mini tests (optional)
+      run: npm run test:daily:mini
+      continue-on-error: true
+    - name: Users mini tests (optional)
+      run: npm run test:users:mini
+      continue-on-error: true
+    - name: Nurse mini tests (optional)
+      run: npm run test:nurse:mini
+      continue-on-error: true
+    - name: Test (PR)
+      id: test_pr
+      run: |
+        set -o pipefail
+        npm run test:ci:required 2>&1 | tee /tmp/vitest-required.log
+        node scripts/ci/check-act-warnings.mjs /tmp/vitest-required.log --json --json-output /tmp/act-warnings-required.json
+    - name: Free port 5173 (best-effort, lsof OR fuser)
+      run: |
+        (command -v lsof >/dev/null && lsof -ti :5173 | xargs -r kill -9) || true
+        (command -v fuser >/dev/null && fuser -k 5173/tcp) || true
+        sleep 1
+    - name: Start dev server (5173, strict)
+      run: |
+        nohup npm run dev:5173 </dev/null > /tmp/vite-5173.log 2>&1 &
+        echo "Vite starting on port 5173..."
+        sleep 2
+        echo "=== vite log (head -20, sanity check) ==="
+        head -20 /tmp/vite-5173.log || true
+    - name: Wait for dev server (5173)
+      run: |
+        npx wait-on http://127.0.0.1:5173/ --timeout 60000
+        curl -I http://127.0.0.1:5173/ | head -5
+    - name: Debug server logs on failure (5173)
+      if: failure()
+      run: |
+        echo "=== /tmp/vite-5173.log (tail -200) ==="
+        tail -200 /tmp/vite-5173.log || true
+    - name: Playwright E2E
+      id: playwright_e2e
+      env:
+        VITE_E2E: '1'
+        VITE_SKIP_LOGIN: '1'
+        VITE_E2E_MSAL_MOCK: '1'
+        VITE_SKIP_SHAREPOINT: '1'
+        VITE_MSAL_CLIENT_ID: dummy
+        VITE_MSAL_TENANT_ID: dummy
+        VITE_SCHEDULES_TZ: Asia/Tokyo
+        VITE_SP_SCOPE_DEFAULT: https://contoso.sharepoint.com/AllSites.Read
+        VITE_SP_RESOURCE: https://contoso.sharepoint.com
+        VITE_SP_SITE_RELATIVE: /sites/Audit
+        PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+        NOTIFY_WEBHOOK_URL: ''
+      run: |
+        set -euo pipefail
+
+        export VITE_SP_RESOURCE="${VITE_SP_RESOURCE:-https://contoso.sharepoint.com}"
+        export VITE_SP_SITE_RELATIVE="${VITE_SP_SITE_RELATIVE:-/sites/Audit}"
+        export VITE_SP_SCOPE_DEFAULT="${VITE_SP_SCOPE_DEFAULT:-https://contoso.sharepoint.com/AllSites.Read}"
+
+        echo "VITE_SP_SCOPE_DEFAULT set? -> $([ -n "${VITE_SP_SCOPE_DEFAULT}" ] && echo yes || echo no)"
+        echo "VITE_SP_SCOPE_DEFAULT length -> ${#VITE_SP_SCOPE_DEFAULT}"
+        echo "VITE_SP_RESOURCE -> ${VITE_SP_RESOURCE}"
+        echo "VITE_SP_SITE_RELATIVE -> ${VITE_SP_SITE_RELATIVE}"
+
+        # Run only the lightest Playwright smoke to keep Quality Gates aligned with this PR scope.
+        npx playwright test tests/e2e/basic-smoke.spec.ts --config=playwright.smoke.config.ts --project=smoke
+    - name: a11y CI integration tests (complex pages)
+      id: a11y_ci_integration
+      env:
+        VITE_E2E: '1'
+        VITE_SKIP_LOGIN: '1'
+        VITE_E2E_MSAL_MOCK: '1'
+        VITE_SKIP_SHAREPOINT: '1'
+        PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+      run: |
+        npx playwright test tests/e2e/a11y-complex-page.spec.ts --project=chromium --reporter=line
+    - name: Upload a11y test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: a11y-test-results
+        path: |
+          test-results/
+          playwright-report/
+        if-no-files-found: warn
+    - name: Upload a11y baseline (json)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: a11y-baseline
+        path: test-results/a11y-baseline/**/*.json
+        if-no-files-found: ignore
+    - name: Manual performance gate (filesystem only)
+      shell: bash
+      run: |
+        set -uo pipefail
+        status=0
+        npm run perf:build || status=$?
+        if [ "$status" -eq 0 ]; then
+          npx lhci autorun --config=lighthouserc.json --upload.target=filesystem --output=json || status=$?
+        fi
+        summary_status=0
+        npm run perf:summary || summary_status=$?
+        if [ "$status" -ne 0 ]; then exit "$status"; fi
+        exit "$summary_status"
+    - name: Upload perf summary artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: perf-summary
+        path: |
+          reports/perf-summary.md
+          reports/perf-summary.json
+          lhci-results.json
+          reports/lhci-diagnostics/
+          .lighthouseci/
+          lhci-artifacts/
+    - name: Classify quality job completion
+      if: always()
+      run: |
+        cancellation_step="none"
+        direct_cancellation="false"
+
+        if [ "${{ steps.test_pr.outcome }}" = "cancelled" ]; then
+          direct_cancellation="true"
+          cancellation_step="Test (PR)"
+        elif [ "${{ steps.playwright_e2e.outcome }}" = "cancelled" ]; then
+          direct_cancellation="true"
+          cancellation_step="Playwright E2E"
+        elif [ "${{ steps.a11y_ci_integration.outcome }}" = "cancelled" ]; then
+          direct_cancellation="true"
+          cancellation_step="a11y CI integration tests"
+        fi
+
+        case "${{ job.status }}" in
+          success)
+            classification="quality_pass"
+            reason="All executed manual quality steps succeeded."
+            ;;
+          cancelled)
+            classification="quality_cancelled"
+            reason="Manual quality job was cancelled."
+            ;;
+          *)
+            classification="quality_failed"
+            reason="A manual quality step failed, including build/lint/typecheck/performance."
+            ;;
+        esac
+
+        cat <<EOF > quality-cancel-audit.json
+        {
+          "run_id": "${{ github.run_id }}",
+          "attempt": "${{ github.run_attempt }}",
+          "workflow": "${{ github.workflow }}",
+          "job_name": "${{ github.job }}",
+          "merge_commit_sha": "${{ github.event.pull_request.merge_commit_sha }}",
+          "classification": "${classification}",
+          "direct_cancellation": ${direct_cancellation},
+          "cancellation_step": "${cancellation_step}",
+          "test_pr_outcome": "${{ steps.test_pr.outcome }}",
+          "playwright_e2e_outcome": "${{ steps.playwright_e2e.outcome }}",
+          "a11y_ci_integration_outcome": "${{ steps.a11y_ci_integration.outcome }}",
+          "head_sha": "${{ github.sha }}"
+        }
+        EOF
+
+        echo "## Quality completion classification" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Classification: \`${classification}\`" >> $GITHUB_STEP_SUMMARY
+        echo "Reason: ${reason}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo '```json' >> $GITHUB_STEP_SUMMARY
+        cat quality-cancel-audit.json >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+    - name: Upload quality completion artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-cancel-audit-${{ github.run_number }}-${{ github.run_attempt }}
+        path: quality-cancel-audit.json
+        retention-days: 14
+        if-no-files-found: ignore
+    name: quality
+    if: github.event_name == 'workflow_dispatch'
