@@ -290,3 +290,15 @@ test('CI: Index Audit is excluded only for the bound PR, without changing any ot
   delete audit.if;
   assert.equal(hashSteps(wf), 'cd985b6ac7cbfc9a8c95d0fb9bf2666f8d9f7d667ff5091c5ceea2ac670049f4');
 });
+
+test('schedule: hotfix branch push is also offline and cannot start a production-capable job', () => {
+  const wf = get('test-schedule.yml');
+  const push = { event_name: 'push', repository: targetPr.repository, ref: 'refs/heads/hotfix/kiosk-procedure-early-display', event: {} };
+  const setup = wf.jobs.schedule.steps.find(step => step.name === 'Configure manual offline runtime');
+  assert.equal(condition(setup.if, push), true);
+  assert.equal(condition(wf.jobs['e2e-schedules-sp-smoke'].if, push), false);
+  for (const other of [{ ...push, ref: 'refs/heads/main' }, { ...push, ref: 'refs/heads/other' }, { ...push, repository: 'other/repo' }]) {
+    assert.equal(condition(setup.if, other), false);
+    assert.equal(condition(wf.jobs['e2e-schedules-sp-smoke'].if, other), true);
+  }
+});
