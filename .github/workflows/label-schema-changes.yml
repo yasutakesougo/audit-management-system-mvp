@@ -1,6 +1,12 @@
 name: Label Schema Changes
 
 on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Open PR number whose head matches the selected branch'
+        required: true
+        type: string
   pull_request:
     types: [opened, synchronize, reopened]
     # 必要ならパスで事前フィルタ（任意）
@@ -16,7 +22,8 @@ permissions:
 
 jobs:
   label:
-    name: label
+    if: github.event_name != 'workflow_dispatch'
+    name: ${{ github.event_name == 'workflow_dispatch' && 'label (PR only)' || 'label' }}
     runs-on: ubuntu-latest
     steps:
       - name: Add `schema` label when schema-related files changed
@@ -83,3 +90,44 @@ jobs:
             });
 
             core.info(`Label '${LABEL}' added to PR #${number}.`)
+
+  label-manual:
+    name: label
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+    - name: Validate schema label without mutation
+      uses: actions/github-script@v7
+      env:
+        PR_NUMBER: ${{ inputs.pr_number }}
+      with:
+        script: |
+          const raw = process.env.PR_NUMBER ?? '';
+          if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
+            core.setFailed('PR number must be a positive safe integer.');
+            return;
+          }
+          const { owner, repo } = context.repo;
+          const pull_number = Number(raw);
+          const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+          if (pr.state !== 'open' || pr.base.ref !== 'main'
+              || pr.head.repo?.full_name !== `${owner}/${repo}` || pr.head.sha !== context.sha) {
+            core.setFailed('Select an open main PR from this repository with head.sha equal to the workflow SHA.');
+            return;
+          }
+          const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number, per_page: 100 });
+          const schemaMatchers = [/^provision\//, /^docs\/.*\.schema\.json$/i, /^docs\/schema\.json$/i];
+          const touchedSchema = files.some(f => schemaMatchers.some(rx => rx.test(f.filename)));
+          if (touchedSchema && !pr.labels.some(label => label.name === 'schema')) {
+            core.setFailed('Schema changes require an existing schema label; manual validation never modifies labels.');
+            return;
+          }
+          const { data: current } = await github.rest.pulls.get({ owner, repo, pull_number });
+          if (current.head.sha !== context.sha || current.state !== 'open') {
+            core.setFailed('PR changed during validation.');
+            return;
+          }
+          core.info(`Read-only schema label validation passed for PR #${pull_number} at ${context.sha}.`);
