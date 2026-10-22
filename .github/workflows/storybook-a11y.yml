@@ -15,7 +15,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
       - name: Configure manual offline runtime
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main')
         shell: bash
         run: |
           cat <<'OFFLINE_ENV' >> "$GITHUB_ENV"

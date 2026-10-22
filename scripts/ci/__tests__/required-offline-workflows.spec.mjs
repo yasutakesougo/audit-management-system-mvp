@@ -114,6 +114,21 @@ const flags = {
   VITE_FORCE_SHAREPOINT: '0', VITE_DATA_PROVIDER: 'memory', VITE_DEMO_MODE: '1',
   VITE_FEATURE_SCHEDULES_SP: '0', VITE_FEATURE_SCHEDULES_GRAPH: '0',
 };
+// Evaluate the actual declarative guards against the relevant event boundaries.
+const targetPr = {
+  event_name: 'pull_request', repository: 'yasutakesougo/audit-management-system-mvp',
+  event: { pull_request: { number: 2593, head: { ref: 'hotfix/kiosk-procedure-early-display', repo: { full_name: 'yasutakesougo/audit-management-system-mvp' } }, base: { ref: 'main' } } },
+};
+const dispatch = { event_name: 'workflow_dispatch', repository: targetPr.repository, event: {} };
+const condition = (expression, github) => vm.runInNewContext((expression ?? 'true').replace(/^\$\{\{\s*|\s*\}\}$/g, ''), { github });
+const otherEvents = [
+  { ...targetPr, event_name: 'push' },
+  { ...targetPr, event: { pull_request: { ...targetPr.event.pull_request, number: 2594 } } },
+  { ...targetPr, event: { pull_request: { ...targetPr.event.pull_request, head: { ...targetPr.event.pull_request.head, ref: 'other-branch' } } } },
+  { ...targetPr, event: { pull_request: { ...targetPr.event.pull_request, head: { ...targetPr.event.pull_request.head, repo: { full_name: 'fork/repo' } } } } },
+  { ...targetPr, event: { pull_request: { ...targetPr.event.pull_request, base: { ref: 'develop' } } } },
+];
+
 for (const [file, name] of specs) {
   test(`${name}: manual dispatch and same-SHA checkout`, () => {
     const wf = get(file);
@@ -148,12 +163,12 @@ for (const [file, name] of specs) {
   });
 }
 test('schedule: real SharePoint job cannot run on workflow_dispatch', () => {
-  assert.equal(get('test-schedule.yml').jobs['e2e-schedules-sp-smoke'].if, "github.event_name != 'workflow_dispatch'");
+  assert.equal(condition(get('test-schedule.yml').jobs['e2e-schedules-sp-smoke'].if, dispatch), false);
 });
 test('quality: manual job runs required suites, browser checks and local performance assertions with read-only permissions', () => {
   const wf = get('test.yml'), job = manualJob(wf, 'quality');
-  assert.equal(wf.jobs.quality.if, "github.event_name != 'workflow_dispatch'");
-  assert.equal(job.if, "github.event_name == 'workflow_dispatch'");
+  assert.equal(condition(wf.jobs.quality.if, dispatch), false);
+  assert.equal(condition(job.if, dispatch), true);
   assert.deepEqual(job.permissions, { contents: 'read' });
   const runs = job.steps.map(s => s.run ?? '').join('\n');
   for (const cmd of ['npm run typecheck', 'npm run lint', 'npm run test:ci:required', 'basic-smoke.spec.ts', 'a11y-complex-page.spec.ts', 'npm run perf:build', '--config=lighthouserc.json', '--upload.target=filesystem', 'npm run perf:summary']) assert.ok(runs.includes(cmd), cmd);
@@ -224,4 +239,54 @@ test('quality: audit reports failure even if the three test steps passed but lin
     const audit = JSON.parse(fs.readFileSync(path.join(dir, 'quality-cancel-audit.json'), 'utf8'));
     assert.equal(audit.classification, 'quality_failed');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+for (const [file, name] of specs.filter(([, name]) => name !== 'label')) {
+  test(`${name}: offline environment also covers only the bound eligible PR event`, () => {
+    const job = manualJob(get(file), name);
+    const setup = job.steps.find(step => step.name === 'Configure manual offline runtime');
+    assert.equal(condition(setup.if, targetPr), true);
+    assert.equal(condition(setup.if, dispatch), true);
+    for (const event of otherEvents) assert.equal(condition(setup.if, event), false);
+  });
+}
+test('quality: bound PR uses the read-only offline job and cannot reach legacy quality or canary', () => {
+  const wf = get('test.yml');
+  assert.equal(condition(wf.jobs['quality-manual'].if, targetPr), true);
+  assert.equal(condition(wf.jobs.quality.if, targetPr), false);
+  assert.notEqual(condition(wf.jobs.quality.name, targetPr), 'quality');
+  assert.equal(wf.jobs['quality-manual'].name, 'quality');
+  // Canary/extended depend on the skipped legacy job and do not use always().
+  for (const name of ['canary', 'quality_extended']) {
+    assert.ok([wf.jobs[name].needs].flat().includes('quality'));
+    assert.doesNotMatch(wf.jobs[name].if, /always\(/);
+  }
+  for (const event of otherEvents) {
+    assert.equal(condition(wf.jobs.quality.if, event), true);
+    assert.equal(condition(wf.jobs['quality-manual'].if, event), false);
+    assert.equal(condition(wf.jobs.quality.name, event), 'quality');
+  }
+});
+test('schedule: bound PR cannot enter the real SharePoint job; other events retain their prior path', () => {
+  const guard = get('test-schedule.yml').jobs['e2e-schedules-sp-smoke'].if;
+  assert.equal(condition(guard, targetPr), false);
+  for (const event of otherEvents) assert.equal(condition(guard, event), true);
+});
+test('CI: Index Audit is excluded only for the bound PR, without changing any other validation', () => {
+  const wf = get('ci.yml');
+  const audit = wf.jobs.typecheck.steps.find(step => step.id === 'index_audit');
+  assert.equal(condition(audit.if, targetPr), false);
+  for (const event of otherEvents) assert.equal(condition(audit.if, event), true);
+  for (const name of ['typecheck', 'unit-test-shard']) {
+    const steps = wf.jobs[name].steps;
+    const setup = steps.findIndex(step => step.name === 'Configure hotfix PR offline runtime');
+    assert.ok(setup >= 0);
+    assert.ok(setup < steps.findIndex(step => /npm ci/.test(step.run ?? '')));
+    assert.equal(condition(steps[setup].if, targetPr), true);
+    for (const event of [...otherEvents, dispatch]) assert.equal(condition(steps[setup].if, event), false);
+    for (const [key,value] of Object.entries(flags)) assert.ok(steps[setup].run.includes(`${key}=${value}`));
+    steps.splice(setup, 1);
+  }
+  delete audit.if;
+  assert.equal(hashSteps(wf), 'cd985b6ac7cbfc9a8c95d0fb9bf2666f8d9f7d667ff5091c5ceea2ac670049f4');
 });

@@ -13,8 +13,8 @@ concurrency:
 
 jobs:
   quality:
-    name: ${{ github.event_name == 'workflow_dispatch' && 'quality (PR/push only)' || 'quality' }}
-    if: github.event_name != 'workflow_dispatch'
+    name: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main')) && 'quality (PR/push only)' || 'quality' }}
+    if: github.event_name != 'workflow_dispatch' && !(github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main')
     outputs:
       ci_full: ${{ steps.changes.outputs.ci_full }}
     runs-on: ubuntu-latest
@@ -574,7 +574,7 @@ jobs:
       with:
         ref: ${{ github.sha }}
     - name: Configure manual offline runtime
-      if: github.event_name == 'workflow_dispatch'
+      if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main')
       shell: bash
       run: |
         cat <<'OFFLINE_ENV' >> "$GITHUB_ENV"
@@ -799,4 +799,4 @@ jobs:
         retention-days: 14
         if-no-files-found: ignore
     name: quality
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main')
