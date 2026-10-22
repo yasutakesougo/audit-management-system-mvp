@@ -164,6 +164,33 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
   });
 
+  it('shows procedure text during initial record loading while blocking observation and mutation actions', () => {
+    mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
+      record: makeExecutionRecord({ memo: 'unconfirmed-record-memo' }),
+      isLoading: true,
+    }));
+
+    render(<MemoryRouter><KioskProcedureDetailScreen /></MemoryRouter>);
+
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
+    expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
+    expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    for (const id of ['mood-chip-不安そう', 'action-chip-声かけ', 'result-chip-改善した']) {
+      expect(screen.getByTestId(id)).toHaveClass('Mui-disabled');
+    }
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+    fireEvent.click(screen.getByTestId('kiosk-observation-revert'));
+    expect(screen.queryByTestId('kiosk-observation-revert-confirm')).toBeNull();
+    expect(mockSaveRecord).not.toHaveBeenCalled();
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+  });
+
   it('does not look up or save execution records without a canonical user code', () => {
     mockRouteUserId = '1';
     mockUseUser.mockReturnValue({ data: makeUser({ UserID: '' }), status: 'success' });
@@ -249,7 +276,14 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       </MemoryRouter>
     );
 
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
+    expect(screen.queryByTestId('kiosk-observation-revert')).toBeNull();
     expect(screen.queryByDisplayValue('previous-user-test-memo')).toBeNull();
 
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
@@ -299,7 +333,14 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect.arrayContaining(['U009']),
     );
     expect(screen.queryByDisplayValue('old-code-test-memo')).toBeNull();
-    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).toBeNull();
+    expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
+    expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
+    expect(screen.queryByTestId('kiosk-observation-revert')).toBeNull();
 
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
     rerender(
@@ -329,7 +370,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
   });
 
-  it('disables an already-open cancellation confirmation if record status becomes unknown', () => {
+  it.each(['loading', 'error'] as const)('disables an already-open cancellation confirmation when record status becomes %s', (state) => {
     const currentRecord = makeExecutionRecord({ memo: 'current-record-test-memo' });
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({ record: currentRecord }));
 
@@ -344,7 +385,8 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
       record: currentRecord,
-      error: new Error('refresh failed'),
+      isLoading: state === 'loading',
+      error: state === 'error' ? new Error('refresh failed') : null,
     }));
     rerender(
       <MemoryRouter>
