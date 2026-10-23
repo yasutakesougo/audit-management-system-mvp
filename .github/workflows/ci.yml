@@ -167,7 +167,7 @@ jobs:
 
       - name: Index Audit (Prevent Schema Drift)
         id: index_audit
-        if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main') }}
+        if: github.event_name != 'pull_request'
         env:
           SP_TOKEN: ${{ secrets.INDEX_AUDIT_SP_TOKEN }}
           VITE_SP_RESOURCE: ${{ vars.VITE_SP_RESOURCE || secrets.VITE_SP_RESOURCE }}
