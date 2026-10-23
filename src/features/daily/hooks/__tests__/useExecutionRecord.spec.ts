@@ -13,12 +13,19 @@ const mockDeleteRecord = vi.fn<WriteRecordFn>();
 let getRecordRefChanger: GetRecordFn = mockGetRecord;
 let upsertRecordRefChanger: WriteRecordFn = mockUpsertRecord;
 let deleteRecordRefChanger: WriteRecordFn = mockDeleteRecord;
+type BatchedLookup = (
+  date: string,
+  userIds: readonly string[],
+  scheduleItemIds: readonly string[],
+) => Promise<ExecutionRecord | undefined>;
+let batchedLookup: BatchedLookup | undefined;
 
 vi.mock('../useExecutionData', () => ({
   useExecutionData: () => ({
     getRecord: (...args: unknown[]) => getRecordRefChanger(...args),
     upsertRecord: (...args: unknown[]) => upsertRecordRefChanger(...args),
     deleteRecord: (...args: unknown[]) => deleteRecordRefChanger(...args),
+    getRecordForCandidates: batchedLookup,
   }),
 }));
 
@@ -47,6 +54,7 @@ describe('useExecutionRecord', () => {
     getRecordRefChanger = mockGetRecord;
     upsertRecordRefChanger = mockUpsertRecord;
     deleteRecordRefChanger = mockDeleteRecord;
+    batchedLookup = undefined;
   });
 
   it('updates the concrete record key found through fallback lookup', async () => {
@@ -446,5 +454,129 @@ describe('useExecutionRecord', () => {
       }),
       { memoMode: 'overwrite' },
     );
+  });
+
+  it('keeps the per-candidate loop when the repository has no batched lookup', async () => {
+    mockGetRecord.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useExecutionRecord('2026-05-07', 'user-1', 'slot-1', ['slot-2'], ['user-2']),
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error).toBeNull();
+    expect(mockGetRecord).toHaveBeenCalledTimes(4);
+  });
+
+  it('asks the batched lookup once, in candidate order, for twenty users and fifteen procedures', async () => {
+    const users = Array.from({ length: 20 }, (_, index) => `person-${String.fromCharCode(97 + index)}`);
+    const slots = ['aa', 'bb', 'cc', 'dd', 'ee', 'ff', 'gg', 'hh', 'ii', 'jj', 'kk', 'll', 'mm', 'nn', 'oo'];
+    mockGetRecord.mockResolvedValue(undefined);
+
+    const fallbackHook = renderHook(() =>
+      useExecutionRecord('2026-05-07', users[0], slots[0], slots.slice(1), users.slice(1)),
+    );
+    await waitFor(() => expect(fallbackHook.result.current.isLoading).toBe(false));
+    expect(mockGetRecord).toHaveBeenCalledTimes(users.length * slots.length);
+
+    fallbackHook.unmount();
+    mockGetRecord.mockClear();
+    const batch = vi.fn<BatchedLookup>(async () => undefined);
+    batchedLookup = batch;
+
+    const batchedHook = renderHook(() =>
+      useExecutionRecord('2026-05-07', users[0], slots[0], slots.slice(1), users.slice(1)),
+    );
+    await waitFor(() => expect(batchedHook.result.current.isLoading).toBe(false));
+    expect(batch).toHaveBeenCalledTimes(1);
+    expect(batch.mock.calls[0]?.[1]).toEqual(users);
+    expect(batch.mock.calls[0]?.[2]).toEqual(slots);
+    expect(mockGetRecord).not.toHaveBeenCalled();
+    expect(batchedHook.result.current.record).toBeUndefined();
+    expect(batchedHook.result.current.error).toBeNull();
+  });
+
+  it('keeps a batched failure as an error and refuses save and cancel', async () => {
+    const failure = new Error('List View Threshold');
+    batchedLookup = async () => {
+      throw failure;
+    };
+
+    const { result } = renderHook(() =>
+      useExecutionRecord('2026-05-07', 'canonical-user', 'canonical-slot', fallbackScheduleItemIds, fallbackUserIds),
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error).toBe(failure);
+    await expect(result.current.saveRecord('completed', 'blocked')).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    await expect(result.current.deleteRecord()).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockUpsertRecord).not.toHaveBeenCalled();
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+    expect(mockGetRecord).not.toHaveBeenCalled();
+  });
+
+  it('exposes AMBIGUOUS_EXECUTION_RECORD on the hook error and blocks save and cancel', async () => {
+    const ambiguous = Object.assign(new Error('AMBIGUOUS_EXECUTION_RECORD'), {
+      code: 'AMBIGUOUS_EXECUTION_RECORD',
+    });
+    batchedLookup = async () => {
+      throw ambiguous;
+    };
+
+    const { result } = renderHook(() =>
+      useExecutionRecord('2026-05-07', 'canonical-user', 'canonical-slot'),
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error).toMatchObject({ code: 'AMBIGUOUS_EXECUTION_RECORD' });
+    await expect(result.current.saveRecord('completed', 'blocked')).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    await expect(result.current.deleteRecord()).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockUpsertRecord).not.toHaveBeenCalled();
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+  });
+
+  it('ignores a stale batched response after the identity changes', async () => {
+    let rejectFirst: (error: Error) => void = () => {};
+    const first = new Promise<ExecutionRecord | undefined>((_resolve, reject) => {
+      rejectFirst = reject;
+    });
+    batchedLookup = async (_date, userIds) => {
+      if (userIds[0] === 'user-1') return first;
+      return {
+        id: 'record-2',
+        date: '2026-05-07',
+        userId: 'user-2',
+        scheduleItemId: 'slot-2',
+        status: 'completed',
+        triggeredBipIds: [],
+        memo: 'second memo',
+        recordedBy: 'Staff A',
+        recordedAt: '2026-05-07T09:00:00.000Z',
+      };
+    };
+
+    const { result, rerender } = renderHook(
+      ({ userId, scheduleItemId }) => useExecutionRecord('2026-05-07', userId, scheduleItemId),
+      { initialProps: { userId: 'user-1', scheduleItemId: 'slot-1' } },
+    );
+
+    rerender({ userId: 'user-2', scheduleItemId: 'slot-2' });
+    await waitFor(() => expect(result.current.record?.id).toBe('record-2'));
+
+    rejectFirst(new Error('stale failure'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.record?.id).toBe('record-2');
+    expect(result.current.error).toBeNull();
   });
 });

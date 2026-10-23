@@ -17,22 +17,24 @@ export function useExecutionRecord(
   fallbackScheduleItemIds?: string[],
   fallbackUserIds?: string[],
 ) {
-  const { getRecord, upsertRecord, deleteRecord } = useExecutionData();
+  const { getRecord, upsertRecord, deleteRecord, getRecordForCandidates } = useExecutionData();
   const [record, setRecord] = useState<ExecutionRecord | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
 
   const getRecordRef = useRef(getRecord);
+  const getRecordForCandidatesRef = useRef(getRecordForCandidates);
   const upsertRecordRef = useRef(upsertRecord);
   const deleteRecordRef = useRef(deleteRecord);
   const requestSeqRef = useRef(0);
 
   useEffect(() => {
     getRecordRef.current = getRecord;
+    getRecordForCandidatesRef.current = getRecordForCandidates;
     upsertRecordRef.current = upsertRecord;
     deleteRecordRef.current = deleteRecord;
-  }, [getRecord, upsertRecord, deleteRecord]);
+  }, [getRecord, getRecordForCandidates, upsertRecord, deleteRecord]);
 
   const fallbackScheduleKey = (fallbackScheduleItemIds ?? EMPTY_IDS).join('\u0000');
   const fallbackUserKey = (fallbackUserIds ?? EMPTY_IDS).join('\u0000');
@@ -75,25 +77,40 @@ export function useExecutionRecord(
     let resolved: ExecutionRecord | undefined;
     let lastError: Error | null = null;
 
-    // Candidate failures must not abort the whole lookup. Kiosk detail builds a
-    // fan-out of userId/scheduleItemId aliases; one transient SharePoint miss
-    // should not freeze the observation form behind "保存状態未確認".
-    for (const candidateUserId of userIds) {
-      for (const candidateScheduleItemId of scheduleItemIds) {
-        try {
-          const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
-          if (seq !== requestSeqRef.current) return;
-          if (candidateRecord) {
-            resolved = candidateRecord;
-            lastError = null;
-            break;
-          }
-        } catch (err) {
-          if (seq !== requestSeqRef.current) return;
-          lastError = err instanceof Error ? err : new Error('Failed to fetch execution record');
-        }
+    const batchedLookup = getRecordForCandidatesRef.current;
+    if (batchedLookup) {
+      // One shared lookup pages every parent and child row. A failure here is
+      // not "no record": save and cancel stay blocked by the identity guard.
+      try {
+        const candidateRecord = await batchedLookup(date, userIds, scheduleItemIds);
+        if (seq !== requestSeqRef.current) return;
+        resolved = candidateRecord;
+        lastError = null;
+      } catch (err) {
+        if (seq !== requestSeqRef.current) return;
+        resolved = undefined;
+        lastError = err instanceof Error ? err : new Error('Failed to fetch execution record');
       }
-      if (resolved) break;
+    } else {
+      // Local adapters omit the batched lookup. Candidate failures must not
+      // abort that loop; one transient miss should not freeze the form.
+      for (const candidateUserId of userIds) {
+        for (const candidateScheduleItemId of scheduleItemIds) {
+          try {
+            const candidateRecord = await getRecordRef.current(date, candidateUserId, candidateScheduleItemId);
+            if (seq !== requestSeqRef.current) return;
+            if (candidateRecord) {
+              resolved = candidateRecord;
+              lastError = null;
+              break;
+            }
+          } catch (err) {
+            if (seq !== requestSeqRef.current) return;
+            lastError = err instanceof Error ? err : new Error('Failed to fetch execution record');
+          }
+        }
+        if (resolved) break;
+      }
     }
 
     if (seq === requestSeqRef.current) {

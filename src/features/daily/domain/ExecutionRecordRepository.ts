@@ -41,6 +41,18 @@ export interface ExecutionRecordRepository {
   getRecord(date: string, userId: string, scheduleItemId: string): Promise<ExecutionRecord | undefined>;
 
   /**
+   * Optional batched lookup for ordered user and procedure candidates.
+   * Adapters that omit this method keep the per-candidate getRecord loop.
+   * The first matching pair wins. Two or more distinct saved rows for that
+   * pair reject the lookup instead of picking one.
+   */
+  getRecordForCandidates?(
+    date: string,
+    userIds: readonly string[],
+    scheduleItemIds: readonly string[],
+  ): Promise<ExecutionRecord | undefined>;
+
+  /**
    * Insert or update an execution record.
    *
    * If a record with the same (date, userId, scheduleItemId) exists, it is replaced.

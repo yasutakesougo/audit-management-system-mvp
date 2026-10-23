@@ -41,6 +41,22 @@ type ParentCandidate = {
   title: string;
 };
 
+export const AMBIGUOUS_EXECUTION_RECORD = 'AMBIGUOUS_EXECUTION_RECORD';
+
+export class AmbiguousExecutionRecordError extends Error {
+  readonly code = AMBIGUOUS_EXECUTION_RECORD;
+
+  constructor() {
+    super(AMBIGUOUS_EXECUTION_RECORD);
+    this.name = 'AmbiguousExecutionRecordError';
+  }
+}
+
+const EXECUTION_LIST_PAGE_SIZE = 500;
+const EXECUTION_MAX_DATA_PAGES = 50;
+
+type ListLookupKind = 'Parent lookup' | 'Child lookup';
+
 /**
  * SharePointExecutionRecordRepository — 17行記録の SharePoint 永続化アダプター
  * スキーマドリフト（Payload vs Memo等）を動的に解決する。
@@ -252,9 +268,126 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
   }
 
-  private async resolveParentCandidates(
+  private parentTitlesForUser(normalizedDate: string, userId: string): Set<string> {
+    return new Set(
+      buildExecutionUserIdCandidates(userId).map((candidate) => `${normalizedDate}-${candidate}`),
+    );
+  }
+
+  private uniqueNormalizedIds(
+    values: readonly string[],
+    normalize: (value: string) => string,
+  ): string[] {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const value of values) {
+      const normalized = normalize(value);
+      if (!normalized || seen.has(normalized)) continue;
+      seen.add(normalized);
+      ordered.push(normalized);
+    }
+    return ordered;
+  }
+
+  private readPositiveItemId(item: JsonRecord, invalidIdMessage: string): number {
+    const raw = item.Id ?? item.ID;
+    if (typeof raw !== 'number' || !Number.isSafeInteger(raw) || raw <= 0) {
+      throw new Error(invalidIdMessage);
+    }
+    return raw;
+  }
+
+  private buildIdKeysetPath(
+    listPath: string,
+    filter: string,
+    select: string,
+    lastId: number,
+  ): string {
+    if (!Number.isSafeInteger(lastId) || lastId < 0) {
+      throw new Error('[ExecutionRepo] Invalid paging cursor.');
+    }
+    // Repository-built relative path only. Server nextLink values are never copied here.
+    const pagedFilter = `(${filter}) and ID gt ${lastId}`;
+    return `${listPath}/items?$filter=${encodeURIComponent(pagedFilter)}&$select=${select}&$orderby=${encodeURIComponent('ID asc')}&$top=${EXECUTION_LIST_PAGE_SIZE}`;
+  }
+
+  private readPageRows(payload: unknown, failureLabel: ListLookupKind): JsonRecord[] {
+    const fail = (): never => {
+      throw new Error(`[ExecutionRepo] ${failureLabel} failed: unrecognized response shape`);
+    };
+    if (!payload || typeof payload !== 'object') return fail();
+    const body = payload as Record<string, unknown>;
+    if ('value' in body) {
+      if (!Array.isArray(body.value)) return fail();
+      return body.value as JsonRecord[];
+    }
+    const verbose = body.d;
+    if (verbose && typeof verbose === 'object' && 'results' in verbose) {
+      const results = (verbose as Record<string, unknown>).results;
+      if (!Array.isArray(results)) return fail();
+      return results as JsonRecord[];
+    }
+    return fail();
+  }
+
+  private async readAllPages(
+    listPath: string,
+    filter: string,
+    select: string,
+    failureLabel: ListLookupKind,
+  ): Promise<JsonRecord[]> {
+    if (/^[a-z][a-z+.-]*:/i.test(listPath)) {
+      throw new Error(`[ExecutionRepo] ${failureLabel} failed: refusing absolute list path`);
+    }
+    const invalidIdMessage = failureLabel === 'Parent lookup'
+      ? '[ExecutionRepo] Resolved parent ID is not numeric.'
+      : '[ExecutionRepo] Child item ID is not numeric.';
+    const rows: JsonRecord[] = [];
+    let lastId = 0;
+    let dataPages = 0;
+
+    // One extra fetch is the empty completion page. A 51st page that still
+    // contains rows exceeds the data-page cap and discards everything read.
+    for (let pageIndex = 0; pageIndex <= EXECUTION_MAX_DATA_PAGES; pageIndex += 1) {
+      const url = this.buildIdKeysetPath(listPath, filter, select, lastId);
+      const response = await this.spFetch(url);
+      if (!response.ok) {
+        throw new Error(`[ExecutionRepo] ${failureLabel} failed: ${response.status} ${response.statusText}`);
+      }
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new Error(`[ExecutionRepo] ${failureLabel} failed: unparseable JSON`);
+      }
+      const page = this.readPageRows(payload, failureLabel);
+      if (page.length === 0) return rows;
+
+      let previous = lastId;
+      for (const item of page) {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          throw new Error(invalidIdMessage);
+        }
+        const id = this.readPositiveItemId(item, invalidIdMessage);
+        if (id <= previous) {
+          throw new Error(`[ExecutionRepo] ${failureLabel} failed: non-monotonic ID`);
+        }
+        previous = id;
+      }
+
+      dataPages += 1;
+      if (dataPages > EXECUTION_MAX_DATA_PAGES) {
+        throw new Error(`[ExecutionRepo] ${failureLabel} failed: page limit exceeded`);
+      }
+      rows.push(...page);
+      lastId = previous;
+    }
+
+    throw new Error(`[ExecutionRepo] ${failureLabel} failed: page limit exceeded`);
+  }
+
+  private async fetchParentPage(
     normalizedDate: string,
-    userId: string,
     rf: ResolvedRowsFields,
   ): Promise<ParentCandidate[]> {
     await this.validateRecoverySchemaFields(rf);
@@ -265,31 +398,29 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     const nextDate = this.getNextDateIso(normalizedDate);
     const filter = `${pf.recordDate} ge '${this.escapeODataString(normalizedDate)}' and ${pf.recordDate} lt '${this.escapeODataString(nextDate)}'`;
-    const select = ['Id', pf.title, pf.recordDate].filter((field, index, fields) => fields.indexOf(field) === index).join(',');
-    const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
-    const response = await this.spFetch(url);
-    if (!response.ok) {
-      throw new Error(`[ExecutionRepo] Parent lookup failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data: SharePointResponse<JsonRecord> = await response.json();
-    const candidates = new Set(
-      buildExecutionUserIdCandidates(userId).map((candidate) => `${normalizedDate}-${candidate}`),
+    const select = ['Id', pf.title, pf.recordDate]
+      .filter((field, index, fields) => fields.indexOf(field) === index)
+      .join(',');
+    const items = await this.readAllPages(
+      this.resolvedParentPath,
+      filter,
+      select,
+      'Parent lookup',
     );
-    const matches: ParentCandidate[] = [];
+    return items.map((item) => ({
+      id: this.readPositiveItemId(item, '[ExecutionRepo] Resolved parent ID is not numeric.'),
+      title: readSharePointText(item[pf.title]),
+    }));
+  }
 
-    for (const item of data.value ?? []) {
-      const title = readSharePointText(item[pf.title]);
-      if (!candidates.has(title)) continue;
-
-      const id = item.Id;
-      if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) {
-        throw new Error('[ExecutionRepo] Resolved parent ID is not numeric.');
-      }
-      matches.push({ id, title });
-    }
-
-    return matches;
+  private async resolveParentCandidates(
+    normalizedDate: string,
+    userId: string,
+    rf: ResolvedRowsFields,
+  ): Promise<ParentCandidate[]> {
+    const titles = this.parentTitlesForUser(normalizedDate, userId);
+    const parents = await this.fetchParentPage(normalizedDate, rf);
+    return parents.filter((parent) => titles.has(parent.title));
   }
 
   private async getRowsByParentId(rf: ResolvedRowsFields, parentId: number): Promise<JsonRecord[]> {
@@ -302,14 +433,24 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     const filter = `${rf.parentId} eq ${parentId}`;
     const select = this.getSelectFields(rf);
-    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=${select}`;
-    const response = await this.spFetch(url);
-    if (!response.ok) {
-      throw new Error(`[ExecutionRepo] Child lookup failed: ${response.status} ${response.statusText}`);
-    }
+    return this.readAllPages(
+      this.resolvedChildPath,
+      filter,
+      select,
+      'Child lookup',
+    );
+  }
 
-    const data: SharePointResponse<JsonRecord> = await response.json();
-    return data.value ?? [];
+  private getRowsByParentIdCached(
+    rf: ResolvedRowsFields,
+    parentId: number,
+    cache: Map<number, Promise<JsonRecord[]>>,
+  ): Promise<JsonRecord[]> {
+    const cached = cache.get(parentId);
+    if (cached) return cached;
+    const pending = this.getRowsByParentId(rf, parentId);
+    cache.set(parentId, pending);
+    return pending;
   }
 
   private mergeExecutionRecords(records: ExecutionRecord[]): ExecutionRecord[] {
@@ -393,6 +534,80 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     throw new Error(`[ExecutionRepo] Failed to ensure parent record for ${dailyKey}`);
   }
 
+  private collectMatchingLookups(
+    rows: readonly JsonRecord[],
+    rf: ResolvedRowsFields,
+    rowKey: string,
+    normalizedDate: string,
+    normalizedUserId: string,
+    normalizedScheduleItemId: string,
+  ): SharePointRecordLookup[] {
+    const lookupProcedureRow = extractProcedureRowKey(normalizedScheduleItemId);
+    const matches: SharePointRecordLookup[] = [];
+    for (const item of rows) {
+      const mapped = this.mapToDomain(item, rf);
+      const itemRowKey = readSharePointText(item[rf.rowKey]);
+      const itemScheduleItemId = normalizeScheduleItemId(mapped.scheduleItemId);
+      const itemProcedureRow =
+        extractProcedureRowKey(itemScheduleItemId) || extractProcedureRowKey(itemRowKey);
+      const exactMatch =
+        itemRowKey === rowKey || itemScheduleItemId === normalizedScheduleItemId;
+      // Canonical kiosk keys are procedure-N; legacy rows may store raw N / row-N.
+      const procedureRowMatch =
+        Boolean(lookupProcedureRow) &&
+        Boolean(itemProcedureRow) &&
+        lookupProcedureRow === itemProcedureRow;
+      if (!exactMatch && !procedureRowMatch) continue;
+
+      matches.push({
+        internalId: this.readPositiveItemId(item, '[ExecutionRepo] Child item ID is not numeric.'),
+        record: {
+          ...mapped,
+          date: normalizedDate,
+          userId: normalizedUserId,
+          // Keep the persisted schedule identity when only the procedure-row
+          // matched, so update/delete target the concrete legacy key.
+          scheduleItemId: exactMatch ? normalizedScheduleItemId : itemScheduleItemId || normalizedScheduleItemId,
+        },
+      });
+    }
+    return matches;
+  }
+
+  private uniqueLookup(matches: readonly SharePointRecordLookup[]): SharePointRecordLookup | undefined {
+    const distinct = new Map<number, SharePointRecordLookup>();
+    for (const match of matches) {
+      if (!distinct.has(match.internalId)) distinct.set(match.internalId, match);
+    }
+    if (distinct.size > 1) throw new AmbiguousExecutionRecordError();
+    if (distinct.size === 0) return undefined;
+    return distinct.values().next().value;
+  }
+
+  private async lookupPair(
+    rf: ResolvedRowsFields,
+    parents: readonly ParentCandidate[],
+    childCache: Map<number, Promise<JsonRecord[]>>,
+    rowKey: string,
+    normalizedDate: string,
+    normalizedUserId: string,
+    normalizedScheduleItemId: string,
+  ): Promise<SharePointRecordLookup | undefined> {
+    const matches: SharePointRecordLookup[] = [];
+    for (const parent of parents) {
+      const rows = await this.getRowsByParentIdCached(rf, parent.id, childCache);
+      matches.push(...this.collectMatchingLookups(
+        rows,
+        rf,
+        rowKey,
+        normalizedDate,
+        normalizedUserId,
+        normalizedScheduleItemId,
+      ));
+    }
+    return this.uniqueLookup(matches);
+  }
+
   private async getRecordLookupByRowKey(
     rf: ResolvedRowsFields,
     rowKey: string,
@@ -401,39 +616,15 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     normalizedScheduleItemId: string,
   ): Promise<SharePointRecordLookup | undefined> {
     const parents = await this.resolveParentCandidates(normalizedDate, normalizedUserId, rf);
-    const lookupProcedureRow = extractProcedureRowKey(normalizedScheduleItemId);
-    for (const parent of parents) {
-      const rows = await this.getRowsByParentId(rf, parent.id);
-      for (const item of rows) {
-        const mapped = this.mapToDomain(item, rf);
-        const itemRowKey = readSharePointText(item[rf.rowKey]);
-        const itemScheduleItemId = normalizeScheduleItemId(mapped.scheduleItemId);
-        const itemProcedureRow =
-          extractProcedureRowKey(itemScheduleItemId) || extractProcedureRowKey(itemRowKey);
-        const exactMatch =
-          itemRowKey === rowKey || itemScheduleItemId === normalizedScheduleItemId;
-        // Canonical kiosk keys are procedure-N; legacy rows may store raw N / row-N.
-        const procedureRowMatch =
-          Boolean(lookupProcedureRow) &&
-          Boolean(itemProcedureRow) &&
-          lookupProcedureRow === itemProcedureRow;
-        if (!exactMatch && !procedureRowMatch) continue;
-
-        return {
-          internalId: item.Id as number,
-          record: {
-            ...mapped,
-            date: normalizedDate,
-            userId: normalizedUserId,
-            // Keep the persisted schedule identity when only the procedure-row
-            // matched, so update/delete target the concrete legacy key.
-            scheduleItemId: exactMatch ? normalizedScheduleItemId : itemScheduleItemId || normalizedScheduleItemId,
-          },
-        };
-      }
-    }
-
-    return undefined;
+    return this.lookupPair(
+      rf,
+      parents,
+      new Map(),
+      rowKey,
+      normalizedDate,
+      normalizedUserId,
+      normalizedScheduleItemId,
+    );
   }
 
   async getRecordsInRange(userId: string, from: string, to: string): Promise<ExecutionRecord[]> {
@@ -493,6 +684,41 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       normalizedUserId,
       normalizedScheduleItemId,
     ))?.record;
+  }
+
+  async getRecordForCandidates(
+    date: string,
+    userIds: readonly string[],
+    scheduleItemIds: readonly string[],
+  ): Promise<ExecutionRecord | undefined> {
+    const normalizedDate = normalizeExecutionDate(date);
+    const users = this.uniqueNormalizedIds(userIds, normalizeExecutionUserId);
+    const schedules = this.uniqueNormalizedIds(scheduleItemIds, normalizeScheduleItemId);
+    if (!normalizedDate || users.length === 0 || schedules.length === 0) return undefined;
+
+    const rf = await this.getResolvedFields();
+    const parents = await this.fetchParentPage(normalizedDate, rf);
+    const childCache = new Map<number, Promise<JsonRecord[]>>();
+
+    for (const userId of users) {
+      const titles = this.parentTitlesForUser(normalizedDate, userId);
+      const userParents = parents.filter((parent) => titles.has(parent.title));
+      for (const scheduleItemId of schedules) {
+        const rowKey = `${normalizedDate}-${userId}-${scheduleItemId}`;
+        const match = await this.lookupPair(
+          rf,
+          userParents,
+          childCache,
+          rowKey,
+          normalizedDate,
+          userId,
+          scheduleItemId,
+        );
+        if (match) return match.record;
+      }
+    }
+
+    return undefined;
   }
 
   async upsertRecord(record: ExecutionRecord, options?: ExecutionRecordUpsertOptions): Promise<void> {
