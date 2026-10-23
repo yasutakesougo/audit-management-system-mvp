@@ -345,33 +345,46 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           const filter = url.searchParams.get('$filter');
           if (filter) {
             const conditions = filter.split(/\s+and\s+/i);
-            for (const condition of conditions) {
-              if (/\s+or\s+/i.test(condition)) {
+            for (const rawCondition of conditions) {
+              if (/\s+or\s+/i.test(rawCondition)) {
                 // Skip parsing OR conditions to avoid partial match issues in E2E stubs
                 continue;
               }
-              const eqMatch = condition.match(/([a-zA-Z0-9_]+)\s+eq\s+(.+)/i);
-              if (eqMatch) {
-                const field = eqMatch[1];
-                const rawVal = eqMatch[2].trim();
-
-                // Handle quotes for strings
-                let val: any = rawVal;
-                if (rawVal.startsWith("'") && rawVal.endsWith("'")) {
-                  val = rawVal.substring(1, rawVal.length - 1);
-                } else if (rawVal.toLowerCase() === 'true') {
-                  val = true;
-                } else if (rawVal.toLowerCase() === 'false') {
-                  val = false;
-                } else if (!isNaN(Number(rawVal))) {
-                  val = Number(rawVal);
-                }
-
-                results = results.filter((r) => {
-                  const actualVal = r[field];
-                  return String(actualVal) === String(val) || actualVal === val;
-                });
+              const condition = rawCondition.trim().replace(/^\(+/, '').replace(/\)+$/, '');
+              const compared = condition.match(/([a-zA-Z0-9_]+)\s+(eq|gt|ge|lt|le)\s+(.+)/i);
+              if (!compared) continue;
+              const field = compared[1];
+              const operator = compared[2].toLowerCase();
+              const rawVal = compared[3].trim().replace(/^\(+/, '').replace(/\)+$/, '');
+              let expected: string | number | boolean = rawVal;
+              if (rawVal.startsWith("'") && rawVal.endsWith("'")) {
+                expected = rawVal.slice(1, -1).replace(/''/g, "'");
+              } else if (rawVal.toLowerCase() === 'true') {
+                expected = true;
+              } else if (rawVal.toLowerCase() === 'false') {
+                expected = false;
+              } else if (rawVal !== '' && !Number.isNaN(Number(rawVal))) {
+                expected = Number(rawVal);
               }
+
+              results = results.filter((row) => {
+                const actual = field === 'ID' || field === 'Id' ? (row.Id ?? row.ID) : row[field];
+                if (operator === 'eq') return String(actual) === String(expected) || actual === expected;
+                const actualNumber = typeof actual === 'number' ? actual : Number.NaN;
+                const expectedNumber = typeof expected === 'number' ? expected : Number.NaN;
+                if (!Number.isNaN(actualNumber) && !Number.isNaN(expectedNumber)) {
+                  if (operator === 'gt') return actualNumber > expectedNumber;
+                  if (operator === 'ge') return actualNumber >= expectedNumber;
+                  if (operator === 'lt') return actualNumber < expectedNumber;
+                  return actualNumber <= expectedNumber;
+                }
+                const left = String(actual ?? '');
+                const right = String(expected);
+                if (operator === 'gt') return left > right;
+                if (operator === 'ge') return left >= right;
+                if (operator === 'lt') return left < right;
+                return left <= right;
+              });
             }
           }
 
