@@ -333,3 +333,205 @@ test.describe('Kiosk user 6 SharePoint persistence', () => {
     });
   }
 });
+
+test.describe('Kiosk Procedure Detail — Delayed Communication & Early Observation Draft', () => {
+  const date = '2026-10-09';
+  const parentFields = ['Title', 'RecordDate', 'ReporterName', 'ReporterRole', 'User_x0020_Rows_x0020_JSON', 'UserCount'];
+  const rowFields = ['Title', 'Parent_x0020_ID', 'User_x0020_ID', 'Status', 'Payload', 'Recorded_x0020_At', 'RowNo', 'Memo', 'StaffName', 'BipsJSON'];
+
+  test('P0: allows early drafting during delayed record fetch, preserves draft upon empty completion, and allows save', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(String(err)));
+
+    await setupSharePointStubs(page, {
+      currentUser: { status: 200, body: { Id: 12345, Title: 'Synthetic E2E Staff' } },
+      fallback: { status: 200, body: { value: [] } },
+      lists: [
+        {
+          name: 'Users_Master',
+          items: [{ Id: 6, UserID: 'I005', FullName: '合成利用者6', IsActive: true, UsageStatus: '利用中', ServiceStartDate: '2026-01-01' }],
+        },
+        {
+          name: 'SupportRecord_Daily',
+          fields: parentFields.map((InternalName) => ({ InternalName })),
+          items: [],
+        },
+        {
+          name: 'DailyRecordRows',
+          fields: rowFields.map((InternalName) => ({ InternalName })),
+          items: [],
+        },
+      ],
+    });
+
+    let releaseGate: () => void = () => {};
+    const gatePromise = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+
+    await page.route(
+      (url) =>
+        url.pathname.includes("getbytitle('DailyRecordRows')/items") ||
+        url.pathname.includes("getbytitle('SupportRecord_Daily')/items"),
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          await gatePromise;
+        }
+        await route.fallback();
+      },
+    );
+
+    await bootKiosk(page, {
+      route: `/kiosk/users/6/procedures/0?date=${date}&provider=sharepoint`,
+      userId: '6',
+      procedures: [
+        { id: 'procedure-1', time: '09:30', activity: '合成手順1', instruction: '合成支援1' },
+      ],
+      envOverrides: {
+        VITE_SKIP_SHAREPOINT: '0',
+        VITE_FORCE_SHAREPOINT: '1',
+        VITE_FORCE_DEMO: '0',
+        VITE_DEMO_MODE: '0',
+        VITE_SKIP_LOGIN: '0',
+      },
+      storageOverrides: { demo: '0', skipLogin: '0' },
+    });
+
+    await expect(page.getByText('本人のすること')).toBeVisible({ timeout: 10000 });
+
+    // P0: 取得遅延中に入力可能であること
+    await page.getByTestId('mood-chip-落ち着いていた').click();
+    await page.getByTestId('action-chip-見守り').click();
+    await page.getByTestId('result-chip-改善した').click();
+    await page.getByTestId('kiosk-observation-memo').fill('通信遅延中の先行入力メモ');
+
+    // P0: 取得遅延中は保存ボタンが無効であること
+    await expect(page.getByTestId('kiosk-observation-submit')).toBeDisabled();
+
+    // 通信解放（記録なしとして取得完了）
+    releaseGate();
+
+    // P0: 取得完了後も下書きが保持されていること
+    await expect(page.getByTestId('kiosk-observation-memo')).toHaveValue('通信遅延中の先行入力メモ');
+
+    // P0: 保存ボタンが有効化すること
+    await expect(page.getByTestId('kiosk-observation-submit')).toBeEnabled();
+
+    // 正常保存
+    await page.getByTestId('kiosk-observation-submit').click();
+    await expect(page.getByText('記録を保存しました')).toBeVisible({ timeout: 5000 });
+    await expect(page).toHaveURL(new RegExp(`/kiosk/users/6/procedures\\?date=${date}&provider=sharepoint$`));
+    const firstCard = page.getByTestId('kiosk-procedure-card-0');
+    await expect(firstCard.getByText('記録済み', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('kiosk-procedure-record-summary-0-memo')).toContainText('通信遅延中の先行入力メモ');
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('P0 & P1: detects conflict on existing record appearance, blocks save requests, and protects draft until explicit reload', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(String(err)));
+
+    await setupSharePointStubs(page, {
+      currentUser: { status: 200, body: { Id: 12345, Title: 'Synthetic E2E Staff' } },
+      fallback: { status: 200, body: { value: [] } },
+      lists: [
+        {
+          name: 'Users_Master',
+          items: [{ Id: 6, UserID: 'I005', FullName: '合成利用者6', IsActive: true, UsageStatus: '利用中', ServiceStartDate: '2026-01-01' }],
+        },
+        {
+          name: 'SupportRecord_Daily',
+          fields: parentFields.map((InternalName) => ({ InternalName })),
+          items: [{ Id: 60, Title: `${date}-I005`, RecordDate: date }],
+        },
+        {
+          name: 'DailyRecordRows',
+          fields: rowFields.map((InternalName) => ({ InternalName })),
+          items: [
+            {
+              Id: 61,
+              Title: `${date}-I005-procedure-1`,
+              Parent_x0020_ID: 60,
+              User_x0020_ID: 'I005',
+              Status: 'completed',
+              RowNo: 1,
+              Memo: '別端末で保存された記録',
+              Payload: '別端末で保存された記録',
+              Recorded_x0020_At: `${date}T08:00:00.000Z`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const writeRequests: string[] = [];
+    page.on('request', (req) => {
+      if (['POST', 'PATCH', 'MERGE'].includes(req.method())) {
+        writeRequests.push(`${req.method()} ${req.url()}`);
+      }
+    });
+
+    let releaseGate: () => void = () => {};
+    const gatePromise = new Promise<void>((resolve) => {
+      releaseGate = resolve;
+    });
+
+    await page.route(
+      (url) =>
+        url.pathname.includes("getbytitle('DailyRecordRows')/items") ||
+        url.pathname.includes("getbytitle('SupportRecord_Daily')/items"),
+      async (route) => {
+        if (route.request().method() === 'GET') {
+          await gatePromise;
+        }
+        await route.fallback();
+      },
+    );
+
+    await bootKiosk(page, {
+      route: `/kiosk/users/6/procedures/0?date=${date}&provider=sharepoint`,
+      userId: '6',
+      procedures: [
+        { id: 'procedure-1', time: '09:30', activity: '合成手順1', instruction: '合成支援1' },
+      ],
+      envOverrides: {
+        VITE_SKIP_SHAREPOINT: '0',
+        VITE_FORCE_SHAREPOINT: '1',
+        VITE_FORCE_DEMO: '0',
+        VITE_DEMO_MODE: '0',
+        VITE_SKIP_LOGIN: '0',
+      },
+      storageOverrides: { demo: '0', skipLogin: '0' },
+    });
+
+    await expect(page.getByText('本人のすること')).toBeVisible({ timeout: 10000 });
+
+    // 先行入力
+    await page.getByTestId('mood-chip-落ち着いていた').click();
+    await page.getByTestId('kiosk-observation-memo').fill('現場職員の先行入力メモ');
+    await expect(page.getByTestId('kiosk-observation-submit')).toBeDisabled();
+
+    // レスポンス解放（既存記録あり）
+    releaseGate();
+
+    // 競合アラートが表示され、保存が無効のまま
+    await expect(page.getByTestId('kiosk-conflict-alert')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('kiosk-observation-submit')).toBeDisabled();
+
+    // 下書きが勝手に消去されていないこと
+    await expect(page.getByTestId('kiosk-observation-memo')).toHaveValue('現場職員の先行入力メモ');
+
+    // 保存リクエストは0件
+    expect(writeRequests.filter((r) => r.includes('DailyRecordRows') || r.includes('SupportRecord_Daily'))).toHaveLength(0);
+
+    // 明示的に「既存記録を読み込む」を押下
+    const reloadBtn = page.getByTestId('kiosk-load-existing-record-btn');
+    await expect(reloadBtn).toBeVisible();
+    await reloadBtn.click();
+
+    // 競合アラートが解消し、既存記録の内容が反映される
+    await expect(page.getByTestId('kiosk-conflict-alert')).not.toBeVisible();
+    await expect(page.getByTestId('kiosk-observation-memo')).toHaveValue('別端末で保存された記録');
+    expect(pageErrors).toEqual([]);
+  });
+});

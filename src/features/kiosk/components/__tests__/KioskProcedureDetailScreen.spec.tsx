@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
@@ -135,10 +135,15 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   beforeEach(() => {
     vi.clearAllMocks();
     mockRouteUserId = 'U001';
+    mockUseParams.mockReset();
     mockUseParams.mockImplementation(() => ({ userId: mockRouteUserId, slotKey: '0' }));
+    mockUseLocation.mockReset();
     mockUseLocation.mockReturnValue({ search: '?kiosk=1&provider=memory' });
+    mockUseUser.mockReset();
     mockUseUser.mockReturnValue({ data: makeUser(), status: 'success' });
+    mockUseExecutionRecord.mockReset();
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult());
+    mockUseKioskAttendance.mockReset();
     mockUseKioskAttendance.mockReturnValue({
       isAbsent: false,
       reason: undefined,
@@ -148,6 +153,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   });
 
   afterEach(() => {
+    cleanup();
     vi.useRealTimers();
   });
 
@@ -164,7 +170,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
   });
 
-  it('shows procedure text during initial record loading while blocking observation and mutation actions', () => {
+  it('shows procedure text and permits early observation drafting during initial record loading while blocking mutation actions', () => {
     mockUseExecutionRecord.mockReturnValue(makeExecutionRecordHookResult({
       record: makeExecutionRecord({ memo: 'unconfirmed-record-memo' }),
       isLoading: true,
@@ -178,9 +184,9 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('保存状態未確認')).toBeInTheDocument();
     expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
     expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
-    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-memo')).not.toBeDisabled();
     for (const id of ['mood-chip-不安そう', 'action-chip-声かけ', 'result-chip-改善した']) {
-      expect(screen.getByTestId(id)).toHaveClass('Mui-disabled');
+      expect(screen.getByTestId(id)).not.toHaveClass('Mui-disabled');
     }
     expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
     expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
@@ -280,7 +286,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
     expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
     expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
-    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-memo')).not.toBeDisabled();
     expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
     expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
     expect(screen.queryByTestId('kiosk-observation-revert')).toBeNull();
@@ -337,7 +343,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     expect(screen.getByText('体温と血圧を測る')).toBeInTheDocument();
     expect(screen.getByText('測定の声かけと記録を行う')).toBeInTheDocument();
     expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
-    expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+    expect(screen.getByTestId('kiosk-observation-memo')).not.toBeDisabled();
     expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
     expect(screen.queryByTestId('kiosk-saved-record-summary')).toBeNull();
     expect(screen.queryByTestId('kiosk-observation-revert')).toBeNull();
@@ -733,6 +739,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
   it('postpones form state initialization and populates form from saved record after user load transitions from loading to success', async () => {
     mockUseUser.mockReturnValue({ data: null, status: 'loading' });
 
+    mockUseExecutionRecord.mockReset();
     mockUseExecutionRecord.mockImplementation((
       _date,
       userId,
@@ -834,4 +841,792 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
     });
   });
+
+  describe('Hotfix B — Early Observation Draft Scenarios (B-S01 ~ B-S21)', () => {
+    it('B-S01 to B-S04: allows selecting mood, action, result chips and typing memo during initial record loading', () => {
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: undefined,
+          isLoading: true,
+        }),
+      );
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // B-S01: Mood chip
+      const moodChip = screen.getByTestId('mood-chip-落ち着いていた');
+      expect(moodChip).not.toHaveClass('Mui-disabled');
+      fireEvent.click(moodChip);
+      expect(moodChip.className).toContain('MuiChip-filledWarning');
+
+      // B-S02: Action chip
+      const actionChip = screen.getByTestId('action-chip-見守り');
+      expect(actionChip).not.toHaveClass('Mui-disabled');
+      fireEvent.click(actionChip);
+      expect(actionChip.className).toContain('MuiChip-filledWarning');
+
+      // B-S03: Result chip
+      const resultChip = screen.getByTestId('result-chip-改善した');
+      expect(resultChip).not.toHaveClass('Mui-disabled');
+      fireEvent.click(resultChip);
+      expect(resultChip.className).toContain('MuiChip-filledWarning');
+
+      // B-S04: Memo input
+      const memoInput = screen.getByTestId('kiosk-observation-memo');
+      expect(memoInput).not.toBeDisabled();
+      fireEvent.change(memoInput, { target: { value: '先行入力メモ' } });
+      expect(memoInput).toHaveValue('先行入力メモ');
+
+      // Save and Revert remain strictly blocked (Fail-Closed)
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      expect(screen.queryByTestId('kiosk-observation-revert')).toBeNull();
+    });
+
+    it('B-S05: preserves drafted chips and memo when record loading completes as undefined (unexecuted)', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: true,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '先行下書き保持' } });
+
+      // Record query finishes: not executed
+      currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mood-chip-落ち着いていた').className).toContain('MuiChip-filledWarning');
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('先行下書き保持');
+        expect(screen.queryByTestId('kiosk-conflict-alert')).toBeNull();
+        expect(screen.getByTestId('kiosk-observation-submit')).not.toBeDisabled();
+      });
+    });
+
+    it('B-S06: blocks save/delete and displays conflict alert when record loads as existing after staff entered early draft', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: true,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '下書き入力' } });
+
+      // Record query finishes: existing completed record returned!
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({
+          memo: '【様子】不安そう\n【対応】声かけ\n【変化】変化なし\n【メモ】既に保存されていた記録',
+        }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-conflict-alert')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-load-existing-record-btn')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+        expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
+      });
+    });
+
+    it('B-S07: discards draft, loads existing record, and clears conflict when clicking load existing button', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: true,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '下書き破棄対象' } });
+
+      // Record loads existing record
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({
+          memo: '【様子】不安そう\n【対応】声かけ\n【変化】変化なし\n【メモ】既存のメモ内容',
+        }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-conflict-alert')).toBeInTheDocument();
+      });
+
+      // Click load existing record
+      fireEvent.click(screen.getByTestId('kiosk-load-existing-record-btn'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-conflict-alert')).toBeNull();
+        expect(screen.getByTestId('mood-chip-不安そう').className).toContain('MuiChip-filledWarning');
+        expect(screen.getByTestId('action-chip-声かけ').className).toContain('MuiChip-filledWarning');
+        expect(screen.getByTestId('result-chip-変化なし').className).toContain('MuiChip-filledWarning');
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('既存のメモ内容');
+      });
+    });
+
+    it('B-S08: load existing button fails closed if record is reloading or error occurs', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: true,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+
+      // Conflict occurs
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-1', memo: '【メモ】初回復元' }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-conflict-alert')).toBeInTheDocument();
+      });
+
+      // Now query starts reloading (isLoading = true)
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-1', memo: '【メモ】初回復元' }),
+        isLoading: true,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      const loadBtn = screen.getByTestId('kiosk-load-existing-record-btn');
+      expect(loadBtn).toBeDisabled();
+    });
+
+    it('B-S09: clears draft and resets form state when route userId changes to another user', async () => {
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: undefined,
+          isLoading: false,
+        }),
+      );
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: 'ユーザー1の下書き' } });
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('ユーザー1の下書き');
+
+      // Switch user
+      mockRouteUserId = 'U002';
+      mockUseParams.mockImplementation(() => ({ userId: 'U002', slotKey: '0' }));
+      mockUseUser.mockReturnValue({ data: makeUser({ Id: 2, UserID: 'U002', FullName: '鈴木 花子' }), status: 'success' });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('鈴木 花子 様')).toBeInTheDocument();
+        expect(screen.getByTestId('mood-chip-落ち着いていた').className).not.toContain('MuiChip-filledWarning');
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+      });
+    });
+
+    it('B-S10: clears draft and resets form state when procedure slotKey changes', async () => {
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: undefined,
+          isLoading: false,
+        }),
+      );
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('action-chip-見守り'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: 'スロット0の下書き' } });
+
+      // Change slot
+      mockUseParams.mockImplementation(() => ({ userId: 'U001', slotKey: '1' }));
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('11:00 - 昼食準備')).toBeInTheDocument();
+        expect(screen.getByTestId('action-chip-見守り').className).not.toContain('MuiChip-filledWarning');
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('');
+      });
+    });
+
+    it('B-S11: allows observation drafting during record load error but blocks save and delete actions', () => {
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: undefined,
+          isLoading: false,
+          error: new Error('Network timeout'),
+        }),
+      );
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Observation chips and memo remain usable
+      const moodChip = screen.getByTestId('mood-chip-落ち着いていた');
+      expect(moodChip).not.toHaveClass('Mui-disabled');
+      fireEvent.click(moodChip);
+      expect(moodChip.className).toContain('MuiChip-filledWarning');
+
+      const memoInput = screen.getByTestId('kiosk-observation-memo');
+      expect(memoInput).not.toBeDisabled();
+      fireEvent.change(memoInput, { target: { value: 'オフライン下書き' } });
+      expect(memoInput).toHaveValue('オフライン下書き');
+
+      // Mutations are strictly blocked (Fail-Closed)
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      expect(screen.queryByTestId('kiosk-observation-revert')).toBeNull();
+    });
+
+    it('B-S12: disables observation inputs and mutations when user is marked absent', () => {
+      mockUseKioskAttendance.mockReturnValue({
+        isAbsent: true,
+        reason: '体調不良',
+        isLoading: false,
+        isError: false,
+      });
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: makeExecutionRecord({ status: 'completed' }),
+          isLoading: false,
+        }),
+      );
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByTestId('mood-chip-落ち着いていた')).toHaveClass('Mui-disabled');
+      expect(screen.getByTestId('action-chip-見守り')).toHaveClass('Mui-disabled');
+      expect(screen.getByTestId('result-chip-改善した')).toHaveClass('Mui-disabled');
+      expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
+    });
+
+    it('B-S13: disables save button and observation inputs while save operation is in flight', async () => {
+      let resolveSave: () => void = () => {};
+      mockSaveRecord.mockImplementation(
+        () => new Promise((resolve) => { resolveSave = resolve; }),
+      );
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: undefined,
+          isLoading: false,
+        }),
+      );
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      const submitBtn = screen.getByTestId('kiosk-observation-submit');
+      expect(submitBtn).not.toBeDisabled();
+
+      fireEvent.click(submitBtn);
+
+      // Now saving is in flight
+      expect(submitBtn).toBeDisabled();
+      expect(screen.getByTestId('mood-chip-落ち着いていた')).toHaveClass('Mui-disabled');
+      expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
+
+      await act(async () => {
+        resolveSave();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
+      });
+    });
+
+    it('B-S14: disables delete confirm button and inputs while delete operation is in flight', async () => {
+      let resolveDelete: () => void = () => {};
+      mockDeleteRecord.mockImplementation(
+        () => new Promise((resolve) => { resolveDelete = resolve; }),
+      );
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: makeExecutionRecord({ status: 'completed' }),
+          isLoading: false,
+        }),
+      );
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Open delete dialog
+      fireEvent.click(screen.getByTestId('kiosk-observation-revert'));
+      const confirmBtn = screen.getByTestId('kiosk-observation-revert-confirm');
+      expect(confirmBtn).not.toBeDisabled();
+
+      fireEvent.click(confirmBtn);
+
+      // Deleting in flight
+      expect(confirmBtn).toBeDisabled();
+
+      await act(async () => {
+        resolveDelete();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('記録を取り消しました')).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('記録を取り消しますか？')).not.toBeInTheDocument();
+      });
+    });
+
+    it('B-S15: detects conflict and blocks save when background record update mutates memo while user is editing', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】初回メモ' }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // User modifies memo
+      const memoInput = screen.getByTestId('kiosk-observation-memo');
+      fireEvent.change(memoInput, { target: { value: '職員による加筆' } });
+
+      // Background update arrives from another terminal: memo changed
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】別端末で変更されたメモ' }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-conflict-alert')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      });
+    });
+
+    it('B-S16: detects conflict and blocks save when background update indicates record disappeared while user is editing', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】既存記録' }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // User makes an edit
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+
+      // Background update: record was deleted by another user (record: undefined)
+      currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      });
+    });
+
+    it('B-S17: automatically updates form without conflict on background record update if user has made no edits', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】旧記録' }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('旧記録');
+      });
+
+      // Background update arrives without user having touched the form
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】新記録' }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('新記録');
+        expect(screen.queryByTestId('kiosk-conflict-alert')).toBeNull();
+      });
+    });
+
+    it('B-S18: triggers validation error and blocks submission when save is clicked with empty observation', async () => {
+      mockUseExecutionRecord.mockReturnValue(
+        makeExecutionRecordHookResult({
+          record: undefined,
+          isLoading: false,
+        }),
+      );
+
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Form is empty, user clicks save
+      const submitBtn = screen.getByTestId('kiosk-observation-submit');
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('手順記録の内容を1つ以上入力してください。')).toBeInTheDocument();
+        expect(mockSaveRecord).not.toHaveBeenCalled();
+      });
+    });
+
+    it('B-S19: blocks save and delete synchronously at render-time before useEffect runs when record drifts from base snapshot', () => {
+      // Setup initial rendered state with base record
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】初期値' }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // User makes an edit
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '編集中のドラフト' } });
+
+      // Change record so snapshot differs on next render
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ memo: '【メモ】外部更新値' }),
+        isLoading: false,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Render-time conflict check (hasRenderTimeConflict) must disable submit immediately
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+    });
+
+    it('B-S20: detects conflict when record status changes on the same record ID while user is editing', async () => {
+      const fixedRecordedAt = '2026-05-28T10:00:00.000Z';
+      const fixedMemo = '行動発生確認';
+
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-1', status: 'triggered', memo: fixedMemo, recordedAt: fixedRecordedAt }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '編集中' } });
+
+      // Status changes to completed while id, memo, and recordedAt remain strictly identical
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-1', status: 'completed', memo: fixedMemo, recordedAt: fixedRecordedAt }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-conflict-alert')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      });
+    });
+
+    it('B-S21: detects conflict when record appears (undefined -> existing) after staff started drafting on unexecuted procedure', async () => {
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // User starts drafting on an unexecuted procedure
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+
+      // Meanwhile, record was created from another terminal and refetch returns it
+      currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-new', status: 'completed', memo: '他端末で作成' }),
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-conflict-alert')).toBeInTheDocument();
+        expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      });
+    });
+
+    it('B-S22: handles record disappearance with persistent warning, retry, draft protection, and discard confirmation dialog', async () => {
+      const mockRefresh = vi.fn().mockResolvedValue(undefined);
+      const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
+
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-orig', memo: '初期記録' }),
+        isLoading: false,
+        refresh: mockRefresh,
+        saveRecord: mockSaveRecord,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Staff edits draft (chips & memo)
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '下書きメモ入力中' } });
+
+      // Record disappears (query returns record: undefined)
+      currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+        refresh: mockRefresh,
+        saveRecord: mockSaveRecord,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // 1. Render-time & post-effect persistent warning
+      expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      });
+
+      // 2. Draft is preserved
+      expect(screen.getByTestId('mood-chip-落ち着いていた')).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('下書きメモ入力中');
+
+      // 3. Mutation blocked (submit is disabled)
+      const submitBtn = screen.getByTestId('kiosk-observation-submit');
+      expect(submitBtn).toBeDisabled();
+
+      // 4. Retry reload
+      const retryBtn = screen.getByTestId('kiosk-retry-record-audit-btn');
+      fireEvent.click(retryBtn);
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+
+      // Even if refetch finishes still undefined, draft and block remain
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+      expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('下書きメモ入力中');
+      expect(submitBtn).toBeDisabled();
+
+      // 5. Open discard confirmation dialog
+      const discardBtn = screen.getByTestId('kiosk-discard-draft-and-return-btn');
+      fireEvent.click(discardBtn);
+
+      expect(screen.getByTestId('kiosk-discard-draft-dialog')).toBeInTheDocument();
+
+      // 6. Cancel discard: draft remains, dialog closes
+      const cancelBtn = screen.getByTestId('kiosk-discard-dialog-cancel');
+      fireEvent.click(cancelBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('下書きメモ入力中');
+      expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+
+      // 7. Confirm discard: clears draft and navigates
+      fireEvent.click(screen.getByTestId('kiosk-discard-draft-and-return-btn'));
+      expect(screen.getByTestId('kiosk-discard-draft-dialog')).toBeInTheDocument();
+
+      const confirmBtn = screen.getByTestId('kiosk-discard-dialog-confirm');
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
+
+      expect(mockNavigate).toHaveBeenCalled();
+
+      // Verify saveRecord was NEVER called during any of this
+      expect(mockSaveRecord).not.toHaveBeenCalled();
+    });
+
+    it('B-S23: prevents discard operation for stale context if identity switches while discard dialog was open', async () => {
+      mockNavigate.mockClear();
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-orig', memo: '初期記録' }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Staff starts editing
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '編集中下書き' } });
+
+      // Record disappears -> Alert appears
+      currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      });
+
+      // Open discard dialog
+      fireEvent.click(screen.getByTestId('kiosk-discard-draft-and-return-btn'));
+      expect(screen.getByTestId('kiosk-discard-draft-dialog')).toBeInTheDocument();
+
+      // Identity changes while dialog is open (e.g. user navigation)
+      mockRouteUserId = 'U002';
+      mockUseParams.mockImplementation(() => ({ userId: 'U002', slotKey: '0' }));
+      mockUseUser.mockReturnValue({ data: makeUser({ Id: 2, UserID: 'U002', FullName: '鈴木 花子' }), status: 'success' });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Dialog is safely dismissed for the new context and navigate was not invoked
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
 });
+
+
+
