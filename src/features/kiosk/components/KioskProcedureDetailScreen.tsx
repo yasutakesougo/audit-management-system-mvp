@@ -181,7 +181,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   // isUserLoading 中は空文字を渡し、確定前の userId が saveRecord のクロージャに
   // 束縛されて Zustand に誤ったキーで保存されるのを防ぐ
   const resolvedUserId = isUserLoading || !isUserResultFresh || !canonicalUserId ? '' : canonicalUserId;
-  const { record: fetchedRecord, saveRecord, deleteRecord, isLoading, error: recordLoadError, refresh: refreshRecord } = useExecutionRecord(
+  const {
+    record: fetchedRecord,
+    saveRecord,
+    deleteRecord,
+    isLoading,
+    error: recordLoadError,
+    refresh: refreshRecord,
+    mutationBlocked,
+  } = useExecutionRecord(
     selectedDateIso,
     resolvedUserId,
     scheduleItemId,
@@ -205,6 +213,36 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const hasMismatchedRecord = Boolean(fetchedRecord && !record);
   const hasCurrentFetchedRecord = Boolean(fetchedRecord && record && !hasMismatchedRecord);
   const recordQueryKey = JSON.stringify([selectedDateIso, resolvedUserId, scheduleItemId]);
+  const queryGenerationRef = React.useRef({ key: recordQueryKey, generation: 0 });
+  if (queryGenerationRef.current.key !== recordQueryKey) {
+    queryGenerationRef.current = {
+      key: recordQueryKey,
+      generation: queryGenerationRef.current.generation + 1,
+    };
+  }
+  const queryGeneration = queryGenerationRef.current.generation;
+  const [outcomeHold, setOutcomeHold] = React.useState<{
+    key: string;
+    generation: number;
+    sawError: boolean;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!outcomeHold || outcomeHold.key !== recordQueryKey) return;
+    if (recordLoadError) {
+      if (!outcomeHold.sawError || outcomeHold.generation !== queryGeneration) {
+        setOutcomeHold({
+          key: outcomeHold.key,
+          generation: queryGeneration,
+          sawError: true,
+        });
+      }
+      return;
+    }
+    if (outcomeHold.sawError && outcomeHold.generation === queryGeneration && !isLoading) {
+      setOutcomeHold(null);
+    }
+  }, [isLoading, outcomeHold, queryGeneration, recordLoadError, recordQueryKey]);
+  const holdActive = outcomeHold?.key === recordQueryKey;
   const [recordQueryState, setRecordQueryState] = React.useState(() => ({
     key: recordQueryKey,
     observedLoading: isLoading,
@@ -432,7 +470,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     || !isRecordQueryReady
     || !isInitialized
     || isLoading;
-  const isRecordMutationBlocked = isRecordStatusUnknown || isFormIdentityTransitioning || isConflictBlocked;
+  const isRecordMutationBlocked = isRecordStatusUnknown
+    || isFormIdentityTransitioning
+    || isConflictBlocked
+    || holdActive
+    || Boolean(mutationBlocked);
 
   // Observation input is enabled as soon as identity & procedure are locked, even while record is loading
   const isObservationInputBlocked =
@@ -524,7 +566,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!userId || isUserLoading || !canonicalUserId || !resolvedUserId || isRecordMutationBlocked || isAbsent) return;
+    if (
+      !userId
+      || isUserLoading
+      || !canonicalUserId
+      || !resolvedUserId
+      || holdActive
+      || isRecordMutationBlocked
+      || isAbsent
+    ) return;
     const finalMemo = serializeMemo();
     if (!finalMemo.trim()) {
       setShowValidationError(true);
@@ -540,13 +590,21 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       }, 1500);
     } catch (error) {
       console.error('Failed to save execution record:', error);
+      setOutcomeHold({ key: recordQueryKey, generation: queryGeneration, sawError: false });
       setShowSaveError(true);
       setIsSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (isUserLoading || !canonicalUserId || !resolvedUserId || isRecordMutationBlocked || isAbsent) return;
+    if (
+      isUserLoading
+      || !canonicalUserId
+      || !resolvedUserId
+      || holdActive
+      || isRecordMutationBlocked
+      || isAbsent
+    ) return;
     setIsDeleting(true);
     try {
       await deleteRecord();
@@ -557,6 +615,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       }, 1500);
     } catch (error) {
       console.error('Failed to delete execution record:', error);
+      setOutcomeHold({ key: recordQueryKey, generation: queryGeneration, sawError: false });
       setShowDeleteError(true);
       setIsDeleting(false);
     }
@@ -958,7 +1017,10 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 <Button
                   variant="outlined"
                   color="error"
-                  onClick={() => setDeleteDialogOpen(true)}
+                  onClick={() => {
+                    if (holdActive || isRecordMutationBlocked || isSaving || isDeleting || isAbsent) return;
+                    setDeleteDialogOpen(true);
+                  }}
                   sx={{ py: 1.5, px: 3, borderRadius: 3, fontSize: '1.1rem', mr: 'auto' }}
                   disabled={isSaving || isDeleting || isRecordMutationBlocked || isAbsent}
                   data-testid="kiosk-observation-revert"

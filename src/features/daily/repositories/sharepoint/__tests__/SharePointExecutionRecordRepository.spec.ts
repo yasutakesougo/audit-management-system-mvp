@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   AMBIGUOUS_EXECUTION_RECORD,
   AmbiguousExecutionRecordError,
+  ExecutionTargetMismatchError,
   SharePointExecutionRecordRepository,
 } from '../SharePointExecutionRecordRepository';
 import { EXECUTION_RECORD_FIELDS } from '../constants';
@@ -2070,6 +2071,116 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(createRepo(parentOverflow).getRecords(DATE, 'person-a')).rejects.toThrow('page limit exceeded');
       expect(urlsOf(parentOverflow).some((url) => url.includes('DailyRecordRows'))).toBe(false);
       expect(urlsOf(parentOverflow).some((url) => url.includes('ID gt 51'))).toBe(false);
+    });
+
+    it('classifies absent as a create and a single pinned row as that item id', async () => {
+      const absentFetch = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: () => ({ value: [] }),
+      });
+      const absentRepo = createRepo(absentFetch);
+      await expect(absentRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'absent' });
+      await absentRepo.upsertRecord(draftRecord());
+      expect(postCount(absentFetch)).toBeGreaterThan(0);
+      expect(urlsOf(absentFetch).some((url) => url.includes('DailyRecordRows') && url.endsWith('/items') && !url.includes('items('))).toBe(true);
+
+      const uniqueFetch = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => (lastId === 0 ? { value: [childItem] } : { value: [] }),
+      });
+      const uniqueRepo = createRepo(uniqueFetch);
+      await expect(uniqueRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toMatchObject({
+        kind: 'unique',
+        internalId: 4,
+      });
+      await uniqueRepo.upsertRecord(draftRecord());
+      expect(urlsOf(uniqueFetch).filter((url) => url.includes('/items(4)'))).toHaveLength(1);
+      expect(urlsOf(uniqueFetch).some((url) => url.includes('DailyRecordRows') && url.endsWith('/items') && !url.includes('items('))).toBe(false);
+    });
+
+    it('treats the same item id seen through two parent aliases as one row', async () => {
+      const shared = { ...childItem, Id: 10 };
+      const spFetch = server({
+        parentAt: (lastId) => {
+          if (lastId === 0) {
+            return { value: [parentItem, { ...parentItem, Id: 10, Title: `${DATE}-PERSON-A` }] };
+          }
+          return { value: [] };
+        },
+        childAt: (lastId) => (lastId === 0 ? { value: [shared] } : { value: [] }),
+      });
+      const repo = createRepo(spFetch);
+      await expect(repo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toMatchObject({
+        kind: 'unique',
+        internalId: 10,
+      });
+      await repo.upsertRecord(draftRecord());
+      await repo.deleteRecord(DATE, 'person-a', 'aa');
+      expect(urlsOf(spFetch).filter((url) => url.includes('/items(10)'))).toHaveLength(2);
+    });
+
+    it('blocks writes when two item ids match or the pinned row disagrees with the target', async () => {
+      const duplicateFetch = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => (lastId === 0
+          ? { value: [childItem, { ...childItem, Id: 8, Memo: 'other' }] }
+          : { value: [] }),
+      });
+      const duplicateRepo = createRepo(duplicateFetch);
+      await expect(duplicateRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'duplicate' });
+      await expect(duplicateRepo.upsertRecord(draftRecord())).rejects.toMatchObject({ code: AMBIGUOUS_EXECUTION_RECORD });
+      await expect(duplicateRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toMatchObject({ code: AMBIGUOUS_EXECUTION_RECORD });
+      expect(postCount(duplicateFetch)).toBe(0);
+
+      const mismatchedFetch = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => (lastId === 0
+          ? { value: [{ ...childItem, User_x0020_ID: 'other-user', Title: `1999-01-01-person-a-aa` }] }
+          : { value: [] }),
+      });
+      const mismatchedRepo = createRepo(mismatchedFetch);
+      await expect(mismatchedRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'mismatch' });
+      await expect(mismatchedRepo.upsertRecord(draftRecord())).rejects.toBeInstanceOf(ExecutionTargetMismatchError);
+      await expect(mismatchedRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toBeInstanceOf(ExecutionTargetMismatchError);
+      expect(postCount(mismatchedFetch)).toBe(0);
+    });
+
+    it('fails closed on a 51st data page and completes when page 50 is followed by an empty page', async () => {
+      const overflow = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => {
+          if (lastId >= 51) return { value: [] };
+          return { value: [{ ...childItem, Id: lastId + 1, Title: `${DATE}-person-a-zz`, RowNo: 'zz' }] };
+        },
+      });
+      const overflowRepo = createRepo(overflow);
+      await expect(overflowRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).rejects.toThrow('page limit exceeded');
+      await expect(overflowRepo.upsertRecord(draftRecord())).rejects.toThrow('page limit exceeded');
+      expect(postCount(overflow)).toBe(0);
+
+      const capped = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => {
+          if (lastId >= 50) return { value: [] };
+          const id = lastId + 1;
+          const scheduleItemId = id === 50 ? 'aa' : 'zz';
+          return {
+            value: [{
+              ...childItem,
+              Id: id,
+              Title: `${DATE}-person-a-${scheduleItemId}`,
+              RowNo: scheduleItemId,
+              Memo: id === 50 ? 'page-50' : 'filler',
+              Payload: id === 50 ? 'page-50' : 'filler',
+            }],
+          };
+        },
+      });
+      await expect(createRepo(capped).classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toMatchObject({
+        kind: 'unique',
+        internalId: 50,
+        record: expect.objectContaining({ memo: 'page-50' }),
+      });
     });
   });
 });

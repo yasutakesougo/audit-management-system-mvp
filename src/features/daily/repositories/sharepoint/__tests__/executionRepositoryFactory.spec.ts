@@ -152,6 +152,7 @@ describe('executionRepositoryFactory', () => {
 
     const repo = getExecutionRepository(undefined, spFetch, getFields);
     expect(typeof repo.getRecordForCandidates).toBe('function');
+    expect(typeof repo.classifyExecutionCandidates).toBe('function');
     await expect(repo.getRecordForCandidates?.('2026-05-07', ['person-a', 'person-b'], ['aa', 'bb']))
       .resolves.toBeUndefined();
 

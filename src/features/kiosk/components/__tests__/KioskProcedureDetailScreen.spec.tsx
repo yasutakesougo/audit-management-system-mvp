@@ -46,6 +46,7 @@ const makeExecutionRecordHookResult = (
   deleteRecord: mockDeleteRecord,
   isLoading: false,
   error: null,
+  mutationBlocked: false,
   refresh: mockRefreshRecord,
   ...overrides,
 });

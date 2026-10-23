@@ -178,6 +178,11 @@ function createSharePointExecutionAdapter(
       userIds: readonly string[],
       scheduleItemIds: readonly string[],
     ) => repository.getRecordForCandidates(date, userIds, scheduleItemIds),
+    classifyExecutionCandidates: async (
+      date: string,
+      userIds: readonly string[],
+      scheduleItemIds: readonly string[],
+    ) => repository.classifyExecutionCandidates(date, userIds, scheduleItemIds),
     upsertRecord: async (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) =>
       repository.upsertRecord(record, options),
     deleteRecord: async (date: string, userId: string, scheduleItemId: string) =>

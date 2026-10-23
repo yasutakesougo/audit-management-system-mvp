@@ -1,6 +1,11 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import type { ExecutionRecord, RecordStatus } from '../../domain/legacy/executionRecordTypes';
-import type { ExecutionRecordRepository, ExecutionRecordUpsertOptions } from '../../domain/legacy/ExecutionRecordRepository';
+import {
+  ExecutionTargetMismatchError,
+  type ExecutionCandidateClassification,
+  type ExecutionRecordRepository,
+  type ExecutionRecordUpsertOptions,
+} from '../../domain/legacy/ExecutionRecordRepository';
 import { 
   getListTitle, 
   getRowsListTitle, 
@@ -34,12 +39,19 @@ type SharePointExecutionRecordRepositoryOptions = {
 type SharePointRecordLookup = {
   internalId: number;
   record: ExecutionRecord;
+  parentId?: number;
+  parentTitle?: string;
+  storedDate?: string;
+  storedUserId?: string;
+  storedScheduleItemId?: string;
 };
 
 type ParentCandidate = {
   id: number;
   title: string;
 };
+
+export { ExecutionTargetMismatchError };
 
 export const AMBIGUOUS_EXECUTION_RECORD = 'AMBIGUOUS_EXECUTION_RECORD';
 
@@ -541,6 +553,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     normalizedDate: string,
     normalizedUserId: string,
     normalizedScheduleItemId: string,
+    parent?: ParentCandidate,
   ): SharePointRecordLookup[] {
     const lookupProcedureRow = extractProcedureRowKey(normalizedScheduleItemId);
     const matches: SharePointRecordLookup[] = [];
@@ -561,6 +574,11 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
       matches.push({
         internalId: this.readPositiveItemId(item, '[ExecutionRepo] Child item ID is not numeric.'),
+        parentId: parent?.id,
+        parentTitle: parent?.title,
+        storedDate: mapped.date,
+        storedUserId: mapped.userId,
+        storedScheduleItemId: mapped.scheduleItemId,
         record: {
           ...mapped,
           date: normalizedDate,
@@ -603,6 +621,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         normalizedDate,
         normalizedUserId,
         normalizedScheduleItemId,
+        parent,
       ));
     }
     return this.uniqueLookup(matches);
@@ -721,6 +740,111 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return undefined;
   }
 
+  private lookupMatchesRequestedTarget(
+    lookup: SharePointRecordLookup,
+    normalizedDate: string,
+    expandedUsers: readonly string[],
+    requestedSchedules: readonly string[],
+    allowedTitles: ReadonlySet<string>,
+  ): boolean {
+    const parentTitle = lookup.parentTitle ?? '';
+    if (!parentTitle.startsWith(`${normalizedDate}-`) || !allowedTitles.has(parentTitle)) return false;
+    if (lookup.storedDate && normalizeExecutionDate(lookup.storedDate) !== normalizedDate) return false;
+    const storedUserId = normalizeExecutionUserId(lookup.storedUserId);
+    if (storedUserId && !expandedUsers.includes(storedUserId)) return false;
+    const storedSchedule = normalizeScheduleItemId(lookup.storedScheduleItemId);
+    if (!storedSchedule) return false;
+    return requestedSchedules.some((scheduleItemId) => {
+      if (storedSchedule === scheduleItemId) return true;
+      const storedRow = extractProcedureRowKey(storedSchedule);
+      const requestedRow = extractProcedureRowKey(scheduleItemId);
+      return Boolean(storedRow) && storedRow === requestedRow;
+    });
+  }
+
+  async classifyExecutionCandidates(
+    date: string,
+    userIds: readonly string[],
+    scheduleItemIds: readonly string[],
+  ): Promise<ExecutionCandidateClassification> {
+    const normalizedDate = normalizeExecutionDate(date);
+    const requestedUsers = this.uniqueNormalizedIds(userIds, normalizeExecutionUserId);
+    const requestedSchedules = this.uniqueNormalizedIds(scheduleItemIds, normalizeScheduleItemId);
+    if (!normalizedDate || requestedUsers.length === 0 || requestedSchedules.length === 0) {
+      return { kind: 'absent' };
+    }
+
+    const expandedUsers = this.uniqueNormalizedIds(
+      requestedUsers.flatMap((userId) => buildExecutionUserIdCandidates(userId)),
+      normalizeExecutionUserId,
+    );
+    const allowedTitles = new Set<string>();
+    for (const userId of expandedUsers) {
+      for (const title of this.parentTitlesForUser(normalizedDate, userId)) {
+        allowedTitles.add(title);
+      }
+    }
+
+    const rf = await this.getResolvedFields();
+    const parents = (await this.fetchParentPage(normalizedDate, rf))
+      .filter((parent) => allowedTitles.has(parent.title));
+    const childCache = new Map<number, Promise<JsonRecord[]>>();
+    const matches: SharePointRecordLookup[] = [];
+    const seenIds = new Set<number>();
+
+    for (const parent of parents) {
+      const rows = await this.getRowsByParentIdCached(rf, parent.id, childCache);
+      for (const userId of expandedUsers) {
+        for (const scheduleItemId of requestedSchedules) {
+          const found = this.collectMatchingLookups(
+            rows,
+            rf,
+            `${normalizedDate}-${userId}-${scheduleItemId}`,
+            normalizedDate,
+            userId,
+            scheduleItemId,
+            parent,
+          );
+          for (const match of found) {
+            if (seenIds.has(match.internalId)) continue;
+            seenIds.add(match.internalId);
+            matches.push(match);
+          }
+        }
+      }
+    }
+
+    let lookup: SharePointRecordLookup | undefined;
+    try {
+      lookup = this.uniqueLookup(matches);
+    } catch (error) {
+      if (error instanceof AmbiguousExecutionRecordError) return { kind: 'duplicate' };
+      throw error;
+    }
+    if (!lookup) return { kind: 'absent' };
+    if (!this.lookupMatchesRequestedTarget(
+      lookup,
+      normalizedDate,
+      expandedUsers,
+      requestedSchedules,
+      allowedTitles,
+    )) {
+      return { kind: 'mismatch' };
+    }
+    return { kind: 'unique', internalId: lookup.internalId, record: lookup.record };
+  }
+
+  private async classifyForWrite(
+    date: string,
+    userId: string,
+    scheduleItemId: string,
+  ): Promise<Extract<ExecutionCandidateClassification, { kind: 'absent' | 'unique' }>> {
+    const classification = await this.classifyExecutionCandidates(date, [userId], [scheduleItemId]);
+    if (classification.kind === 'duplicate') throw new AmbiguousExecutionRecordError();
+    if (classification.kind === 'mismatch') throw new ExecutionTargetMismatchError();
+    return classification;
+  }
+
   async upsertRecord(record: ExecutionRecord, options?: ExecutionRecordUpsertOptions): Promise<void> {
     const normalizedDate = normalizeExecutionDate(record.date);
     const normalizedUserId = normalizeExecutionUserId(record.userId);
@@ -735,17 +859,14 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const dailyKey = `${normalizedDate}-${normalizedUserId}`;
     const rowKey = `${dailyKey}-${normalizedScheduleItemId}`;
 
-    const existingPromise = this.getRecordLookupByRowKey(
-      rf,
-      rowKey,
+    const childFieldsPromise = this.initFields(this.childListTitle);
+    const classification = await this.classifyForWrite(
       normalizedDate,
       normalizedUserId,
       normalizedScheduleItemId,
     );
-    const childFieldsPromise = this.initFields(this.childListTitle);
-
-    const existingLookup = await existingPromise;
-    const existing = existingLookup?.record;
+    const existing = classification.kind === 'unique' ? classification.record : undefined;
+    const existingId = classification.kind === 'unique' ? classification.internalId : undefined;
 
     // Concurrency Protection: Merge memos if existing record has a different memo.
     let finalMemo = normalizedRecord.memo;
@@ -804,25 +925,24 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     const body = this.filterPayload(this.childListTitle, rawBody);
 
-    if (existing) {
-      if (existingLookup) {
-        const internalId = existingLookup.internalId;
-        const updateUrl = `${this.resolvedChildPath}/items(${internalId})`;
-        const updateResp = await this.spFetch(updateUrl, {
-          method: 'POST',
-          headers: {
-            'X-HTTP-Method': 'MERGE',
-            'If-Match': '*',
-            'Content-Type': 'application/json;odata=nometadata',
-            'Accept': 'application/json;odata=nometadata'
-          },
-          body: JSON.stringify(body),
-        });
-        if (!updateResp.ok) {
-          throw new Error(`[ExecutionRepo] row update failed: ${updateResp.status} ${updateResp.statusText}`);
-        }
+    if (existingId !== undefined) {
+      const updateUrl = `${this.resolvedChildPath}/items(${existingId})`;
+      const updateResp = await this.spFetch(updateUrl, {
+        method: 'POST',
+        headers: {
+          'X-HTTP-Method': 'MERGE',
+          'If-Match': '*',
+          'Content-Type': 'application/json;odata=nometadata',
+          'Accept': 'application/json;odata=nometadata'
+        },
+        body: JSON.stringify(body),
+      });
+      if (!updateResp.ok) {
+        throw new Error(`[ExecutionRepo] row update failed: ${updateResp.status} ${updateResp.statusText}`);
       }
     } else {
+      // Another client can create a matching row between this lookup and POST.
+      // All-page item-id dedupe does not prevent that duplicate.
       const createUrl = `${this.resolvedChildPath}/items`;
       const createResp = await this.spFetch(createUrl, {
         method: 'POST',
@@ -847,21 +967,14 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const normalizedDate = normalizeExecutionDate(date);
     const normalizedUserId = normalizeExecutionUserId(userId);
     const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
-    const rf = await this.getResolvedFields();
-    const rowKey = `${normalizedDate}-${normalizedUserId}-${normalizedScheduleItemId}`;
-
-    // Same parent-first path as get/upsert so legacy Title / procedure-N aliases
-    // remain deletable after LVT recovery (Title filter is no longer reliable).
-    const existingLookup = await this.getRecordLookupByRowKey(
-      rf,
-      rowKey,
+    const classification = await this.classifyForWrite(
       normalizedDate,
       normalizedUserId,
       normalizedScheduleItemId,
     );
 
-    if (existingLookup) {
-      const deleteUrl = `${this.resolvedChildPath}/items(${existingLookup.internalId})`;
+    if (classification.kind === 'unique') {
+      const deleteUrl = `${this.resolvedChildPath}/items(${classification.internalId})`;
       const deleteResp = await this.spFetch(deleteUrl, {
         method: 'POST',
         headers: {
@@ -874,13 +987,27 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       }
     }
 
-    // Sync to local store using both requested and resolved identities.
-    if (this.store && this.store.deleteRecord) {
-      this.store.deleteRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
-      const resolvedScheduleItemId = normalizeScheduleItemId(existingLookup?.record.scheduleItemId);
-      if (resolvedScheduleItemId && resolvedScheduleItemId !== normalizedScheduleItemId) {
-        this.store.deleteRecord(normalizedDate, normalizedUserId, resolvedScheduleItemId);
-      }
+    // Absent is a confirmed miss. Duplicate, mismatch, and fetch failures throw
+    // above, so the local store is cleared only after a confirmed outcome.
+    this.clearStoredExecutionRecord(
+      normalizedDate,
+      normalizedUserId,
+      normalizedScheduleItemId,
+      classification.kind === 'unique' ? classification.record.scheduleItemId : undefined,
+    );
+  }
+
+  private clearStoredExecutionRecord(
+    normalizedDate: string,
+    normalizedUserId: string,
+    normalizedScheduleItemId: string,
+    resolvedScheduleItemId: string | undefined,
+  ): void {
+    if (!this.store?.deleteRecord) return;
+    this.store.deleteRecord(normalizedDate, normalizedUserId, normalizedScheduleItemId);
+    const resolved = normalizeScheduleItemId(resolvedScheduleItemId);
+    if (resolved && resolved !== normalizedScheduleItemId) {
+      this.store.deleteRecord(normalizedDate, normalizedUserId, resolved);
     }
   }
 

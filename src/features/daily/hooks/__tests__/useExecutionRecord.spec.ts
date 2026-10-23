@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionRecord } from '../../domain/executionRecordTypes';
-import { useExecutionRecord } from '../useExecutionRecord';
+import type { ExecutionCandidateClassification } from '../../domain/ExecutionRecordRepository';
+import { EXECUTION_POST_SAVE_CHECK_FAILED, useExecutionRecord } from '../useExecutionRecord';
 
 type GetRecordFn = (...args: unknown[]) => Promise<ExecutionRecord | undefined>;
 type WriteRecordFn = (...args: unknown[]) => Promise<void>;
@@ -19,6 +20,12 @@ type BatchedLookup = (
   scheduleItemIds: readonly string[],
 ) => Promise<ExecutionRecord | undefined>;
 let batchedLookup: BatchedLookup | undefined;
+type ClassifyLookup = (
+  date: string,
+  userIds: readonly string[],
+  scheduleItemIds: readonly string[],
+) => Promise<ExecutionCandidateClassification>;
+let classifyLookup: ClassifyLookup | undefined;
 
 vi.mock('../useExecutionData', () => ({
   useExecutionData: () => ({
@@ -26,6 +33,7 @@ vi.mock('../useExecutionData', () => ({
     upsertRecord: (...args: unknown[]) => upsertRecordRefChanger(...args),
     deleteRecord: (...args: unknown[]) => deleteRecordRefChanger(...args),
     getRecordForCandidates: batchedLookup,
+    classifyExecutionCandidates: classifyLookup,
   }),
 }));
 
@@ -55,6 +63,7 @@ describe('useExecutionRecord', () => {
     upsertRecordRefChanger = mockUpsertRecord;
     deleteRecordRefChanger = mockDeleteRecord;
     batchedLookup = undefined;
+    classifyLookup = undefined;
   });
 
   it('updates the concrete record key found through fallback lookup', async () => {
@@ -578,5 +587,175 @@ describe('useExecutionRecord', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(result.current.record?.id).toBe('record-2');
     expect(result.current.error).toBeNull();
+  });
+
+  const savedRecord: ExecutionRecord = {
+    id: '2026-05-07-user-1-slot-1',
+    date: '2026-05-07',
+    userId: 'user-1',
+    scheduleItemId: 'slot-1',
+    status: 'completed',
+    triggeredBipIds: [],
+    memo: 'existing record',
+    recordedBy: 'Staff A',
+    recordedAt: '2026-05-07T09:00:00.000Z',
+  };
+
+  it('keeps the loaded record and blocks another save until a recheck classifies a thrown save', async () => {
+    let classification: ExecutionCandidateClassification = { kind: 'unique', internalId: 4, record: savedRecord };
+    classifyLookup = async () => classification;
+    mockUpsertRecord.mockRejectedValueOnce(new Error('save failed'));
+
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+
+    await act(async () => {
+      await expect(result.current.saveRecord('completed', 'edited')).rejects.toThrow('save failed');
+    });
+    expect(result.current.record).toEqual(savedRecord);
+    expect(result.current.mutationBlocked).toBe(true);
+    await expect(result.current.saveRecord('completed', 'edited again')).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    await expect(result.current.deleteRecord()).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+
+    classification = { kind: 'absent' };
+    await act(async () => {
+      await result.current.refresh();
+    });
+    await waitFor(() => expect(result.current.mutationBlocked).toBe(false));
+    expect(result.current.error).toBeNull();
+    expect(result.current.record).toBeUndefined();
+  });
+
+  it('keeps the draft and does not post again when save succeeds but the recheck fails', async () => {
+    let calls = 0;
+    classifyLookup = async () => {
+      calls += 1;
+      if (calls === 1) return { kind: 'unique', internalId: 4, record: savedRecord };
+      throw new Error('refetch failed');
+    };
+
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+
+    await act(async () => {
+      await expect(result.current.saveRecord('completed', 'edited')).rejects.toMatchObject({
+        code: EXECUTION_POST_SAVE_CHECK_FAILED,
+      });
+    });
+    expect(result.current.record).toEqual(savedRecord);
+    expect(result.current.mutationBlocked).toBe(true);
+    await expect(result.current.saveRecord('completed', 'edited again')).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not delete again while a lost delete response is unclassified', async () => {
+    let classification: ExecutionCandidateClassification = { kind: 'unique', internalId: 4, record: savedRecord };
+    classifyLookup = async () => classification;
+    mockDeleteRecord.mockRejectedValueOnce(new Error('delete failed'));
+
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+
+    await act(async () => {
+      await expect(result.current.deleteRecord()).rejects.toThrow('delete failed');
+    });
+    expect(result.current.record).toEqual(savedRecord);
+    await expect(result.current.deleteRecord()).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockDeleteRecord).toHaveBeenCalledTimes(1);
+
+    classification = { kind: 'absent' };
+    await act(async () => {
+      await result.current.refresh();
+    });
+    await waitFor(() => expect(result.current.record).toBeUndefined());
+    expect(result.current.mutationBlocked).toBe(false);
+    expect(mockDeleteRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a row that is still present after a lost delete and does not delete it again', async () => {
+    let phase: 'loaded' | 'still-there' = 'loaded';
+    classifyLookup = async () => {
+      if (phase === 'still-there') return { kind: 'unique', internalId: 9, record: { ...savedRecord, memo: 'still there' } };
+      return { kind: 'unique', internalId: 4, record: savedRecord };
+    };
+    mockDeleteRecord.mockRejectedValueOnce(new Error('lost response'));
+
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+    await act(async () => {
+      await expect(result.current.deleteRecord()).rejects.toThrow('lost response');
+    });
+
+    phase = 'still-there';
+    await act(async () => {
+      await result.current.refresh();
+    });
+    await waitFor(() => expect(result.current.record?.memo).toBe('still there'));
+    expect(mockDeleteRecord).toHaveBeenCalledTimes(1);
+    expect(result.current.mutationBlocked).toBe(false);
+  });
+
+  it('blocks save and cancel when the classified row does not match the target', async () => {
+    classifyLookup = async () => ({ kind: 'mismatch' });
+
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.error).toMatchObject({ code: 'EXECUTION_TARGET_MISMATCH' }));
+    await expect(result.current.saveRecord('completed', 'blocked')).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    await expect(result.current.deleteRecord()).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockUpsertRecord).not.toHaveBeenCalled();
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+  });
+
+  it('does not let a stale save recheck clear a newer target block', async () => {
+    let resolveRecheck: (value: ExecutionCandidateClassification) => void = () => {};
+    const recheck = new Promise<ExecutionCandidateClassification>((resolve) => {
+      resolveRecheck = resolve;
+    });
+    let userOneCalls = 0;
+    classifyLookup = async (_date, userIds) => {
+      if (userIds[0] === 'user-2') throw new Error('user-2 blocked');
+      userOneCalls += 1;
+      if (userOneCalls === 1) return { kind: 'unique', internalId: 4, record: savedRecord };
+      return recheck;
+    };
+
+    const { result, rerender } = renderHook(
+      ({ userId }) => useExecutionRecord('2026-05-07', userId, 'slot-1'),
+      { initialProps: { userId: 'user-1' } },
+    );
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+
+    let saveSettled: Promise<unknown> = Promise.resolve();
+    act(() => {
+      saveSettled = result.current.saveRecord('completed', 'edited').catch((error: unknown) => error);
+    });
+    rerender({ userId: 'user-2' });
+    await waitFor(() => expect(result.current.error?.message).toBe('user-2 blocked'));
+
+    resolveRecheck({ kind: 'unique', internalId: 4, record: { ...savedRecord, memo: 'edited' } });
+    await act(async () => {
+      await saveSettled;
+    });
+    expect(result.current.error?.message).toBe('user-2 blocked');
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.mutationBlocked).toBe(false);
+    await expect(result.current.saveRecord('completed', 'should stay blocked')).rejects.toThrow(
+      'Execution record identity is not ready for mutation',
+    );
+    expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
   });
 });
