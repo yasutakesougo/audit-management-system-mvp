@@ -136,6 +136,18 @@ const expectDraftRetained = () => {
   expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue(DRAFT_MEMO);
 };
 
+const invokeAttachedClick = (element: HTMLElement) => {
+  const propsKey = Object.keys(element).find((key) => key.startsWith('__reactProps$'));
+  if (!propsKey) {
+    throw new Error('React click handler is not attached to this element');
+  }
+  const props = (element as unknown as Record<string, { onClick?: (event?: unknown) => void }>)[propsKey];
+  if (typeof props?.onClick !== 'function') {
+    throw new Error('onClick is not exposed on this element');
+  }
+  props.onClick({ preventDefault() {}, stopPropagation() {} });
+};
+
 const expectSaveAndCancelBlocked = () => {
   const saveButton = screen.getByTestId('kiosk-observation-submit');
   const cancelButton = screen.getByTestId('kiosk-observation-revert');
@@ -366,5 +378,45 @@ describe('Hotfix B observation save/cancel protection', () => {
     expect(mockDeleteRecord).not.toHaveBeenCalled();
     expect(screen.queryByTestId('kiosk-observation-revert-confirm')).toBeNull();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('rejects save and cancel when the attached handler runs while the hook is blocked', async () => {
+    let currentHookResult = makeExecutionRecordHookResult({
+      record: makeExecutionRecord(),
+      isLoading: false,
+    });
+    mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+    const { rerender } = renderScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('既存メモ');
+    });
+    enterDraft();
+    fireEvent.click(screen.getByTestId('kiosk-observation-revert'));
+    expect(screen.getByTestId('kiosk-observation-revert-confirm')).toBeInTheDocument();
+    expect(screen.getByTestId('kiosk-observation-submit')).toBeEnabled();
+
+    currentHookResult = makeExecutionRecordHookResult({
+      record: makeExecutionRecord(),
+      isLoading: false,
+      error: new Error('outcome unknown'),
+      mutationBlocked: true,
+    });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    const saveButton = screen.getByTestId('kiosk-observation-submit');
+    const confirmButton = screen.getByTestId('kiosk-observation-revert-confirm');
+    expect(saveButton).toBeDisabled();
+    expect(confirmButton).toBeDisabled();
+    invokeAttachedClick(saveButton);
+    invokeAttachedClick(confirmButton);
+    expect(mockSaveRecord).not.toHaveBeenCalled();
+    expect(mockDeleteRecord).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expectDraftRetained();
   });
 });
