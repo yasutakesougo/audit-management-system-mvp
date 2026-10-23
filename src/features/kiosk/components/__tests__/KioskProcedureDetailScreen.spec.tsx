@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
@@ -1203,7 +1203,12 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByTestId('mood-chip-落ち着いていた')).toHaveClass('Mui-disabled');
       expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
 
-      resolveSave();
+      await act(async () => {
+        resolveSave();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
+      });
     });
 
     it('B-S14: disables delete confirm button and inputs while delete operation is in flight', async () => {
@@ -1233,7 +1238,16 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
       // Deleting in flight
       expect(confirmBtn).toBeDisabled();
-      resolveDelete();
+
+      await act(async () => {
+        resolveDelete();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('記録を取り消しました')).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('記録を取り消しますか？')).not.toBeInTheDocument();
+      });
     });
 
     it('B-S15: detects conflict and blocks save when background record update mutates memo while user is editing', async () => {
@@ -1548,6 +1562,10 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
       const confirmBtn = screen.getByTestId('kiosk-discard-dialog-confirm');
       fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
 
       expect(mockNavigate).toHaveBeenCalled();
 
