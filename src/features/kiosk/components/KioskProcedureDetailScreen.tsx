@@ -300,6 +300,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     if (formIdentityKeyRef.current === formIdentityKey) return;
     formIdentityKeyRef.current = formIdentityKey;
     setFormState(createEmptyFormState(formContextKey));
+    setDiscardDialogContextKey(null);
   }, [formContextKey, formIdentityKey]);
   if (formState.key !== formContextKey) {
     setFormState(createEmptyFormState(formContextKey));
@@ -323,6 +324,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     && !isRecordSnapshotEqual(currentRecordSnapshot, currentFormState.baseRecordSnapshot)
   );
   const isConflictBlocked = Boolean(currentFormState.conflictUnresolved || hasRenderTimeConflict);
+  const isRecordConflict = Boolean(
+    record
+    && (currentFormState.conflictUnresolved || hasRenderTimeConflict)
+  );
+  const isRecordUnavailableConflict = Boolean(
+    !record
+    && currentFormState.hasUserEdits
+    && (currentFormState.conflictUnresolved || hasRenderTimeConflict)
+  );
 
   // Synchronize execution record query results into the form state with full conflict detection
   React.useEffect(() => {
@@ -481,6 +491,27 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         memo: parsedMemo.memo,
       };
     });
+  };
+
+  const [discardDialogContextKey, setDiscardDialogContextKey] = useState<string | null>(null);
+  const isDiscardDialogOpen = Boolean(discardDialogContextKey && discardDialogContextKey === formContextKey);
+
+  const handleOpenDiscardDialog = () => {
+    setDiscardDialogContextKey(formContextKey);
+  };
+
+  const handleCloseDiscardDialog = () => {
+    setDiscardDialogContextKey(null);
+  };
+
+  const handleConfirmDiscard = () => {
+    if (discardDialogContextKey !== formContextKey || isFormIdentityTransitioning) {
+      setDiscardDialogContextKey(null);
+      return;
+    }
+    setDiscardDialogContextKey(null);
+    setFormState(createEmptyFormState(formContextKey));
+    navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
   };
 
   const serializeMemo = () => {
@@ -733,7 +764,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         </Alert>
       )}
 
-      {isConflictBlocked && record && (
+      {isRecordConflict && (
         <Alert
           severity="warning"
           action={
@@ -755,6 +786,43 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           </Typography>
           <Typography variant="body2">
             保存済みの実施記録が存在します。入力中の下書きを破棄して既存記録を読み込むまで、記録の保存・取消はできません。
+          </Typography>
+        </Alert>
+      )}
+
+      {isRecordUnavailableConflict && (
+        <Alert
+          severity="warning"
+          action={
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => void refreshRecord()}
+                disabled={isSaving || isDeleting || isLoading}
+                data-testid="kiosk-retry-record-audit-btn"
+              >
+                再読み込み
+              </Button>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={handleOpenDiscardDialog}
+                disabled={isSaving || isDeleting}
+                data-testid="kiosk-discard-draft-and-return-btn"
+              >
+                下書きを破棄して戻る
+              </Button>
+            </Box>
+          }
+          sx={{ mb: 4, borderRadius: 2, alignItems: 'center' }}
+          data-testid="kiosk-record-missing-conflict-alert"
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            最新の実施記録を確認できません
+          </Typography>
+          <Typography variant="body2">
+            編集中に実施記録の照合状態が変化しました。下書きは保持されています。再読み込みを行って状態を確認してください。
           </Typography>
         </Alert>
       )}
@@ -994,6 +1062,48 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             data-testid="kiosk-observation-revert-confirm"
           >
             {isDeleting ? '取り消し中...' : '取り消す'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 下書き破棄確認ダイアログ */}
+      <Dialog
+        open={isDiscardDialogOpen}
+        onClose={handleCloseDiscardDialog}
+        aria-labelledby="discard-dialog-title"
+        aria-describedby="discard-dialog-description"
+        PaperProps={{
+          sx: { borderRadius: 4, p: 2 }
+        }}
+        data-testid="kiosk-discard-draft-dialog"
+      >
+        <DialogTitle id="discard-dialog-title" sx={{ fontWeight: 'bold', fontSize: '1.3rem' }}>
+          下書きを破棄して戻りますか？
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="discard-dialog-description" sx={{ fontSize: '1.1rem', color: 'text.primary' }}>
+            最新の実施記録を確認できないため、保存・取消ができません。入力中の下書き（観察記録・メモ）を破棄して一覧画面に戻りますか？この操作は取り消せません。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handleCloseDiscardDialog}
+            sx={{ borderRadius: 3, px: 3 }}
+            data-testid="kiosk-discard-dialog-cancel"
+          >
+            編集を続ける
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDiscard}
+            sx={{ borderRadius: 3, px: 3, fontWeight: 'bold' }}
+            autoFocus
+            data-testid="kiosk-discard-dialog-confirm"
+          >
+            下書きを破棄して戻る
           </Button>
         </DialogActions>
       </Dialog>

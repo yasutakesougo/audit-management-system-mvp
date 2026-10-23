@@ -1460,6 +1460,155 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
         expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
       });
     });
+
+    it('B-S22: handles record disappearance with persistent warning, retry, draft protection, and discard confirmation dialog', async () => {
+      const mockRefresh = vi.fn().mockResolvedValue(undefined);
+      const mockSaveRecord = vi.fn().mockResolvedValue(undefined);
+
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-orig', memo: '初期記録' }),
+        isLoading: false,
+        refresh: mockRefresh,
+        saveRecord: mockSaveRecord,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Staff edits draft (chips & memo)
+      fireEvent.click(screen.getByTestId('mood-chip-落ち着いていた'));
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '下書きメモ入力中' } });
+
+      // Record disappears (query returns record: undefined)
+      currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+        refresh: mockRefresh,
+        saveRecord: mockSaveRecord,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // 1. Render-time & post-effect persistent warning
+      expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      });
+
+      // 2. Draft is preserved
+      expect(screen.getByTestId('mood-chip-落ち着いていた')).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('下書きメモ入力中');
+
+      // 3. Mutation blocked (submit is disabled)
+      const submitBtn = screen.getByTestId('kiosk-observation-submit');
+      expect(submitBtn).toBeDisabled();
+
+      // 4. Retry reload
+      const retryBtn = screen.getByTestId('kiosk-retry-record-audit-btn');
+      fireEvent.click(retryBtn);
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+
+      // Even if refetch finishes still undefined, draft and block remain
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+      expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('下書きメモ入力中');
+      expect(submitBtn).toBeDisabled();
+
+      // 5. Open discard confirmation dialog
+      const discardBtn = screen.getByTestId('kiosk-discard-draft-and-return-btn');
+      fireEvent.click(discardBtn);
+
+      expect(screen.getByTestId('kiosk-discard-draft-dialog')).toBeInTheDocument();
+
+      // 6. Cancel discard: draft remains, dialog closes
+      const cancelBtn = screen.getByTestId('kiosk-discard-dialog-cancel');
+      fireEvent.click(cancelBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('下書きメモ入力中');
+      expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+
+      // 7. Confirm discard: clears draft and navigates
+      fireEvent.click(screen.getByTestId('kiosk-discard-draft-and-return-btn'));
+      expect(screen.getByTestId('kiosk-discard-draft-dialog')).toBeInTheDocument();
+
+      const confirmBtn = screen.getByTestId('kiosk-discard-dialog-confirm');
+      fireEvent.click(confirmBtn);
+
+      expect(mockNavigate).toHaveBeenCalled();
+
+      // Verify saveRecord was NEVER called during any of this
+      expect(mockSaveRecord).not.toHaveBeenCalled();
+    });
+
+    it('B-S23: prevents discard operation for stale context if identity switches while discard dialog was open', async () => {
+      mockNavigate.mockClear();
+      let currentHookResult = makeExecutionRecordHookResult({
+        record: makeExecutionRecord({ id: 'rec-orig', memo: '初期記録' }),
+        isLoading: false,
+      });
+      mockUseExecutionRecord.mockImplementation(() => currentHookResult);
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Staff starts editing
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '編集中下書き' } });
+
+      // Record disappears -> Alert appears
+      currentHookResult = makeExecutionRecordHookResult({
+        record: undefined,
+        isLoading: false,
+      });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-record-missing-conflict-alert')).toBeInTheDocument();
+      });
+
+      // Open discard dialog
+      fireEvent.click(screen.getByTestId('kiosk-discard-draft-and-return-btn'));
+      expect(screen.getByTestId('kiosk-discard-draft-dialog')).toBeInTheDocument();
+
+      // Identity changes while dialog is open (e.g. user navigation)
+      mockRouteUserId = 'U002';
+      mockUseParams.mockImplementation(() => ({ userId: 'U002', slotKey: '0' }));
+      mockUseUser.mockReturnValue({ data: makeUser({ Id: 2, UserID: 'U002', FullName: '鈴木 花子' }), status: 'success' });
+      rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+
+      // Dialog is safely dismissed for the new context and navigate was not invoked
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
   });
 });
+
+
 
