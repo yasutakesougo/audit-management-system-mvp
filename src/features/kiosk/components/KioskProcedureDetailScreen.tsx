@@ -22,6 +22,35 @@ import {
 import { resolveProcedureUserQueryCandidates } from '../utils/resolveProcedureUserQuery';
 import { useKioskAttendance } from '../hooks/useKioskAttendance';
 import { KioskProcedureRecordSummary } from './KioskProcedureRecordSummary';
+import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+
+type RecordSnapshot = {
+  id: string;
+  status: string;
+  recordedAt: string;
+  memo: string;
+} | null;
+
+const createRecordSnapshot = (r: ExecutionRecord | undefined): RecordSnapshot => {
+  if (!r) return null;
+  return {
+    id: String(r.id ?? ''),
+    status: String(r.status ?? ''),
+    recordedAt: String(r.recordedAt ?? ''),
+    memo: String(r.memo ?? ''),
+  };
+};
+
+const isRecordSnapshotEqual = (a: RecordSnapshot, b: RecordSnapshot): boolean => {
+  if (a === null && b === null) return true;
+  if (a === null || b === null) return false;
+  return (
+    a.id === b.id &&
+    a.status === b.status &&
+    a.recordedAt === b.recordedAt &&
+    a.memo === b.memo
+  );
+};
 
 const MOOD_CHIPS = ['落ち着いていた', '不安そう', '拒否あり', '興奮あり', '切り替え困難'];
 const ACTION_CHIPS = ['見守り', '声かけ', '環境調整', '活動変更', '距離を取る', 'クールダウン'];
@@ -236,17 +265,37 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const formIdentityKeyRef = React.useRef(formIdentityKey);
   const isFormIdentityTransitioning = formIdentityKeyRef.current !== formIdentityKey;
 
-  // Keep editable content scoped to the exact user/procedure/date context.
-  const formContextKey = formIdentityKey;
-  const createEmptyFormState = (key: string) => ({
+  interface KioskFormState {
+    key: string;
+    initialized: boolean;
+    hasUserEdits: boolean;
+    conflictUnresolved: boolean;
+    conflictQueryKey?: string;
+    conflictSnapshot: RecordSnapshot;
+    baseRecordSnapshot: RecordSnapshot;
+    mood: string;
+    action: string;
+    result: string;
+    memo: string;
+  }
+
+  const createEmptyFormState = (key: string): KioskFormState => ({
     key,
     initialized: false,
+    hasUserEdits: false,
+    conflictUnresolved: false,
+    conflictQueryKey: undefined,
+    conflictSnapshot: null,
+    baseRecordSnapshot: null,
     mood: '',
     action: '',
     result: '',
     memo: '',
   });
-  const [formState, setFormState] = useState(() => createEmptyFormState(formContextKey));
+
+  // Keep editable content scoped to the exact user/procedure/date context.
+  const formContextKey = formIdentityKey;
+  const [formState, setFormState] = useState<KioskFormState>(() => createEmptyFormState(formContextKey));
   React.useEffect(() => {
     if (formIdentityKeyRef.current === formIdentityKey) return;
     formIdentityKeyRef.current = formIdentityKey;
@@ -258,12 +307,24 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const currentFormState = formState.key === formContextKey ? formState : createEmptyFormState(formContextKey);
   const { mood: selectedMood, action: selectedAction, result: selectedResult, memo: textMemo } = currentFormState;
   const isInitialized = currentFormState.initialized;
-  const updateFormState = (updates: Partial<typeof currentFormState>) => {
-    setFormState((current) => current.key === formContextKey ? { ...current, ...updates } : current);
+  const updateFormState = (updates: Partial<KioskFormState>) => {
+    setFormState((current) => current.key === formContextKey ? { ...current, ...updates, hasUserEdits: true } : current);
   };
   const [showObservations] = useState(true);
 
-  // Restore saved fields only after this exact record query succeeded.
+  // Render-time conflict detection: intercept before useEffect to fail-close immediately
+  const currentRecordSnapshot = createRecordSnapshot(record);
+  const hasRenderTimeConflict = Boolean(
+    currentFormState.hasUserEdits
+    && isRecordQueryReady
+    && !isLoading
+    && !recordLoadError
+    && !hasMismatchedRecord
+    && !isRecordSnapshotEqual(currentRecordSnapshot, currentFormState.baseRecordSnapshot)
+  );
+  const isConflictBlocked = Boolean(currentFormState.conflictUnresolved || hasRenderTimeConflict);
+
+  // Synchronize execution record query results into the form state with full conflict detection
   React.useEffect(() => {
     if (
       !isRecordQueryReady
@@ -271,23 +332,88 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       || isUserLoading
       || !resolvedUserId
       || hasMismatchedRecord
-      || recordLoadError
-      || currentFormState.initialized
+      || Boolean(recordLoadError)
     ) return;
 
+    const currentSnapshot = createRecordSnapshot(record);
     const parsedMemo = record ? parseKioskProcedureMemo(record.memo) : null;
+
     setFormState((current) => {
-      if (current.key !== formContextKey || current.initialized) return current;
-      return {
-        ...current,
-        initialized: true,
-        mood: parsedMemo?.mood ?? '',
-        action: parsedMemo?.action ?? '',
-        result: parsedMemo?.result ?? '',
-        memo: parsedMemo?.memo ?? '',
-      };
+      if (current.key !== formContextKey) return current;
+
+      // 1. 未初期化状態（初回照合完了）
+      if (!current.initialized) {
+        if (current.hasUserEdits) {
+          if (record) {
+            // 下書き入力中に初回で既存記録が見つかった -> 競合ロック
+            return {
+              ...current,
+              initialized: true,
+              conflictUnresolved: true,
+              conflictQueryKey: recordQueryKey,
+              conflictSnapshot: currentSnapshot,
+              baseRecordSnapshot: currentSnapshot,
+            };
+          }
+          // 下書き入力中に初回で既存記録なし -> 下書き保持して通常保存可能へ
+          return {
+            ...current,
+            initialized: true,
+            conflictUnresolved: false,
+            conflictQueryKey: undefined,
+            conflictSnapshot: null,
+            baseRecordSnapshot: null,
+          };
+        }
+
+        // 下書き未入力のまま初回照合完了 -> 既存記録（あれば）を展開
+        return {
+          ...current,
+          initialized: true,
+          conflictUnresolved: false,
+          conflictQueryKey: undefined,
+          conflictSnapshot: null,
+          baseRecordSnapshot: currentSnapshot,
+          mood: parsedMemo?.mood ?? '',
+          action: parsedMemo?.action ?? '',
+          result: parsedMemo?.result ?? '',
+          memo: parsedMemo?.memo ?? '',
+        };
+      }
+
+      // 2. 初期化済み ＋ 職員が未編集 (hasUserEdits === false)
+      if (!current.hasUserEdits) {
+        if (!isRecordSnapshotEqual(currentSnapshot, current.baseRecordSnapshot)) {
+          return {
+            ...current,
+            conflictUnresolved: false,
+            conflictQueryKey: undefined,
+            conflictSnapshot: null,
+            baseRecordSnapshot: currentSnapshot,
+            mood: parsedMemo?.mood ?? '',
+            action: parsedMemo?.action ?? '',
+            result: parsedMemo?.result ?? '',
+            memo: parsedMemo?.memo ?? '',
+          };
+        }
+        return current;
+      }
+
+      // 3. 初期化済み ＋ 職員が下書き編集中 (hasUserEdits === true)
+      if (!isRecordSnapshotEqual(currentSnapshot, current.baseRecordSnapshot)) {
+        // 基準記録からのドリフト（なし→あり、あり→更新、あり→消失等）を検知
+        return {
+          ...current,
+          conflictUnresolved: true,
+          conflictQueryKey: recordQueryKey,
+          conflictSnapshot: currentSnapshot,
+          baseRecordSnapshot: currentSnapshot,
+        };
+      }
+
+      return current;
     });
-  }, [currentFormState.initialized, formContextKey, hasMismatchedRecord, isLoading, isRecordQueryReady, isUserLoading, record, recordLoadError, resolvedUserId]);
+  }, [currentFormState.key, formContextKey, hasMismatchedRecord, isLoading, isRecordQueryReady, isUserLoading, record, recordLoadError, recordQueryKey, resolvedUserId]);
 
   const isRecordStatusUnknown = Boolean(recordLoadError)
     || !resolvedUserId
@@ -296,7 +422,66 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     || !isRecordQueryReady
     || !isInitialized
     || isLoading;
-  const isRecordMutationBlocked = isRecordStatusUnknown || isFormIdentityTransitioning;
+  const isRecordMutationBlocked = isRecordStatusUnknown || isFormIdentityTransitioning || isConflictBlocked;
+
+  // Observation input is enabled as soon as identity & procedure are locked, even while record is loading
+  const isObservationInputBlocked =
+    isUserLoading
+    || !canonicalUserId
+    || !isUserResultFresh
+    || !procedure
+    || isFormIdentityTransitioning
+    || isAbsent
+    || isSaving
+    || isDeleting
+    || isConflictBlocked;
+
+  const handleLoadExistingRecord = () => {
+    if (
+      isSaving
+      || isDeleting
+      || isLoading
+      || !isRecordQueryReady
+      || Boolean(recordLoadError)
+      || hasMismatchedRecord
+      || !record
+      || !currentFormState.conflictUnresolved
+      || currentFormState.key !== formContextKey
+      || isFormIdentityTransitioning
+      || !resolvedUserId
+      || !isUserResultFresh
+    ) {
+      return;
+    }
+
+    const currentSnapshot = createRecordSnapshot(record);
+    const parsedMemo = parseKioskProcedureMemo(record.memo);
+
+    setFormState((current) => {
+      if (
+        current.key !== formContextKey
+        || !current.conflictUnresolved
+        || current.conflictQueryKey !== recordQueryKey
+        || !isRecordSnapshotEqual(current.conflictSnapshot, currentSnapshot)
+      ) {
+        return current;
+      }
+
+      return {
+        key: formContextKey,
+        initialized: true,
+        hasUserEdits: false,       // 下書き破棄完了
+        conflictUnresolved: false, // 競合解消
+        conflictQueryKey: undefined,
+        conflictSnapshot: null,
+        baseRecordSnapshot: currentSnapshot,
+        mood: parsedMemo.mood,
+        action: parsedMemo.action,
+        result: parsedMemo.result,
+        memo: parsedMemo.memo,
+      };
+    });
+  };
 
   const serializeMemo = () => {
     return serializeKioskProcedureMemo({
@@ -543,7 +728,33 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           <Typography variant="body2">
             {recordLoadError || hasMismatchedRecord
               ? '保存済みかどうかを確認できません。再読み込みするまで記録の保存・取消はできません。'
-              : '保存状態が確認できるまで、記録の保存・取消はできません。'}
+              : '下書きは入力できますが、保存は確認完了後に可能になります。'}
+          </Typography>
+        </Alert>
+      )}
+
+      {isConflictBlocked && record && (
+        <Alert
+          severity="warning"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={handleLoadExistingRecord}
+              disabled={isSaving || isDeleting || isLoading || !isRecordQueryReady}
+              data-testid="kiosk-load-existing-record-btn"
+            >
+              既存記録を読み込む（下書きを破棄）
+            </Button>
+          }
+          sx={{ mb: 4, borderRadius: 2, alignItems: 'center' }}
+          data-testid="kiosk-conflict-alert"
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            既存の実施記録との競合が発生しています
+          </Typography>
+          <Typography variant="body2">
+            保存済みの実施記録が存在します。入力中の下書きを破棄して既存記録を読み込むまで、記録の保存・取消はできません。
           </Typography>
         </Alert>
       )}
@@ -589,7 +800,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                       key={chip}
                       label={chip}
                       onClick={() => updateFormState({ mood: active ? '' : chip })}
-                      disabled={isRecordStatusUnknown}
+                      disabled={isObservationInputBlocked}
                       color={active ? 'warning' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
                       sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
@@ -613,7 +824,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                       key={chip}
                       label={chip}
                       onClick={() => updateFormState({ action: active ? '' : chip })}
-                      disabled={isRecordStatusUnknown}
+                      disabled={isObservationInputBlocked}
                       color={active ? 'warning' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
                       sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
@@ -637,7 +848,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                       key={chip}
                       label={chip}
                       onClick={() => updateFormState({ result: active ? '' : chip })}
-                      disabled={isRecordStatusUnknown}
+                      disabled={isObservationInputBlocked}
                       color={active ? 'warning' : 'default'}
                       variant={active ? 'filled' : 'outlined'}
                       sx={{ fontSize: '1.1rem', py: 2.5, px: 1, borderRadius: 3, fontWeight: active ? 'bold' : 'normal' }}
@@ -661,7 +872,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
                 placeholder="様子や対応について、その他の補足事項があれば入力してください"
                 value={textMemo}
                 onChange={(e) => updateFormState({ memo: e.target.value })}
-                disabled={isRecordStatusUnknown}
+                disabled={isObservationInputBlocked}
                 sx={{
                   bgcolor: 'background.paper',
                   borderRadius: 3,
@@ -768,7 +979,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             variant="outlined"
             color="secondary"
             onClick={() => setDeleteDialogOpen(false)}
-            disabled={isDeleting || isRecordMutationBlocked}
+            disabled={isDeleting}
             sx={{ borderRadius: 3, px: 3 }}
           >
             キャンセル
@@ -777,7 +988,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             variant="contained"
             color="error"
             onClick={handleDelete}
-            disabled={isDeleting || isSaving || isRecordStatusUnknown || isAbsent || !resolvedUserId}
+            disabled={isDeleting || isSaving || isRecordMutationBlocked || isAbsent || !resolvedUserId}
             sx={{ borderRadius: 3, px: 3, fontWeight: 'bold' }}
             autoFocus
             data-testid="kiosk-observation-revert-confirm"
