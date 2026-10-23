@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
 import { MemoryRouter } from 'react-router-dom';
@@ -1204,7 +1204,12 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByTestId('mood-chip-落ち着いていた')).toHaveClass('Mui-disabled');
       expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
 
-      resolveSave();
+      await act(async () => {
+        resolveSave();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
+      });
     });
 
     it('B-S14: disables delete confirm button and inputs while delete operation is in flight', async () => {
@@ -1234,7 +1239,16 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
 
       // Deleting in flight
       expect(confirmBtn).toBeDisabled();
-      resolveDelete();
+
+      await act(async () => {
+        resolveDelete();
+      });
+      await waitFor(() => {
+        expect(screen.getByText('記録を取り消しました')).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('記録を取り消しますか？')).not.toBeInTheDocument();
+      });
     });
 
     it('B-S15: detects conflict and blocks save when background record update mutates memo while user is editing', async () => {
@@ -1550,6 +1564,10 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       const confirmBtn = screen.getByTestId('kiosk-discard-dialog-confirm');
       fireEvent.click(confirmBtn);
 
+      await waitFor(() => {
+        expect(screen.queryByTestId('kiosk-discard-draft-dialog')).not.toBeInTheDocument();
+      });
+
       expect(mockNavigate).toHaveBeenCalled();
 
       // Verify saveRecord was NEVER called during any of this
@@ -1608,6 +1626,69 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       });
       expect(mockNavigate).not.toHaveBeenCalled();
     });
+  });
+
+  it('passes one stable empty attendance candidate reference while pending, the history ids when fresh, and that same empty reference when stale', () => {
+    mockRouteUserId = '6';
+    mockUseParams.mockImplementation(() => ({ userId: '6', slotKey: '0' }));
+    mockUseUser.mockReturnValue({ data: null, status: 'loading' });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    const pendingCalls = mockUseKioskAttendance.mock.calls.slice();
+    expect(pendingCalls.length).toBeGreaterThanOrEqual(2);
+    const pendingCandidates = pendingCalls[0][2] as string[];
+    expect(pendingCandidates).toEqual([]);
+    for (const call of pendingCalls) {
+      expect(call[0]).toBe('');
+      expect(call[2]).toBe(pendingCandidates);
+    }
+
+    mockUseUser.mockReturnValue({
+      data: makeUser({ Id: 6, UserID: 'U-006', FullName: '合成利用者6' }),
+      status: 'success',
+    });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    const freshCalls = mockUseKioskAttendance.mock.calls.slice(pendingCalls.length);
+    expect(freshCalls.length).toBeGreaterThan(0);
+    const freshCandidates = freshCalls[0][2] as string[];
+    expect(freshCandidates).toEqual(['6', 'U-006', 'U006']);
+    expect(freshCandidates).not.toBe(pendingCandidates);
+    for (const call of freshCalls) {
+      expect(call[0]).toBe('U-006');
+      expect(call[2]).toBe(freshCandidates);
+    }
+
+    const callsBeforeStale = mockUseKioskAttendance.mock.calls.length;
+    mockRouteUserId = '8';
+    mockUseParams.mockImplementation(() => ({ userId: '8', slotKey: '0' }));
+    mockUseUser.mockReturnValue({ data: null, status: 'loading' });
+    rerender(
+      <MemoryRouter>
+        <KioskProcedureDetailScreen />
+      </MemoryRouter>,
+    );
+
+    const staleCalls = mockUseKioskAttendance.mock.calls.slice(callsBeforeStale);
+    expect(staleCalls.length).toBeGreaterThan(0);
+    for (const call of staleCalls) {
+      expect(call[0]).toBe('');
+      expect(call[2]).toBe(pendingCandidates);
+    }
   });
 });
 
