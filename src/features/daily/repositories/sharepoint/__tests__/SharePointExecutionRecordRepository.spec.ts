@@ -2145,6 +2145,55 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(postCount(mismatchedFetch)).toBe(0);
     });
 
+    const writeCount = (spFetch: ReturnType<typeof vi.fn>): number =>
+      spFetch.mock.calls.filter((call) => {
+        const method = String(call[1]?.method ?? 'GET').toUpperCase();
+        const headers = call[1]?.headers as Record<string, string> | undefined;
+        const override = String(headers?.['X-HTTP-Method'] ?? '').toUpperCase();
+        return method === 'POST' || method === 'MERGE' || method === 'DELETE'
+          || override === 'MERGE' || override === 'DELETE';
+      }).length;
+
+    const expectMismatchStaysBlocked = async (
+      spFetch: ReturnType<typeof vi.fn>,
+      repo: SharePointExecutionRecordRepository,
+    ) => {
+      await expect(repo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'mismatch' });
+      await expect(repo.upsertRecord(draftRecord())).rejects.toMatchObject({ code: 'EXECUTION_TARGET_MISMATCH' });
+      await expect(repo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toBeInstanceOf(ExecutionTargetMismatchError);
+      await expect(repo.upsertRecord(draftRecord())).rejects.toMatchObject({ code: 'EXECUTION_TARGET_MISMATCH' });
+      await expect(repo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toBeInstanceOf(ExecutionTargetMismatchError);
+      expect(writeCount(spFetch)).toBe(0);
+    };
+
+    it('forbids update and delete when only the stored date mismatches', async () => {
+      const spFetch = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => (lastId === 0
+          ? { value: [{ ...childItem, Title: '1999-01-01-person-a-aa', User_x0020_ID: 'person-a', RowNo: 'aa' }] }
+          : { value: [] }),
+      });
+      await expectMismatchStaysBlocked(spFetch, createRepo(spFetch));
+    });
+
+    it('forbids update and delete when only the stored user mismatches', async () => {
+      const spFetch = server({
+        parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
+        childAt: (lastId) => (lastId === 0
+          ? {
+              value: [{
+                ...childItem,
+                Title: `${DATE}-person-a-aa`,
+                UserId: 'other-user',
+                User_x0020_ID: 'other-user',
+                RowNo: 'aa',
+              }],
+            }
+          : { value: [] }),
+      });
+      await expectMismatchStaysBlocked(spFetch, createRepo(spFetch));
+    });
+
     it('fails closed on a 51st data page and completes when page 50 is followed by an empty page', async () => {
       const overflow = server({
         parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
