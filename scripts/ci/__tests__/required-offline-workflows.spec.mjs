@@ -272,11 +272,15 @@ test('schedule: bound PR cannot enter the real SharePoint job; other events reta
   assert.equal(condition(guard, targetPr), false);
   for (const event of otherEvents) assert.equal(condition(guard, event), true);
 });
-test('CI: Index Audit is excluded only for the bound PR, without changing any other validation', () => {
+test('CI: Index Audit is excluded for all pull requests and retained for push, without changing any other validation', () => {
   const wf = get('ci.yml');
   const audit = wf.jobs.typecheck.steps.find(step => step.id === 'index_audit');
   assert.equal(condition(audit.if, targetPr), false);
-  for (const event of otherEvents) assert.equal(condition(audit.if, event), true);
+  for (const event of otherEvents.filter(event => event.event_name === 'pull_request')) {
+    assert.equal(condition(audit.if, event), false);
+  }
+  const push = { event_name: 'push', repository: targetPr.repository, event: {} };
+  assert.equal(condition(audit.if, push), true);
   for (const name of ['typecheck', 'unit-test-shard']) {
     const steps = wf.jobs[name].steps;
     const setup = steps.findIndex(step => step.name === 'Configure hotfix PR offline runtime');
