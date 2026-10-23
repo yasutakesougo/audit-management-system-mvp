@@ -28,6 +28,8 @@ type UsersMasterSeed = {
 const USERS_MASTER_FIXTURE_PATH = resolve(process.cwd(), 'tests/e2e/_fixtures/users.master.dev.v1.json');
 const usersMasterSeed = JSON.parse(readFileSync(USERS_MASTER_FIXTURE_PATH, 'utf-8')) as UsersMasterSeed;
 const SEEDED_USERS = usersMasterSeed.users;
+const ACTIVE_USERS = SEEDED_USERS.filter((user) => user.IsActive !== false);
+const DEMO_USER_IDS = ['I005', 'U-001', 'U-012', 'U-005'];
 
 test.describe('users dashboard happy path (seeded)', () => {
   test('renders seeded list and navigates via detail CTA', async ({ page }) => {
@@ -41,17 +43,28 @@ test.describe('users dashboard happy path (seeded)', () => {
     const listTable = page.getByTestId(TESTIDS['users-list-table']);
     await expect(listTable).toBeVisible();
     const rowHandles = page.locator(`[data-testid^="${TESTIDS['users-list-table-row']}-"]`);
-    await expect(rowHandles).toHaveCount(SEEDED_USERS.length);
+    await expect(rowHandles).toHaveCount(ACTIVE_USERS.length);
 
-    for (const user of SEEDED_USERS) {
+    for (const user of ACTIVE_USERS) {
       const rowCell = page.getByTestId(`${TESTIDS['users-list-table-row']}-${user.UserID}`);
-      await expect(rowCell).toContainText(String(user.Id));
+      await expect(rowCell).toBeVisible();
+      await expect(rowCell).toContainText(user.FullName);
     }
 
-    const targetUser = SEEDED_USERS.find((user) => user.UserID === 'UX-020') ?? SEEDED_USERS[SEEDED_USERS.length - 1];
+    const inactiveUser = SEEDED_USERS.find((user) => user.IsActive === false);
+    if (inactiveUser) {
+      await expect(
+        page.getByTestId(`${TESTIDS['users-list-table-row']}-${inactiveUser.UserID}`),
+      ).toHaveCount(0);
+    }
+    for (const userId of DEMO_USER_IDS) {
+      await expect(page.locator(`[data-testid="${TESTIDS['users-list-table-row']}-${userId}"]`)).toHaveCount(0);
+    }
+
+    const targetUser = ACTIVE_USERS[0];
     const targetRowCell = page.getByTestId(`${TESTIDS['users-list-table-row']}-${targetUser.UserID}`);
-    const targetRow = targetRowCell.locator('xpath=ancestor::tr');
-    await targetRow.locator('[aria-label="詳細"]').click();
+    const targetRow = targetRowCell;
+    await targetRow.click();
 
     const detailPane = page.getByTestId(TESTIDS['users-detail-pane']);
     await expect(detailPane).toContainText(targetUser.FullName);
@@ -61,6 +74,6 @@ test.describe('users dashboard happy path (seeded)', () => {
     await page.waitForLoadState('networkidle');
     const detailSections = page.getByTestId(TESTIDS['user-detail-sections']);
     await expect(detailSections).toBeVisible();
-    await expect(detailSections).toContainText(`利用者コード: ${targetUser.UserID}`);
+    await expect(detailSections).toContainText(targetUser.UserID);
   });
 });

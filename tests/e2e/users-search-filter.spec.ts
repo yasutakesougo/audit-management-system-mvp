@@ -30,6 +30,7 @@ const countSevereAndActive = () =>
     const severeFlag = user.severeFlag ?? user.IsHighIntensitySupportTarget;
     return user.IsActive !== false && Boolean(severeFlag);
   }).length;
+const activeUsers = () => SEEDED_USERS.filter((user) => user.IsActive !== false);
 
 test.describe('users search & filter (seeded)', () => {
   test('search narrows rows and filters by severity/active flags', async ({ page }, testInfo) => {
@@ -41,40 +42,48 @@ test.describe('users search & filter (seeded)', () => {
         label: 'users-tab-list',
       });
 
-      const maybeOpen = page.getByTestId(TESTIDS['users-panel-open']);
-      const openCount = await maybeOpen.count().catch(() => 0);
-      if (openCount > 0) {
-        await scrollAndClick(maybeOpen, page, { testInfo, label: 'users-panel-open' });
-      }
-
       const panel = page.getByTestId(TESTIDS['users-panel-root']);
       await waitVisible(panel, page, { testInfo, label: 'users-panel-root' });
+      const searchInput = panel.getByTestId(TESTIDS['users-panel-search']).locator('input');
+      await waitVisible(searchInput, page, { testInfo, label: 'users-panel-search' });
 
       const rowHandles = page.locator(`[data-testid^="${TESTIDS['users-list-table-row']}-"]`);
-      await expect(rowHandles).toHaveCount(SEEDED_USERS.length);
+      await expect(rowHandles).toHaveCount(countActive());
+      for (const user of activeUsers()) {
+        await expect(page.getByTestId(`${TESTIDS['users-list-table-row']}-${user.UserID}`)).toBeVisible();
+      }
+      const inactiveUser = SEEDED_USERS.find((user) => user.IsActive === false);
+      if (inactiveUser) {
+        await expect(page.getByTestId(`${TESTIDS['users-list-table-row']}-${inactiveUser.UserID}`)).toHaveCount(0);
+      }
 
-      const searchInput = panel.getByTestId(TESTIDS['users-panel-search']);
-    const targetUser = SEEDED_USERS[0];
+    const targetUser = activeUsers()[0];
     await searchInput.fill(targetUser.UserID);
     await expect(rowHandles).toHaveCount(1);
     await expect(page.getByTestId(`${TESTIDS['users-list-table-row']}-${targetUser.UserID}`)).toBeVisible();
+    for (const user of activeUsers().filter((user) => user.UserID !== targetUser.UserID)) {
+      await expect(page.getByTestId(`${TESTIDS['users-list-table-row']}-${user.UserID}`)).toHaveCount(0);
+    }
+    if (inactiveUser) {
+      await expect(page.getByTestId(`${TESTIDS['users-list-table-row']}-${inactiveUser.UserID}`)).toHaveCount(0);
+    }
 
     await searchInput.fill('');
-    await expect(rowHandles).toHaveCount(SEEDED_USERS.length);
+    await expect(rowHandles).toHaveCount(countActive());
 
     const activeFilter = page.getByTestId(TESTIDS['users-panel-filter-active']);
     const severeFilter = page.getByTestId(TESTIDS['users-panel-filter-severe']);
 
     await activeFilter.click();
-    await expect(rowHandles).toHaveCount(countActive());
+    await expect(rowHandles).toHaveCount(SEEDED_USERS.length);
 
     await severeFilter.click();
-    await expect(rowHandles).toHaveCount(countSevereAndActive());
-
-    await activeFilter.click();
     await expect(rowHandles).toHaveCount(countSevere());
 
+    await activeFilter.click();
+    await expect(rowHandles).toHaveCount(countSevereAndActive());
+
     await severeFilter.click();
-    await expect(rowHandles).toHaveCount(SEEDED_USERS.length);
+    await expect(rowHandles).toHaveCount(countActive());
   });
 });
