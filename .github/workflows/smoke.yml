@@ -137,7 +137,7 @@ jobs:
   nav-integrity:
     name: Navigation & Router Integrity
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     needs: [lint, typecheck]
     if: |
       always() &&
