@@ -13,6 +13,7 @@
  * @see transport_telemetry_design.md
  */
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { TransportDirection, TransportLegStatus } from './transportTypes';
 
@@ -97,6 +98,8 @@ const LOG = '[transport:telemetry]';
  * エラーは console.warn のみ。UI に影響を与えない。
  */
 export function trackTransportEvent(event: TransportTelemetryEvent): void {
+  const canWrite = event.type === 'transport:status-transition' ? () => true : automaticTelemetryWriteGuard();
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -108,7 +111,9 @@ export function trackTransportEvent(event: TransportTelemetryEvent): void {
 
   try {
     const db = getDb();
-    addDoc(collection(db, 'telemetry'), payload).catch((err) => {
+    const target = collection(db, 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn(`${LOG} write failed`, err);
     });

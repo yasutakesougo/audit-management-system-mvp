@@ -6,6 +6,7 @@
  * Fire-and-forget — 書き込み失敗は無視し、UI をブロックしない。
  */
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 export type LandingEvent = {
@@ -21,6 +22,8 @@ export type LandingEvent = {
  * エラーは console.warn のみ。UI に影響を与えない。
  */
 export function recordLanding(event: LandingEvent): void {
+  const canWrite = automaticTelemetryWriteGuard(event.path);
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -36,7 +39,9 @@ export function recordLanding(event: LandingEvent): void {
     // Guard: db may be a noop Proxy (E2E / unconfigured Firebase)
     // Firebase SDK's collection() validates the first arg with instanceof —
     // a Proxy object will fail this check and throw a FirebaseError.
-    addDoc(collection(getDb(), 'telemetry'), payload).catch((err) => {
+    const target = collection(getDb(), 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, payload).catch((err) => {
       // Fire-and-forget: ログだけ残して握りつぶす
       // eslint-disable-next-line no-console
       console.warn('[todayops:landing] telemetry write failed', err);

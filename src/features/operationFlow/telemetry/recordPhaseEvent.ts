@@ -20,6 +20,7 @@
  * @module features/operationFlow/telemetry/recordPhaseEvent
  */
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 // ── イベント名定数 ──────────────────────────────────────────
@@ -95,6 +96,9 @@ export function recordPhaseEvent(
   payload: PhaseEventPayload,
   options: { dedupe?: boolean } = {},
 ): void {
+  const automatic = payload.event === PHASE_EVENTS.SUGGEST_SHOWN || payload.event === PHASE_EVENTS.MEETING_SUGGESTED || payload.event === PHASE_EVENTS.CONFIG_FALLBACK;
+  const canWrite = automatic ? automaticTelemetryWriteGuard(payload.screen) : () => true;
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -115,7 +119,9 @@ export function recordPhaseEvent(
 
   try {
     const db = getDb();
-    addDoc(collection(db, 'telemetry'), doc).catch((err) => {
+    const target = collection(db, 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, doc).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[phase-telemetry] write failed', err);
     });
