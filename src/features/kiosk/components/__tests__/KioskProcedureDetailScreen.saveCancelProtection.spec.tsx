@@ -53,6 +53,11 @@ const makeExecutionRecordHookResult = (
   error: null,
   mutationBlocked: false,
   refresh: mockRefreshRecord,
+  identityKey: 'mock-identity',
+  identityGeneration: 0,
+  startedFetchSeq: 0,
+  settledFetch: null,
+  requestSeqRef: { current: 0 },
   ...overrides,
 });
 

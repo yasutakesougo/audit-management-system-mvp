@@ -758,4 +758,113 @@ describe('useExecutionRecord', () => {
     );
     expect(mockUpsertRecord).toHaveBeenCalledTimes(1);
   });
+
+  it('resolves unique only after a classified unique save and does not advance the settled fetch', async () => {
+    classifyLookup = async () => ({ kind: 'unique', internalId: 4, record: savedRecord });
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+    const settledAfterLoad = result.current.settledFetch;
+    expect(settledAfterLoad).toEqual({
+      seq: result.current.startedFetchSeq,
+      identityKey: JSON.stringify(['2026-05-07', 'user-1', 'slot-1', '', '']),
+      identityGeneration: 0,
+    });
+    expect(result.current.identityKey).toBe(settledAfterLoad?.identityKey);
+    expect(result.current.identityGeneration).toBe(0);
+
+    let confirmation: Awaited<ReturnType<typeof result.current.saveRecord>> | undefined;
+    await act(async () => {
+      confirmation = await result.current.saveRecord('completed', 'edited');
+    });
+
+    expect(confirmation?.outcome).toBe('unique');
+    if (confirmation?.outcome !== 'unique') return;
+    expect(confirmation.identityKey).toBe(result.current.identityKey);
+    expect(confirmation.generation).toBe(result.current.identityGeneration);
+    expect(confirmation.record.memo).toBe('edited');
+    expect(result.current.settledFetch).toEqual(settledAfterLoad);
+    expect(result.current.startedFetchSeq).toBe(settledAfterLoad?.seq);
+    expect(result.current.record?.memo).toBe('edited');
+  });
+
+  it('resolves unclassified when the repository has no classifier', async () => {
+    mockGetRecord.mockImplementation(async () => savedRecord);
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.record).toEqual(savedRecord));
+    const settledAfterLoad = result.current.settledFetch;
+    expect(settledAfterLoad).not.toBeNull();
+
+    let confirmation: Awaited<ReturnType<typeof result.current.saveRecord>> | undefined;
+    await act(async () => {
+      confirmation = await result.current.saveRecord('completed', 'edited');
+    });
+
+    expect(confirmation?.outcome).toBe('unclassified');
+    if (confirmation?.outcome !== 'unclassified') return;
+    expect(confirmation.identityKey).toBe(result.current.identityKey);
+    expect(confirmation.generation).toBe(result.current.identityGeneration);
+    expect(confirmation.record.memo).toBe('edited');
+    expect(result.current.settledFetch).toEqual(settledAfterLoad);
+  });
+
+  it('resolves skipped from setMemo when no record is loaded', async () => {
+    mockGetRecord.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useExecutionRecord('2026-05-07', 'user-1', 'slot-1'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error).toBeNull();
+
+    let confirmation: Awaited<ReturnType<typeof result.current.setMemo>> | undefined;
+    await act(async () => {
+      confirmation = await result.current.setMemo('unused');
+    });
+    expect(confirmation).toEqual({ outcome: 'skipped' });
+    expect(mockUpsertRecord).not.toHaveBeenCalled();
+  });
+
+  it('does not advance settledFetch when a stale response is dropped', async () => {
+    let rejectFirst: (error: Error) => void = () => {};
+    const first = new Promise<ExecutionRecord | undefined>((_resolve, reject) => {
+      rejectFirst = reject;
+    });
+    batchedLookup = async (_date, userIds) => {
+      if (userIds[0] === 'user-1') return first;
+      return {
+        id: 'record-2',
+        date: '2026-05-07',
+        userId: 'user-2',
+        scheduleItemId: 'slot-2',
+        status: 'completed',
+        triggeredBipIds: [],
+        memo: 'second memo',
+        recordedBy: 'Staff A',
+        recordedAt: '2026-05-07T09:00:00.000Z',
+      };
+    };
+
+    const { result, rerender } = renderHook(
+      ({ userId, scheduleItemId }) => useExecutionRecord('2026-05-07', userId, scheduleItemId),
+      { initialProps: { userId: 'user-1', scheduleItemId: 'slot-1' } },
+    );
+    rerender({ userId: 'user-2', scheduleItemId: 'slot-2' });
+    await waitFor(() => expect(result.current.record?.id).toBe('record-2'));
+    const settledSeq = result.current.settledFetch?.seq;
+    expect(settledSeq).toBe(result.current.startedFetchSeq);
+    expect(result.current.settledFetch?.identityKey).toBe(result.current.identityKey);
+
+    rejectFirst(new Error('stale failure'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.settledFetch?.seq).toBe(settledSeq);
+    expect(result.current.record?.id).toBe('record-2');
+    expect(result.current.error).toBeNull();
+  });
+
+  it('does not publish a settled fetch for the empty-candidate short-circuit', async () => {
+    const { result } = renderHook(() => useExecutionRecord('', '', ''));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.startedFetchSeq).toBeGreaterThan(0);
+    expect(result.current.settledFetch).toBeNull();
+    expect(result.current.record).toBeUndefined();
+    expect(result.current.error).toBeNull();
+  });
 });

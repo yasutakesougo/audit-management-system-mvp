@@ -31,6 +31,17 @@ type OutcomeHold = {
   identityKey: string;
 };
 
+export type SaveConfirmation =
+  | { outcome: 'unique'; record: ExecutionRecord; identityKey: string; generation: number }
+  | { outcome: 'unclassified'; record: ExecutionRecord; identityKey: string; generation: number }
+  | { outcome: 'skipped' };
+
+export type SettledFetch = {
+  seq: number;
+  identityKey: string;
+  identityGeneration: number;
+};
+
 const ambiguousExecutionError = (): Error => Object.assign(new Error('AMBIGUOUS_EXECUTION_RECORD'), {
   code: 'AMBIGUOUS_EXECUTION_RECORD',
   name: 'AmbiguousExecutionRecordError',
@@ -67,6 +78,8 @@ export function useExecutionRecord(
   const [error, setError] = useState<Error | null>(null);
   const [loadedIdentityKey, setLoadedIdentityKey] = useState<string | null>(null);
   const [outcomeHold, setOutcomeHold] = useState<OutcomeHold | null>(null);
+  const [startedFetchSeq, setStartedFetchSeq] = useState(0);
+  const [settledFetch, setSettledFetch] = useState<SettledFetch | null>(null);
 
   const getRecordRef = useRef(getRecord);
   const getRecordForCandidatesRef = useRef(getRecordForCandidates);
@@ -98,6 +111,7 @@ export function useExecutionRecord(
 
   const fetchRecord = useCallback(async () => {
     const seq = ++requestSeqRef.current;
+    setStartedFetchSeq(seq);
     setIsLoading(true);
     setError(null);
 
@@ -174,6 +188,10 @@ export function useExecutionRecord(
     }
 
     if (seq !== requestSeqRef.current) return;
+
+    // Only a fetch that passed the stale-seq check publishes a settled seq.
+    // The empty-candidate return above, and confirmSavedRecord, do not.
+    setSettledFetch({ seq, identityKey, identityGeneration });
 
     const hold = outcomeHoldRef.current;
     const holdMatches = Boolean(
@@ -263,7 +281,7 @@ export function useExecutionRecord(
     next: ExecutionRecord,
     keyAtStart: string,
     generationAtStart: number,
-  ) => {
+  ): Promise<SaveConfirmation> => {
     const stillCurrent = () =>
       identityGenerationRef.current.key === keyAtStart
       && identityGenerationRef.current.generation === generationAtStart;
@@ -271,7 +289,7 @@ export function useExecutionRecord(
     if (!classify) {
       if (!stillCurrent()) throw new Error('Execution record identity is not ready for mutation');
       setRecord(next);
-      return;
+      return { outcome: 'unclassified', record: next, identityKey: keyAtStart, generation: generationAtStart };
     }
     if (!stillCurrent()) throw new Error('Execution record identity is not ready for mutation');
     let classification: ExecutionCandidateClassification;
@@ -298,6 +316,7 @@ export function useExecutionRecord(
       outcomeHoldRef.current = null;
       setOutcomeHold(null);
     }
+    return { outcome: 'unique', record: next, identityKey: keyAtStart, generation: generationAtStart };
   }, [
     date,
     fallbackScheduleKey,
@@ -321,7 +340,7 @@ export function useExecutionRecord(
       rememberUnknownOutcome('save-unknown', keyAtStart, generationAtStart, err);
       throw err;
     }
-    await confirmSavedRecord(next, keyAtStart, generationAtStart);
+    return confirmSavedRecord(next, keyAtStart, generationAtStart);
   }, [assertMutationIdentityReady, confirmSavedRecord, identityGeneration, identityKey, rememberUnknownOutcome]);
 
   const setStatus = useCallback(
@@ -338,7 +357,7 @@ export function useExecutionRecord(
         recordedBy: record?.recordedBy ?? '',
         recordedAt: new Date().toISOString(),
       };
-      await commitUpsert(next);
+      return commitUpsert(next);
     },
     [commitUpsert, record, resolveMutationTarget],
   );
@@ -346,13 +365,13 @@ export function useExecutionRecord(
   const setMemo = useCallback(
     async (memo: string) => {
       assertMutationIdentityReady();
-      if (!record) return;
+      if (!record) return { outcome: 'skipped' };
       const next = {
         ...record,
         memo,
         recordedAt: new Date().toISOString(),
       };
-      await commitUpsert(next, { memoMode: 'overwrite' });
+      return commitUpsert(next, { memoMode: 'overwrite' });
     },
     [assertMutationIdentityReady, commitUpsert, record],
   );
@@ -371,7 +390,7 @@ export function useExecutionRecord(
         recordedBy: record?.recordedBy ?? '',
         recordedAt: new Date().toISOString(),
       };
-      await commitUpsert(next, { memoMode: 'overwrite' });
+      return commitUpsert(next, { memoMode: 'overwrite' });
     },
     [commitUpsert, record, resolveMutationTarget],
   );
@@ -423,5 +442,11 @@ export function useExecutionRecord(
     error: isCurrentIdentityLoaded ? error : null,
     mutationBlocked: isCurrentIdentityLoaded && mutationBlocked,
     refresh: fetchRecord,
+    identityKey,
+    identityGeneration,
+    startedFetchSeq,
+    settledFetch,
+    // Live counter. startedFetchSeq updates only on the next render.
+    requestSeqRef,
   } as const;
 }

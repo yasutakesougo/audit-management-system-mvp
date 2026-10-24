@@ -9,7 +9,7 @@ import { KioskProcedureHistoryPanel } from './KioskProcedureHistoryPanel';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
-import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
+import { useExecutionRecord, type SaveConfirmation } from '@/features/daily/hooks/useExecutionRecord';
 import { resolveKioskRecordDate } from '../utils/kioskDate';
 import {
   buildExecutionUserIdCandidates,
@@ -40,6 +40,41 @@ const createRecordSnapshot = (r: ExecutionRecord | undefined): RecordSnapshot =>
     memo: String(r.memo ?? ''),
   };
 };
+
+type ShapedSaveConfirmation = Extract<SaveConfirmation, { outcome: 'unique' | 'unclassified' }>;
+
+const isShapedSaveConfirmation = (
+  value: unknown,
+  outcome: ShapedSaveConfirmation['outcome'],
+): value is ShapedSaveConfirmation => {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<ShapedSaveConfirmation>;
+  return candidate.outcome === outcome
+    && typeof candidate.identityKey === 'string'
+    && typeof candidate.generation === 'number'
+    && typeof candidate.record === 'object'
+    && candidate.record !== null;
+};
+
+const isUniqueSaveConfirmation = (
+  value: unknown,
+): value is Extract<SaveConfirmation, { outcome: 'unique' }> => isShapedSaveConfirmation(value, 'unique');
+
+// Positive evidence of a classifier-less local save, not a target match.
+// useExecutionRecord.ts confirmSavedRecord returns outcome 'unclassified' only after
+// commitUpsert's upsertRecord has resolved and classifyRef.current is absent
+// (useExecutionRecord.ts:288-292, called from :343).
+const isClassifierLessLocalSave = (
+  value: unknown,
+): value is Extract<SaveConfirmation, { outcome: 'unclassified' }> => isShapedSaveConfirmation(value, 'unclassified');
+
+const isSkippedSaveResult = (
+  value: unknown,
+): value is Extract<SaveConfirmation, { outcome: 'skipped' }> => (
+  typeof value === 'object'
+  && value !== null
+  && (value as { outcome?: unknown }).outcome === 'skipped'
+);
 
 const isRecordSnapshotEqual = (a: RecordSnapshot, b: RecordSnapshot): boolean => {
   if (a === null && b === null) return true;
@@ -191,6 +226,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     error: recordLoadError,
     refresh: refreshRecord,
     mutationBlocked,
+    identityKey,
+    identityGeneration,
+    startedFetchSeq,
+    settledFetch,
+    requestSeqRef,
   } = useExecutionRecord(
     selectedDateIso,
     resolvedUserId,
@@ -198,6 +238,8 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     fallbackScheduleItemIds,
     fallbackUserIds,
   );
+  const refreshRecordRef = React.useRef(refreshRecord);
+  refreshRecordRef.current = refreshRecord;
   const recordScheduleItemCandidates = React.useMemo(
     () => new Set([scheduleItemId, ...fallbackScheduleItemIds].map(normalizeScheduleItemId).filter(Boolean)),
     [fallbackScheduleItemIds, scheduleItemId],
@@ -223,28 +265,54 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     };
   }
   const queryGeneration = queryGenerationRef.current.generation;
+  const liveIdentityKeyRef = React.useRef(identityKey);
+  const liveIdentityGenerationRef = React.useRef(identityGeneration);
+  const liveStartedFetchSeqRef = React.useRef(startedFetchSeq);
+  const saveAttemptIdRef = React.useRef(0);
+  liveIdentityKeyRef.current = identityKey;
+  liveIdentityGenerationRef.current = identityGeneration;
+  liveStartedFetchSeqRef.current = startedFetchSeq;
   const [outcomeHold, setOutcomeHold] = React.useState<{
-    key: string;
-    generation: number;
-    sawError: boolean;
+    screenKey: string;
+    identityKey: string;
+    seq: number;
+    attemptId: number;
   } | null>(null);
   React.useEffect(() => {
-    if (!outcomeHold || outcomeHold.key !== recordQueryKey) return;
-    if (recordLoadError) {
-      if (!outcomeHold.sawError || outcomeHold.generation !== queryGeneration) {
-        setOutcomeHold({
-          key: outcomeHold.key,
-          generation: queryGeneration,
-          sawError: true,
-        });
-      }
-      return;
-    }
-    if (outcomeHold.sawError && outcomeHold.generation === queryGeneration && !isLoading) {
+    if (!outcomeHold || outcomeHold.screenKey !== recordQueryKey) return;
+    if (!settledFetch) return;
+    if (
+      identityKey === outcomeHold.identityKey
+      && settledFetch.identityKey === outcomeHold.identityKey
+      && settledFetch.seq > outcomeHold.seq
+      && settledFetch.seq === startedFetchSeq
+      && !recordLoadError
+    ) {
       setOutcomeHold(null);
+      setShowUnconfirmedSaveResult(false);
+      setSaveErrorNotice((current) => (
+        current
+        && current.screenKey === outcomeHold.screenKey
+        && current.identityKey === outcomeHold.identityKey
+        && current.attemptId === outcomeHold.attemptId
+          ? null
+          : current
+      ));
     }
-  }, [isLoading, outcomeHold, queryGeneration, recordLoadError, recordQueryKey]);
-  const holdActive = outcomeHold?.key === recordQueryKey;
+  }, [identityKey, outcomeHold, recordLoadError, recordQueryKey, settledFetch, startedFetchSeq]);
+  const holdActive = outcomeHold?.screenKey === recordQueryKey;
+  type SaveAttempt = {
+    screenKey: string;
+    screenGeneration: number;
+    editEpoch: number;
+    identityKey: string;
+    identityGeneration: number;
+  };
+  const [pendingSaveAttempt, setPendingSaveAttempt] = React.useState<SaveAttempt | null>(null);
+  const [acceptedSave, setAcceptedSave] = React.useState<{
+    attempt: SaveAttempt;
+    record: ExecutionRecord;
+  } | null>(null);
   const [recordQueryState, setRecordQueryState] = React.useState(() => ({
     key: recordQueryKey,
     observedLoading: isLoading,
@@ -287,7 +355,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showSaveError, setShowSaveError] = useState(false);
+  const [showPendingEditNotice, setShowPendingEditNotice] = useState(false);
+  const [saveErrorNotice, setSaveErrorNotice] = useState<{
+    screenKey: string;
+    identityKey: string;
+    seq: number;
+    attemptId: number;
+  } | null>(null);
+  const showSaveError = saveErrorNotice !== null;
+  const [showUnconfirmedSaveResult, setShowUnconfirmedSaveResult] = useState(false);
   const [showValidationError, setShowValidationError] = useState(false);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
   const [showDeleteError, setShowDeleteError] = useState(false);
@@ -309,6 +385,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     key: string;
     initialized: boolean;
     hasUserEdits: boolean;
+    editEpoch: number;
     conflictUnresolved: boolean;
     conflictQueryKey?: string;
     conflictSnapshot: RecordSnapshot;
@@ -323,6 +400,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     key,
     initialized: false,
     hasUserEdits: false,
+    editEpoch: 0,
     conflictUnresolved: false,
     conflictQueryKey: undefined,
     conflictSnapshot: null,
@@ -336,25 +414,121 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   // Keep editable content scoped to the exact user/procedure/date context.
   const formContextKey = formIdentityKey;
   const [formState, setFormState] = useState<KioskFormState>(() => createEmptyFormState(formContextKey));
+  const liveEditEpochRef = React.useRef(0);
+  const pendingNavTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingNavWasAbandonedRef = React.useRef(false);
+  const clearPendingNavTimer = () => {
+    if (pendingNavTimerRef.current == null) return;
+    clearTimeout(pendingNavTimerRef.current);
+    pendingNavTimerRef.current = null;
+  };
+  const acknowledgeUnsavedEdits = () => {
+    clearPendingNavTimer();
+    setShowSuccess(false);
+    setShowPendingEditNotice(true);
+    setIsSaving(false);
+  };
+  const armNavigationTimer = (callback: () => void) => {
+    clearPendingNavTimer();
+    const timerId = setTimeout(() => {
+      if (pendingNavTimerRef.current !== timerId) return;
+      pendingNavTimerRef.current = null;
+      callback();
+    }, 1500);
+    pendingNavTimerRef.current = timerId;
+  };
+  const abandonNavigationForTargetChange = () => {
+    if (pendingNavTimerRef.current != null) pendingNavWasAbandonedRef.current = true;
+    clearPendingNavTimer();
+    setShowSuccess(false);
+    setShowPendingEditNotice(false);
+    setShowDeleteSuccess(false);
+    setSaveErrorNotice(null);
+    if (!pendingNavWasAbandonedRef.current) return;
+    setIsSaving(false);
+    setIsDeleting(false);
+  };
+  React.useEffect(() => {
+    return () => {
+      if (pendingNavTimerRef.current == null) return;
+      clearTimeout(pendingNavTimerRef.current);
+      pendingNavTimerRef.current = null;
+    };
+  }, [formIdentityKey]);
   React.useEffect(() => {
     if (formIdentityKeyRef.current === formIdentityKey) return;
     formIdentityKeyRef.current = formIdentityKey;
+    liveEditEpochRef.current = 0;
+    abandonNavigationForTargetChange();
+    pendingNavWasAbandonedRef.current = false;
     setFormState(createEmptyFormState(formContextKey));
     setDiscardDialogContextKey(null);
   }, [formContextKey, formIdentityKey]);
   if (formState.key !== formContextKey) {
+    liveEditEpochRef.current = 0;
+    abandonNavigationForTargetChange();
     setFormState(createEmptyFormState(formContextKey));
   }
   const currentFormState = formState.key === formContextKey ? formState : createEmptyFormState(formContextKey);
   const { mood: selectedMood, action: selectedAction, result: selectedResult, memo: textMemo } = currentFormState;
   const isInitialized = currentFormState.initialized;
   const updateFormState = (updates: Partial<KioskFormState>) => {
-    setFormState((current) => current.key === formContextKey ? { ...current, ...updates, hasUserEdits: true } : current);
+    const nextEpoch = liveEditEpochRef.current + 1;
+    liveEditEpochRef.current = nextEpoch;
+    if (pendingNavTimerRef.current != null) acknowledgeUnsavedEdits();
+    setFormState((current) => current.key === formContextKey
+      ? { ...current, ...updates, hasUserEdits: true, editEpoch: nextEpoch }
+      : current);
   };
   const [showObservations] = useState(true);
 
   // Render-time conflict detection: intercept before useEffect to fail-close immediately
   const currentRecordSnapshot = createRecordSnapshot(record);
+  const ownSaveInFlight = Boolean(
+    pendingSaveAttempt
+    && pendingSaveAttempt.screenKey === recordQueryKey
+    && pendingSaveAttempt.screenGeneration === queryGeneration
+  );
+  const acceptedConfirmation = acceptedSave
+    && acceptedSave.attempt.screenKey === recordQueryKey
+    && acceptedSave.attempt.screenGeneration === queryGeneration
+    ? acceptedSave
+    : null;
+  const confirmedSnapshot = acceptedConfirmation
+    ? createRecordSnapshot(acceptedConfirmation.record)
+    : null;
+  const confirmationMatchesVisible = Boolean(
+    confirmedSnapshot
+    && isRecordSnapshotEqual(currentRecordSnapshot, confirmedSnapshot)
+  );
+  if (
+    acceptedConfirmation
+    && confirmedSnapshot
+    && !confirmationMatchesVisible
+    && !isRecordSnapshotEqual(currentRecordSnapshot, currentFormState.baseRecordSnapshot)
+  ) {
+    setAcceptedSave(null);
+  }
+  if (
+    confirmationMatchesVisible
+    && confirmedSnapshot
+    && currentFormState.key === formContextKey
+    && !isRecordSnapshotEqual(currentFormState.baseRecordSnapshot, confirmedSnapshot)
+  ) {
+    const nextBase = confirmedSnapshot;
+    setFormState((current) => {
+      if (current.key !== formContextKey) return current;
+      if (isRecordSnapshotEqual(current.baseRecordSnapshot, nextBase) && !current.conflictUnresolved) return current;
+      return {
+        ...current,
+        baseRecordSnapshot: nextBase,
+        conflictUnresolved: false,
+        conflictQueryKey: undefined,
+        conflictSnapshot: null,
+      };
+    });
+  }
+  const suppressOwnSaveConflict = ownSaveInFlight || confirmationMatchesVisible;
   const hasRenderTimeConflict = Boolean(
     currentFormState.hasUserEdits
     && isRecordQueryReady
@@ -362,6 +536,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     && !recordLoadError
     && !hasMismatchedRecord
     && !isRecordSnapshotEqual(currentRecordSnapshot, currentFormState.baseRecordSnapshot)
+    && !suppressOwnSaveConflict
   );
   const isConflictBlocked = Boolean(currentFormState.conflictUnresolved || hasRenderTimeConflict);
   const isRecordConflict = Boolean(
@@ -384,8 +559,29 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       || hasMismatchedRecord
       || Boolean(recordLoadError)
     ) return;
+    if (ownSaveInFlight) return;
 
     const currentSnapshot = createRecordSnapshot(record);
+    if (confirmedSnapshot && isRecordSnapshotEqual(currentSnapshot, confirmedSnapshot)) {
+      setFormState((current) => {
+        if (current.key !== formContextKey) return current;
+        if (
+          isRecordSnapshotEqual(current.baseRecordSnapshot, confirmedSnapshot)
+          && !current.conflictUnresolved
+          && current.conflictSnapshot == null
+        ) {
+          return current;
+        }
+        return {
+          ...current,
+          baseRecordSnapshot: confirmedSnapshot,
+          conflictUnresolved: false,
+          conflictQueryKey: undefined,
+          conflictSnapshot: null,
+        };
+      });
+      return;
+    }
     const parsedMemo = record ? parseKioskProcedureMemo(record.memo) : null;
 
     setFormState((current) => {
@@ -463,7 +659,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
 
       return current;
     });
-  }, [currentFormState.key, formContextKey, hasMismatchedRecord, isLoading, isRecordQueryReady, isUserLoading, record, recordLoadError, recordQueryKey, resolvedUserId]);
+  }, [confirmedSnapshot, currentFormState.key, formContextKey, hasMismatchedRecord, isLoading, isRecordQueryReady, isUserLoading, ownSaveInFlight, record, recordLoadError, recordQueryKey, resolvedUserId]);
 
   const isRecordStatusUnknown = Boolean(recordLoadError)
     || !resolvedUserId
@@ -486,7 +682,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     || !procedure
     || isFormIdentityTransitioning
     || isAbsent
-    || isSaving
+    || (isSaving && pendingNavTimerRef.current == null)
     || isDeleting
     || isConflictBlocked;
 
@@ -521,10 +717,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         return current;
       }
 
+      liveEditEpochRef.current = 0;
       return {
         key: formContextKey,
         initialized: true,
         hasUserEdits: false,       // 下書き破棄完了
+        editEpoch: 0,
         conflictUnresolved: false, // 競合解消
         conflictQueryKey: undefined,
         conflictSnapshot: null,
@@ -554,6 +752,10 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       return;
     }
     setDiscardDialogContextKey(null);
+    liveEditEpochRef.current = 0;
+    clearPendingNavTimer();
+    setShowSuccess(false);
+    setShowPendingEditNotice(false);
     setFormState(createEmptyFormState(formContextKey));
     navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
   };
@@ -582,18 +784,99 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       setShowValidationError(true);
       return;
     }
+    const saveAttemptId = ++saveAttemptIdRef.current;
+    const attempt: SaveAttempt = {
+      screenKey: recordQueryKey,
+      screenGeneration: queryGeneration,
+      editEpoch: currentFormState.editEpoch,
+      identityKey,
+      identityGeneration,
+    };
+    setPendingSaveAttempt(attempt);
     setIsSaving(true);
+    const screenKeyMatchesAttempt = () => queryGenerationRef.current.key === attempt.screenKey;
+    const attemptStillCurrent = () => (
+      liveIdentityKeyRef.current === attempt.identityKey
+      && liveIdentityGenerationRef.current === attempt.identityGeneration
+      && screenKeyMatchesAttempt()
+      && queryGenerationRef.current.generation === attempt.screenGeneration
+    );
+    // Read the hook counter when the save ends, not when it starts.
+    // startedFetchSeq updates only on render, so a fetch that has already
+    // started can be ahead of it. Only a later fetch can satisfy
+    // settledFetch.seq > hold.seq.
+    const rememberUnresolvedSave = (notice: 'save-error' | 'unconfirmed') => {
+      const endedRequestSeq = requestSeqRef.current;
+      setOutcomeHold({
+        screenKey: attempt.screenKey,
+        identityKey: attempt.identityKey,
+        seq: endedRequestSeq,
+        attemptId: saveAttemptId,
+      });
+      if (!screenKeyMatchesAttempt()) {
+        setSaveErrorNotice(null);
+        setShowUnconfirmedSaveResult(true);
+        return;
+      }
+      if (notice === 'save-error' && attemptStillCurrent()) {
+        setSaveErrorNotice({
+          screenKey: attempt.screenKey,
+          identityKey: attempt.identityKey,
+          seq: endedRequestSeq,
+          attemptId: saveAttemptId,
+        });
+        setShowUnconfirmedSaveResult(false);
+      } else {
+        setSaveErrorNotice(null);
+        setShowUnconfirmedSaveResult(true);
+      }
+      void refreshRecordRef.current();
+    };
     try {
-      await saveRecord('completed', finalMemo);
-      setShowSuccess(true);
-      // 成功フィードバックの後、少し待ってから一覧に戻る
-      setTimeout(() => {
-        navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
-      }, 1500);
+      const result = await saveRecord('completed', finalMemo);
+      const confirmationMatchesAttempt = (value: ShapedSaveConfirmation) => (
+        value.identityKey === liveIdentityKeyRef.current
+        && value.generation === liveIdentityGenerationRef.current
+        && attemptStillCurrent()
+      );
+      const uniqueHit = isUniqueSaveConfirmation(result) && confirmationMatchesAttempt(result);
+      const classifierLessLocalHit = isClassifierLessLocalSave(result) && confirmationMatchesAttempt(result);
+      const confirmedHit = uniqueHit || classifierLessLocalHit;
+      if (confirmedHit) {
+        setAcceptedSave({ attempt, record: result.record });
+        setShowUnconfirmedSaveResult(false);
+      }
+      setPendingSaveAttempt((current) => (current === attempt ? null : current));
+      const epochMoved = liveEditEpochRef.current !== attempt.editEpoch;
+      if (confirmedHit && epochMoved) {
+        acknowledgeUnsavedEdits();
+      } else if (confirmedHit) {
+        setShowPendingEditNotice(false);
+        setShowSuccess(true);
+        armNavigationTimer(() => {
+          const stillUnique = isUniqueSaveConfirmation(result) && confirmationMatchesAttempt(result);
+          const stillLocal = isClassifierLessLocalSave(result) && confirmationMatchesAttempt(result);
+          const stillConfirmed = stillUnique || stillLocal;
+          const epochStillAtSave = liveEditEpochRef.current === attempt.editEpoch;
+          if (!stillConfirmed || !epochStillAtSave) {
+            if (stillConfirmed && !epochStillAtSave) acknowledgeUnsavedEdits();
+            return;
+          }
+          navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
+        });
+      } else if (isSkippedSaveResult(result)) {
+        setIsSaving(false);
+      } else if (attemptStillCurrent()) {
+        rememberUnresolvedSave('unconfirmed');
+        setIsSaving(false);
+      } else {
+        setIsSaving(false);
+      }
     } catch (error) {
       console.error('Failed to save execution record:', error);
-      setOutcomeHold({ key: recordQueryKey, generation: queryGeneration, sawError: false });
-      setShowSaveError(true);
+      setPendingSaveAttempt((current) => (current === attempt ? null : current));
+      setAcceptedSave((current) => (current?.attempt === attempt ? null : current));
+      rememberUnresolvedSave(attemptStillCurrent() ? 'save-error' : 'unconfirmed');
       setIsSaving(false);
     }
   };
@@ -607,19 +890,38 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       || isRecordMutationBlocked
       || isAbsent
     ) return;
+    const screenKeyAtStart = recordQueryKey;
+    const identityKeyAtStart = identityKey;
+    const identityGenerationAtStart = identityGeneration;
+    const deleteStillOnTarget = () => (
+      queryGenerationRef.current.key === screenKeyAtStart
+      && liveIdentityKeyRef.current === identityKeyAtStart
+      && liveIdentityGenerationRef.current === identityGenerationAtStart
+    );
     setIsDeleting(true);
     try {
       await deleteRecord();
       setDeleteDialogOpen(false);
+      if (!deleteStillOnTarget()) {
+        setIsDeleting(false);
+        return;
+      }
       setShowDeleteSuccess(true);
-      setTimeout(() => {
+      armNavigationTimer(() => {
         navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
-      }, 1500);
+      });
     } catch (error) {
       console.error('Failed to delete execution record:', error);
-      setOutcomeHold({ key: recordQueryKey, generation: queryGeneration, sawError: false });
-      setShowDeleteError(true);
+      setDeleteDialogOpen(false);
       setIsDeleting(false);
+      if (!deleteStillOnTarget()) return;
+      setOutcomeHold({
+        screenKey: screenKeyAtStart,
+        identityKey: identityKeyAtStart,
+        seq: liveStartedFetchSeqRef.current,
+        attemptId: 0,
+      });
+      setShowDeleteError(true);
     }
   };
 
@@ -1054,28 +1356,53 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         </Paper>
       )}
 
-      {/* 成功メッセージ */}
-      <Snackbar 
-        open={showSuccess} 
-        autoHideDuration={3000} 
-        onClose={() => setShowSuccess(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="success" sx={{ width: '100%', fontSize: '1.2rem', fontWeight: 'bold' }}>
-          記録を保存しました
-        </Alert>
-      </Snackbar>
+      {showSuccess && (
+        <Snackbar
+          open
+          autoHideDuration={3000}
+          onClose={() => setShowSuccess(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="success" sx={{ width: '100%', fontSize: '1.2rem', fontWeight: 'bold' }}>
+            記録を保存しました
+          </Alert>
+        </Snackbar>
+      )}
+
+      {showPendingEditNotice && (
+        <Snackbar
+          open
+          autoHideDuration={3000}
+          onClose={() => setShowPendingEditNotice(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="info" sx={{ width: '100%', fontSize: '1.2rem', fontWeight: 'bold' }}>
+            保存開始時の内容を保存しました。追加の編集は未保存です。
+          </Alert>
+        </Snackbar>
+      )}
 
       <Snackbar
         open={showSaveError}
         autoHideDuration={4000}
-        onClose={() => setShowSaveError(false)}
+        onClose={() => setSaveErrorNotice(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="error" sx={{ width: '100%' }}>
           記録の保存に失敗しました。再度お試しください。
         </Alert>
       </Snackbar>
+
+      {showUnconfirmedSaveResult && holdActive && (
+        <Snackbar
+          open
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="warning" sx={{ width: '100%' }}>
+            保存結果を確認できませんでした
+          </Alert>
+        </Snackbar>
+      )}
 
       <Snackbar
         open={showValidationError}

@@ -36,6 +36,13 @@ const makeExecutionRecord = (overrides: Partial<ExecutionRecord> = {}): Executio
   ...overrides,
 });
 
+const uniqueSaveConfirmation = (record: ExecutionRecord = makeExecutionRecord()) => ({
+  outcome: 'unique' as const,
+  identityKey: 'mock-identity',
+  generation: 0,
+  record,
+});
+
 const makeExecutionRecordHookResult = (
   overrides: Partial<ExecutionRecordHookResult> = {},
 ): ExecutionRecordHookResult => ({
@@ -48,6 +55,11 @@ const makeExecutionRecordHookResult = (
   error: null,
   mutationBlocked: false,
   refresh: mockRefreshRecord,
+  identityKey: 'mock-identity',
+  identityGeneration: 0,
+  startedFetchSeq: 0,
+  settledFetch: null,
+  requestSeqRef: { current: 0 },
   ...overrides,
 });
 
@@ -425,7 +437,8 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     const memoInput = screen.getByTestId('kiosk-observation-memo');
     fireEvent.change(memoInput, { target: { value: '追加メモテスト' } });
 
-    // Submit
+    // Submit. Undefined is not a confirmed save; this test expects the success notice.
+    mockSaveRecord.mockResolvedValueOnce(uniqueSaveConfirmation());
     const submitBtn = screen.getByTestId('kiosk-observation-submit');
     fireEvent.click(submitBtn);
 
@@ -486,6 +499,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     );
 
     fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
+    mockSaveRecord.mockResolvedValueOnce(uniqueSaveConfirmation());
     fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
     await waitFor(() => {
       expect(mockSaveRecord).toHaveBeenCalled();
@@ -523,6 +537,131 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     await waitFor(() => {
       expect(screen.getByText('記録の保存に失敗しました。再度お試しください。')).toBeInTheDocument();
     });
+  });
+
+  function countNavigationTimers() {
+    let navigationTimers = 0;
+    const realSetTimeout = globalThis.setTimeout.bind(globalThis);
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    timeoutSpy.mockImplementation(((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      if (timeout === 1500) {
+        navigationTimers += 1;
+        return realSetTimeout(() => undefined, 0);
+      }
+      return realSetTimeout(handler, timeout, ...(args as never[]));
+    }) as typeof globalThis.setTimeout);
+    return {
+      count: () => navigationTimers,
+      restore: () => timeoutSpy.mockRestore(),
+    };
+  }
+
+  it.each([
+    ['skipped', { outcome: 'skipped' as const }],
+  ])('does not show a success or unconfirmed notice for %s', async (_label, result) => {
+    const timers = countNavigationTimers();
+    try {
+      mockSaveRecord.mockResolvedValueOnce(result);
+      render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
+      fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+      await waitFor(() => {
+        expect(mockSaveRecord).toHaveBeenCalledTimes(1);
+        expect(screen.getByTestId('kiosk-observation-submit')).not.toBeDisabled();
+      });
+      expect(screen.queryByText('記録を保存しました')).toBeNull();
+      expect(screen.queryByText('保存開始時の内容を保存しました。追加の編集は未保存です。')).toBeNull();
+      expect(screen.queryByText('保存結果を確認できませんでした')).toBeNull();
+      expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
+      expect(screen.queryByTestId('kiosk-conflict-alert')).toBeNull();
+      expect(screen.queryByTestId('kiosk-record-missing-conflict-alert')).toBeNull();
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(timers.count()).toBe(0);
+    } finally {
+      timers.restore();
+    }
+  });
+
+  it.each([
+    ['undefined', undefined],
+    ['invalid unique shape', { outcome: 'unique' as const }],
+    // A shaped confirmation whose identity does not match this target is unconfirmed,
+    // same as undefined. Previously this expected no notice and an enabled submit.
+    ['mismatched unclassified', {
+      outcome: 'unclassified' as const,
+      identityKey: 'other-identity',
+      generation: 0,
+      record: makeExecutionRecord(),
+    }],
+    ['mismatched unique generation', {
+      outcome: 'unique' as const,
+      identityKey: 'mock-identity',
+      generation: 7,
+      record: makeExecutionRecord(),
+    }],
+  ])('blocks save and cancel until recheck when %s stays on the current target', async (_label, result) => {
+    const saved = makeExecutionRecord({ status: 'completed', memo: '【メモ】既存' });
+    let hookResult = makeExecutionRecordHookResult({
+      record: saved,
+      isLoading: false,
+      startedFetchSeq: 0,
+      settledFetch: null,
+    });
+    mockUseExecutionRecord.mockImplementation(() => hookResult);
+    const timers = countNavigationTimers();
+    try {
+      const view = render(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('既存');
+      });
+      fireEvent.change(screen.getByTestId('kiosk-observation-memo'), { target: { value: '未確認の下書き' } });
+      mockSaveRecord.mockResolvedValueOnce(result);
+      fireEvent.click(screen.getByTestId('kiosk-observation-submit'));
+      await waitFor(() => {
+        expect(screen.getByText('保存結果を確認できませんでした')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('kiosk-observation-submit')).toBeDisabled();
+      expect(screen.getByTestId('kiosk-observation-revert')).toBeDisabled();
+      expect(screen.getByRole('button', { name: '一覧に戻る' })).not.toBeDisabled();
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('未確認の下書き');
+      expect(screen.queryByText('記録を保存しました')).toBeNull();
+      expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(timers.count()).toBe(0);
+      expect(mockRefreshRecord).toHaveBeenCalledTimes(1);
+      expect(mockDeleteRecord).not.toHaveBeenCalled();
+
+      hookResult = makeExecutionRecordHookResult({
+        record: saved,
+        isLoading: false,
+        startedFetchSeq: 1,
+        settledFetch: { seq: 1, identityKey: 'mock-identity', identityGeneration: 0 },
+      });
+      view.rerender(
+        <MemoryRouter>
+          <KioskProcedureDetailScreen />
+        </MemoryRouter>
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId('kiosk-observation-submit')).not.toBeDisabled();
+      });
+      expect(screen.getByTestId('kiosk-observation-revert')).not.toBeDisabled();
+      expect(screen.queryByText('保存結果を確認できませんでした')).toBeNull();
+      expect(screen.getByTestId('kiosk-observation-memo')).toHaveValue('未確認の下書き');
+      expect(mockRefreshRecord).toHaveBeenCalledTimes(1);
+      expect(mockSaveRecord).toHaveBeenCalledTimes(1);
+      expect(mockDeleteRecord).not.toHaveBeenCalled();
+    } finally {
+      timers.restore();
+    }
   });
 
   it('blocks save when observation content is empty', async () => {
@@ -1176,7 +1315,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     });
 
     it('B-S13: disables save button and observation inputs while save operation is in flight', async () => {
-      let resolveSave: () => void = () => {};
+      let resolveSave: (value: unknown) => void = () => {};
       mockSaveRecord.mockImplementation(
         () => new Promise((resolve) => { resolveSave = resolve; }),
       );
@@ -1205,7 +1344,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       expect(screen.getByTestId('kiosk-observation-memo')).toBeDisabled();
 
       await act(async () => {
-        resolveSave();
+        resolveSave(uniqueSaveConfirmation());
       });
       await waitFor(() => {
         expect(screen.getByText('記録を保存しました')).toBeInTheDocument();
