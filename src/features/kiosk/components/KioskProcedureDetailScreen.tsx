@@ -124,6 +124,21 @@ const buildScheduleItemIdCandidates = (
   return Array.from(keys);
 };
 
+type OutcomeHold = {
+  screenKey: string;
+  identityKey: string;
+  seq: number;
+  attemptId: number;
+};
+
+// The newer attempt keeps ownership of the hold. The release point is the
+// later of the two ends, so only a recheck started after both ended clears it.
+function mergeOutcomeHold(existing: OutcomeHold | undefined, incoming: OutcomeHold): OutcomeHold {
+  if (!existing) return incoming;
+  const owner = existing.attemptId > incoming.attemptId ? existing : incoming;
+  return { ...owner, seq: Math.max(existing.seq, incoming.seq) };
+}
+
 export const KioskProcedureDetailScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -272,12 +287,11 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   liveIdentityKeyRef.current = identityKey;
   liveIdentityGenerationRef.current = identityGeneration;
   liveStartedFetchSeqRef.current = startedFetchSeq;
-  const [outcomeHold, setOutcomeHold] = React.useState<{
-    screenKey: string;
-    identityKey: string;
-    seq: number;
-    attemptId: number;
-  } | null>(null);
+  // One hold per screen target. A save attempt that ends after a later attempt
+  // must not overwrite or clear the later attempt's hold or notice, and its own
+  // unconfirmed result on its target is kept under that target's key.
+  const [outcomeHolds, setOutcomeHolds] = React.useState<Record<string, OutcomeHold>>({});
+  const outcomeHold: OutcomeHold | null = outcomeHolds[recordQueryKey] ?? null;
   React.useEffect(() => {
     if (!outcomeHold || outcomeHold.screenKey !== recordQueryKey) return;
     if (!settledFetch) return;
@@ -288,7 +302,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       && settledFetch.seq === startedFetchSeq
       && !recordLoadError
     ) {
-      setOutcomeHold(null);
+      setOutcomeHolds((current) => {
+        if (current[outcomeHold.screenKey] !== outcomeHold) return current;
+        const next = { ...current };
+        delete next[outcomeHold.screenKey];
+        return next;
+      });
       setShowUnconfirmedSaveResult(false);
       setSaveErrorNotice((current) => (
         current
@@ -300,7 +319,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       ));
     }
   }, [identityKey, outcomeHold, recordLoadError, recordQueryKey, settledFetch, startedFetchSeq]);
-  const holdActive = outcomeHold?.screenKey === recordQueryKey;
+  const holdActive = outcomeHold !== null;
   type SaveAttempt = {
     screenKey: string;
     screenGeneration: number;
@@ -805,30 +824,52 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     // startedFetchSeq updates only on render, so a fetch that has already
     // started can be ahead of it. Only a later fetch can satisfy
     // settledFetch.seq > hold.seq.
+    // Target and generation are checked by attemptStillCurrent; whether this
+    // attempt is still the newest one is checked separately here.
+    const isLatestAttempt = () => saveAttemptIdRef.current === saveAttemptId;
+    const finishSaving = () => {
+      if (isLatestAttempt()) setIsSaving(false);
+    };
     const rememberUnresolvedSave = (notice: 'save-error' | 'unconfirmed') => {
       const endedRequestSeq = requestSeqRef.current;
-      setOutcomeHold({
-        screenKey: attempt.screenKey,
-        identityKey: attempt.identityKey,
-        seq: endedRequestSeq,
-        attemptId: saveAttemptId,
-      });
-      if (!screenKeyMatchesAttempt()) {
-        setSaveErrorNotice(null);
-        setShowUnconfirmedSaveResult(true);
-        return;
-      }
-      if (notice === 'save-error' && attemptStillCurrent()) {
-        setSaveErrorNotice({
+      setOutcomeHolds((current) => ({
+        ...current,
+        [attempt.screenKey]: mergeOutcomeHold(current[attempt.screenKey], {
           screenKey: attempt.screenKey,
           identityKey: attempt.identityKey,
           seq: endedRequestSeq,
           attemptId: saveAttemptId,
-        });
-        setShowUnconfirmedSaveResult(false);
+        }),
+      }));
+      // Notice writes never clear or replace a notice owned by a later attempt.
+      const clearNoticeUnlessLater = () => setSaveErrorNotice((current) => (
+        current && current.attemptId > saveAttemptId ? current : null
+      ));
+      // The unconfirmed flag is shared by all attempts, so only the newest
+      // attempt may change it.
+      const setUnconfirmedIfLatest = (value: boolean) => {
+        if (isLatestAttempt()) setShowUnconfirmedSaveResult(value);
+      };
+      if (!screenKeyMatchesAttempt()) {
+        clearNoticeUnlessLater();
+        setUnconfirmedIfLatest(true);
+        return;
+      }
+      if (notice === 'save-error' && attemptStillCurrent()) {
+        setSaveErrorNotice((current) => (
+          current && current.attemptId > saveAttemptId
+            ? current
+            : {
+              screenKey: attempt.screenKey,
+              identityKey: attempt.identityKey,
+              seq: endedRequestSeq,
+              attemptId: saveAttemptId,
+            }
+        ));
+        setUnconfirmedIfLatest(false);
       } else {
-        setSaveErrorNotice(null);
-        setShowUnconfirmedSaveResult(true);
+        clearNoticeUnlessLater();
+        setUnconfirmedIfLatest(true);
       }
       void refreshRecordRef.current();
     };
@@ -865,19 +906,19 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           navigate(appendKioskSearchParams(`/kiosk/users/${userId}/procedures`, location.search));
         });
       } else if (isSkippedSaveResult(result)) {
-        setIsSaving(false);
+        finishSaving();
       } else if (attemptStillCurrent()) {
         rememberUnresolvedSave('unconfirmed');
-        setIsSaving(false);
+        finishSaving();
       } else {
-        setIsSaving(false);
+        finishSaving();
       }
     } catch (error) {
       console.error('Failed to save execution record:', error);
       setPendingSaveAttempt((current) => (current === attempt ? null : current));
       setAcceptedSave((current) => (current?.attempt === attempt ? null : current));
       rememberUnresolvedSave(attemptStillCurrent() ? 'save-error' : 'unconfirmed');
-      setIsSaving(false);
+      finishSaving();
     }
   };
 
@@ -915,12 +956,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       setDeleteDialogOpen(false);
       setIsDeleting(false);
       if (!deleteStillOnTarget()) return;
-      setOutcomeHold({
-        screenKey: screenKeyAtStart,
-        identityKey: identityKeyAtStart,
-        seq: liveStartedFetchSeqRef.current,
-        attemptId: 0,
-      });
+      setOutcomeHolds((current) => ({
+        ...current,
+        [screenKeyAtStart]: mergeOutcomeHold(current[screenKeyAtStart], {
+          screenKey: screenKeyAtStart,
+          identityKey: identityKeyAtStart,
+          seq: liveStartedFetchSeqRef.current,
+          attemptId: 0,
+        }),
+      }));
       setShowDeleteError(true);
     }
   };
