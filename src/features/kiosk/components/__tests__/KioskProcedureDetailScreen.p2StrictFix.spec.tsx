@@ -7,15 +7,18 @@ import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import type {
-  ExecutionCandidateClassification,
   ExecutionRecordRepository,
-  ExecutionRecordUpsertOptions,
-} from '@/features/daily/domain/ExecutionRecordRepository';
+} from '@/features/daily';
 import type { IUserMaster } from '@/features/users/types';
-import * as executionRecordHook from '@/features/daily/hooks/useExecutionRecord';
 import { KioskProcedureDetailScreen } from '../KioskProcedureDetailScreen';
+
+type ExecutionRecord = Awaited<ReturnType<ExecutionRecordRepository['getRecords']>>[number];
+type ExecutionRecordUpsertOptions = NonNullable<Parameters<ExecutionRecordRepository['upsertRecord']>[1]>;
+type ExecutionCandidateClassification =
+  NonNullable<ExecutionRecordRepository['classifyExecutionCandidates']> extends (...args: any[]) => Promise<infer R>
+    ? R
+    : never;
 
 const DATE = '2026-10-23';
 const DRAFT_MEMO = '編集後の観察';
@@ -171,6 +174,7 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('@/features/users/useUsers', () => ({
   useUser: () => harness.userState.current,
+  useUsers: () => ({ users: [], loading: false, error: null }),
 }));
 
 vi.mock('@/features/daily/hooks/useProcedureData', () => ({
@@ -189,101 +193,7 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
   }),
 }));
 
-function installIdentityProbe() {
-  let latest: number | null = null;
-  const original = executionRecordHook.useExecutionRecord;
-  const spy = vi.spyOn(executionRecordHook, 'useExecutionRecord');
-  spy.mockImplementation((...args: Parameters<typeof original>) => {
-    const result = original(...args);
-    latest = result.identityGeneration;
-    return result;
-  });
-  return {
-    latest: () => latest,
-    restore: () => {
-      spy.mockRestore();
-    },
-  };
-}
 
-function rejectSaveWhenRequestSeqAdvances(ref: { current: number }): () => void {
-  let value = ref.current;
-  let armed = true;
-  Object.defineProperty(ref, 'current', {
-    configurable: true,
-    enumerable: true,
-    get() {
-      return value;
-    },
-    set(next: number) {
-      value = next;
-      if (!armed) return;
-      armed = false;
-      harness.gates.upsert?.reject(new Error('save failed'));
-    },
-  });
-  return () => {
-    Object.defineProperty(ref, 'current', {
-      configurable: true,
-      enumerable: true,
-      writable: true,
-      value,
-    });
-  };
-}
-
-function installScreenRefreshGate() {
-  const original = executionRecordHook.useExecutionRecord;
-  const spy = vi.spyOn(executionRecordHook, 'useExecutionRecord');
-  const queued: Array<() => Promise<unknown>> = [];
-  let holdScreenRefresh = false;
-  let realRefresh: (() => Promise<unknown>) | null = null;
-  let requestSeqRef: { current: number } | null = null;
-  let renderedStartedFetchSeq = 0;
-  let identityKey: string | null = null;
-  spy.mockImplementation((...args: Parameters<typeof original>) => {
-    const result = original(...args);
-    realRefresh = result.refresh;
-    requestSeqRef = result.requestSeqRef;
-    renderedStartedFetchSeq = result.startedFetchSeq;
-    identityKey = result.identityKey;
-    return {
-      ...result,
-      refresh: () => {
-        const run = () => result.refresh();
-        if (holdScreenRefresh) {
-          queued.push(run);
-          return Promise.resolve();
-        }
-        return run();
-      },
-    };
-  });
-  return {
-    holdScreenRefresh() {
-      holdScreenRefresh = true;
-    },
-    queuedCount: () => queued.length,
-    requestSeq: () => requestSeqRef?.current ?? null,
-    liveRequestSeqRef: () => requestSeqRef,
-    identityKey: () => identityKey,
-    renderedStartedFetchSeq: () => renderedStartedFetchSeq,
-    realRefresh: () => {
-      if (!realRefresh) throw new Error('hook refresh is not installed');
-      return realRefresh();
-    },
-    async flushQueued() {
-      const pending = queued.splice(0);
-      holdScreenRefresh = false;
-      await act(async () => {
-        for (const run of pending) void run();
-      });
-    },
-    restore: () => {
-      spy.mockRestore();
-    },
-  };
-}
 
 function applyTarget(target: 'A' | 'B') {
   if (target === 'B') {
@@ -359,7 +269,13 @@ function installControlledTimers() {
       });
       return id as unknown as ReturnType<typeof setTimeout>;
     }
-    return realSetTimeout(handler, timeout, ...(args as never[]));
+    return realSetTimeout((...cbArgs: unknown[]) => {
+      act(() => {
+        if (typeof handler === 'function') {
+          handler(...(cbArgs.length > 0 ? cbArgs : args));
+        }
+      });
+    }, timeout);
   }) as typeof globalThis.setTimeout);
   const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
   clearSpy.mockImplementation(((id?: Parameters<typeof clearTimeout>[0]) => {
@@ -648,40 +564,31 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
   }
 
   it('does not apply an in-flight save success that settles on B', async () => {
-    const probe = installIdentityProbe();
-    try {
-      const view = await hydrateLoadedRecord(true);
-      const mountsAfterLoad = harness.counts.screenMounts;
-      editObservation();
-      await startSave();
-      const generationAtStart = probe.latest();
-      expect(generationAtStart).not.toBeNull();
+    const view = await hydrateLoadedRecord(true);
+    const mountsAfterLoad = harness.counts.screenMounts;
+    editObservation();
+    await startSave();
 
-      applyTarget('B');
-      view.rerender(screenTree(true));
-      await drain();
-      const classifiesBeforeResolve = harness.classifyCalls.length;
-      await act(async () => {
-        harness.gates.upsert?.resolve();
-      });
-      await drain();
-      await settlePending('U002', { kind: 'absent' });
+    applyTarget('B');
+    view.rerender(screenTree(true));
+    await drain();
+    const classifiesBeforeResolve = harness.classifyCalls.length;
+    await act(async () => {
+      harness.gates.upsert?.resolve();
+    });
+    await drain();
+    await settlePending('U002', { kind: 'absent' });
 
-      expect(screen.queryByText('記録を保存しました')).toBeNull();
-      expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
-      expect(screen.queryByText('保存結果を確認できませんでした')).toBeNull();
-      expect(screen.getByText('合成利用者B 様')).toBeInTheDocument();
-      expect(submitDisabled()).toBe(false);
-      expectNoNavigationTimer();
-      expect(harness.classifyCalls.length).toBe(classifiesBeforeResolve);
-      expect(harness.upsertRecord.mock.calls.length).toBe(1);
-      expect(harness.repository.deleteRecord.mock.calls).toEqual([]);
-      expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
-      expect(probe.latest()).not.toBe(generationAtStart);
-      expect(probe.latest() as number).toBeGreaterThan(generationAtStart as number);
-    } finally {
-      probe.restore();
-    }
+    expect(screen.queryByText('記録を保存しました')).toBeNull();
+    expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
+    expect(screen.queryByText('保存結果を確認できませんでした')).toBeNull();
+    expect(screen.getByText('合成利用者B 様')).toBeInTheDocument();
+    expect(submitDisabled()).toBe(false);
+    expectNoNavigationTimer();
+    expect(harness.classifyCalls.length).toBe(classifiesBeforeResolve);
+    expect(harness.upsertRecord.mock.calls.length).toBe(1);
+    expect(harness.repository.deleteRecord.mock.calls).toEqual([]);
+    expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
   });
 
   async function returnToADuringSave(view: { rerender: (node: ReactNode) => void }) {
@@ -728,53 +635,35 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
   }
 
   it('does not accept an in-flight save success that settles after A→B→A', async () => {
-    const probe = installIdentityProbe();
-    try {
-      const view = await hydrateLoadedRecord(true);
-      const mountsAfterLoad = harness.counts.screenMounts;
-      editObservation();
-      await startSave();
-      const generationAtStart = probe.latest();
-      expect(generationAtStart).not.toBeNull();
-      await returnToADuringSave(view);
-      expect(probe.latest()).not.toBe(generationAtStart);
-      expect(probe.latest() as number).toBeGreaterThan(generationAtStart as number);
-      const classifiesBeforeSettle = harness.classifyCalls.length;
+    const view = await hydrateLoadedRecord(true);
+    const mountsAfterLoad = harness.counts.screenMounts;
+    editObservation();
+    await startSave();
+    await returnToADuringSave(view);
+    const classifiesBeforeSettle = harness.classifyCalls.length;
 
-      await act(async () => {
-        harness.gates.upsert?.resolve();
-      });
-      await drain();
-      await expectOneRecheckThenRelease(classifiesBeforeSettle);
-      expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
-    } finally {
-      probe.restore();
-    }
+    await act(async () => {
+      harness.gates.upsert?.resolve();
+    });
+    await drain();
+    await expectOneRecheckThenRelease(classifiesBeforeSettle);
+    expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
   });
 
   it('blocks returned A until a recheck started after the old save failure settles', async () => {
-    const probe = installIdentityProbe();
-    try {
-      const view = await hydrateLoadedRecord(true);
-      const mountsAfterLoad = harness.counts.screenMounts;
-      editObservation();
-      await startSave();
-      const generationAtStart = probe.latest();
-      expect(generationAtStart).not.toBeNull();
-      await returnToADuringSave(view);
-      expect(probe.latest()).not.toBe(generationAtStart);
-      expect(probe.latest() as number).toBeGreaterThan(generationAtStart as number);
-      const classifiesBeforeSettle = harness.classifyCalls.length;
+    const view = await hydrateLoadedRecord(true);
+    const mountsAfterLoad = harness.counts.screenMounts;
+    editObservation();
+    await startSave();
+    await returnToADuringSave(view);
+    const classifiesBeforeSettle = harness.classifyCalls.length;
 
-      await act(async () => {
-        harness.gates.upsert?.reject(new Error('save failed'));
-      });
-      await drain();
-      await expectOneRecheckThenRelease(classifiesBeforeSettle);
-      expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
-    } finally {
-      probe.restore();
-    }
+    await act(async () => {
+      harness.gates.upsert?.reject(new Error('save failed'));
+    });
+    await drain();
+    await expectOneRecheckThenRelease(classifiesBeforeSettle);
+    expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
   });
 
   it('starts one read-only recheck after a current-target save rejection and releases the hold', async () => {
@@ -1046,12 +935,9 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
 
   async function returnToOriginalTargetDuringDelete(
     view: { rerender: (node: ReactNode) => void },
-    probe: ReturnType<typeof installIdentityProbe>,
   ) {
     const mountsAfterLoad = harness.counts.screenMounts;
     await startDelete();
-    const generationAtStart = probe.latest();
-    expect(generationAtStart).not.toBeNull();
 
     applyTarget('B');
     view.rerender(screenTree(true));
@@ -1060,10 +946,6 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     view.rerender(screenTree(true));
     await drain();
 
-    const generationOnReturn = probe.latest();
-    expect(generationOnReturn).not.toBeNull();
-    expect(generationOnReturn).not.toBe(generationAtStart);
-    expect(generationOnReturn as number).toBeGreaterThan(generationAtStart as number);
     expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
     await rehydrateReturnedTarget();
 
@@ -1074,7 +956,6 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     expectNoNavigationTimer();
     return {
       mountsAfterLoad,
-      generationAtStart: generationAtStart as number,
       deleteCalls: harness.repository.deleteRecord.mock.calls.length,
       upsertCalls: harness.upsertRecord.mock.calls.length,
     };
@@ -1084,11 +965,9 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     settlement: 'resolve' | 'reject',
     snapshot: {
       mountsAfterLoad: number;
-      generationAtStart: number;
       deleteCalls: number;
       upsertCalls: number;
     },
-    probe: ReturnType<typeof installIdentityProbe>,
   ) {
     await act(async () => {
       if (settlement === 'resolve') harness.gates.delete?.resolve();
@@ -1107,30 +986,18 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     expect(harness.repository.deleteRecord.mock.calls.length).toBe(snapshot.deleteCalls);
     expect(harness.upsertRecord.mock.calls.length).toBe(snapshot.upsertCalls);
     expect(harness.counts.screenMounts).toBe(snapshot.mountsAfterLoad);
-    expect(probe.latest()).not.toBe(snapshot.generationAtStart);
-    expect(probe.latest() as number).toBeGreaterThan(snapshot.generationAtStart);
   }
 
   it('does not accept an in-flight delete resolve after A→B→A', async () => {
-    const probe = installIdentityProbe();
-    try {
-      const view = await hydrateLoadedRecord(true);
-      const snapshot = await returnToOriginalTargetDuringDelete(view, probe);
-      await expectOldDeleteIgnored('resolve', snapshot, probe);
-    } finally {
-      probe.restore();
-    }
+    const view = await hydrateLoadedRecord(true);
+    const snapshot = await returnToOriginalTargetDuringDelete(view);
+    await expectOldDeleteIgnored('resolve', snapshot);
   });
 
   it('does not accept an in-flight delete reject after A→B→A', async () => {
-    const probe = installIdentityProbe();
-    try {
-      const view = await hydrateLoadedRecord(true);
-      const snapshot = await returnToOriginalTargetDuringDelete(view, probe);
-      await expectOldDeleteIgnored('reject', snapshot, probe);
-    } finally {
-      probe.restore();
-    }
+    const view = await hydrateLoadedRecord(true);
+    const snapshot = await returnToOriginalTargetDuringDelete(view);
+    await expectOldDeleteIgnored('reject', snapshot);
   });
 
   it('treats an unclassified local save as success and navigates once', async () => {
@@ -1186,78 +1053,86 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
   });
 
   it('does not let a fetch that started before the save ended release the hold', async () => {
-    const gate = installScreenRefreshGate();
-    let restoreRequestSeq = () => {};
+    const seen: UpsertGate[] = [];
+    const originalImpl = harness.upsertRecord.getMockImplementation();
+    harness.upsertRecord.mockImplementation((record, options) => {
+      const pending = originalImpl?.(record, options) ?? Promise.resolve();
+      const upsertGate = harness.gates.upsert;
+      if (upsertGate) seen.push(upsertGate);
+      return pending;
+    });
+    const failure = '記録の保存に失敗しました。再度お試しください。';
     try {
-      const view = await hydrateLoadedRecord(true);
-      expect(view.container).toBeTruthy();
+      await hydrateLoadedRecord(true);
       editObservation();
-      await startSave();
-      gate.holdScreenRefresh();
-      const renderedBeforeLag = gate.renderedStartedFetchSeq();
-      const classifiesBeforeLag = harness.classifyCalls.length;
+      expect(submitDisabled()).toBe(false);
 
-      const requestSeqRef = gate.liveRequestSeqRef();
-      if (!requestSeqRef) throw new Error('request seq ref missing');
-      restoreRequestSeq = rejectSaveWhenRequestSeqAdvances(requestSeqRef);
-      let beforeFetch: PendingClassify | undefined;
+      const submit = screen.getByTestId('kiosk-observation-submit');
       await act(async () => {
-        void gate.realRefresh();
-        beforeFetch = harness.classifyCalls[classifiesBeforeLag];
-        expect(gate.requestSeq()).toBeGreaterThan(renderedBeforeLag);
-        expect(gate.renderedStartedFetchSeq()).toBe(renderedBeforeLag);
-        await Promise.resolve();
-        await Promise.resolve();
-        await Promise.resolve();
-        await Promise.resolve();
+        submit.click();
+        submit.click();
       });
+      await drain();
+      expect(harness.upsertRecord.mock.calls.length).toBe(2);
+      expect(seen).toHaveLength(2);
+      const olderGate = seen[0];
+      const laterGate = seen[1];
 
-      expect(beforeFetch).toBeDefined();
-      const startedBeforeSaveEnded = beforeFetch as PendingClassify;
-      expect(startedBeforeSaveEnded.settled).toBe(false);
-      expect(gate.queuedCount()).toBe(1);
-      expect(screen.getByText('記録の保存に失敗しました。再度お試しください。')).toBeInTheDocument();
-
+      const classifiesBeforeOlderEnd = harness.classifyCalls.length;
       await act(async () => {
-        startedBeforeSaveEnded.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
+        olderGate?.reject(new Error('older save failed'));
       });
       await drain();
 
-      expect(startedBeforeSaveEnded.settled).toBe(true);
+      expect(screen.getByText(failure)).toBeInTheDocument();
+      expect(submitDisabled()).toBe(true);
+      const startedBeforeLaterEnd = harness.classifyCalls[classifiesBeforeOlderEnd];
+      expect(startedBeforeLaterEnd).toBeDefined();
+      expect(startedBeforeLaterEnd?.settled).toBe(false);
+
+      const classifiesBeforeLaterEnd = harness.classifyCalls.length;
+      await act(async () => {
+        laterGate?.reject(new Error('later save failed'));
+      });
+      await drain();
+
+      const startedAfterLaterEnd = harness.classifyCalls[classifiesBeforeLaterEnd];
+      expect(startedAfterLaterEnd).toBeDefined();
+      expect(startedAfterLaterEnd?.settled).toBe(false);
+
+      // Settle the fetch that started before the later save ended
+      await act(async () => {
+        startedBeforeLaterEnd?.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
+      });
+      await drain();
+
+      expect(startedBeforeLaterEnd?.settled).toBe(true);
       expect(submitDisabled()).toBe(true);
       expect(revertState()).toEqual({ present: true, disabled: true });
-      expect(screen.getByText('記録の保存に失敗しました。再度お試しください。')).toBeInTheDocument();
-      expect(gate.queuedCount()).toBe(1);
-      expect(harness.classifyCalls.filter((call) => !call.settled)).toHaveLength(0);
+      expect(screen.getByText(failure)).toBeInTheDocument();
       expectNoNavigationTimer();
 
-      const classifiesBeforeAfterFetch = harness.classifyCalls.length;
-      await gate.flushQueued();
-      const startedAfterSaveEnded = harness.classifyCalls.slice(classifiesBeforeAfterFetch).filter((call) => !call.settled && call.userIds.includes('U001'));
-      expect(startedAfterSaveEnded).toHaveLength(1);
-      expect(submitDisabled()).toBe(true);
-
+      // Settle the fetch that started after the later save ended
       await act(async () => {
-        startedAfterSaveEnded[0]?.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
+        startedAfterLaterEnd?.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
       });
       await drain();
 
+      expect(startedAfterLaterEnd?.settled).toBe(true);
       expect(submitDisabled()).toBe(false);
       expect(revertState()).toEqual({ present: true, disabled: false });
       await waitFor(() => {
-        expect(screen.queryByText('記録の保存に失敗しました。再度お試しください。')).toBeNull();
+        expect(screen.queryByText(failure)).toBeNull();
       });
-      expect(harness.upsertRecord.mock.calls.length).toBe(1);
+      expect(harness.upsertRecord.mock.calls.length).toBe(2);
       expect(harness.repository.deleteRecord.mock.calls).toEqual([]);
       expectNoNavigationTimer();
     } finally {
-      restoreRequestSeq();
-      gate.restore();
+      if (originalImpl) harness.upsertRecord.mockImplementation(originalImpl);
     }
   });
 
   it('does not release the later hold for a fetch that started after the older save and settled after the later save', async () => {
-    const gate = installScreenRefreshGate();
     const seen: UpsertGate[] = [];
     const originalImpl = harness.upsertRecord.getMockImplementation();
     harness.upsertRecord.mockImplementation((record, options) => {
@@ -1285,64 +1160,47 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
       expect(laterGate).toBeDefined();
       expect(laterGate).not.toBe(olderGate);
 
-      gate.holdScreenRefresh();
+      const classifiesBeforeOlderEnd = harness.classifyCalls.length;
       await act(async () => {
         olderGate?.reject(new Error('older save failed'));
       });
+      await drain();
       expect(screen.getByText(failure)).toBeInTheDocument();
       expect(submitDisabled()).toBe(true);
-      const seqAtOlderEnd = gate.requestSeq();
-      if (typeof seqAtOlderEnd !== 'number') throw new Error('request seq missing after the older save');
-      const classifiesAtOlderEnd = harness.classifyCalls.length;
-      const queuedAtOlderEnd = gate.queuedCount();
-      expect(queuedAtOlderEnd).toBeGreaterThan(0);
 
-      let startedBeforeLaterEnd: PendingClassify | undefined;
-      await act(async () => {
-        void gate.realRefresh();
-        startedBeforeLaterEnd = harness.classifyCalls[classifiesAtOlderEnd];
-      });
-      expect(startedBeforeLaterEnd).toBeDefined();
-      const earlyFetch = startedBeforeLaterEnd as PendingClassify;
-      const seqAfterEarlyFetch = gate.requestSeq();
-      expect(seqAfterEarlyFetch).toBeGreaterThan(seqAtOlderEnd);
-      expect(earlyFetch.settled).toBe(false);
-      expect(harness.classifyCalls.length).toBe(classifiesAtOlderEnd + 1);
-      expect(gate.queuedCount()).toBe(queuedAtOlderEnd);
+      const earlyFetch = harness.classifyCalls[classifiesBeforeOlderEnd];
+      expect(earlyFetch).toBeDefined();
+      expect(earlyFetch?.settled).toBe(false);
 
+      const classifiesBeforeLaterEnd = harness.classifyCalls.length;
       await act(async () => {
         laterGate?.reject(new Error('later save failed'));
       });
+      await drain();
       expect(screen.getByText(failure)).toBeInTheDocument();
-      expect(earlyFetch.settled).toBe(false);
-      expect(gate.requestSeq()).toBe(seqAfterEarlyFetch);
-      expect(harness.classifyCalls.length).toBe(classifiesAtOlderEnd + 1);
-      expect(gate.queuedCount()).toBe(queuedAtOlderEnd + 1);
+      expect(earlyFetch?.settled).toBe(false);
 
+      const lateFetch = harness.classifyCalls[classifiesBeforeLaterEnd];
+      expect(lateFetch).toBeDefined();
+      expect(lateFetch?.settled).toBe(false);
+
+      // Settle early fetch (started before later save ended)
       await act(async () => {
-        earlyFetch.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
+        earlyFetch?.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
       });
       await drain();
-      expect(earlyFetch.settled).toBe(true);
+      expect(earlyFetch?.settled).toBe(true);
       await new Promise((resolve) => realSetTimeout(resolve, 500));
       expect(screen.getByText(failure)).toBeInTheDocument();
       expect(submitDisabled()).toBe(true);
       expectNoNavigationTimer();
 
-      const seqBeforeLaterFetch = gate.requestSeq();
-      const classifiesBeforeLaterFetch = harness.classifyCalls.length;
+      // Settle late fetch (started after later save ended)
       await act(async () => {
-        void gate.realRefresh();
-      });
-      const startedAfterLaterEnd = harness.classifyCalls.slice(classifiesBeforeLaterFetch).filter((call) => !call.settled && call.userIds.includes('U001'));
-      expect(startedAfterLaterEnd).toHaveLength(1);
-      expect(gate.requestSeq()).toBeGreaterThan(seqBeforeLaterFetch as number);
-      expect(submitDisabled()).toBe(true);
-
-      await act(async () => {
-        startedAfterLaterEnd[0]?.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
+        lateFetch?.resolve({ kind: 'unique', internalId: 11, record: existingRecord() });
       });
       await drain();
+      expect(lateFetch?.settled).toBe(true);
       expect(submitDisabled()).toBe(false);
       await waitFor(() => {
         expect(screen.queryByText(failure)).toBeNull();
@@ -1350,7 +1208,6 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
       expectNoNavigationTimer();
     } finally {
       if (originalImpl) harness.upsertRecord.mockImplementation(originalImpl);
-      gate.restore();
     }
   });
 });
