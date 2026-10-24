@@ -25,7 +25,7 @@ vi.mock('@/lib/env', () => ({
   readOptionalEnv: (key: string) => (key === 'VITE_DATA_PROVIDER' ? envState.dataProvider : undefined),
 }));
 
-import { getCurrentExecutionRepositoryKind } from '../executionRepositoryFactory';
+import { getCurrentExecutionRepositoryKind, getExecutionRepository } from '../executionRepositoryFactory';
 
 describe('executionRepositoryFactory', () => {
   beforeEach(() => {
@@ -96,5 +96,72 @@ describe('executionRepositoryFactory', () => {
     window.history.pushState({}, '', '/kiosk/users/6/procedures');
 
     expect(getCurrentExecutionRepositoryKind()).toBe('sharepoint');
+  });
+
+  it('leaves the local repository on the per-record API', async () => {
+    envState.dataProvider = 'local';
+    const store = {
+      getRecords: vi.fn(() => []),
+      getRecord: vi.fn(() => undefined),
+      upsertRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+      getCompletionRate: vi.fn(() => ({ completed: 0, triggered: 0, rate: 0 })),
+      getRecordsInRange: vi.fn(() => []),
+    };
+
+    const repo = getExecutionRepository(store);
+    expect(repo.getRecordForCandidates).toBeUndefined();
+    await expect(repo.getRecord('2026-05-07', 'user-1', 'slot-1')).resolves.toBeUndefined();
+    expect(store.getRecord).toHaveBeenCalledTimes(1);
+    expect(store.getRecord).toHaveBeenCalledWith('2026-05-07', 'user-1', 'slot-1');
+    await repo.upsertRecord({
+      id: '2026-05-07-user-1-slot-1',
+      date: '2026-05-07',
+      userId: 'user-1',
+      scheduleItemId: 'slot-1',
+      status: 'completed',
+      memo: '',
+      recordedAt: '2026-05-07T00:00:00.000Z',
+      recordedBy: '',
+      triggeredBipIds: [],
+    });
+    expect(store.upsertRecord).toHaveBeenCalledTimes(1);
+    await repo.deleteRecord('2026-05-07', 'user-1', 'slot-1');
+    expect(store.deleteRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards batched lookup through the sharepoint adapter', async () => {
+    envState.forceSharePoint = true;
+    const spFetch = vi.fn(async (url: string) => {
+      const decoded = decodeURIComponent(String(url));
+      if (decoded.includes('$filter=') && decoded.includes('ID gt')) {
+        return { ok: true, status: 200, statusText: 'OK', json: async () => ({ value: [] }) };
+      }
+      return { ok: true, status: 200, statusText: 'OK', json: async () => ({ value: [] }) };
+    });
+    const getFields = vi.fn(async () => new Set([
+      'Title',
+      'RecordDate',
+      'Parent_x0020_ID',
+      'User_x0020_ID',
+      'Status',
+      'Payload',
+      'Recorded_x0020_At',
+      'RowNo',
+    ]));
+
+    const repo = getExecutionRepository(undefined, spFetch, getFields);
+    expect(typeof repo.getRecordForCandidates).toBe('function');
+    expect(typeof repo.classifyExecutionCandidates).toBe('function');
+    await expect(repo.getRecordForCandidates?.('2026-05-07', ['person-a', 'person-b'], ['aa', 'bb']))
+      .resolves.toBeUndefined();
+
+    const parentReads = spFetch.mock.calls
+      .map(([url]) => decodeURIComponent(String(url)))
+      .filter((url) => url.includes('SupportRecord_Daily') && url.includes('ID gt 0') && url.includes('RecordDate'));
+    expect(parentReads).toHaveLength(1);
+    expect(repo.getRecord).toEqual(expect.any(Function));
+    expect(repo.upsertRecord).toEqual(expect.any(Function));
+    expect(repo.deleteRecord).toEqual(expect.any(Function));
   });
 });
