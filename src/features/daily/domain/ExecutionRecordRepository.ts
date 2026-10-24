@@ -20,6 +20,21 @@
  */
 import type { ExecutionRecord } from './executionRecordTypes';
 
+export type ExecutionCandidateClassification =
+  | { kind: 'absent' }
+  | { kind: 'unique'; internalId: number; record: ExecutionRecord }
+  | { kind: 'duplicate' }
+  | { kind: 'mismatch' };
+
+export class ExecutionTargetMismatchError extends Error {
+  readonly code = 'EXECUTION_TARGET_MISMATCH';
+
+  constructor() {
+    super('EXECUTION_TARGET_MISMATCH');
+    this.name = 'ExecutionTargetMismatchError';
+  }
+}
+
 export type ExecutionRecordUpsertOptions = {
   /**
    * - merge: keep existing memo text and append a different incoming memo.
@@ -39,6 +54,30 @@ export interface ExecutionRecordRepository {
    * Returns undefined if not found.
    */
   getRecord(date: string, userId: string, scheduleItemId: string): Promise<ExecutionRecord | undefined>;
+
+  /**
+   * Optional batched lookup for ordered user and procedure candidates.
+   * Adapters that omit this method keep the per-candidate getRecord loop.
+   * The first matching pair wins. Two or more distinct saved rows for that
+   * pair reject the lookup instead of picking one.
+   */
+  getRecordForCandidates?(
+    date: string,
+    userIds: readonly string[],
+    scheduleItemIds: readonly string[],
+  ): Promise<ExecutionRecord | undefined>;
+
+  /**
+   * Classify every alias of the requested date, users, and procedures.
+   * Fetch failures reject. Duplicate item ids and a unique row that does
+   * not match the requested target are distinct from "no row".
+   * Adapters that omit this method keep getRecordForCandidates / getRecord.
+   */
+  classifyExecutionCandidates?(
+    date: string,
+    userIds: readonly string[],
+    scheduleItemIds: readonly string[],
+  ): Promise<ExecutionCandidateClassification>;
 
   /**
    * Insert or update an execution record.
