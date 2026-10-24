@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.playwright.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "playwright.production-readonly.config.ts",
+    "tests/production/production-auth.setup.spec.ts",
+    "tests/production/production-readonly-smoke.spec.ts"
+  ]
+}
