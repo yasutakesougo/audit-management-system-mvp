@@ -76,6 +76,33 @@ export function AppShellV2({
         bgcolor: 'background.default',
       }}
     >
+      <Box
+        component="a"
+        href={`#${mainId}`}
+        data-testid="skip-to-main-link"
+        onClick={(event) => {
+          const target = document.getElementById(mainId);
+          if (!target) return;
+
+          event.preventDefault();
+          target.focus();
+          if (typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ block: 'start' });
+          }
+        }}
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          zIndex: (theme) => theme.zIndex.tooltip,
+          transform: 'translateY(-200%)',
+          '&:focus': {
+            transform: 'translateY(0)',
+          },
+        }}
+      >
+        メインコンテンツへ移動
+      </Box>
       {/* Header */}
       <Box
         sx={{
