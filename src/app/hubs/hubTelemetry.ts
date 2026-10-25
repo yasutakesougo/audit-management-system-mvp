@@ -1,4 +1,5 @@
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 export const HUB_TELEMETRY_EVENTS = {
@@ -34,6 +35,9 @@ export type HubTelemetryEvent = {
  * Failure is intentionally swallowed to avoid blocking navigation or rendering.
  */
 export function recordHubTelemetry(event: HubTelemetryEvent): void {
+  const automatic = event.eventName === HUB_TELEMETRY_EVENTS.HUB_VIEWED || event.eventName === HUB_TELEMETRY_EVENTS.CARD_VIEWED;
+  const canWrite = automatic ? automaticTelemetryWriteGuard(event.pathname) : () => true;
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -47,7 +51,9 @@ export function recordHubTelemetry(event: HubTelemetryEvent): void {
   };
 
   try {
-    addDoc(collection(getDb(), 'telemetry'), payload).catch((err) => {
+    const target = collection(getDb(), 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[hub:telemetry] write failed', err);
     });

@@ -9,6 +9,17 @@ import { SettingsProvider } from '@/features/settings';
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from '@/features/settings/settingsModel';
 import { ToastProvider } from '@/hooks/useToast';
 
+const telemetryWrites = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 'synthetic-event' }));
+vi.mock('firebase/firestore', () => ({
+  addDoc: telemetryWrites,
+  collection: () => 'telemetry',
+  serverTimestamp: () => 'timestamp',
+}));
+vi.mock('@/infra/firestore/client', () => ({
+  getDb: () => 'test-db',
+  isFirestoreWriteAvailable: () => true,
+}));
+
 const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -65,6 +76,14 @@ function renderAppShell(initialPath: string) {
 describe('AppShell kiosk query routing', () => {
   beforeEach(() => {
     localStorage.clear();
+    telemetryWrites.mockClear();
+  });
+
+  it.each(['/kiosk', '/kiosk/users', '/kiosk/toilet'])('initial AppShell render at %s emits no automatic Firestore telemetry', async (pathname) => {
+    renderAppShell(pathname);
+    await waitFor(() => expect(screen.getByTestId('app-shell')).toHaveAttribute('data-kiosk', 'true'));
+    expect(screen.getByTestId('kiosk-route-child')).toBeInTheDocument();
+    expect(telemetryWrites).not.toHaveBeenCalled();
   });
 
   it('enables kiosk mode when /today?kiosk=1 is opened', async () => {

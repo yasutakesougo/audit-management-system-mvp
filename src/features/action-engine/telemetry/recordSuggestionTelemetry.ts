@@ -1,4 +1,5 @@
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type { SuggestionTelemetryEvent } from './buildSuggestionTelemetryEvent';
 
@@ -16,6 +17,9 @@ export function recordSuggestionTelemetry(
   event: SuggestionTelemetryEvent,
   options: { dedupeKey?: string } = {},
 ): void {
+  const automatic = event.event === 'suggestion_shown' || event.event === 'suggestion_resurfaced' || event.event === 'suggestion_deep_link_arrived';
+  const canWrite = automatic ? automaticTelemetryWriteGuard() : () => true;
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -34,7 +38,9 @@ export function recordSuggestionTelemetry(
 
   try {
     const db = getDb();
-    addDoc(collection(db, 'telemetry'), payload).catch((err) => {
+    const target = collection(db, 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[suggestion-telemetry] write failed', err);
     });

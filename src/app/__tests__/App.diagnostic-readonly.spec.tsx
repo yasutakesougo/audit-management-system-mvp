@@ -4,12 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter } from 'react-router-dom';
 import { useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
 import { createSpFetch } from '@/lib/sp/spFetch';
+import { recordPlanningNavTelemetry } from '@/app/navigation/planningNavTelemetry';
+
+const automaticWrites = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 'synthetic' }));
+vi.mock('firebase/firestore', () => ({ addDoc: automaticWrites, collection: () => 'telemetry', serverTimestamp: () => 'timestamp' }));
+vi.mock('@/infra/firestore/client', () => ({ getDb: () => 'test-db', isFirestoreWriteAvailable: () => true }));
 
 const lifecycle = vi.hoisted(() => ({ drift: 0, remediation: 0, provisioning: 0 }));
 const navigationControl = vi.hoisted(() => ({ billingGate: null as Promise<void> | null, diagnosticGate: null as Promise<void> | null }));
 vi.mock('../router', () => ({
   router: createMemoryRouter([
     { path: '/billing', element: <div />, loader: async () => { await navigationControl.billingGate; return null; } },
+    { path: '/kiosk', element: <div />, loader: async () => { await navigationControl.billingGate; return null; } },
     { path: '/admin/status', element: <div data-testid="diagnostic-route-content" />, loader: async () => { await navigationControl.diagnosticGate; return null; } },
     { path: '*', element: <div data-testid="diagnostic-route-content" /> },
   ], { initialEntries: ['/admin/status'] }),
@@ -46,6 +52,24 @@ describe('diagnostic route background effects', () => {
     cleanup(); navigationControl.billingGate = null; navigationControl.diagnosticGate = null;
     vi.unstubAllGlobals();
     useDataProviderObservabilityStore.setState({ currentProvider: null });
+  });
+  it('App binds the automatic telemetry boundary before pending Kiosk navigation commits', async () => {
+    await router.navigate('/billing');
+    window.history.replaceState({}, '', '/billing');
+    render(<App />);
+    let release!: () => void;
+    navigationControl.billingGate = new Promise<void>((resolve) => { release = resolve; });
+    let navigation!: Promise<void>;
+    await act(async () => { navigation = router.navigate('/kiosk'); });
+    try {
+      automaticWrites.mockClear();
+      expect(router.state.location.pathname).toBe('/billing');
+      recordPlanningNavTelemetry({ eventName: 'planning_nav_visibility_changed', role: 'viewer', pathname: '/billing', trigger: 'init' });
+      expect(automaticWrites).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => { release(); await navigation; });
+      window.history.replaceState({}, '', '/');
+    }
   });
   it('rejects a queued write during pending diagnostic navigation while the browser URL still points to business', async () => {
     window.history.replaceState({}, '', '/billing');
