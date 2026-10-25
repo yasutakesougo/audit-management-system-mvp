@@ -1,0 +1,545 @@
+{
+  "schemaVersion": 3,
+  "id": "LIVE-SCHEMA-DATA-REMEDIATION-V1",
+  "phase": "Phase3_DecisionPack_Phase4_Form",
+  "generatedAt": "2026-08-29T03:43:15.734Z",
+  "bulkGo": "PROHIBITED",
+  "mutationAuthorityStatus": "NOT_AUTHORIZED",
+  "phase4HumanActions": [
+    "PRESERVE",
+    "DELETE GO",
+    "MERGE GO",
+    "SCHEMA RE-EVALUATION",
+    "HOLD"
+  ],
+  "rules": {
+    "caseCActionsOnly": [
+      "SCHEMA RE-EVALUATION",
+      "HOLD"
+    ],
+    "deleteOrMergeGo": "Decision Pack form only — does NOT authorize SharePoint mutation",
+    "agentMustNotInventGo": true
+  },
+  "counts": {
+    "CASE_A_CANDIDATE": 0,
+    "CASE_B_CANDIDATE": 2,
+    "CASE_C_CANDIDATE": 2,
+    "AMBIGUOUS": 4
+  },
+  "rows": [
+    {
+      "tdId": "TD-001",
+      "observedItemIds": [
+        7,
+        12,
+        15
+      ],
+      "candidateClassification": "AMBIGUOUS",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 7,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 7,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 12,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 12,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 15,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 15,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-001",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    },
+    {
+      "tdId": "TD-002",
+      "observedItemIds": [
+        3,
+        4,
+        5
+      ],
+      "candidateClassification": "AMBIGUOUS",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 3,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 3,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 4,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 4,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 5,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 5,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-002",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    },
+    {
+      "tdId": "TD-003",
+      "observedItemIds": [
+        2060,
+        2063
+      ],
+      "candidateClassification": "CASE_B_CANDIDATE",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 2060,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 2060,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 2063,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 2063,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-003",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "PRESERVE",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "PRESERVE",
+        "DELETE GO",
+        "MERGE GO",
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "DATA_REMEDIATION",
+      "dataRemediationEligible": true,
+      "holdReasons": [
+        "Child rows exist on multiple duplicate parents"
+      ]
+    },
+    {
+      "tdId": "TD-004",
+      "observedItemIds": [
+        2084,
+        2085
+      ],
+      "candidateClassification": "CASE_B_CANDIDATE",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 2084,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 2084,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 2085,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 2085,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-004",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "PRESERVE",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "PRESERVE",
+        "DELETE GO",
+        "MERGE GO",
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "DATA_REMEDIATION",
+      "dataRemediationEligible": true,
+      "holdReasons": [
+        "Child rows exist on multiple duplicate parents"
+      ]
+    },
+    {
+      "tdId": "TD-005",
+      "observedItemIds": [
+        21,
+        22
+      ],
+      "candidateClassification": "CASE_C_CANDIDATE",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 21,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 21,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 22,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 22,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-005",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "SCHEMA RE-EVALUATION",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "SCHEMA RE-EVALUATION",
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "dataRemediationEligible": false,
+      "holdReasons": [
+        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
+      ]
+    },
+    {
+      "tdId": "TD-006",
+      "observedItemIds": [
+        6,
+        11
+      ],
+      "candidateClassification": "CASE_C_CANDIDATE",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 6,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 6,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 11,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 11,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-006",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "SCHEMA RE-EVALUATION",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "SCHEMA RE-EVALUATION",
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "SCHEMA_CONTRACT_REASSESSMENT",
+      "dataRemediationEligible": false,
+      "holdReasons": [
+        "Same Title but distinct logical parents — route to SCHEMA CONTRACT REASSESSMENT (not data remediation delete/merge)"
+      ]
+    },
+    {
+      "tdId": "TD-007",
+      "observedItemIds": [
+        13,
+        14
+      ],
+      "candidateClassification": "AMBIGUOUS",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 13,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 13,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 14,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 14,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-007",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    },
+    {
+      "tdId": "TD-008",
+      "observedItemIds": [
+        1,
+        2
+      ],
+      "candidateClassification": "AMBIGUOUS",
+      "contentSignificance": {
+        "value": "UNKNOWN",
+        "verified": false,
+        "perItem": [
+          {
+            "Id": 1,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 1,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          },
+          {
+            "Id": 2,
+            "value": "UNKNOWN",
+            "basis": [
+              "LIVE_GET_HOLD — content-significance not re-captured in this environment"
+            ],
+            "evidence": {
+              "itemId": 2,
+              "source": "DEFINITION_INVESTIGATION.json rehydrate",
+              "liveCapture": "HOLD"
+            }
+          }
+        ]
+      },
+      "evidenceRefs": {
+        "evidencePack": "docs/evidence/live-schema-data-remediation-v1/EVIDENCE_PACK.json",
+        "candidates": "docs/evidence/live-schema-data-remediation-v1/CANDIDATE_CLASSIFICATION.json",
+        "groupId": "TD-008",
+        "sourceGeneratedAt": "2026-08-29T02:03:10.247Z"
+      },
+      "recommendedDisposition": "HOLD",
+      "requestedHumanAction": null,
+      "targetItemIds": null,
+      "allowedHumanActions": [
+        "HOLD"
+      ],
+      "expectedPostState": null,
+      "rollback": null,
+      "mutationAuthorityStatus": "NOT_AUTHORIZED",
+      "reviewerDecision": null,
+      "decisionRationale": null,
+      "lane": "HOLD_REVIEW",
+      "dataRemediationEligible": true,
+      "holdReasons": [
+        "CONTENT_SIGNIFICANCE_UNVERIFIED — cannot label EMPTY_DUPLICATE_CANDIDATE without content evidence"
+      ]
+    }
+  ]
+}

@@ -210,21 +210,59 @@ POST/PUT/PATCH/MERGE/DELETE · item Set/Remove · Title rewrite · parent delete
 | Human decision point per group | **PASS** |
 | Rollback/verification plan defined | **PASS** |
 
+## Correction-2 (Evidence Collection — additive)
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Correction-2 Evidence Collection
+Phase scope: 0 Baseline · 1 Evidence · 2 Candidates
+Locked Definition / Correction-1: unchanged
+SharePoint mutation: NONE
+```
+
+See [PROCESS.md](./PROCESS.md), [BASELINE.json](./BASELINE.json), [CAPTURE_STATUS.md](./CAPTURE_STATUS.md),
+[EVIDENCE_PACK.json](./EVIDENCE_PACK.json), [CANDIDATE_CLASSIFICATION.json](./CANDIDATE_CLASSIFICATION.json),
+[DECISION_PACK.md](./DECISION_PACK.md).
+
+Mechanical labels are `CASE_*_CANDIDATE` / `AMBIGUOUS` only. Human Disposition (Phase 4) is still required.
+Case C stays on **SCHEMA_CONTRACT_REASSESSMENT** — never data remediation delete/merge.
+
+## Correction-3 (Baseline ↔ Evidence identity — additive)
+
+```text
+LIVE-SCHEMA-DATA-REMEDIATION-V1
+Evidence Collection Correction-3
+P1: EVIDENCE_BASELINE_IDENTITY_NOT_MECHANICALLY_BOUND
+```
+
+| Rule | Behavior |
+|---|---|
+| Classifier loads `BASELINE.json` | Required |
+| `dump.baselineHead` required | null → HOLD |
+| `baseline.head` === `dump.baselineHead` | exact match or HOLD |
+| listId first capture | `CAPTURED` → bind into BASELINE |
+| known listId mismatch | HOLD |
+| Evidence Pack | retains `baselineVerification` |
+| CLI | mismatch → `exit != 0` |
+
+Stale Evidence reuse across HEAD / list identity drift is **PROHIBITED**.
+
 ## Next (post-merge — no mutation in this Gate)
 
 This Definition PR **does not authorize** SharePoint item writes, schema mutation, or deploy.
 
+Optimized path (Correction-2):
+
 | Step | Gate / action | Notes |
 |---|---|---|
-| 1 | **Merge Definition** | Locks classification rules + 8-group register (TD-001…TD-008). |
-| 2 | **Optional re-investigation** | Re-run browser script to capture content-significance booleans; unblocks Case A labeling only — still no item mutation. |
-| 3 | **Human review** | Review TD-001…TD-008 classifications per Case A/B/C. |
-| 4 | **Human Data Remediation GO** | Separate explicit GO **per group** before any item fix. Case B requires child Gate; **Case C → schema contract reassessment track (not delete/merge)**. |
-| 5 | **Verify (GET-only)** | Re-count duplicates → expect `duplicateGroupCount=0`. |
-| 6 | **LIVE-SCHEMA-MUTATION-V1 preflight** | Expect `READY` after remediation — still **not** schema Apply. |
-| 7 | **Schema Apply Human GO** | Only after preflight READY + separate authorization. |
+| 0–2 | **Evidence Pack + Candidates** | Tooling landed; live browser GET may still be HOLD — see CAPTURE_STATUS.md |
+| 3 | **Independent Evidence Review** | One Decision Pack; re-GET only on evidence gaps |
+| 4 | **Human Disposition GO/HOLD** | Per row — never bulk GO. Case C → schema lane |
+| 5–6 | **Authorized small-batch mutation + GET verify** | Target/Action/Expected/Rollback fixed per GO |
+| 7 | **Mutation Preflight once** | Expect READY — still not Schema Apply |
+| 8–10 | **Schema Apply Human GO → Apply → verify** | Separate Gate |
 
-**Out of scope until step 4:** Title rewrite · parent delete · child reassignment · schema mutation · deploy.
+**Out of scope until Phase 4 Human GO:** Title rewrite · parent delete · child reassignment · schema mutation · deploy.
 
 Tooling: `scripts/ops/live-schema-data-remediation-investigate.browser.js` · `scripts/ops/live-schema-data-remediation-classify.mjs`  
 Runbook: [`docs/runbooks/live-schema-data-remediation-v1.md`](../../runbooks/live-schema-data-remediation-v1.md)
