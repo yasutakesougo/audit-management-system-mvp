@@ -16,6 +16,10 @@
       "moduleResolution": "NodeNext"
     }
   },
-  "include": ["playwright.config.ts", "tests/e2e/**/*.ts", "tests/e2e/**/*.tsx"],
+  "include": [
+    "playwright.config.ts",
+    "tests/e2e/**/*.ts",
+    "tests/e2e/**/*.tsx"
+  ],
   "exclude": ["node_modules", "dist", "build", "coverage"]
 }
