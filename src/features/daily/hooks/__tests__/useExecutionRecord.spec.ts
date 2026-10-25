@@ -100,7 +100,10 @@ describe('useExecutionRecord', () => {
         scheduleItemId: legacyRecord.scheduleItemId,
         memo: 'new memo',
       }),
-      { memoMode: 'overwrite' },
+      expect.objectContaining({
+        memoMode: 'overwrite',
+        candidateUserIds: ['canonical-user', 'legacy-user'],
+      }),
     );
   });
 
@@ -130,7 +133,14 @@ describe('useExecutionRecord', () => {
       await result.current.deleteRecord();
     });
 
-    expect(mockDeleteRecord).toHaveBeenCalledWith('2026-05-07', 'legacy-user', 'legacy-slot');
+    expect(mockDeleteRecord).toHaveBeenCalledWith(
+      '2026-05-07',
+      'legacy-user',
+      'legacy-slot',
+      {
+        candidateUserIds: ['canonical-user', 'legacy-user'],
+      },
+    );
   });
 
   it('does not re-fetch when new arrays with identical values are passed for fallbacks', async () => {
@@ -461,7 +471,7 @@ describe('useExecutionRecord', () => {
         scheduleItemId: nextIdentity.scheduleItemId,
         memo: 'new identity memo',
       }),
-      { memoMode: 'overwrite' },
+      expect.objectContaining({ memoMode: 'overwrite' }),
     );
   });
 
@@ -867,4 +877,170 @@ describe('useExecutionRecord', () => {
     expect(result.current.record).toBeUndefined();
     expect(result.current.error).toBeNull();
   });
+
+  it('does not leak new user candidates into inflight deletion when user switches mid-flight', async () => {
+    let resolveDelete: () => void = () => {};
+    const deletePromise = new Promise<void>((resolve) => {
+      resolveDelete = resolve;
+    });
+
+    let capturedDeleteArgs: unknown[] = [];
+    mockDeleteRecord.mockImplementation(async (...args) => {
+      capturedDeleteArgs = args;
+      await deletePromise;
+    });
+
+    const userARecord: ExecutionRecord = {
+      id: 'rec-user-a',
+      date: '2026-05-07',
+      userId: 'user-A',
+      scheduleItemId: 'slot-1',
+      status: 'completed',
+      triggeredBipIds: [],
+    };
+    mockGetRecord.mockResolvedValue(userARecord);
+
+    const { result, rerender } = renderHook(
+      ({ userId, fallbackUsers }) =>
+        useExecutionRecord('2026-05-07', userId, 'slot-1', undefined, fallbackUsers),
+      {
+        initialProps: {
+          userId: 'user-A',
+          fallbackUsers: ['user-A-fallback'],
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.record?.id).toBe('rec-user-a');
+    });
+
+    let deletePromiseResult: Promise<void> | undefined;
+    act(() => {
+      deletePromiseResult = result.current.deleteRecord();
+    });
+
+    rerender({
+      userId: 'user-B',
+      fallbackUsers: ['user-B-fallback'],
+    });
+
+    await act(async () => {
+      resolveDelete();
+      await expect(deletePromiseResult).rejects.toThrow('Execution record identity is not ready for mutation');
+    });
+
+    expect(capturedDeleteArgs).toEqual([
+      '2026-05-07',
+      'user-A',
+      'slot-1',
+      {
+        candidateUserIds: ['user-A', 'user-A-fallback'],
+      },
+    ]);
+
+    const passedOptions = capturedDeleteArgs[3] as { candidateUserIds: string[] };
+    expect(passedOptions.candidateUserIds).not.toContain('user-B');
+    expect(passedOptions.candidateUserIds).not.toContain('user-B-fallback');
+  });
+
+  it('preserves whitespace-distinct user candidates through lookup and save', async () => {
+    const observedUserCandidates: string[][] = [];
+    const paddedRecord: ExecutionRecord = {
+      id: '2026-05-07-padded-user-slot-1',
+      date: '2026-05-07',
+      userId: ' U001 ',
+      scheduleItemId: 'slot-1',
+      status: 'completed',
+      triggeredBipIds: [],
+      memo: 'stored',
+    };
+    let classifyCount = 0;
+    classifyLookup = async (_date, userIds) => {
+      observedUserCandidates.push([...userIds]);
+      classifyCount += 1;
+      return classifyCount === 1
+        ? { kind: 'absent' }
+        : { kind: 'unique', internalId: 901, record: paddedRecord };
+    };
+
+    const { result } = renderHook(() =>
+      useExecutionRecord('2026-05-07', ' U001 ', 'slot-1', undefined, ['U001', '   ']),
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(observedUserCandidates[0]).toEqual([' U001 ', 'U001']);
+
+    await act(async () => {
+      await result.current.saveRecord('completed', 'saved');
+    });
+
+    expect(mockUpsertRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: ' U001 ', memo: 'saved' }),
+      expect.objectContaining({
+        memoMode: 'overwrite',
+        candidateUserIds: [' U001 ', 'U001'],
+      }),
+    );
+    expect(observedUserCandidates).toEqual([
+      [' U001 ', 'U001'],
+      [' U001 ', 'U001'],
+    ]);
+  });
+
+  it('keeps save candidates captured when the target switches during an upsert', async () => {
+    let resolveUpsert: () => void = () => {};
+    const upsertPromise = new Promise<void>((resolve) => {
+      resolveUpsert = resolve;
+    });
+    let capturedUpsertArgs: unknown[] = [];
+    mockUpsertRecord.mockImplementation(async (...args) => {
+      capturedUpsertArgs = args;
+      await upsertPromise;
+    });
+
+    const userARecord: ExecutionRecord = {
+      id: 'record-user-A',
+      date: '2026-05-07',
+      userId: 'user-A',
+      scheduleItemId: 'slot-1',
+      status: 'completed',
+      triggeredBipIds: [],
+    };
+    classifyLookup = async (_date, userIds) =>
+      userIds[0] === 'user-A'
+        ? { kind: 'unique', internalId: 901, record: userARecord }
+        : { kind: 'absent' };
+
+    const { result, rerender } = renderHook(
+      ({ userId, fallbackUsers }) =>
+        useExecutionRecord('2026-05-07', userId, 'slot-1', undefined, fallbackUsers),
+      { initialProps: { userId: 'user-A', fallbackUsers: ['user-A-item'] } },
+    );
+    await waitFor(() => expect(result.current.record?.id).toBe('record-user-A'));
+
+    let savePromise: Promise<unknown> = Promise.resolve();
+    act(() => {
+      savePromise = result.current.saveRecord('completed', 'edited');
+    });
+    rerender({ userId: 'user-B', fallbackUsers: ['user-B-item'] });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const capturedOptions = capturedUpsertArgs[1] as {
+      memoMode: string;
+      candidateUserIds: string[];
+    };
+    expect(capturedOptions).toEqual({
+      memoMode: 'overwrite',
+      candidateUserIds: ['user-A', 'user-A-item'],
+    });
+
+    resolveUpsert();
+    await act(async () => {
+      await expect(savePromise).rejects.toThrow('Execution record identity is not ready for mutation');
+    });
+    expect(capturedOptions.candidateUserIds).not.toContain('user-B');
+    expect(capturedOptions.candidateUserIds).not.toContain('user-B-item');
+  });
 });
+

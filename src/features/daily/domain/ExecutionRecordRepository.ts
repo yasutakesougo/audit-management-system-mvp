@@ -41,13 +41,22 @@ export type ExecutionRecordUpsertOptions = {
    * - overwrite: replace the memo with the incoming value.
    */
   memoMode?: 'merge' | 'overwrite';
+  /**
+   * Candidate user IDs (e.g. [user.UserID, String(user.Id)]) backed by the same master row.
+   * Allows matching and updating legacy records stored under previous ID representations.
+   */
+  candidateUserIds?: readonly string[];
 };
 
 export interface ExecutionRecordRepository {
   /**
    * Get all execution records for a given date × user.
    */
-  getRecords(date: string, userId: string): Promise<ExecutionRecord[]>;
+  getRecords(
+    date: string,
+    userId: string,
+    candidateUserIds?: readonly string[],
+  ): Promise<ExecutionRecord[]>;
 
   /**
    * Get a single execution record by date × user × scheduleItemId.
@@ -114,5 +123,10 @@ export interface ExecutionRecordRepository {
   /**
    * Delete an execution record by date × user × scheduleItemId.
    */
-  deleteRecord(date: string, userId: string, scheduleItemId: string): Promise<void>;
+  deleteRecord(
+    date: string,
+    userId: string,
+    scheduleItemId: string,
+    options?: { candidateUserIds?: readonly string[] },
+  ): Promise<void>;
 }

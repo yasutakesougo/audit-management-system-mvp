@@ -477,42 +477,69 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return Array.from(merged.values());
   }
 
-  private async ensureParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
-    const cachedId = this.parentRecordIds.get(dailyKey);
-    if (cachedId) return cachedId;
+  private async ensureParentRecord(
+    dailyKey: string,
+    date: string,
+    _userId: string,
+    candidateUserIds?: readonly string[],
+  ): Promise<number> {
+    const candidateKeys = candidateUserIds && candidateUserIds.length > 0
+      ? candidateUserIds.map((u) => `${date}-${u}`)
+      : [dailyKey];
 
-    const cachedPromise = this.parentRecordPromises.get(dailyKey);
-    if (cachedPromise) return cachedPromise;
+    for (const key of candidateKeys) {
+      const cachedId = this.parentRecordIds.get(key);
+      if (cachedId) return cachedId;
+      const cachedPromise = this.parentRecordPromises.get(key);
+      if (cachedPromise) return cachedPromise;
+    }
 
-    const promise = this.fetchOrCreateParentRecord(dailyKey, date, _userId)
+    const promise = this.fetchOrCreateParentRecord(dailyKey, date, _userId, candidateKeys)
       .then((id) => {
-        this.parentRecordIds.set(dailyKey, id);
+        for (const key of candidateKeys) {
+          this.parentRecordIds.set(key, id);
+        }
         return id;
       })
       .catch((error) => {
-        this.parentRecordIds.delete(dailyKey);
+        for (const key of candidateKeys) {
+          this.parentRecordIds.delete(key);
+        }
         throw error;
       })
       .finally(() => {
-        this.parentRecordPromises.delete(dailyKey);
+        for (const key of candidateKeys) {
+          this.parentRecordPromises.delete(key);
+        }
       });
 
-    this.parentRecordPromises.set(dailyKey, promise);
+    for (const key of candidateKeys) {
+      this.parentRecordPromises.set(key, promise);
+    }
     return promise;
   }
 
-  private async fetchOrCreateParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
+  private async fetchOrCreateParentRecord(
+    dailyKey: string,
+    date: string,
+    _userId: string,
+    candidateKeys?: readonly string[],
+  ): Promise<number> {
     await this.getResolvedFields(); // Ensure paths resolved
     const pf = this.resolvedParentFields!;
-    const filter = `${pf.title} eq '${this.escapeODataString(dailyKey)}'`;
-    const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
-    
-    const response = await this.spFetch(url, { method: 'GET' });
-    if (!response.ok) throw new Error(`[ExecutionRepo] Parent lookup failed: ${response.statusText}`);
-    
-    const data: SharePointResponse<JsonRecord> = await response.json();
-    if (data.value && data.value.length > 0) {
-      return data.value[0].Id as number;
+    const keysToCheck = candidateKeys && candidateKeys.length > 0 ? candidateKeys : [dailyKey];
+
+    for (const key of keysToCheck) {
+      const filter = `${pf.title} eq '${this.escapeODataString(key)}'`;
+      const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
+
+      const response = await this.spFetch(url, { method: 'GET' });
+      if (!response.ok) throw new Error(`[ExecutionRepo] Parent lookup failed: ${response.statusText}`);
+
+      const data: SharePointResponse<JsonRecord> = await response.json();
+      if (data.value && data.value.length > 0) {
+        return data.value[0].Id as number;
+      }
     }
 
     const createUrl = `${this.resolvedParentPath}/items`;
@@ -537,7 +564,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       return result.d ? result.d.Id : result.Id;
     }
 
-    const secondAttemptResponse = await this.spFetch(url, { method: 'GET' });
+    const fallbackFilter = `${pf.title} eq '${this.escapeODataString(dailyKey)}'`;
+    const fallbackUrl = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(fallbackFilter)}&$select=Id`;
+    const secondAttemptResponse = await this.spFetch(fallbackUrl, { method: 'GET' });
     const secondData: SharePointResponse<JsonRecord> = await secondAttemptResponse.json();
     if (secondData.value && secondData.value.length > 0) {
       return secondData.value[0].Id as number;
@@ -582,7 +611,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         record: {
           ...mapped,
           date: normalizedDate,
-          userId: normalizedUserId,
+          userId: mapped.userId,
           // Keep the persisted schedule identity when only the procedure-row
           // matched, so update/delete target the concrete legacy key.
           scheduleItemId: exactMatch ? normalizedScheduleItemId : itemScheduleItemId || normalizedScheduleItemId,
@@ -670,17 +699,58 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
   }
 
-  async getRecords(date: string, userId: string): Promise<ExecutionRecord[]> {
+  async getRecords(
+    date: string,
+    userId: string,
+    candidateUserIds: readonly string[] = [userId],
+  ): Promise<ExecutionRecord[]> {
     const normalizedDate = normalizeExecutionDate(date);
     const rf = await this.getResolvedFields();
-
-    const parents = await this.resolveParentCandidates(normalizedDate, userId, rf);
+    const verifiedUserIds = buildExecutionUserIdCandidates(userId, candidateUserIds);
+    const allowedUserIds = new Set(verifiedUserIds);
+    const allowedParentTitles = new Set(
+      verifiedUserIds.flatMap((candidate) => Array.from(this.parentTitlesForUser(normalizedDate, candidate))),
+    );
+    const allParents = await this.fetchParentPage(normalizedDate, rf);
+    const parents = Array.from(new Map(
+      allParents
+        .filter((parent) => allowedParentTitles.has(parent.title))
+        .map((parent) => [parent.id, parent] as const),
+    ).values());
     const rows: JsonRecord[] = [];
     for (const parent of parents) {
       rows.push(...await this.getRowsByParentId(rf, parent.id));
     }
 
-    const records = this.mergeExecutionRecords(rows.map((item) => this.mapToDomain(item, rf)));
+    const seenItemIds = new Set<number>();
+    const mappedRecords = rows
+      .filter((item) => {
+        const itemId = this.readPositiveItemId(item, '[ExecutionRepo] Child item ID is not numeric.');
+        if (seenItemIds.has(itemId)) return false;
+        seenItemIds.add(itemId);
+        return true;
+      })
+      .map((item) => this.mapToDomain(item, rf));
+
+    // A child under a parent selected for this master row must itself identify
+    // one of that row's verified ID forms. Treat an invalid/foreign child as a
+    // mismatch instead of silently turning the parent into an empty day.
+    if (mappedRecords.some((record) => !allowedUserIds.has(record.userId))) {
+      throw new ExecutionTargetMismatchError();
+    }
+
+    const records = mappedRecords.filter((record) => (
+      normalizeExecutionDate(record.date) === normalizedDate
+      && Boolean(normalizeScheduleItemId(record.scheduleItemId))
+    ));
+
+    const seenSlots = new Set<string>();
+    for (const record of records) {
+      const slotId = normalizeScheduleItemId(record.scheduleItemId);
+      const key = `${normalizedDate}\u0000${slotId}`;
+      if (seenSlots.has(key)) throw new AmbiguousExecutionRecordError();
+      seenSlots.add(key);
+    }
     
     // Sync to local store for reactive UI updates
     if (this.store) {
@@ -751,7 +821,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     if (!parentTitle.startsWith(`${normalizedDate}-`) || !allowedTitles.has(parentTitle)) return false;
     if (lookup.storedDate && normalizeExecutionDate(lookup.storedDate) !== normalizedDate) return false;
     const storedUserId = normalizeExecutionUserId(lookup.storedUserId);
-    if (storedUserId && !expandedUsers.includes(storedUserId)) return false;
+    if (!storedUserId || !expandedUsers.includes(storedUserId)) return false;
     const storedSchedule = normalizeScheduleItemId(lookup.storedScheduleItemId);
     if (!storedSchedule) return false;
     return requestedSchedules.some((scheduleItemId) => {
@@ -831,15 +901,21 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     )) {
       return { kind: 'mismatch' };
     }
-    return { kind: 'unique', internalId: lookup.internalId, record: lookup.record };
+    return {
+      kind: 'unique',
+      internalId: lookup.internalId,
+      record: lookup.record,
+    };
   }
 
   private async classifyForWrite(
     date: string,
     userId: string,
     scheduleItemId: string,
+    candidateUserIds?: readonly string[],
   ): Promise<Extract<ExecutionCandidateClassification, { kind: 'absent' | 'unique' }>> {
-    const classification = await this.classifyExecutionCandidates(date, [userId], [scheduleItemId]);
+    const userIds = candidateUserIds && candidateUserIds.length > 0 ? candidateUserIds : [userId];
+    const classification = await this.classifyExecutionCandidates(date, userIds, [scheduleItemId]);
     if (classification.kind === 'duplicate') throw new AmbiguousExecutionRecordError();
     if (classification.kind === 'mismatch') throw new ExecutionTargetMismatchError();
     return classification;
@@ -860,11 +936,21 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rowKey = `${dailyKey}-${normalizedScheduleItemId}`;
 
     const childFieldsPromise = this.initFields(this.childListTitle);
+    const candidateUserIds = options?.candidateUserIds && options.candidateUserIds.length > 0
+      ? options.candidateUserIds.map(normalizeExecutionUserId)
+      : [normalizedUserId];
     const classification = await this.classifyForWrite(
       normalizedDate,
       normalizedUserId,
       normalizedScheduleItemId,
+      candidateUserIds,
     );
+    if (classification.kind === 'unique') {
+      const existingUserId = normalizeExecutionUserId(classification.record.userId);
+      if (existingUserId && !candidateUserIds.includes(existingUserId)) {
+        throw new ExecutionTargetMismatchError();
+      }
+    }
     const existing = classification.kind === 'unique' ? classification.record : undefined;
     const existingId = classification.kind === 'unique' ? classification.internalId : undefined;
 
@@ -893,7 +979,12 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       memo: finalMemo,
     };
 
-    const parentId = await this.ensureParentRecord(dailyKey, normalizedDate, normalizedUserId);
+    const parentId = await this.ensureParentRecord(
+      dailyKey,
+      normalizedDate,
+      normalizedUserId,
+      candidateUserIds,
+    );
     await childFieldsPromise;
 
     const rawBody: Record<string, unknown> = {
@@ -963,17 +1054,30 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
   }
 
-  async deleteRecord(date: string, userId: string, scheduleItemId: string): Promise<void> {
+  async deleteRecord(
+    date: string,
+    userId: string,
+    scheduleItemId: string,
+    options?: { candidateUserIds?: readonly string[] },
+  ): Promise<void> {
     const normalizedDate = normalizeExecutionDate(date);
     const normalizedUserId = normalizeExecutionUserId(userId);
     const normalizedScheduleItemId = normalizeScheduleItemId(scheduleItemId);
+    const candidateUserIds = options?.candidateUserIds && options.candidateUserIds.length > 0
+      ? options.candidateUserIds.map(normalizeExecutionUserId)
+      : [normalizedUserId];
     const classification = await this.classifyForWrite(
       normalizedDate,
       normalizedUserId,
       normalizedScheduleItemId,
+      candidateUserIds,
     );
 
     if (classification.kind === 'unique') {
+      const existingUserId = normalizeExecutionUserId(classification.record.userId);
+      if (existingUserId && !candidateUserIds.includes(existingUserId)) {
+        throw new ExecutionTargetMismatchError();
+      }
       const deleteUrl = `${this.resolvedChildPath}/items(${classification.internalId})`;
       const deleteResp = await this.spFetch(deleteUrl, {
         method: 'POST',
@@ -1117,7 +1221,10 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
 
     let date = title.slice(0, 10);
-    const userId = readSharePointText(item[rf.userId]);
+    const userId = readSharePointText(item[rf.userId])
+      || readSharePointText(item.User_x0020_ID)
+      || readSharePointText(item.UserId)
+      || readSharePointText(item.userId);
     let scheduleItemId = '';
 
     // First attempt: extract scheduleItemId from Title or RowKey (composite keys)

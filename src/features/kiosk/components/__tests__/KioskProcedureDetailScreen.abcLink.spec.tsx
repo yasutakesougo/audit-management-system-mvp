@@ -114,7 +114,7 @@ describe('KioskProcedureDetailScreen ABC link identity', () => {
       'U001',
       'procedure-2',
       expect.arrayContaining(['2', 'procedure-2', 'step-2']),
-      expect.arrayContaining(['U001']),
+      expect.arrayContaining(['1']),
     );
 
     fireEvent.click(screen.getByTestId('kiosk-procedure-detail-abc-record'));

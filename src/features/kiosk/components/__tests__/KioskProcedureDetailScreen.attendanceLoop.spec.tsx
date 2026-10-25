@@ -233,7 +233,7 @@ describe('real useKioskAttendance through KioskProcedureDetailScreen', () => {
     expect(harness.getDailyByDate).not.toHaveBeenCalled();
     loopGuard.bound = Number.POSITIVE_INFINITY;
 
-    harness.getDailyByDate.mockResolvedValue([absentRow('U006')]);
+    harness.getDailyByDate.mockResolvedValue([absentRow('U-006')]);
     harness.userState.current = {
       data: makeUser({ Id: 6, UserID: 'U-006', FullName: '合成利用者6' }),
       status: 'success',
