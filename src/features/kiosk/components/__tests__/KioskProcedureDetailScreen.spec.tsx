@@ -349,7 +349,8 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       'U009',
       'procedure-1',
       expect.any(Array),
-      expect.arrayContaining(['U009']),
+      // Fallback ID is strictly user.Id ('1') backed by Users_Master; synthetic U009 alias duplication is removed
+      expect.arrayContaining(['1']),
     );
     expect(screen.queryByDisplayValue('old-code-test-memo')).toBeNull();
     expect(screen.queryByText('読み込み中...')).toBeNull();
@@ -479,7 +480,8 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
       'U001',
       'procedure-1',
       expect.arrayContaining(['1', 'base-1', 'row-1', 'procedure-1', 'slot-1', 'slot_1', 'step-1']),
-      expect.arrayContaining(['U001', '1', 'U1', 'U-001']),
+      // Fallback ID is strictly user.Id ('1') backed by Users_Master; synthetic U1 and U-001 are eliminated
+      expect.arrayContaining(['1']),
     );
 
     fireEvent.click(screen.getByTestId('mood-chip-不安そう'));
@@ -1803,9 +1805,9 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     );
 
     const freshCalls = mockUseKioskAttendance.mock.calls.slice(pendingCalls.length);
-    expect(freshCalls.length).toBeGreaterThan(0);
     const freshCandidates = freshCalls[0][2] as string[];
-    expect(freshCandidates).toEqual(['6', 'U-006', 'U006']);
+    // Verified candidates are strictly [user.UserID, String(user.Id)] without synthetic U006
+    expect(freshCandidates).toEqual(['U-006', '6']);
     expect(freshCandidates).not.toBe(pendingCandidates);
     for (const call of freshCalls) {
       expect(call[0]).toBe('U-006');

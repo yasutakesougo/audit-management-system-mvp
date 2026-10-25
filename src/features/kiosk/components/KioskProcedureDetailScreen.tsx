@@ -12,7 +12,6 @@ import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord, type SaveConfirmation } from '@/features/daily/hooks/useExecutionRecord';
 import { resolveKioskRecordDate } from '../utils/kioskDate';
 import {
-  buildExecutionUserIdCandidates,
   normalizeScheduleItemId,
 } from '@/features/daily/utils/normalizeExecutionLookup';
 import {
@@ -145,13 +144,26 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const { userId, slotKey } = useParams<{ userId: string; slotKey: string }>();
   const { data: fetchedUser, status } = useUser(userId || '');
   const user = React.useMemo(() => {
-    const lookup = String(userId ?? '').trim();
-    if (!lookup || !fetchedUser) return null;
-    const matchesRouteId = String(fetchedUser.UserID ?? '').trim() === lookup
-      || String(fetchedUser.Id ?? '').trim() === lookup;
+    const lookup = String(userId ?? '');
+    if (lookup.trim().length === 0 || !fetchedUser) return null;
+    const matchesRouteId = String(fetchedUser.UserID ?? '') === lookup
+      || String(fetchedUser.Id ?? '') === lookup;
     return matchesRouteId ? fetchedUser : null;
   }, [fetchedUser, userId]);
-  const canonicalUserId = String(user?.UserID ?? '').trim();
+  const verifiedUserCandidates = React.useMemo(() => {
+    if (!user) return [];
+    const candidates: string[] = [];
+    if (typeof user.UserID === 'string' && user.UserID.trim().length > 0) {
+      candidates.push(user.UserID);
+    }
+    if (typeof user.Id === 'number' && Number.isSafeInteger(user.Id) && user.Id > 0) {
+      candidates.push(String(user.Id));
+    }
+    return candidates;
+  }, [user]);
+  const canonicalUserId = (typeof user?.UserID === 'string' && user.UserID.trim().length > 0)
+    ? user.UserID
+    : '';
   const isUserResultFresh = status === 'success' && Boolean(user);
   const isUserFreshnessUnconfirmed = Boolean(user && !isUserResultFresh);
   const isUserLoading = (status === 'loading' || status === 'idle') && !user;
@@ -159,13 +171,14 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
   const deepLinkUserId = React.useMemo(() => {
-    const canonical = String(user?.UserID ?? '').trim();
+    const canonical = verifiedUserCandidates[0] ?? '';
     if (canonical) return canonical;
-    return String(userId ?? '').trim();
-  }, [user?.UserID, userId]);
+    const routeId = String(userId ?? '');
+    return routeId.trim().length > 0 ? routeId : '';
+  }, [userId, verifiedUserCandidates]);
   const returnRouteUserId = React.useMemo(() => {
-    const routeId = String(userId ?? '').trim();
-    if (routeId) return routeId;
+    const routeId = String(userId ?? '');
+    if (routeId.trim().length > 0) return routeId;
     return deepLinkUserId;
   }, [deepLinkUserId, userId]);
   
@@ -194,20 +207,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     ].filter((value, idx, arr): value is string => Boolean(value) && arr.indexOf(value) === idx);
   }, [procedure?.id, procedure?.rowNo, slotKey]);
   const historyUserIds = React.useMemo(() => {
-    const rawUserId = String(userId ?? '').trim();
-    const masterUserId = String(user?.UserID ?? '').trim();
-    const compactMasterUserId = masterUserId.replace(/-/g, '');
-    return [rawUserId, masterUserId, compactMasterUserId].filter(
-      (value, idx, arr): value is string => Boolean(value) && arr.indexOf(value) === idx,
-    );
-  }, [user?.UserID, userId]);
+    return verifiedUserCandidates;
+  }, [verifiedUserCandidates]);
   const fallbackScheduleItemIds = React.useMemo(
     () => buildScheduleItemIdCandidates(procedure, slotKey),
     [procedure, slotKey],
   );
   const fallbackUserIds = React.useMemo(
-    () => (isUserResultFresh && !isUserLoading && canonicalUserId ? buildExecutionUserIdCandidates(canonicalUserId) : []),
-    [canonicalUserId, isUserLoading, isUserResultFresh],
+    () => (isUserResultFresh && !isUserLoading && canonicalUserId ? verifiedUserCandidates.slice(1) : []),
+    [canonicalUserId, isUserLoading, isUserResultFresh, verifiedUserCandidates],
   );
 
   const abcSlotId = React.useMemo(() => {
@@ -260,12 +268,12 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     [fallbackScheduleItemIds, scheduleItemId],
   );
   const recordUserIdCandidates = React.useMemo(
-    () => new Set([resolvedUserId, ...fallbackUserIds].map((candidate) => candidate.trim()).filter(Boolean)),
-    [fallbackUserIds, resolvedUserId],
+    () => new Set(verifiedUserCandidates),
+    [verifiedUserCandidates],
   );
   const record = fetchedRecord
     && fetchedRecord.date === selectedDateIso
-    && recordUserIdCandidates.has(String(fetchedRecord.userId ?? '').trim())
+    && recordUserIdCandidates.has(String(fetchedRecord.userId ?? ''))
     && recordScheduleItemCandidates.has(normalizeScheduleItemId(fetchedRecord.scheduleItemId))
     ? fetchedRecord
     : undefined;
@@ -284,6 +292,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const liveIdentityGenerationRef = React.useRef(identityGeneration);
   const liveStartedFetchSeqRef = React.useRef(startedFetchSeq);
   const saveAttemptIdRef = React.useRef(0);
+  const deleteAttemptIdRef = React.useRef(0);
   liveIdentityKeyRef.current = identityKey;
   liveIdentityGenerationRef.current = identityGeneration;
   liveStartedFetchSeqRef.current = startedFetchSeq;
@@ -385,7 +394,20 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const [showUnconfirmedSaveResult, setShowUnconfirmedSaveResult] = useState(false);
   const [showValidationError, setShowValidationError] = useState(false);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
-  const [showDeleteError, setShowDeleteError] = useState(false);
+  const [deleteErrorNotice, setDeleteErrorNotice] = useState<{
+    screenKey: string;
+    screenGeneration: number;
+    identityKey: string;
+    identityGeneration: number;
+    attemptId: number;
+  } | null>(null);
+  const visibleDeleteErrorNotice = deleteErrorNotice
+    && deleteErrorNotice.screenKey === recordQueryKey
+    && deleteErrorNotice.screenGeneration === queryGeneration
+    && deleteErrorNotice.identityKey === identityKey
+    && deleteErrorNotice.identityGeneration === identityGeneration
+    ? deleteErrorNotice
+    : null;
   const [showHistory, setShowHistory] = useState(false);
 
   // Keep the main-branch transition guard, but key the form to the matched
@@ -395,7 +417,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     canonicalUserId,
     scheduleItemId,
     String(slotKey ?? ''),
-    String(userId ?? '').trim(),
+    String(userId ?? ''),
   ]);
   const formIdentityKeyRef = React.useRef(formIdentityKey);
   const isFormIdentityTransitioning = formIdentityKeyRef.current !== formIdentityKey;
@@ -462,6 +484,15 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     setShowSuccess(false);
     setShowPendingEditNotice(false);
     setShowDeleteSuccess(false);
+    setDeleteErrorNotice((current) => (
+      current
+      && current.screenKey === recordQueryKey
+      && current.screenGeneration === queryGeneration
+      && current.identityKey === identityKey
+      && current.identityGeneration === identityGeneration
+        ? current
+        : null
+    ));
     setSaveErrorNotice(null);
     if (!pendingNavWasAbandonedRef.current) return;
     setIsSaving(false);
@@ -931,11 +962,14 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       || isRecordMutationBlocked
       || isAbsent
     ) return;
+    const deleteAttemptId = ++deleteAttemptIdRef.current;
     const screenKeyAtStart = recordQueryKey;
+    const screenGenerationAtStart = queryGeneration;
     const identityKeyAtStart = identityKey;
     const identityGenerationAtStart = identityGeneration;
     const deleteStillOnTarget = () => (
       queryGenerationRef.current.key === screenKeyAtStart
+      && queryGenerationRef.current.generation === screenGenerationAtStart
       && liveIdentityKeyRef.current === identityKeyAtStart
       && liveIdentityGenerationRef.current === identityGenerationAtStart
     );
@@ -965,7 +999,13 @@ export const KioskProcedureDetailScreen: React.FC = () => {
           attemptId: 0,
         }),
       }));
-      setShowDeleteError(true);
+      setDeleteErrorNotice({
+        screenKey: screenKeyAtStart,
+        screenGeneration: screenGenerationAtStart,
+        identityKey: identityKeyAtStart,
+        identityGeneration: identityGenerationAtStart,
+        attemptId: deleteAttemptId,
+      });
     }
   };
 
@@ -1555,16 +1595,21 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      <Snackbar
-        open={showDeleteError}
-        autoHideDuration={4000}
-        onClose={() => setShowDeleteError(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="error" sx={{ width: '100%' }}>
-          記録の取り消しに失敗しました。再度お試しください。
-        </Alert>
-      </Snackbar>
+      {visibleDeleteErrorNotice && (
+        <Snackbar
+          key={visibleDeleteErrorNotice.attemptId}
+          open
+          autoHideDuration={4000}
+          onClose={() => setDeleteErrorNotice((current) => (
+            current?.attemptId === visibleDeleteErrorNotice.attemptId ? null : current
+          ))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="error" sx={{ width: '100%' }}>
+            記録の取り消しに失敗しました。再度お試しください。
+          </Alert>
+        </Snackbar>
+      )}
 
       <Drawer
         anchor="right"

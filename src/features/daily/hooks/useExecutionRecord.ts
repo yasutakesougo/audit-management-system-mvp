@@ -50,7 +50,11 @@ const ambiguousExecutionError = (): Error => Object.assign(new Error('AMBIGUOUS_
 const buildCandidateUserIds = (userId: string, fallbackUserKey: string): string[] => {
   const fallbackUserIdsParsed = fallbackUserKey ? fallbackUserKey.split('\u0000') : EMPTY_IDS;
   return Array.from(
-    new Set([userId, ...fallbackUserIdsParsed].map((value) => String(value ?? '').trim()).filter(Boolean)),
+    new Set(
+      [userId, ...fallbackUserIdsParsed]
+        .map((value) => String(value ?? ''))
+        .filter((value) => value.trim().length > 0),
+    ),
   );
 };
 
@@ -334,14 +338,22 @@ export function useExecutionRecord(
     assertMutationIdentityReady();
     const keyAtStart = identityKey;
     const generationAtStart = identityGeneration;
+    const baseCandidates = buildCandidateUserIds(userId, fallbackUserKey);
+    const candidateUserIdsAtStart = next.userId && !baseCandidates.includes(next.userId)
+      ? [next.userId, ...baseCandidates]
+      : baseCandidates;
+    const upsertOptions: ExecutionRecordUpsertOptions = {
+      ...options,
+      candidateUserIds: candidateUserIdsAtStart,
+    };
     try {
-      await upsertRecordRef.current(next, options);
+      await upsertRecordRef.current(next, upsertOptions);
     } catch (err) {
       rememberUnknownOutcome('save-unknown', keyAtStart, generationAtStart, err);
       throw err;
     }
     return confirmSavedRecord(next, keyAtStart, generationAtStart);
-  }, [assertMutationIdentityReady, confirmSavedRecord, identityGeneration, identityKey, rememberUnknownOutcome]);
+  }, [assertMutationIdentityReady, confirmSavedRecord, fallbackUserKey, identityGeneration, identityKey, rememberUnknownOutcome, userId]);
 
   const setStatus = useCallback(
     async (status: RecordStatus) => {
@@ -400,8 +412,14 @@ export function useExecutionRecord(
     const keyAtStart = identityKey;
     const generationAtStart = identityGeneration;
     const target = resolveMutationTarget();
+    const baseCandidates = buildCandidateUserIds(userId, fallbackUserKey);
+    const candidateUserIdsAtStart = target.userId && !baseCandidates.includes(target.userId)
+      ? [target.userId, ...baseCandidates]
+      : baseCandidates;
     try {
-      await deleteRecordRef.current(target.date, target.userId, target.scheduleItemId);
+      await deleteRecordRef.current(target.date, target.userId, target.scheduleItemId, {
+        candidateUserIds: candidateUserIdsAtStart,
+      });
     } catch (err) {
       rememberUnknownOutcome('delete-unknown', keyAtStart, generationAtStart, err);
       throw err;
@@ -419,11 +437,13 @@ export function useExecutionRecord(
     }
   }, [
     assertMutationIdentityReady,
+    fallbackUserKey,
     holdsCurrentTarget,
     identityGeneration,
     identityKey,
     rememberUnknownOutcome,
     resolveMutationTarget,
+    userId,
   ]);
 
   // Effects run after render. On an identity transition the previous lookup may

@@ -17,16 +17,17 @@ export function resolveProcedureUserQueryCandidates(
   queryUserIdFromSearch?: string | null
 ): string {
   // If search query override is provided, respect it.
-  if (queryUserIdFromSearch?.trim()) {
-    return queryUserIdFromSearch.trim();
+  if (queryUserIdFromSearch && queryUserIdFromSearch.trim().length > 0) {
+    return queryUserIdFromSearch;
   }
 
   // Prefer canonical UserID (e.g., U-006)
-  const canonical = String(user?.UserID ?? '').trim();
-  if (canonical) {
+  const canonical = String(user?.UserID ?? '');
+  if (canonical.trim().length > 0) {
     return canonical;
   }
 
   // Fall back to raw route identifier (e.g., "7")
-  return String(routeUserId ?? '').trim();
+  const routeId = String(routeUserId ?? '');
+  return routeId.trim().length > 0 ? routeId : '';
 }

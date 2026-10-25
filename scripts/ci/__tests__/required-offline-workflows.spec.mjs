@@ -162,8 +162,9 @@ for (const [file, name] of specs) {
     }
   });
 }
-test('schedule: real SharePoint job cannot run on workflow_dispatch', () => {
-  assert.equal(condition(get('test-schedule.yml').jobs['e2e-schedules-sp-smoke'].if, dispatch), false);
+test('schedule: optional SharePoint smoke job is not configured', () => {
+  const wf = get('test-schedule.yml');
+  assert.equal(Object.hasOwn(wf.jobs, 'e2e-schedules-sp-smoke'), false);
 });
 test('quality: manual job runs required suites, browser checks and local performance assertions with read-only permissions', () => {
   const wf = get('test.yml'), job = manualJob(wf, 'quality');
@@ -267,11 +268,6 @@ test('quality: bound PR uses the read-only offline job and cannot reach legacy q
     assert.equal(condition(wf.jobs.quality.name, event), 'quality');
   }
 });
-test('schedule: bound PR cannot enter the real SharePoint job; other events retain their prior path', () => {
-  const guard = get('test-schedule.yml').jobs['e2e-schedules-sp-smoke'].if;
-  assert.equal(condition(guard, targetPr), false);
-  for (const event of otherEvents) assert.equal(condition(guard, event), true);
-});
 test('CI: Index Audit is excluded for all pull requests and retained for push, without changing any other validation', () => {
   const wf = get('ci.yml');
   const audit = wf.jobs.typecheck.steps.find(step => step.id === 'index_audit');
@@ -295,14 +291,12 @@ test('CI: Index Audit is excluded for all pull requests and retained for push, w
   assert.equal(hashSteps(wf), 'cd985b6ac7cbfc9a8c95d0fb9bf2666f8d9f7d667ff5091c5ceea2ac670049f4');
 });
 
-test('schedule: hotfix branch push is also offline and cannot start a production-capable job', () => {
+test('schedule: hotfix branch push remains restricted to the offline runtime', () => {
   const wf = get('test-schedule.yml');
   const push = { event_name: 'push', repository: targetPr.repository, ref: 'refs/heads/hotfix/kiosk-procedure-early-display', event: {} };
   const setup = wf.jobs.schedule.steps.find(step => step.name === 'Configure manual offline runtime');
   assert.equal(condition(setup.if, push), true);
-  assert.equal(condition(wf.jobs['e2e-schedules-sp-smoke'].if, push), false);
   for (const other of [{ ...push, ref: 'refs/heads/main' }, { ...push, ref: 'refs/heads/other' }, { ...push, repository: 'other/repo' }]) {
     assert.equal(condition(setup.if, other), false);
-    assert.equal(condition(wf.jobs['e2e-schedules-sp-smoke'].if, other), true);
   }
 });

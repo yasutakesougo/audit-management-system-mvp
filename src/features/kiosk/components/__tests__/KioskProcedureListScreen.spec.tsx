@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KioskProcedureListScreen } from '../KioskProcedureListScreen';
 import { openThrottleCircuit, __clearSharePointThrottleCircuitBreakerForTests } from '@/lib/sp';
@@ -120,23 +120,44 @@ vi.mock('@/features/daily/hooks/useProcedureData', () => ({
   }),
 }));
 
-const mockGetRecords = vi.fn<(date: string, userId: string) => Promise<Array<Partial<ExecutionRecord>>>>();
+const mockGetRecords = vi.fn<(
+  date: string,
+  userId: string,
+  candidateUserIds?: readonly string[],
+) => Promise<Array<Partial<ExecutionRecord>>>>();
 const mockGetRecord = vi.fn<
   (date: string, userId: string, scheduleItemId: string) => Promise<Partial<ExecutionRecord> | undefined>
 >();
 const mockGetStoreRecords = vi.fn<(date: string, userId: string) => Array<Partial<ExecutionRecord>>>();
 const mockGetCurrentExecutionRepositoryKind = vi.fn<() => 'local' | 'sharepoint'>(() => 'local');
 
+const withRequestedIdentity = (
+  records: Array<Partial<ExecutionRecord>>,
+  date: string,
+  userId: string,
+): Array<Partial<ExecutionRecord>> => records.map((record) => ({
+  ...record,
+  date: record.date ?? date,
+  userId: record.userId ?? userId,
+}));
+
 vi.mock('@/features/daily/stores/executionStore', () => ({
   useExecutionStore: () => ({
-    getRecords: mockGetStoreRecords
+    getRecords: (date: string, userId: string) => (
+      withRequestedIdentity(mockGetStoreRecords(date, userId), date, userId)
+    ),
   }),
 }));
 
 vi.mock('@/features/daily/hooks/useExecutionData', () => ({
   useExecutionData: () => ({
-    getRecords: mockGetRecords,
-    getRecord: mockGetRecord,
+    getRecords: async (date: string, userId: string, candidateUserIds?: readonly string[]) => (
+      withRequestedIdentity(await mockGetRecords(date, userId, candidateUserIds), date, userId)
+    ),
+    getRecord: async (date: string, userId: string, scheduleItemId: string) => {
+      const record = await mockGetRecord(date, userId, scheduleItemId);
+      return record ? withRequestedIdentity([record], date, userId)[0] : undefined;
+    },
   }),
 }));
 
@@ -254,7 +275,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     expect(screen.queryByText('読み込み中...')).toBeNull();
     expect(screen.getByText('実施状況: 未確認')).toBeInTheDocument();
     expect(screen.getByTestId('kiosk-user-freshness-unconfirmed-alert')).toBeInTheDocument();
-    await waitFor(() => expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U017'));
+    await waitFor(() => expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U017', undefined));
 
     mockUseUser.mockReturnValue({
       data: { Id: 17, UserID: 'U017', FullName: '更新後の利用者' },
@@ -493,9 +514,9 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
   it('does not count unmatched executionRecords in completed count', async () => {
     mockGetRecords.mockResolvedValue([
-      { scheduleItemId: 'X001', status: 'completed' },
-      { scheduleItemId: 'X002', status: 'completed' },
-      { scheduleItemId: 'X003', status: 'triggered' },
+      { scheduleItemId: 'unmatched-alpha', status: 'completed' },
+      { scheduleItemId: 'unmatched-bravo', status: 'completed' },
+      { scheduleItemId: 'unmatched-charlie', status: 'triggered' },
     ]);
 
     render(
@@ -643,6 +664,82 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
   });
 
+  it('does not assert completion or absence when the repository reports a child identity mismatch', async () => {
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockGetRecords.mockRejectedValue(Object.assign(
+      new Error('EXECUTION_TARGET_MISMATCH'),
+      { code: 'EXECUTION_TARGET_MISMATCH' },
+    ));
+    mockGetStoreRecords.mockReturnValue([
+      {
+        date: '2026-05-08',
+        userId: 'U001',
+        scheduleItemId: '1',
+        status: 'completed',
+        memo: 'cached, not remotely confirmed',
+      },
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures?date=2026-05-08']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetRecords).toHaveBeenCalled());
+    expect(screen.getByText('実施状況: 未確認')).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.queryByText('0 完了')).toBeNull();
+    const firstCard = screen.getByTestId('kiosk-procedure-card-0');
+    expect(within(firstCard).queryByText('記録済み')).toBeNull();
+    expect(within(firstCard).getByTestId('kiosk-uncertain-local-chip-0')).toHaveTextContent('同期状態未確認');
+  });
+
+  it('uses exact UserID matching instead of selecting a master row with surrounding whitespace', async () => {
+    mockUseUser.mockReturnValue({ data: null, status: 'idle', error: null });
+    mockUseUsers.mockReturnValue({
+      data: [
+        { Id: 2, UserID: ' U001 ', FullName: '前後空白の行' },
+        { Id: 1, UserID: 'U001', FullName: '完全一致の行' },
+      ],
+      status: 'success',
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('完全一致の行 様')).toBeInTheDocument();
+    expect(screen.queryByText('前後空白の行 様')).toBeNull();
+  });
+
+  it('keeps distinct verified UserID and Item ID candidates in SharePoint reads', async () => {
+    mockRouteUserId = '1';
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockUseUser.mockReturnValue({
+      data: { Id: 1, UserID: 'U001', FullName: '田中 太郎' },
+      status: 'success',
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/kiosk/users/1/procedures?date=2026-05-08']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetRecords).toHaveBeenCalledWith(
+        expect.any(String),
+        'U001',
+        ['U001', '1'],
+      );
+    });
+  });
+
   it('shows stale store records without the recency filter when SharePoint record fetch fails', async () => {
     mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
     mockGetStoreRecords.mockReturnValue([
@@ -666,7 +763,9 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       expect(within(firstCard).getByText('同期状態未確認')).toBeInTheDocument();
       expect(within(firstCard).queryByText('記録済み')).toBeNull();
       expect(within(firstCard).queryByText('未実施')).toBeNull();
-      expect(screen.getByText('実施状況: 1 / 2')).toBeInTheDocument();
+      expect(screen.getByText('実施状況: 未確認')).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).toBeNull();
+      expect(screen.queryByText('1 完了')).toBeNull();
       expect(screen.getByText('記録の取得に失敗しました。再読み込みしてください。')).toBeInTheDocument();
     });
   });
@@ -824,7 +923,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(mockGetStoreRecords).toHaveBeenCalledWith('2026-05-07', 'U001');
-      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-07', 'U001');
+      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-07', 'U001', undefined);
     });
   });
 
@@ -837,7 +936,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(mockGetStoreRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
-      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
+      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-08', 'U001', undefined);
     });
   });
 
@@ -850,7 +949,7 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     await waitFor(() => {
       expect(mockGetStoreRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
-      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-08', 'U001');
+      expect(mockGetRecords).toHaveBeenCalledWith('2026-05-08', 'U001', undefined);
     });
   });
 
@@ -1198,6 +1297,100 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     expect(within(firstCard).getByText('未実施')).toBeInTheDocument();
   });
 
+  it('hides the previous user fetch error immediately after switching users', async () => {
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    mockGetRecords.mockRejectedValue(new Error('EXECUTION_TARGET_MISMATCH'));
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    const fetchError = '記録の取得に失敗しました。再読み込みしてください。';
+    await waitFor(() => expect(screen.getByText(fetchError)).toBeInTheDocument());
+
+    mockRouteUserId = 'U002';
+    mockLocationKey = 'switched-to-user-u002';
+    mockUseUser.mockReturnValue({
+      data: asUser({ Id: 2, UserID: 'U002', FullName: '鈴木 次郎' }),
+      status: 'success',
+      error: null,
+    });
+    const userBRequestResolvers: Array<(records: Array<Partial<ExecutionRecord>>) => void> = [];
+    const userBRequestPromises: Array<Promise<Array<Partial<ExecutionRecord>>>> = [];
+    mockGetRecords.mockImplementation(() => {
+      let resolveUserBRequest!: (records: Array<Partial<ExecutionRecord>>) => void;
+      const request = new Promise<Array<Partial<ExecutionRecord>>>((resolve) => {
+        resolveUserBRequest = resolve;
+      });
+      userBRequestResolvers.push(resolveUserBRequest);
+      userBRequestPromises.push(request);
+      return request;
+    });
+
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/U002/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/鈴木 次郎/)).toBeInTheDocument();
+    expect(screen.queryByText(fetchError)).toBeNull();
+
+    await waitFor(() => expect(userBRequestResolvers.length).toBeGreaterThan(0));
+    await act(async () => {
+      userBRequestResolvers.forEach((resolveUserBRequest) => resolveUserBRequest([]));
+      await Promise.all(userBRequestPromises);
+    });
+  });
+
+  it('does not show a delayed previous-user fetch error after the new user has loaded', async () => {
+    mockGetCurrentExecutionRepositoryKind.mockReturnValue('sharepoint');
+    let rejectUserA!: (error: Error) => void;
+    mockGetRecords.mockImplementation((_date, userId) => {
+      if (userId === 'U001') {
+        return new Promise((_resolve, reject) => { rejectUserA = reject; });
+      }
+      return Promise.resolve([]);
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/kiosk/users/U001/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(mockGetRecords).toHaveBeenCalledWith(
+      expect.any(String),
+      'U001',
+      ['U001', '1'],
+    ));
+
+    mockRouteUserId = 'U002';
+    mockLocationKey = 'switched-to-user-u002-before-user-a-fails';
+    mockUseUser.mockReturnValue({
+      data: asUser({ Id: 2, UserID: 'U002', FullName: '鈴木 次郎' }),
+      status: 'success',
+      error: null,
+    });
+    rerender(
+      <MemoryRouter initialEntries={['/kiosk/users/U002/procedures']}>
+        <KioskProcedureListScreen />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText(/鈴木 次郎/)).toBeInTheDocument());
+
+    act(() => {
+      rejectUserA(Object.assign(new Error('EXECUTION_TARGET_MISMATCH'), {
+        code: 'EXECUTION_TARGET_MISMATCH',
+      }));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('記録の取得に失敗しました。再読み込みしてください。')).toBeNull();
+    });
+  });
+
   it('synchronously clears records when date query changes to prevent temporal display of stale records', async () => {
     mockGetRecords.mockImplementation(async (date) => {
       if (date === '2026-05-08') {
@@ -1400,8 +1593,8 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
     });
 
     // Verify that fetches start only after the master user is resolved.
-    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U001');
-    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), '17');
+    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), 'U001', undefined);
+    expect(mockGetRecords).toHaveBeenCalledWith(expect.any(String), '17', undefined);
   });
 
   it('correctly matches 6 completed execution records (1 to 6) to the first 6 procedure rows (1-based rowNo match)', async () => {
@@ -1545,15 +1738,15 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       });
     });
 
-    it('robustly matches local cache records with ID/userId variations (prefixed, canonical, trailing match)', async () => {
-      // routeUserId is mockRouteUserId = 'U001' (buildExecutionUserIdCandidates creates U001, 1, U1, U-001, etc)
+    it('matches local cache records backed by verified master user candidates (canonical UserID and Item ID)', async () => {
+      // routeUserId is mockRouteUserId = 'U001', master has Id = 1, UserID = 'U001'
       mockGetRecords.mockRejectedValue(new Error('SharePoint fetch failed'));
 
-      // Store record has U-001 as userId (variation) and procedure match keys are evaluated
+      // Store record has '1' (master Item ID candidate) as userId
       mockGetStoreRecords.mockImplementation((_date, userId) => {
-        if (userId === 'U-001') {
+        if (userId === '1') {
           return [
-            { scheduleItemId: 'procedure-1', status: 'completed', recordedAt: '2026-05-08T10:00:00Z' }
+            { scheduleItemId: '1', status: 'completed', recordedAt: '2026-05-08T10:00:00Z' }
           ];
         }
         return [];

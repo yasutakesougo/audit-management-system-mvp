@@ -258,21 +258,32 @@ describe('executionStore', () => {
     expect(result.current.getRecords('2025-04-01', 'I001')).toEqual([]);
   });
 
-  it('normalizes userId string/number-like mismatch on getRecords', () => {
+  it('distinguishes exact userId with whitespace and normalizes positive integers on getRecords', () => {
     const { result } = renderHook(() => useExecutionStore());
-    const record = {
+    const whitespaceRecord = {
       ...createEmptyRecord('2025-04-01', ' 6 ', 'base-0900'),
+      status: 'completed' as const,
+      recordedAt: '2025-04-01T10:00:00Z',
+    };
+    const exactRecord = {
+      ...createEmptyRecord('2025-04-01', '6', 'base-0900'),
       status: 'completed' as const,
       recordedAt: '2025-04-01T10:00:00Z',
     };
 
     act(() => {
-      result.current.upsertRecord(record);
+      result.current.upsertRecord(whitespaceRecord);
+      result.current.upsertRecord(exactRecord);
     });
 
-    const records = result.current.getRecords('2025-04-01', '6');
-    expect(records).toHaveLength(1);
-    expect(records[0].userId).toBe('6');
+    // Exact ID '6' and whitespace ID ' 6 ' are kept distinct
+    const exactRecords = result.current.getRecords('2025-04-01', '6');
+    expect(exactRecords).toHaveLength(1);
+    expect(exactRecords[0].userId).toBe('6');
+
+    const whitespaceRecords = result.current.getRecords('2025-04-01', ' 6 ');
+    expect(whitespaceRecords).toHaveLength(1);
+    expect(whitespaceRecords[0].userId).toBe(' 6 ');
   });
 
   it('normalizes ISO date to yyyy-MM-dd for save/load lookup', () => {

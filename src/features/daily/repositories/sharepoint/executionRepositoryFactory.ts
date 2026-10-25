@@ -136,8 +136,16 @@ function createLocalStorageExecutionAdapter(
   store: ExecutionStoreHooks,
 ): ExecutionRecordRepository {
   return {
-    getRecords: async (date: string, userId: string) =>
-      store.getRecords(normalizeExecutionDate(date), normalizeExecutionUserId(userId)),
+    getRecords: async (date: string, userId: string, candidateUserIds?: readonly string[]) => {
+      const normalizedDate = normalizeExecutionDate(date);
+      const candidates = Array.from(new Set([userId, ...(candidateUserIds ?? [])]))
+        .filter((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
+      return Array.from(new Map(candidates.flatMap((candidate) => (
+        store.getRecords(normalizedDate, normalizeExecutionUserId(candidate))
+          .filter((record) => record.userId === candidate && normalizeExecutionDate(record.date) === normalizedDate)
+          .map((record) => [`${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`, record] as const)
+      ))).values());
+    },
     getRecord: async (date: string, userId: string, scheduleItemId: string) =>
       store.getRecord(
         normalizeExecutionDate(date),
@@ -169,8 +177,8 @@ function createSharePointExecutionAdapter(
   repository: SharePointExecutionRecordRepository,
 ): ExecutionRecordRepository {
   return {
-    getRecords: async (date: string, userId: string) =>
-      repository.getRecords(date, userId),
+    getRecords: async (date: string, userId: string, candidateUserIds?: readonly string[]) =>
+      repository.getRecords(date, userId, candidateUserIds),
     getRecord: async (date: string, userId: string, scheduleItemId: string) =>
       repository.getRecord(date, userId, scheduleItemId),
     getRecordForCandidates: async (
@@ -185,8 +193,12 @@ function createSharePointExecutionAdapter(
     ) => repository.classifyExecutionCandidates(date, userIds, scheduleItemIds),
     upsertRecord: async (record: ExecutionRecord, options?: ExecutionRecordUpsertOptions) =>
       repository.upsertRecord(record, options),
-    deleteRecord: async (date: string, userId: string, scheduleItemId: string) =>
-      repository.deleteRecord(date, userId, scheduleItemId),
+    deleteRecord: async (
+      date: string,
+      userId: string,
+      scheduleItemId: string,
+      options?: { candidateUserIds?: readonly string[] },
+    ) => repository.deleteRecord(date, userId, scheduleItemId, options),
     getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       repository.getCompletionRate(date, userId, totalSlots),
     getHistoricalRecords: async (userId: string, scheduleItemId: string, limit?: number) =>

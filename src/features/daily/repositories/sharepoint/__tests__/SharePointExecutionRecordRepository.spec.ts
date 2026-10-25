@@ -18,6 +18,21 @@ function pagedValue<T extends { Id?: unknown }>(url: string, items: T[]): { valu
   };
 }
 
+function effectiveRequestMethod(init?: RequestInit): string {
+  const baseMethod = (init?.method ?? 'GET').toUpperCase();
+  const overrideMethod = new Headers(init?.headers).get('X-HTTP-Method');
+  return (overrideMethod || baseMethod).toUpperCase();
+}
+
+function countTransportPostRequests(spFetch: { mock: { calls: Array<readonly [unknown, RequestInit?]> } }): number {
+  return spFetch.mock.calls.filter(([, init]) => {
+    const transportMethod = (init?.method ?? 'GET').toUpperCase();
+    const effectiveMethod = effectiveRequestMethod(init);
+    return transportMethod === 'POST'
+      && ['POST', 'MERGE', 'DELETE'].includes(effectiveMethod);
+  }).length;
+}
+
 describe('SharePointExecutionRecordRepository', () => {
   const mockSpFetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -83,7 +98,7 @@ describe('SharePointExecutionRecordRepository', () => {
 
     // Verify fields in the POST request to child list
     const createCall = mockSpFetch.mock.calls.find(call => 
-      call[0].includes('DailyRecordRows') && call[1]?.method === 'POST'
+      call[0].includes('DailyRecordRows') && effectiveRequestMethod(call[1]) === 'POST'
     );
     
     expect(createCall).toBeDefined();
@@ -128,7 +143,7 @@ describe('SharePointExecutionRecordRepository', () => {
     await repoNoFields.upsertRecord(record);
 
     const createCall = mockSpFetch.mock.calls.find(call => 
-      call[0].includes('DailyRecordRows') && call[1]?.method === 'POST'
+      call[0].includes('DailyRecordRows') && effectiveRequestMethod(call[1]) === 'POST'
     );
     
     expect(createCall).toBeDefined();
@@ -176,7 +191,7 @@ describe('SharePointExecutionRecordRepository', () => {
 
     // Verify child creation payload has parentId set to the parsed flat ID (777)
     const childCreateCall = mockSpFetch.mock.calls.find(call =>
-      call[0].includes('DailyRecordRows') && call[1]?.method === 'POST'
+      call[0].includes('DailyRecordRows') && effectiveRequestMethod(call[1]) === 'POST'
     );
     expect(childCreateCall).toBeDefined();
     const childBody = JSON.parse(childCreateCall![1]!.body as string);
@@ -526,9 +541,11 @@ describe('SharePointExecutionRecordRepository', () => {
     expect(parentUrl).toContain('$orderby=ID asc');
     expect(parentUrl).toContain('$top=500');
     const childDataPages = childUrls.filter((url) => url.includes('ID gt 0'));
-    expect(childDataPages).toHaveLength(2);
+    // Synthetic 'U017' prefixing from '17' was removed to prevent cross-user contamination.
+    // Querying for '17' now only fetches parent 123 ('2026-05-25-17') and never touches parent 456 ('2026-05-25-U017').
+    expect(childDataPages).toHaveLength(1);
     expect(childUrls.some((url) => url.includes('Parent_x0020_ID eq 123'))).toBe(true);
-    expect(childUrls.some((url) => url.includes('Parent_x0020_ID eq 456'))).toBe(true);
+    expect(childUrls.some((url) => url.includes('Parent_x0020_ID eq 456'))).toBe(false);
     expect(childUrls.every((url) => !url.includes("Parent_x0020_ID eq '"))).toBe(true);
     expect(childUrls.every((url) => !url.includes(' or '))).toBe(true);
     expect(childUrls.every((url) => !url.includes('startswith('))).toBe(true);
@@ -567,7 +584,8 @@ describe('SharePointExecutionRecordRepository', () => {
 
     expect(record).toEqual(expect.objectContaining({
       date: '2026-05-20',
-      userId: '6',
+      // Preserves actual stored User_x0020_ID ('U006') rather than masquerading/overwriting with query key ('6')
+      userId: 'U006',
       scheduleItemId: '0',
       memo: 'legacy memo',
     }));
@@ -643,14 +661,12 @@ describe('SharePointExecutionRecordRepository', () => {
 
     const decodedCalls = mockSpFetch.mock.calls.map(([requestUrl, init]) => ({
       url: decodeURIComponent(String(requestUrl)),
-      method: init?.method,
-      headers: init?.headers,
+      method: effectiveRequestMethod(init),
     }));
     expect(decodedCalls.some((call) => call.url.includes('Title eq'))).toBe(false);
     expect(decodedCalls.some((call) => (
       call.url.includes('/items(77)') &&
-      call.method === 'POST' &&
-      Boolean(call.headers && (call.headers as Record<string, string>)['X-HTTP-Method'] === 'DELETE')
+      call.method === 'DELETE'
     ))).toBe(true);
   });
 
@@ -669,7 +685,7 @@ describe('SharePointExecutionRecordRepository', () => {
     });
 
     await expect(repoWithFreshFields.getRecords('2026-05-25', '17')).resolves.toEqual([]);
-    expect(mockSpFetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+    expect(countTransportPostRequests(mockSpFetch)).toBe(0);
   });
 
   it('propagates parent retrieval failures instead of treating them as zero records', async () => {
@@ -1381,7 +1397,7 @@ describe('SharePointExecutionRecordRepository', () => {
       };
 
       await expect(repoStrict.upsertRecord(record)).rejects.toThrow('Recovery schema fields');
-      expect(mockSpFetch.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
+      expect(countTransportPostRequests(mockSpFetch)).toBe(0);
     });
 
     it('ensureParentRecord uses resolved parent date field (Date) when RecordDate is missing', async () => {
@@ -1432,7 +1448,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await repoDate.upsertRecord(record);
 
       const parentCreateCall = mockSpFetchDate.mock.calls.find(call =>
-        call[0].includes('SupportRecord_Daily') && call[1]?.method === 'POST'
+        call[0].includes('SupportRecord_Daily') && effectiveRequestMethod(call[1]) === 'POST'
       );
       expect(parentCreateCall).toBeDefined();
       const body = JSON.parse(parentCreateCall![1]!.body as string);
@@ -1504,13 +1520,12 @@ describe('SharePointExecutionRecordRepository', () => {
     const urlsOf = (spFetch: ReturnType<typeof vi.fn>): string[] =>
       spFetch.mock.calls.map((call) => decodeURIComponent(String(call[0])));
 
-    const postCount = (spFetch: ReturnType<typeof vi.fn>): number =>
-      spFetch.mock.calls.filter((call) => call[1]?.method === 'POST').length;
+    const transportPostCount = (spFetch: ReturnType<typeof vi.fn>): number =>
+      countTransportPostRequests(spFetch);
 
     const headerCount = (spFetch: ReturnType<typeof vi.fn>, headerValue: string): number =>
       spFetch.mock.calls.filter((call) => {
-        const headers = call[1]?.headers as Record<string, string> | undefined;
-        return headers?.['X-HTTP-Method'] === headerValue;
+        return new Headers(call[1]?.headers).get('X-HTTP-Method') === headerValue;
       }).length;
 
     const installListServer = (
@@ -1619,7 +1634,7 @@ describe('SharePointExecutionRecordRepository', () => {
       expect(headerCount(spFetch, 'MERGE')).toBe(1);
       expect(urlsOf(spFetch).some((url) => url.includes('/items(77)'))).toBe(true);
       expect(urlsOf(spFetch).filter((url) => url.includes('DailyRecordRows') && url.endsWith('/items'))).toHaveLength(0);
-      expect(postCount(spFetch)).toBe(1);
+      expect(transportPostCount(spFetch)).toBe(1);
     });
 
     it('finds a child row that exists only after a 100-row page and after a 500-row page', async () => {
@@ -1731,7 +1746,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await repo.upsertRecord(draft('person-a', 'aa', 'updated'));
       expect(headerCount(spFetch, 'MERGE')).toBe(1);
       expect(urlsOf(spFetch).some((url) => url.includes('/items(7)'))).toBe(true);
-      expect(postCount(spFetch)).toBe(1);
+      expect(transportPostCount(spFetch)).toBe(1);
     });
 
     it('reads verbose d.results and ignores server nextLink values', async () => {
@@ -1774,8 +1789,10 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(separateRepo.getRecordForCandidates(DATE, ['person-a', 'person-b'], ['aa']))
         .resolves.toEqual(expect.objectContaining({ userId: 'person-a', memo: 'only-a' }));
 
+      // Case-folding / uppercase normalization was eliminated in favor of exact identifier matching.
+      // Ambiguous resolution is verified using duplicate parent rows for 'person-a'.
       const ambiguousFetch = installListServer(
-        [parentRow(2, 'person-a'), parentRow(3, 'PERSON-A')],
+        [parentRow(2, 'person-a'), parentRow(3, 'person-a')],
         new Map([
           [2, [childRow(10, 'person-a', 'aa', 'exact-a')]],
           [3, [childRow(11, 'person-a', 'aa', 'exact-b')]],
@@ -1789,7 +1806,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(ambiguousRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toMatchObject({
         code: AMBIGUOUS_EXECUTION_RECORD,
       });
-      expect(postCount(ambiguousFetch)).toBe(0);
+      expect(transportPostCount(ambiguousFetch)).toBe(0);
     });
 
     it('rejects exact-plus-procedure duplicates and a second match on a later page with zero writes', async () => {
@@ -1810,7 +1827,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(mixedRepo.deleteRecord(DATE, 'person-a', 'procedure-1')).rejects.toMatchObject({
         code: AMBIGUOUS_EXECUTION_RECORD,
       });
-      expect(postCount(mixedFetch)).toBe(0);
+      expect(transportPostCount(mixedFetch)).toBe(0);
 
       const laterFetch = installListServer(
         [parentRow(9, 'person-a')],
@@ -1834,7 +1851,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(laterRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toMatchObject({
         code: AMBIGUOUS_EXECUTION_RECORD,
       });
-      expect(postCount(laterFetch)).toBe(0);
+      expect(transportPostCount(laterFetch)).toBe(0);
     });
 
     it('reduces U=20 S=15 serial parent/child reads from 600 to one paged pass', async () => {
@@ -1896,8 +1913,8 @@ describe('SharePointExecutionRecordRepository', () => {
     const urlsOf = (spFetch: ReturnType<typeof vi.fn>): string[] =>
       spFetch.mock.calls.map((call) => decodeURIComponent(String(call[0])));
 
-    const postCount = (spFetch: ReturnType<typeof vi.fn>): number =>
-      spFetch.mock.calls.filter((call) => call[1]?.method === 'POST').length;
+    const transportPostCount = (spFetch: ReturnType<typeof vi.fn>): number =>
+      countTransportPostRequests(spFetch);
 
     const parentItem = { Id: 9, Title: `${DATE}-person-a`, RecordDate: DATE };
     const childItem = {
@@ -1939,7 +1956,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(repo.getRecord(DATE, 'person-a', 'aa')).rejects.toThrow();
       await expect(repo.upsertRecord(record)).rejects.toThrow();
       await expect(repo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toThrow();
-      expect(postCount(spFetch)).toBe(0);
+      expect(transportPostCount(spFetch)).toBe(0);
     };
 
     const draftRecord = (): ExecutionRecord => ({
@@ -1977,7 +1994,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(childRepo.getRecord(DATE, 'person-a', 'aa')).rejects.toThrow('Child lookup failed');
       await expect(childRepo.upsertRecord(draftRecord())).rejects.toThrow('Child lookup failed');
       await expect(childRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toThrow('Child lookup failed');
-      expect(postCount(childFailure)).toBe(0);
+      expect(transportPostCount(childFailure)).toBe(0);
     });
 
     it.each([
@@ -1997,7 +2014,7 @@ describe('SharePointExecutionRecordRepository', () => {
       const repo = createRepo(spFetch);
       await expect(repo.getRecords(DATE, 'person-a')).rejects.toThrow('unrecognized response shape');
       await expect(repo.getRecord(DATE, 'person-a', 'aa')).rejects.toThrow('unrecognized response shape');
-      expect(postCount(spFetch)).toBe(0);
+      expect(transportPostCount(spFetch)).toBe(0);
     });
 
     it('rejects unparseable JSON, non-monotonic IDs, and a 51st data page', async () => {
@@ -2016,14 +2033,14 @@ describe('SharePointExecutionRecordRepository', () => {
         },
       });
       await expect(createRepo(badJson).getRecord(DATE, 'person-a', 'aa')).rejects.toThrow('unparseable JSON');
-      expect(postCount(badJson)).toBe(0);
+      expect(transportPostCount(badJson)).toBe(0);
 
       const backwards = server({
         parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
         childAt: (lastId) => (lastId === 0 ? { value: [childItem, { ...childItem, Id: 3 }] } : { value: [] }),
       });
       await expect(createRepo(backwards).upsertRecord(draftRecord())).rejects.toThrow('non-monotonic ID');
-      expect(postCount(backwards)).toBe(0);
+      expect(transportPostCount(backwards)).toBe(0);
 
       const overflow = server({
         parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
@@ -2034,7 +2051,7 @@ describe('SharePointExecutionRecordRepository', () => {
       });
       await expect(createRepo(overflow).getRecord(DATE, 'person-a', 'aa')).rejects.toThrow('page limit exceeded');
       expect(urlsOf(overflow).some((url) => url.includes('ID gt 51'))).toBe(false);
-      expect(postCount(overflow)).toBe(0);
+      expect(transportPostCount(overflow)).toBe(0);
 
       const capped = server({
         parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
@@ -2081,7 +2098,7 @@ describe('SharePointExecutionRecordRepository', () => {
       const absentRepo = createRepo(absentFetch);
       await expect(absentRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'absent' });
       await absentRepo.upsertRecord(draftRecord());
-      expect(postCount(absentFetch)).toBeGreaterThan(0);
+      expect(transportPostCount(absentFetch)).toBeGreaterThan(0);
       expect(urlsOf(absentFetch).some((url) => url.includes('DailyRecordRows') && url.endsWith('/items') && !url.includes('items('))).toBe(true);
 
       const uniqueFetch = server({
@@ -2130,7 +2147,7 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(duplicateRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'duplicate' });
       await expect(duplicateRepo.upsertRecord(draftRecord())).rejects.toMatchObject({ code: AMBIGUOUS_EXECUTION_RECORD });
       await expect(duplicateRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toMatchObject({ code: AMBIGUOUS_EXECUTION_RECORD });
-      expect(postCount(duplicateFetch)).toBe(0);
+      expect(transportPostCount(duplicateFetch)).toBe(0);
 
       const mismatchedFetch = server({
         parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),
@@ -2142,16 +2159,12 @@ describe('SharePointExecutionRecordRepository', () => {
       await expect(mismatchedRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).resolves.toEqual({ kind: 'mismatch' });
       await expect(mismatchedRepo.upsertRecord(draftRecord())).rejects.toBeInstanceOf(ExecutionTargetMismatchError);
       await expect(mismatchedRepo.deleteRecord(DATE, 'person-a', 'aa')).rejects.toBeInstanceOf(ExecutionTargetMismatchError);
-      expect(postCount(mismatchedFetch)).toBe(0);
+      expect(transportPostCount(mismatchedFetch)).toBe(0);
     });
 
     const writeCount = (spFetch: ReturnType<typeof vi.fn>): number =>
       spFetch.mock.calls.filter((call) => {
-        const method = String(call[1]?.method ?? 'GET').toUpperCase();
-        const headers = call[1]?.headers as Record<string, string> | undefined;
-        const override = String(headers?.['X-HTTP-Method'] ?? '').toUpperCase();
-        return method === 'POST' || method === 'MERGE' || method === 'DELETE'
-          || override === 'MERGE' || override === 'DELETE';
+        return ['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE'].includes(effectiveRequestMethod(call[1]));
       }).length;
 
     const expectMismatchStaysBlocked = async (
@@ -2205,7 +2218,7 @@ describe('SharePointExecutionRecordRepository', () => {
       const overflowRepo = createRepo(overflow);
       await expect(overflowRepo.classifyExecutionCandidates(DATE, ['person-a'], ['aa'])).rejects.toThrow('page limit exceeded');
       await expect(overflowRepo.upsertRecord(draftRecord())).rejects.toThrow('page limit exceeded');
-      expect(postCount(overflow)).toBe(0);
+      expect(transportPostCount(overflow)).toBe(0);
 
       const capped = server({
         parentAt: (lastId) => (lastId === 0 ? { value: [parentItem] } : { value: [] }),

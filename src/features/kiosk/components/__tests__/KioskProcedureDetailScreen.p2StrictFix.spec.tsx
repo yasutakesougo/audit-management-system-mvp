@@ -60,6 +60,11 @@ const harness = vi.hoisted(() => {
   const gates: { upsert: UpsertGate | null; delete: DeleteGate | null } = { upsert: null, delete: null };
   const counts = { screenMounts: 0, classifySeq: 0, timerSeq: 0 };
   const heldTimers: { id: number; delay: number; callback: () => void }[] = [];
+  const openSnackbarCloseCallbacks: Array<{
+    message: string;
+    open: boolean;
+    callback: (...args: any[]) => void;
+  }> = [];
   const classifyCalls: PendingClassify[] = [];
   const upsertRecord = vi.fn((
     _record: ExecutionRecord,
@@ -121,11 +126,32 @@ const harness = vi.hoisted(() => {
     gates,
     counts,
     heldTimers,
+    openSnackbarCloseCallbacks,
     classifyCalls,
     upsertRecord,
     classifyExecutionCandidates,
     repository,
     attendanceRepository,
+  };
+});
+
+vi.mock('@mui/material', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@mui/material')>();
+  const React = await import('react');
+  return {
+    ...actual,
+    Snackbar: (props: React.ComponentProps<typeof actual.Snackbar>) => {
+      const message = String(props.children?.props?.children ?? '');
+      React.useEffect(() => {
+        if (message !== '記録の取り消しに失敗しました。再度お試しください。' || !props.onClose) return undefined;
+        const callback = props.onClose as (...args: any[]) => void;
+        harness.openSnackbarCloseCallbacks.push({ message, open: props.open, callback });
+        return () => {
+          harness.openSnackbarCloseCallbacks.push({ message, open: false, callback });
+        };
+      }, [message, props.onClose, props.open]);
+      return React.createElement(actual.Snackbar, props);
+    },
   };
 });
 
@@ -248,6 +274,13 @@ function revertState(): { present: boolean; disabled: boolean | null } {
   };
 }
 
+function deleteErrorNoticeOpen(): boolean {
+  const notice = harness.openSnackbarCloseCallbacks
+    .filter((item) => item.message === '記録の取り消しに失敗しました。再度お試しください。')
+    .at(-1);
+  return notice?.open ?? false;
+}
+
 const realSetTimeout = globalThis.setTimeout.bind(globalThis);
 const realClearTimeout = globalThis.clearTimeout.bind(globalThis);
 let restoreTimers: (() => void) | null = null;
@@ -257,7 +290,10 @@ function installControlledTimers() {
   const setSpy = vi.spyOn(globalThis, 'setTimeout');
   setSpy.mockImplementation(((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
     const ms = typeof timeout === 'number' && Number.isFinite(timeout) ? timeout : 0;
-    if (typeof handler === 'function' && ms === NAVIGATION_DELAY_MS) {
+    if (
+      typeof handler === 'function'
+      && ms === NAVIGATION_DELAY_MS
+    ) {
       harness.counts.timerSeq += 1;
       const id = 1_000_000_000 + harness.counts.timerSeq;
       harness.heldTimers.push({
@@ -386,7 +422,10 @@ function expectSameRecordUpdate(memos: string[]) {
     scheduleItemId: 'procedure-1',
     status: 'completed',
     memo,
-    options: { memoMode: 'overwrite' },
+    options: {
+      memoMode: 'overwrite',
+      candidateUserIds: ['U001', '1'],
+    },
   })));
   expect(harness.repository.deleteRecord.mock.calls).toEqual([]);
 }
@@ -434,6 +473,7 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     harness.gates.upsert = null;
     harness.gates.delete = null;
     harness.heldTimers.length = 0;
+    harness.openSnackbarCloseCallbacks.length = 0;
     applyTarget('A');
   });
 
@@ -848,7 +888,12 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     await hydrateLoadedRecord(true);
     await confirmDelete();
 
-    expect(harness.repository.deleteRecord.mock.calls).toEqual([[DATE, 'U001', 'procedure-1']]);
+    expect(harness.repository.deleteRecord.mock.calls).toEqual([[
+      DATE,
+      'U001',
+      'procedure-1',
+      { candidateUserIds: ['U001', '1'] },
+    ]]);
     expect(screen.getByText('記録を取り消しました')).toBeInTheDocument();
     await releaseHeldNavigation();
     expect(harness.navigate.mock.calls).toEqual([[RETURN_URL]]);
@@ -923,6 +968,113 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
   });
 
+  it('hides an already-visible delete failure notice immediately after A→B', async () => {
+    const view = await hydrateLoadedRecord(true);
+    await startDelete();
+
+    await act(async () => {
+      harness.gates.delete?.reject(new Error('delete failed'));
+    });
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(true);
+    expect(screen.getByText('記録の取り消しに失敗しました。再度お試しください。')).toBeInTheDocument();
+
+    applyTarget('B');
+    view.rerender(screenTree(true));
+    await drain();
+
+    expect(deleteErrorNoticeOpen()).toBe(false);
+    expect(screen.queryByText('記録の取り消しに失敗しました。再度お試しください。')).toBeNull();
+  });
+
+  it('does not resurrect A delete failure notice after A→B→A', async () => {
+    const view = await hydrateLoadedRecord(true);
+    await startDelete();
+
+    await act(async () => {
+      harness.gates.delete?.reject(new Error('delete failed'));
+    });
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(true);
+    expect(screen.getByText('記録の取り消しに失敗しました。再度お試しください。')).toBeInTheDocument();
+
+    applyTarget('B');
+    view.rerender(screenTree(true));
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(false);
+    expect(screen.queryByText('記録の取り消しに失敗しました。再度お試しください。')).toBeNull();
+
+    applyTarget('A');
+    view.rerender(screenTree(true));
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(false);
+    expect(screen.queryByText('記録の取り消しに失敗しました。再度お試しください。')).toBeNull();
+  });
+
+  it('does not let A notice close processing dismiss B delete failure notice', async () => {
+    const view = await hydrateLoadedRecord(true);
+    await startDelete();
+
+    await act(async () => {
+      harness.gates.delete?.reject(new Error('A delete failed'));
+    });
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(true);
+    const oldANoticeClose = harness.openSnackbarCloseCallbacks
+      .filter((item) => item.message === '記録の取り消しに失敗しました。再度お試しください。')
+      .at(-1)?.callback;
+    expect(oldANoticeClose).toBeTypeOf('function');
+    expect(screen.getByText('記録の取り消しに失敗しました。再度お試しください。')).toBeInTheDocument();
+
+    applyTarget('B');
+    view.rerender(screenTree(true));
+    await drain();
+    const recordB = { ...existingRecord(), id: 'rec-b', userId: 'U002' };
+    await waitFor(() => expect(pendingFor('U002').length).toBeGreaterThan(0));
+    await settleOldest('U002', { kind: 'unique', internalId: 22, record: recordB });
+    await waitFor(() => expect(memoValue()).toBe('元の観察'));
+
+    await startDelete();
+    await act(async () => {
+      harness.gates.delete?.reject(new Error('B delete failed'));
+    });
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(true);
+    expect(screen.getByText('記録の取り消しに失敗しました。再度お試しください。')).toBeInTheDocument();
+
+    await act(async () => oldANoticeClose?.(null, 'timeout'));
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(true);
+    expect(screen.getByText('記録の取り消しに失敗しました。再度お試しください。')).toBeInTheDocument();
+  });
+
+  it('keeps A delete hold after its failure notice closes', async () => {
+    await hydrateLoadedRecord(true);
+    await startDelete();
+
+    await act(async () => {
+      harness.gates.delete?.reject(new Error('delete failed'));
+    });
+    await drain();
+    expect(deleteErrorNoticeOpen()).toBe(true);
+    const noticeClose = harness.openSnackbarCloseCallbacks
+      .filter((item) => item.message === '記録の取り消しに失敗しました。再度お試しください。')
+      .at(-1)?.callback;
+    expect(noticeClose).toBeTypeOf('function');
+    expect(screen.getByText('記録の取り消しに失敗しました。再度お試しください。')).toBeInTheDocument();
+    expect(revertState().disabled).toBe(true);
+
+    await act(async () => {
+      noticeClose?.(null, 'timeout');
+    });
+    await drain();
+
+    expect(deleteErrorNoticeOpen()).toBe(false);
+    expect(screen.queryByText('記録の取り消しに失敗しました。再度お試しください。')).toBeNull();
+    expect(revertState().disabled).toBe(true);
+    expect(harness.repository.deleteRecord.mock.calls).toHaveLength(1);
+  });
+
   async function rehydrateReturnedTarget() {
     for (let i = 0; i < 8 && (memoValue() !== '元の観察' || pendingFor('U001').length > 0); i += 1) {
       const settled = await settleOldest('U001', { kind: 'unique', internalId: 11, record: existingRecord() });
@@ -949,7 +1101,12 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     expect(harness.counts.screenMounts).toBe(mountsAfterLoad);
     await rehydrateReturnedTarget();
 
-    expect(harness.repository.deleteRecord.mock.calls).toEqual([[DATE, 'U001', 'procedure-1']]);
+    expect(harness.repository.deleteRecord.mock.calls).toEqual([[
+      DATE,
+      'U001',
+      'procedure-1',
+      { candidateUserIds: ['U001', '1'] },
+    ]]);
     expect(screen.queryByText('記録を取り消しました')).toBeNull();
     expect(screen.queryByText('記録の取り消しに失敗しました。再度お試しください。')).toBeNull();
     expect(screen.queryByText('実施記録の読み込みに失敗しました')).toBeNull();
@@ -982,7 +1139,12 @@ describe('KioskProcedureDetailScreen strict save confirmation', () => {
     expect(memoValue()).toBe('元の観察');
     expect(revertState()).toEqual({ present: true, disabled: false });
     expect(screen.getByText('合成利用者A 様')).toBeInTheDocument();
-    expect(harness.repository.deleteRecord.mock.calls).toEqual([[DATE, 'U001', 'procedure-1']]);
+    expect(harness.repository.deleteRecord.mock.calls).toEqual([[
+      DATE,
+      'U001',
+      'procedure-1',
+      { candidateUserIds: ['U001', '1'] },
+    ]]);
     expect(harness.repository.deleteRecord.mock.calls.length).toBe(snapshot.deleteCalls);
     expect(harness.upsertRecord.mock.calls.length).toBe(snapshot.upsertCalls);
     expect(harness.counts.screenMounts).toBe(snapshot.mountsAfterLoad);

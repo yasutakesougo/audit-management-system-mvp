@@ -14,7 +14,7 @@ import { formatDateJapanese } from '@/lib/dateFormat';
 import { resolveKioskRecordDate } from '../utils/kioskDate';
 import { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 import {
-  buildExecutionUserIdCandidates,
+  normalizeExecutionDate,
   normalizeScheduleItemId,
   extractProcedureRowKey,
 } from '@/features/daily/utils/normalizeExecutionLookup';
@@ -102,13 +102,16 @@ const buildRecordMatchKeys = (record: ExecutionRecord): string[] => {
   return Array.from(keys);
 };
 
+const EMPTY_EXECUTION_USER_ID_CANDIDATES: string[] = [];
+
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userId } = useParams<{ userId: string }>();
   const queryUserIdFromSearch = React.useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return (params.get('userId') || params.get('user') || '').trim() || null;
+    const value = params.get('userId') || params.get('user') || '';
+    return value.trim().length > 0 ? value : null;
   }, [location.search]);
   const userLookupId = queryUserIdFromSearch || userId || '';
   const numericUserLookupId = Number.isFinite(Number(userLookupId)) ? Number(userLookupId) : undefined;
@@ -123,19 +126,19 @@ export const KioskProcedureListScreen: React.FC = () => {
     error: usersError,
   } = useUsersQuery({ selectMode: 'core' });
   const matchesUserLookup = React.useCallback((candidate: typeof userByNumericId | undefined) => {
-    const lookup = String(userLookupId).trim();
-    if (!lookup || !candidate) return false;
-    return String(candidate.Id ?? '').trim() === lookup
-      || String(candidate.UserID ?? '').trim() === lookup;
+    const lookup = String(userLookupId);
+    if (lookup.trim().length === 0 || !candidate) return false;
+    return String(candidate.Id ?? '') === lookup
+      || String(candidate.UserID ?? '') === lookup;
   }, [userLookupId]);
   const matchingNumericUser = matchesUserLookup(userByNumericId) ? userByNumericId : null;
   const userByCode = React.useMemo(() => {
-    const lookup = String(userLookupId).trim();
-    if (!lookup) return null;
+    const lookup = String(userLookupId);
+    if (lookup.trim().length === 0) return null;
     return users.find((candidate) => {
-      const candidateUserId = String(candidate.UserID ?? '').trim();
+      const candidateUserId = String(candidate.UserID ?? '');
       if (candidateUserId && candidateUserId === lookup) return true;
-      return String(candidate.Id ?? '').trim() === lookup;
+      return String(candidate.Id ?? '') === lookup;
     }) ?? null;
   }, [userLookupId, users]);
   const user = matchingNumericUser ?? userByCode;
@@ -162,13 +165,14 @@ export const KioskProcedureListScreen: React.FC = () => {
   const selectedDateIso = React.useMemo(() => resolveKioskRecordDate(location.search), [location.search]);
   const selectedDateStr = formatDateJapanese(selectedDateIso);
   const deepLinkUserId = React.useMemo(() => {
-    const canonical = String(user?.UserID ?? '').trim();
-    if (canonical) return canonical;
-    return String(userId ?? '').trim();
+    const canonical = String(user?.UserID ?? '');
+    if (canonical.trim().length > 0) return canonical;
+    const routeId = String(userId ?? '');
+    return routeId.trim().length > 0 ? routeId : '';
   }, [user?.UserID, userId]);
   const returnRouteUserId = React.useMemo(() => {
-    const routeId = String(userId ?? '').trim();
-    if (routeId) return routeId;
+    const routeId = String(userId ?? '');
+    if (routeId.trim().length > 0) return routeId;
     return deepLinkUserId;
   }, [deepLinkUserId, userId]);
 
@@ -259,16 +263,30 @@ export const KioskProcedureListScreen: React.FC = () => {
 
 
   const { getRecords: getStoreRecords } = useExecutionStore();
-  const canonicalUserId = String(user?.UserID ?? '').trim();
+
+  const verifiedUserCandidates = React.useMemo(() => {
+    if (!user) return [];
+    const candidates: string[] = [];
+    if (typeof user.UserID === 'string' && user.UserID.trim().length > 0) {
+      candidates.push(user.UserID);
+    }
+    if (typeof user.Id === 'number' && Number.isSafeInteger(user.Id) && user.Id > 0) {
+      candidates.push(String(user.Id));
+    }
+    return candidates;
+  }, [user]);
+  const canonicalUserId = (
+    typeof user?.UserID === 'string' && user.UserID.trim().length > 0
+  ) ? user.UserID : '';
   const hasCanonicalUserId = Boolean(canonicalUserId);
-  const executionUserIdCandidates = React.useMemo(
-    () => canonicalUserId ? buildExecutionUserIdCandidates(canonicalUserId, userLookupId) : [],
-    [canonicalUserId, userLookupId],
-  );
+  const executionUserIdCandidates = hasCanonicalUserId ? verifiedUserCandidates : EMPTY_EXECUTION_USER_ID_CANDIDATES;
   const storeRecords = React.useMemo(() => {
     const deduped = new Map<string, ExecutionRecord>();
     for (const candidateUserId of executionUserIdCandidates) {
       for (const record of getStoreRecords(selectedDateIso || '', candidateUserId)) {
+        if (record.userId !== candidateUserId || normalizeExecutionDate(record.date) !== normalizeExecutionDate(selectedDateIso)) {
+          continue;
+        }
         const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
         deduped.set(key, record);
       }
@@ -280,7 +298,15 @@ export const KioskProcedureListScreen: React.FC = () => {
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
   const [hasFetchedRecords, setHasFetchedRecords] = useState(false);
   const [fetchFailed, setFetchFailed] = useState(false);
-  const [showFetchError, setShowFetchError] = useState(false);
+  const recordFetchIdentity = JSON.stringify([selectedDateIso, executionUserIdCandidates]);
+  const [fetchErrorIdentity, setFetchErrorIdentity] = useState<string | null>(null);
+  const showFetchError = fetchErrorIdentity === recordFetchIdentity;
+  const recordFetchIdentityRef = React.useRef(recordFetchIdentity);
+  const recordFetchGenerationRef = React.useRef(0);
+  if (recordFetchIdentityRef.current !== recordFetchIdentity) {
+    recordFetchIdentityRef.current = recordFetchIdentity;
+    recordFetchGenerationRef.current += 1;
+  }
   const procedureLookupThrottleKeyRef = React.useRef('');
 
   const [isThrottleActive, setIsThrottleActive] = useState(() => isThrottleCircuitOpen());
@@ -319,7 +345,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     if (!isThrottleActive && prevThrottleActiveRef.current) {
       setFetchFailed(false);
       setHasFetchedRecords(false);
-      setShowFetchError(false);
+      setFetchErrorIdentity(null);
       setRecords([]);
       setRetryCount((prev) => prev + 1);
     }
@@ -328,16 +354,13 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   // Synchronously reset records state when the active user or date changes
   // to prevent rendering stale records from the previous context.
-  const currentQueryId = executionUserIdCandidates.join('|');
-  const [prevQueryId, setPrevQueryId] = useState<string>('');
-  const [prevDate, setPrevDate] = useState<string>('');
-
-  if (currentQueryId !== prevQueryId || selectedDateIso !== prevDate) {
-    setPrevQueryId(currentQueryId);
-    setPrevDate(selectedDateIso);
+  const [previousRecordFetchIdentity, setPreviousRecordFetchIdentity] = useState('');
+  if (recordFetchIdentity !== previousRecordFetchIdentity) {
+    setPreviousRecordFetchIdentity(recordFetchIdentity);
     setRecords([]);
     setHasFetchedRecords(false);
     setFetchFailed(false);
+    setFetchErrorIdentity(null);
     procedureLookupThrottleKeyRef.current = '';
   }
 
@@ -361,6 +384,13 @@ export const KioskProcedureListScreen: React.FC = () => {
     if (!canonicalUserId) return;
 
     let active = true;
+    const requestIdentity = recordFetchIdentity;
+    const requestGeneration = recordFetchGenerationRef.current;
+    const isCurrentRequest = () => (
+      active
+      && recordFetchIdentityRef.current === requestIdentity
+      && recordFetchGenerationRef.current === requestGeneration
+    );
     const fetchRecords = async () => {
       const dateStr = selectedDateIso;
       if (!dateStr) return;
@@ -369,8 +399,8 @@ export const KioskProcedureListScreen: React.FC = () => {
       // procedure status and save entry usable even if a prior SP storm opened the breaker.
       if (isSharePoint && isThrottleCircuitOpen()) {
         console.warn('[Kiosk] Circuit breaker is open. Aborting execution record fetch to suppress storm.');
-        if (active) {
-          setShowFetchError(false);
+        if (isCurrentRequest()) {
+          setFetchErrorIdentity(null);
           setIsThrottleActive(true);
           setFetchFailed(true);
           setHasFetchedRecords(true);
@@ -380,26 +410,13 @@ export const KioskProcedureListScreen: React.FC = () => {
       // Deduplicate user IDs that would produce the same SharePoint query candidates.
       // If not SharePoint, we keep all candidates to support local mock/Zustand stores.
       const queryUserIds = isSharePoint
-        ? (() => {
-            const canonicalize = (id: string) => {
-              const clean = id.replace(/^u-/i, '').replace(/^u/i, '').replace(/-/g, '').trim();
-              const num = parseInt(clean, 10);
-              return Number.isNaN(num) ? clean.toLowerCase() : String(num);
-            };
-            const seen = new Set<string>();
-            return executionUserIdCandidates.filter((id) => {
-              const canonical = canonicalize(id);
-              if (seen.has(canonical)) return false;
-              seen.add(canonical);
-              return true;
-            });
-          })()
+        ? Array.from(new Set(executionUserIdCandidates))
         : executionUserIdCandidates;
 
       const results = await Promise.allSettled(
-        queryUserIds.map((candidateUserId) =>
-          executionRepo.getRecords(dateStr, candidateUserId),
-        ),
+        isSharePoint
+          ? [executionRepo.getRecords(dateStr, canonicalUserId, queryUserIds)]
+          : queryUserIds.map((candidateUserId) => executionRepo.getRecords(dateStr, candidateUserId)),
       );
       const successfulBatches = results
         .filter((result): result is PromiseFulfilledResult<ExecutionRecord[]> => result.status === 'fulfilled')
@@ -408,13 +425,13 @@ export const KioskProcedureListScreen: React.FC = () => {
 
       if (successfulBatches.length === 0) {
         const error = failedResults[0]?.reason ?? new Error('No execution record fetches completed');
-        if (active) {
+        if (isCurrentRequest()) {
           console.error('Failed to fetch execution records:', error);
           if (isSharePointThrottleError(error)) {
-            setShowFetchError(false);
+            setFetchErrorIdentity(null);
             setIsThrottleActive(true);
           } else {
-            setShowFetchError(true);
+            setFetchErrorIdentity(requestIdentity);
           }
           setFetchFailed(true);
           setHasFetchedRecords(true);
@@ -428,6 +445,10 @@ export const KioskProcedureListScreen: React.FC = () => {
 
       const deduped = new Map<string, ExecutionRecord>();
       const addRecord = (record: ExecutionRecord) => {
+        if (
+          !queryUserIds.includes(record.userId)
+          || normalizeExecutionDate(record.date) !== normalizeExecutionDate(dateStr)
+        ) return;
         const key = `${record.date}|${record.userId}|${record.scheduleItemId}|${record.id ?? ''}`;
         deduped.set(key, record);
       };
@@ -457,7 +478,7 @@ export const KioskProcedureListScreen: React.FC = () => {
         const maxLookupAttempts = Number.POSITIVE_INFINITY;
 
         for (let index = 0; index < procedures.length; index += 1) {
-          if (!active) {
+          if (!isCurrentRequest()) {
             abortProcedureLookups = true;
             break;
           }
@@ -468,7 +489,7 @@ export const KioskProcedureListScreen: React.FC = () => {
           const lookupKeys = buildProcedureLookupKeys(procedures[index], index);
           for (const candidateUserId of queryUserIds) {
             for (const scheduleItemId of lookupKeys) {
-              if (!active) {
+              if (!isCurrentRequest()) {
                 abortProcedureLookups = true;
                 break;
               }
@@ -479,7 +500,11 @@ export const KioskProcedureListScreen: React.FC = () => {
               lookupAttempts += 1;
               try {
                 const record = await executionRepo.getRecord(dateStr, candidateUserId, scheduleItemId);
-                if (record) {
+                if (
+                  record
+                  && record.userId === candidateUserId
+                  && normalizeExecutionDate(record.date) === normalizeExecutionDate(dateStr)
+                ) {
                   foundRecord = record;
                   break;
                 }
@@ -516,7 +541,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       }
 
       const data = Array.from(deduped.values());
-      if (active) {
+      if (isCurrentRequest()) {
         setRecords(data);
         setHasFetchedRecords(true);
       }
@@ -540,6 +565,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     location.key,
     location.search,
     retryCount,
+    recordFetchIdentity,
   ]);
 
   const hasRecordInput = React.useCallback((record: ExecutionRecord | undefined): boolean => {
@@ -555,6 +581,7 @@ export const KioskProcedureListScreen: React.FC = () => {
 
   // 進捗サマリーの計算
   const totalCount = procedures.length;
+  const isExecutionStatusUnconfirmed = fetchFailed || isThrottleActive;
   const recordedRecordsByProcedure = React.useMemo(() => {
     if (!hasCanonicalUserId || !hasFreshUserResult) {
       return procedures.map(() => undefined);
@@ -687,13 +714,13 @@ export const KioskProcedureListScreen: React.FC = () => {
         {/* 進捗サマリー */}
         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {!hasCanonicalUserId || !hasFreshUserResult
+            {!hasCanonicalUserId || !hasFreshUserResult || isExecutionStatusUnconfirmed
               ? '実施状況: 未確認'
               : absenceState.isAbsent
                 ? '実施状況: 欠席（記録対象外）'
                 : `実施状況: ${recordedCount} / ${totalCount}`}
           </Typography>
-          {hasCanonicalUserId && hasFreshUserResult && !absenceState.isAbsent && (
+          {hasCanonicalUserId && hasFreshUserResult && !absenceState.isAbsent && !isExecutionStatusUnconfirmed && (
             <>
               <LinearProgress
                 variant="determinate"
@@ -763,7 +790,7 @@ export const KioskProcedureListScreen: React.FC = () => {
               onClick={() => {
                 setFetchFailed(false);
                 setHasFetchedRecords(false);
-                setShowFetchError(false);
+                setFetchErrorIdentity(null);
                 setRecords([]);
                 setRetryCount((prev) => prev + 1);
               }}
@@ -1019,16 +1046,18 @@ export const KioskProcedureListScreen: React.FC = () => {
         )}
       </Grid>
 
-      <Snackbar
-        open={showFetchError}
-        autoHideDuration={4000}
-        onClose={() => setShowFetchError(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="error" sx={{ width: '100%' }}>
-          記録の取得に失敗しました。再読み込みしてください。
-        </Alert>
-      </Snackbar>
+      {showFetchError && (
+        <Snackbar
+          open
+          autoHideDuration={4000}
+          onClose={() => setFetchErrorIdentity(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="error" sx={{ width: '100%' }}>
+            記録の取得に失敗しました。再読み込みしてください。
+          </Alert>
+        </Snackbar>
+      )}
     </Box>
   );
 };
