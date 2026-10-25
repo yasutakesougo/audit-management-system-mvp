@@ -1317,7 +1317,18 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
       status: 'success',
       error: null,
     });
-    mockGetRecords.mockResolvedValue([]);
+    const userBRequestResolvers: Array<(records: Array<Partial<ExecutionRecord>>) => void> = [];
+    const userBRequestPromises: Array<Promise<Array<Partial<ExecutionRecord>>>> = [];
+    mockGetRecords.mockImplementation(() => {
+      let resolveUserBRequest!: (records: Array<Partial<ExecutionRecord>>) => void;
+      const request = new Promise<Array<Partial<ExecutionRecord>>>((resolve) => {
+        resolveUserBRequest = resolve;
+      });
+      userBRequestResolvers.push(resolveUserBRequest);
+      userBRequestPromises.push(request);
+      return request;
+    });
+
     rerender(
       <MemoryRouter initialEntries={['/kiosk/users/U002/procedures']}>
         <KioskProcedureListScreen />
@@ -1326,6 +1337,12 @@ describe('KioskProcedureListScreen (includes local/memory-style recorded-state c
 
     expect(screen.getByText(/鈴木 次郎/)).toBeInTheDocument();
     expect(screen.queryByText(fetchError)).toBeNull();
+
+    await waitFor(() => expect(userBRequestResolvers.length).toBeGreaterThan(0));
+    await act(async () => {
+      userBRequestResolvers.forEach((resolveUserBRequest) => resolveUserBRequest([]));
+      await Promise.all(userBRequestPromises);
+    });
   });
 
   it('does not show a delayed previous-user fetch error after the new user has loaded', async () => {
