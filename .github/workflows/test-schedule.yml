@@ -129,7 +129,9 @@ jobs:
         run: npm run test:schedule:e2e
 
   e2e-schedules-sp-smoke:
-    if: github.event_name != 'workflow_dispatch' && !(github.event_name == 'push' && github.repository == 'yasutakesougo/audit-management-system-mvp' && github.ref == 'refs/heads/hotfix/kiosk-procedure-early-display') && !(github.event_name == 'pull_request' && github.event.pull_request.number == 2593 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'hotfix/kiosk-procedure-early-display' && github.event.pull_request.base.ref == 'main')
+    # Temporarily disabled: this job can reach real SharePoint write endpoints.
+    # Keep disabled until safety requirements for real-connection tests are established.
+    if: ${{ false }}
     name: e2e-schedules-sp-smoke (optional)
     runs-on: ubuntu-latest
     continue-on-error: true
