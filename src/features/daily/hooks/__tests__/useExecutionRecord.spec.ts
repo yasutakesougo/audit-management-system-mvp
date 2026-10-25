@@ -1043,4 +1043,3 @@ describe('useExecutionRecord', () => {
     expect(capturedOptions.candidateUserIds).not.toContain('user-B-item');
   });
 });
-

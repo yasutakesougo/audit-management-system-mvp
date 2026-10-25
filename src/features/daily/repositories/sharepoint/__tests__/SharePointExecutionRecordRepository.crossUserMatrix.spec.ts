@@ -601,4 +601,3 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     expect(decodeURIComponent(String(deleteCall?.[0]))).toContain("lists/getbytitle('DailyRecordRows')/items(1006)");
   });
 });
-
