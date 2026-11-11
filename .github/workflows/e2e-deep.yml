@@ -25,9 +25,17 @@ on:
         options:
           - e2e
           - preview
+      lane:
+        description: 'all runs the six lanes. transport-date-check runs that lane only.'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - transport-date-check
 
 concurrency:
-  group: e2e-deep-${{ github.ref }}
+  group: ${{ case(github.event_name == 'workflow_dispatch' && inputs.lane == 'transport-date-check', format('e2e-deep-single-{0}-{1}', inputs.lane, github.ref), format('e2e-deep-{0}', github.ref)) }}
   cancel-in-progress: true
 
 env:
@@ -48,8 +56,57 @@ env:
   VITE_MSAL_TENANT_ID: 'dummy-tenant-id'
 
 jobs:
+  select-deep-lanes:
+    name: Select deep lanes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.emit.outputs.matrix }}
+    steps:
+      - name: Emit lane matrix
+        id: emit
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_LANE: ${{ inputs.lane }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const lanes = [
+            { lane: 'app-a11y', runtime_mode: 'demo', preview_env: 'e2e-deep-app-a11y', timezone: 'Asia/Tokyo', artifact_suffix: 'app-a11y', skip_sharepoint: '1', force_sharepoint: '0', demo_mode: '1', data_provider: 'memory', feature_users_sp: '0' },
+            { lane: 'fixture-memory', runtime_mode: 'demo-memory', preview_env: 'e2e-deep-fixture-memory', timezone: 'Asia/Tokyo', artifact_suffix: 'fixture-memory', skip_sharepoint: '1', force_sharepoint: '0', demo_mode: '1', data_provider: 'memory', feature_users_sp: '1' },
+            { lane: 'sp-stub', runtime_mode: 'sp-stub', preview_env: 'e2e-deep-sp-stub', timezone: 'Asia/Tokyo', artifact_suffix: 'sp-stub', skip_sharepoint: '0', force_sharepoint: '1', demo_mode: '0', data_provider: 'sharepoint', feature_users_sp: '1' },
+            { lane: 'transport-date-check', runtime_mode: 'demo', preview_env: 'e2e-deep-transport-date', timezone: 'Asia/Tokyo', artifact_suffix: 'transport-date-check', skip_sharepoint: '1', force_sharepoint: '0', demo_mode: '1', data_provider: 'memory', feature_users_sp: '1' },
+            { lane: 'implementation-hot', runtime_mode: 'demo', preview_env: 'e2e-deep-implementation-hot', timezone: 'Asia/Tokyo', artifact_suffix: 'implementation-hot', skip_sharepoint: '1', force_sharepoint: '0', demo_mode: '1', data_provider: 'memory', feature_users_sp: '1' },
+            { lane: 'general', runtime_mode: 'demo-memory', preview_env: 'e2e-deep-general', timezone: 'Asia/Tokyo', artifact_suffix: 'general', skip_sharepoint: '1', force_sharepoint: '0', demo_mode: '1', data_provider: 'memory', feature_users_sp: '1' },
+          ];
+
+          const eventName = process.env.EVENT_NAME || '';
+          const inputLane = process.env.INPUT_LANE || '';
+          const lane = eventName === 'workflow_dispatch' ? (inputLane || 'all') : 'all';
+          if (lane !== 'all' && lane !== 'transport-date-check') {
+            console.error(`Unsupported lane: ${lane}`);
+            process.exit(1);
+          }
+
+          const selected = lane === 'all' ? lanes : lanes.filter((item) => item.lane === lane);
+          if (selected.length !== (lane === 'all' ? lanes.length : 1)) {
+            console.error(`Expected ${lane === 'all' ? lanes.length : 1} lane(s), selected ${selected.length}`);
+            process.exit(1);
+          }
+
+          const payload = JSON.stringify({ include: selected });
+          const output = process.env.GITHUB_OUTPUT;
+          if (output) {
+            fs.appendFileSync(output, `matrix<<EOF\n${payload}\nEOF\n`);
+          } else {
+            process.stdout.write(`${payload}\n`);
+          }
+          console.error(`Selected ${selected.length} lane(s): ${selected.map((item) => item.lane).join(',')}`);
+          NODE
+
   deep-tests-chromium:
     name: Deep Tests (Chromium) / ${{ matrix.lane }}
+    needs: select-deep-lanes
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -57,68 +114,7 @@ jobs:
       checks: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - lane: app-a11y
-            runtime_mode: demo
-            preview_env: e2e-deep-app-a11y
-            timezone: Asia/Tokyo
-            artifact_suffix: app-a11y
-            skip_sharepoint: '1'
-            force_sharepoint: '0'
-            demo_mode: '1'
-            data_provider: memory
-            feature_users_sp: '0'
-          - lane: fixture-memory
-            runtime_mode: demo-memory
-            preview_env: e2e-deep-fixture-memory
-            timezone: Asia/Tokyo
-            artifact_suffix: fixture-memory
-            skip_sharepoint: '1'
-            force_sharepoint: '0'
-            demo_mode: '1'
-            data_provider: memory
-            feature_users_sp: '1'
-          - lane: sp-stub
-            runtime_mode: sp-stub
-            preview_env: e2e-deep-sp-stub
-            timezone: Asia/Tokyo
-            artifact_suffix: sp-stub
-            skip_sharepoint: '0'
-            force_sharepoint: '1'
-            demo_mode: '0'
-            data_provider: sharepoint
-            feature_users_sp: '1'
-          - lane: transport-date-check
-            runtime_mode: demo
-            preview_env: e2e-deep-transport-date
-            timezone: Asia/Tokyo
-            artifact_suffix: transport-date-check
-            skip_sharepoint: '1'
-            force_sharepoint: '0'
-            demo_mode: '1'
-            data_provider: memory
-            feature_users_sp: '1'
-          - lane: implementation-hot
-            runtime_mode: demo
-            preview_env: e2e-deep-implementation-hot
-            timezone: Asia/Tokyo
-            artifact_suffix: implementation-hot
-            skip_sharepoint: '1'
-            force_sharepoint: '0'
-            demo_mode: '1'
-            data_provider: memory
-            feature_users_sp: '1'
-          - lane: general
-            runtime_mode: demo-memory
-            preview_env: e2e-deep-general
-            timezone: Asia/Tokyo
-            artifact_suffix: general
-            skip_sharepoint: '1'
-            force_sharepoint: '0'
-            demo_mode: '1'
-            data_provider: memory
-            feature_users_sp: '1'
+      matrix: ${{ fromJSON(needs.select-deep-lanes.outputs.matrix) }}
 
     steps:
       - name: Checkout code
@@ -571,7 +567,7 @@ jobs:
     needs:
       - deep-tests-chromium
       - deep-tests-integration
-    if: always()
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.lane != 'transport-date-check')
     permissions:
       contents: read
       actions: read
@@ -707,7 +703,7 @@ jobs:
     name: Deep Tests (Integration Scenarios)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.lane != 'transport-date-check')
     permissions:
       contents: read
       checks: write

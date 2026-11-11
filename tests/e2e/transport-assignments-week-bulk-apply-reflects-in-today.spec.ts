@@ -152,6 +152,7 @@ test.describe('Transport assignments week bulk apply reflects in today', () => {
       scope.__ENV__ = {
         ...(scope.__ENV__ ?? {}),
         VITE_FORCE_SHAREPOINT: '1',
+        VITE_DATA_PROVIDER: 'sharepoint',
         VITE_SKIP_SHAREPOINT: '0',
         VITE_DEMO_MODE: '0',
         VITE_FEATURE_USERS_SP: '1',
