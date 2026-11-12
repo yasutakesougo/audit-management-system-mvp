@@ -194,6 +194,9 @@ test.describe('Transport assignments week bulk apply reflects in today', () => {
     await expect(page.getByTestId('transport-assignment-page')).toBeVisible();
     await expect(page.getByTestId('transport-assignment-date')).toHaveValue(TARGET_DATE);
     await expect(page.getByTestId('transport-assignment-save-button')).toBeDisabled();
+    await expect(page.getByText('配車データを読み込み中...')).toBeHidden();
+    await expect(page.getByTestId('transport-assignment-unassigned-list')).toContainText(USER_APPLY_NAME);
+    await expect(page.getByTestId(`transport-assignment-unassign-車両2-${USER_KEEP_ID}`)).toBeVisible();
 
     await page.getByTestId('transport-assignment-apply-week-bulk-default').click();
 
