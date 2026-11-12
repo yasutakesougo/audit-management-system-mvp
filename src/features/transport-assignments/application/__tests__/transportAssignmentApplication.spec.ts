@@ -145,5 +145,56 @@ describe('transportAssignmentApplication contract tests', () => {
       expect(calledAssignments[0].type).toBe('transport');
       expect((calledAssignments[0] as TransportAssignment).vehicleId).toBe('車両1');
     });
+
+    it('passes unassigned user ids to saveBulk without a vehicle', async () => {
+      const mockRepo = {
+        saveBulk: vi.fn().mockResolvedValue(undefined)
+      } as unknown as AssignmentRepository;
+
+      await orchestrateAssignmentSave(mockRepo, {
+        ...dummyDraft,
+        vehicles: [
+          { ...dummyDraft.vehicles[0], riderUserIds: ['U001'] },
+        ],
+        unassignedUserIds: ['U002', 'U001', '  '],
+      });
+
+      const calledAssignments = vi.mocked(mockRepo.saveBulk).mock.calls[0][0] as TransportAssignment[];
+      const assigned = calledAssignments.find((assignment) => assignment.vehicleId === '車両1');
+      const unassigned = calledAssignments.find((assignment) => assignment.userIds.includes('U002'));
+      expect(assigned?.userIds).toEqual(['U001']);
+      expect(unassigned?.vehicleId).toBeUndefined();
+      expect(unassigned?.driverId).toBeUndefined();
+      expect(unassigned?.assistantStaffIds).toEqual([]);
+      expect(unassigned?.userIds).toEqual(['U002']);
+      expect(unassigned?.direction).toBe('to');
+    });
+
+    it('passes every rider as unassigned when no vehicle still has riders', async () => {
+      const mockRepo = {
+        saveBulk: vi.fn().mockResolvedValue(undefined)
+      } as unknown as AssignmentRepository;
+
+      await orchestrateAssignmentSave(mockRepo, {
+        ...dummyDraft,
+        vehicles: [
+          { ...dummyDraft.vehicles[0], riderUserIds: [] },
+        ],
+        unassignedUserIds: ['U001', 'U002'],
+      });
+
+      const calledAssignments = vi.mocked(mockRepo.saveBulk).mock.calls[0][0] as TransportAssignment[];
+      const unassigned = calledAssignments.find((assignment) => assignment.userIds.includes('U001'));
+      expect(unassigned?.userIds).toEqual(['U001', 'U002']);
+      expect(unassigned?.vehicleId).toBeUndefined();
+    });
+
+    it('propagates a repository failure instead of completing the save', async () => {
+      const mockRepo = {
+        saveBulk: vi.fn().mockRejectedValue(new Error('boom'))
+      } as unknown as AssignmentRepository;
+
+      await expect(orchestrateAssignmentSave(mockRepo, dummyDraft)).rejects.toThrow('boom');
+    });
   });
 });

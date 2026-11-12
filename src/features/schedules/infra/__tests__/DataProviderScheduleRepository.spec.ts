@@ -146,4 +146,83 @@ describe('DataProviderScheduleRepository (Stability Tests)', () => {
     // result should be the existing item
     expect(result).toEqual(existingItem);
   });
+
+  it('forwards an abort signal and leaves a call without one unchanged', async () => {
+    const controller = new AbortController();
+    const input = {
+      id: '1',
+      title: 'Signalled update',
+      startLocal: '2026-04-24T10:00:00Z',
+      endLocal: '2026-04-24T11:00:00Z',
+      etag: 'W/"1"',
+    };
+    vi.mocked(mockProvider.updateItem).mockImplementation((_list, id, payload) => Promise.resolve({
+      Id: id,
+      EventDate: '2026-04-24T10:00:00Z',
+      EndDate: '2026-04-24T11:00:00Z',
+      ...payload,
+    }));
+
+    await repo.update(input as never, { signal: controller.signal });
+    const signalled = vi.mocked(mockProvider.updateItem).mock.calls.at(-1)?.[3] as { etag?: string; signal?: AbortSignal };
+    expect(signalled).toMatchObject({ etag: 'W/"1"', signal: controller.signal });
+
+    await repo.update(input as never);
+    const plain = vi.mocked(mockProvider.updateItem).mock.calls.at(-1)?.[3] as { signal?: AbortSignal };
+    expect(plain.etag).toBe('W/"1"');
+    expect(plain.signal).toBeUndefined();
+  });
+
+  it('limits an assignment write to vehicle, staff, and notes and refuses a non-real ETag', async () => {
+    const provider = {
+      getFieldInternalNames: vi.fn().mockResolvedValue([
+        'Title', 'EventDate', 'EndDate', 'VehicleId', 'AssignedStaffId', 'Note', 'TargetUserId',
+      ]),
+      updateItem: vi.fn().mockImplementation((_list, id, payload) => Promise.resolve({
+        Id: id,
+        Title: '送迎',
+        EventDate: '2026-11-11T08:00:00Z',
+        EndDate: '2026-11-11T09:00:00Z',
+        ...payload,
+      })),
+      readItemEtag: vi.fn().mockResolvedValue({
+        item: {
+          Id: 7,
+          Title: '送迎',
+          EventDate: '2026-11-11T08:00:00Z',
+          EndDate: '2026-11-11T09:00:00Z',
+          TargetUserId: 'U001',
+          '@odata.etag': '"sp-7"',
+        },
+        etag: '"8,1"',
+      }),
+    };
+    const local = new DataProviderScheduleRepository({ provider: provider as never, listTitle: 'Schedules' });
+    const read = await local.readTransportRowEtag('7');
+    expect(read?.etag).toBe('"8,1"');
+
+    await local.update({
+      id: '7',
+      etag: '"8,1"',
+      vehicleId: '車両1',
+      assignedStaffId: 'S001',
+      notes: '玄関',
+    }, { assignmentWrite: { conflictRetry: 'none' } });
+
+    const payload = provider.updateItem.mock.calls[0][2] as Record<string, unknown>;
+    expect(Object.keys(payload).sort()).toEqual(['AssignedStaffId', 'Note', 'VehicleId']);
+    expect(payload).not.toHaveProperty('EventDate');
+    expect(payload).not.toHaveProperty('TargetUserId');
+    expect(provider.updateItem.mock.calls[0][3]).toMatchObject({ etag: '"8,1"', conflictRetry: 'none' });
+
+    await expect(local.update(
+      { id: '7', etag: '*', vehicleId: '車両2' },
+      { assignmentWrite: { conflictRetry: 'none' } },
+    )).rejects.toThrow(/real SharePoint ETag/);
+    await expect(local.update(
+      { id: '7', etag: '"sp-7"', vehicleId: '車両2' },
+      { assignmentWrite: { conflictRetry: 'none' } },
+    )).rejects.toThrow(/real SharePoint ETag/);
+    expect(provider.updateItem).toHaveBeenCalledTimes(1);
+  });
 });

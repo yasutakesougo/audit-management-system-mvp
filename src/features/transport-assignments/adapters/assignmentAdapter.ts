@@ -51,6 +51,9 @@ export function mapVehicleDraftToDomain(
     assistantStaffIds: vehicle.attendantStaffId ? [vehicle.attendantStaffId] : [],
     userIds: vehicle.riderUserIds,
     direction: domainDirection,
+    ...(vehicle.courseId
+      ? { notes: buildTransportNotes(undefined, null, vehicle.courseId) }
+      : {}),
     // Note: capacityLimit is currently not in the draft, but we can pass it separately to logic
   };
 }

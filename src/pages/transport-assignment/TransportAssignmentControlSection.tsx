@@ -1,3 +1,4 @@
+import { isTransportAssignmentEditorBusy } from '@/features/schedules/infra/assignmentSaveReport';
 import type { TransportAssignmentSaveStatus } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import type { TransportDirection } from '@/features/today/transport/transportTypes';
 import Button from '@mui/material/Button';
@@ -129,7 +130,7 @@ export function TransportAssignmentControlSection({
             variant="outlined"
             onClick={onApplyWeekdayDefault}
             data-testid="transport-assignment-apply-weekday-default"
-            disabled={saveStatus === 'saving'}
+            disabled={isTransportAssignmentEditorBusy(saveStatus)}
           >
             同曜日デフォルト適用
           </Button>
@@ -139,7 +140,7 @@ export function TransportAssignmentControlSection({
           variant="outlined"
           onClick={onApplyWeekBulkDefault}
           data-testid="transport-assignment-apply-week-bulk-default"
-          disabled={saveStatus === 'saving'}
+          disabled={isTransportAssignmentEditorBusy(saveStatus)}
         >
           今週に一括適用
         </Button>
@@ -148,7 +149,7 @@ export function TransportAssignmentControlSection({
           variant="outlined"
           onClick={onRefresh}
           data-testid="transport-assignment-refresh-button"
-          disabled={saveStatus === 'saving'}
+          disabled={isTransportAssignmentEditorBusy(saveStatus)}
         >
           最新の情報を取得
         </Button>
@@ -171,7 +172,7 @@ export function TransportAssignmentControlSection({
           onClick={onSave}
           data-testid="transport-assignment-save-button"
         >
-          {saveStatus === 'saving' ? '保存中…' : '保存'}
+          {saveStatus === 'saving' ? '保存中…' : saveStatus === 'reconciling' ? '照合中…' : '保存'}
         </Button>
       </Stack>
     </Paper>

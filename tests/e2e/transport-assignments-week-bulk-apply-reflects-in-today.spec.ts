@@ -23,11 +23,32 @@ test.describe('Transport assignments week bulk apply reflects in today', () => {
               Id: 2_001,
               UserID: USER_KEEP_ID,
               FullName: USER_KEEP_NAME,
+              IsActive: true,
             },
             {
               Id: 2_000,
               UserID: USER_APPLY_ID,
               FullName: USER_APPLY_NAME,
+              IsActive: true,
+            },
+          ],
+        },
+        {
+          name: 'Staff_Master',
+          items: [
+            {
+              Id: 501,
+              StaffID: 'STF001',
+              StaffId: 'STF001',
+              FullName: '佐藤 運転',
+              IsActive: true,
+            },
+            {
+              Id: 502,
+              StaffID: 'STF002',
+              StaffId: 'STF002',
+              FullName: '鈴木 添乗',
+              IsActive: true,
             },
           ],
         },

@@ -81,6 +81,8 @@ vi.mock('@/features/transport-assignments/hooks/useAssignmentSave', () => ({
     saveAssignments: vi.fn().mockResolvedValue({ success: true }),
     saveBulkAssignments: vi.fn().mockResolvedValue({ success: true }),
     clearError: vi.fn(),
+    resetSaveFeedback: vi.fn(),
+    unresolvedSaves: [],
   }),
 }));
 

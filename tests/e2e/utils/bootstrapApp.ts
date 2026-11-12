@@ -7,6 +7,7 @@ export type BootstrapFlags = {
   featureIcebergPdca?: boolean;
   featureStaffAttendance?: boolean;
   initialPath?: string;
+  siteRelative?: string;
 };
 
 export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {}): Promise<void> {
@@ -16,6 +17,7 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
     featureIcebergPdca: flags.featureIcebergPdca ?? true,
     featureStaffAttendance: flags.featureStaffAttendance ?? false,
     initialPath: flags.initialPath ?? '/dashboard',
+    siteRelative: flags.siteRelative ?? '/sites/e2e-test',
   };
 
   await page.addInitScript((opts) => {
@@ -30,8 +32,8 @@ export async function bootstrapDashboard(page: Page, flags: BootstrapFlags = {})
       VITE_MSAL_TENANT_ID: 'common',
       VITE_SCHEDULE_ADMINS_GROUP_ID: 'e2e-admin-group-id',
       VITE_SP_RESOURCE: 'https://e2e.sharepoint.com',
-      VITE_SP_SITE_RELATIVE: '/sites/e2e-test',
-      VITE_SP_SITE_URL: 'https://e2e.sharepoint.com/sites/e2e-test',
+      VITE_SP_SITE_RELATIVE: opts.siteRelative,
+      VITE_SP_SITE_URL: `https://e2e.sharepoint.com${opts.siteRelative}`,
       VITE_USE_DEMO: '0',
       ...(opts.featureSchedules ? { VITE_FEATURE_SCHEDULES: '1' } : {}),
       ...(opts.featureIcebergPdca ? { VITE_FEATURE_ICEBERG_PDCA: '1' } : {}),

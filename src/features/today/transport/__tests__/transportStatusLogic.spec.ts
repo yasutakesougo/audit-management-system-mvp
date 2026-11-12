@@ -10,7 +10,22 @@ import {
     applyTransition,
     canTransition,
     computeDirectionSummary,
+    applyTransportLogs,
+    buildLegsForScheduleAssignments,
+    composeEffectiveLegs,
     deriveTransportLegs,
+    filterScheduleRowsForJstDate,
+    canOperateTransportBoard,
+    enqueueTransportLogSave,
+    isCurrentTransportDate,
+    jstCalendarDateKey,
+    msUntilNextJstMidnight,
+    resolveScheduleFeedPhase,
+    resolveTransportBoardPhase,
+    restoreLegAfterFailedSave,
+    selectTransportLogsForDate,
+    transitionTransportLegs,
+    transportLegHoldKey,
     formatHHmm,
     getDefaultDirection,
     parseHHmmToMinutes,
@@ -367,5 +382,386 @@ describe('parseHHmmToMinutes', () => {
     expect(parseHHmmToMinutes('25:00')).toBeNull();
     expect(parseHHmmToMinutes('12:60')).toBeNull();
     expect(parseHHmmToMinutes('12')).toBeNull();
+  });
+});
+
+describe('buildLegsForScheduleAssignments', () => {
+  const names = new Map([['U002', '鈴木 美子']]);
+
+  it('adds a leg for a saved transport row when the user has no master profile', () => {
+    const legs = buildLegsForScheduleAssignments(
+      [{
+        userId: 'U002',
+        title: '送迎（往路）',
+        serviceType: 'transport',
+        start: '2026-03-25T08:00:00+09:00',
+        vehicleId: '車両1',
+        assignedStaffId: 'STF001',
+        notes: '玄関前待機 [transport_attendant:STF002] [transport_course:isogo]',
+      }],
+      [],
+      names,
+    );
+
+    expect(legs).toEqual([
+      expect.objectContaining({
+        userId: 'U002',
+        userName: '鈴木 美子',
+        direction: 'to',
+        method: 'office_shuttle',
+        status: 'pending',
+      }),
+    ]);
+  });
+
+  it('does not duplicate a user who is already a leg', () => {
+    const existing = [{
+      userId: 'U002',
+      userName: '鈴木 美子',
+      direction: 'to' as const,
+      method: 'office_shuttle' as const,
+      status: 'pending' as const,
+    }];
+
+    expect(buildLegsForScheduleAssignments(
+      [{
+        userId: 'U002',
+        title: '送迎（往路）',
+        serviceType: 'transport',
+        start: '2026-03-25T08:00:00+09:00',
+        vehicleId: '車両1',
+      }],
+      existing,
+      names,
+    )).toEqual([]);
+  });
+});
+
+const JST_2359 = '2026-03-25T14:59:00.000Z';
+const JST_0000_NEXT = '2026-03-25T15:00:00.000Z';
+
+function scheduleRow(userId: string, start: string) {
+  return {
+    userId,
+    title: '送迎（往路）',
+    serviceType: 'transport',
+    start,
+    vehicleId: '車両1',
+    assignedStaffId: 'STF001',
+  };
+}
+
+describe('transport JST date boundary', () => {
+  it('keeps JST 23:59 on the same calendar day and moves 00:00 to the next day', () => {
+    expect(jstCalendarDateKey(JST_2359)).toBe('2026-03-25');
+    expect(jstCalendarDateKey(JST_0000_NEXT)).toBe('2026-03-26');
+  });
+
+  it('updates the accepted schedule range to the new JST date', () => {
+    const nextKey = jstCalendarDateKey(JST_0000_NEXT);
+    expect(nextKey).toBe('2026-03-26');
+    expect({
+      from: `${nextKey}T00:00:00+09:00`,
+      to: `${nextKey}T23:59:59+09:00`,
+    }).toEqual({
+      from: '2026-03-26T00:00:00+09:00',
+      to: '2026-03-26T23:59:59+09:00',
+    });
+  });
+
+  it('excludes the previous JST day from the rows used as today', () => {
+    const rows = filterScheduleRowsForJstDate([
+      scheduleRow('U001', '2026-03-25T08:00:00+09:00'),
+      scheduleRow('U002', JST_0000_NEXT),
+    ], '2026-03-26');
+
+    expect(rows.map((row) => row.userId)).toEqual(['U002']);
+  });
+
+  it('does not let a previous day Transport_Log change the new day', () => {
+    const selected = selectTransportLogsForDate([
+      { userId: 'U002', direction: 'to', status: 'arrived', actualTime: '16:00', recordDate: '2026-03-25' },
+      { userId: 'U002', direction: 'to', status: 'in-progress', actualTime: '08:40', recordDate: '2026-03-26' },
+    ], '2026-03-26');
+
+    expect(applyTransportLogs([
+      mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'pending' }),
+    ], selected, '2026-03-26')).toEqual([
+      expect.objectContaining({ status: 'in-progress', actualTime: '08:40' }),
+    ]);
+  });
+
+  it('rejects a snapshot that belongs to the previous date', () => {
+    expect(isCurrentTransportDate('2026-03-25', '2026-03-26')).toBe(false);
+    expect(isCurrentTransportDate('2026-03-26', '2026-03-26')).toBe(true);
+  });
+});
+
+describe('schedule leg status', () => {
+  const names = new Map([['U002', '鈴木 美子']]);
+  const row = scheduleRow('U002', '2026-03-25T08:00:00+09:00');
+
+  it('starts a schedule-only rider, then records departure, arrival, and absence', () => {
+    const initial = buildLegsForScheduleAssignments([row], [], names, '2026-03-25');
+    expect(initial).toHaveLength(1);
+    expect(initial[0]).toMatchObject({ userId: 'U002', status: 'pending', direction: 'to' });
+
+    const departed = transitionTransportLegs(initial, 'U002', 'to', 'in-progress');
+    expect(departed?.updated.status).toBe('in-progress');
+
+    const arrivedAt = new Date('2026-03-25T00:10:00.000Z');
+    const arrived = transitionTransportLegs(departed?.legs ?? [], 'U002', 'to', 'arrived', arrivedAt);
+    expect(arrived?.updated).toMatchObject({ status: 'arrived', actualTime: formatHHmm(arrivedAt) });
+
+    const absent = transitionTransportLegs(initial, 'U002', 'to', 'absent');
+    expect(absent?.updated.status).toBe('absent');
+  });
+
+  it('restores a saved Transport_Log status and actual time', () => {
+    const [leg] = applyTransportLogs(
+      buildLegsForScheduleAssignments([row], [], names, '2026-03-25'),
+      [{ userId: 'U002', direction: 'to', status: 'in-progress', actualTime: '08:40', recordDate: '2026-03-25' }],
+      '2026-03-25',
+    );
+
+    expect(leg).toMatchObject({ status: 'in-progress', actualTime: '08:40' });
+  });
+
+  it('does not create a second leg when the user already comes from the master profile', () => {
+    const master = [mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'pending' })];
+    const extras = buildLegsForScheduleAssignments([row], master, names, '2026-03-25');
+    const effective = composeEffectiveLegs({
+      previous: [],
+      derived: [...master, ...extras],
+      preserveLocalStatus: true,
+    });
+
+    expect(extras).toEqual([]);
+    expect(effective).toHaveLength(1);
+  });
+
+  it('lets a persisted arrival replace a local departure that is no longer in flight', () => {
+    const local = mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'in-progress', actualTime: '08:41' });
+    const persisted = mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'arrived', actualTime: '09:10' });
+    const refetched = composeEffectiveLegs({
+      previous: [local],
+      derived: [persisted],
+      preserveLocalStatus: true,
+    });
+
+    expect(refetched[0]).toMatchObject({ status: 'arrived', actualTime: '09:10' });
+  });
+
+  it('keeps an optimistic departure only while that leg is held', () => {
+    const local = mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'in-progress', actualTime: '08:41' });
+    const refetched = composeEffectiveLegs({
+      previous: [local],
+      derived: [mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'pending' })],
+      preserveLocalStatus: true,
+      heldKeys: new Set([transportLegHoldKey('U002', 'to')]),
+    });
+
+    expect(refetched[0]).toMatchObject({ status: 'in-progress', actualTime: '08:41' });
+  });
+
+  it('drops the previous day even when a hold key is still set', () => {
+    const local = mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'in-progress', actualTime: '08:41' });
+    const refetched = composeEffectiveLegs({
+      previous: [local],
+      derived: [mkLeg({ userId: 'U002', userName: '鈴木 美子', status: 'pending' })],
+      preserveLocalStatus: false,
+      heldKeys: new Set([transportLegHoldKey('U002', 'to')]),
+    });
+
+    expect(refetched[0]).toMatchObject({ status: 'pending' });
+    expect(refetched[0]?.actualTime).toBeUndefined();
+  });
+});
+
+describe('JST midnight delay', () => {
+  it('measures the boundary from the Asia/Tokyo calendar day', () => {
+    expect(msUntilNextJstMidnight(new Date(JST_2359))).toBe(60_000);
+    expect(msUntilNextJstMidnight(new Date('2026-03-25T14:59:30.000Z'))).toBe(30_000);
+    expect(msUntilNextJstMidnight(new Date(JST_0000_NEXT))).toBe(24 * 60 * 60 * 1000);
+  });
+});
+
+describe('transport feed readiness', () => {
+  it('keeps a stale loading=false result closed until that date has been seen loading', () => {
+    expect(resolveScheduleFeedPhase({
+      sawLoadingForDate: false,
+      loading: false,
+      hasError: false,
+    })).toBe('loading');
+  });
+
+  it('stays loading while the request is in flight and fails closed after an error', () => {
+    expect(resolveScheduleFeedPhase({
+      sawLoadingForDate: true,
+      loading: true,
+      hasError: false,
+    })).toBe('loading');
+    expect(resolveScheduleFeedPhase({
+      sawLoadingForDate: true,
+      loading: false,
+      hasError: true,
+    })).toBe('error');
+  });
+
+  it('becomes ready only after the request finishes without an error', () => {
+    expect(resolveScheduleFeedPhase({
+      sawLoadingForDate: true,
+      loading: false,
+      hasError: false,
+    })).toBe('ready');
+  });
+
+  it('blocks operations unless both feeds succeeded for the active date', () => {
+    expect(resolveTransportBoardPhase({ schedules: 'ready', logs: 'loading' })).toBe('loading');
+    expect(resolveTransportBoardPhase({ schedules: 'error', logs: 'ready' })).toBe('error');
+    expect(resolveTransportBoardPhase({ schedules: 'ready', logs: 'error' })).toBe('error');
+    expect(resolveTransportBoardPhase({ schedules: 'ready', logs: 'ready' })).toBe('ready');
+    expect(canOperateTransportBoard({
+      activeDateKey: '2026-03-26',
+      boardDateKey: '2026-03-26',
+      phase: 'loading',
+    })).toBe(false);
+    expect(canOperateTransportBoard({
+      activeDateKey: '2026-03-26',
+      boardDateKey: '2026-03-25',
+      phase: 'ready',
+    })).toBe(false);
+    expect(canOperateTransportBoard({
+      activeDateKey: '2026-03-26',
+      boardDateKey: '2026-03-26',
+      phase: 'ready',
+    })).toBe(true);
+  });
+});
+
+describe('enqueueTransportLogSave', () => {
+  it('starts the arrival write only after the departure write settles', async () => {
+    const chains = new Map<string, Promise<void>>();
+    const order: string[] = [];
+    let releaseDeparture: (() => void) | undefined;
+    const departure = enqueueTransportLogSave({
+      chains,
+      key: '2026-03-26\0to\0U002',
+      save: () => new Promise<void>((resolve) => {
+        order.push('depart');
+        releaseDeparture = resolve;
+      }),
+    });
+    const arrival = enqueueTransportLogSave({
+      chains,
+      key: '2026-03-26\0to\0U002',
+      save: async () => {
+        order.push('arrive');
+      },
+    });
+
+    await Promise.resolve();
+    expect(order).toEqual(['depart']);
+    releaseDeparture?.();
+    await departure;
+    await arrival;
+    expect(order).toEqual(['depart', 'arrive']);
+  });
+
+  it('still writes the later status when the earlier write fails', async () => {
+    const chains = new Map<string, Promise<void>>();
+    const order: string[] = [];
+    const departure = enqueueTransportLogSave({
+      chains,
+      key: 'same',
+      save: async () => {
+        order.push('depart');
+        throw new Error('depart failed');
+      },
+    });
+    const arrival = enqueueTransportLogSave({
+      chains,
+      key: 'same',
+      save: async () => {
+        order.push('arrive');
+      },
+    });
+
+    await expect(departure).rejects.toThrow('depart failed');
+    await arrival;
+    expect(order).toEqual(['depart', 'arrive']);
+  });
+
+  it('does not block a different leg', async () => {
+    const chains = new Map<string, Promise<void>>();
+    const started: string[] = [];
+    let release: (() => void) | undefined;
+    enqueueTransportLogSave({
+      chains,
+      key: 'U001',
+      save: () => new Promise<void>((resolve) => {
+        started.push('U001');
+        release = resolve;
+      }),
+    });
+    const other = enqueueTransportLogSave({
+      chains,
+      key: 'U002',
+      save: async () => {
+        started.push('U002');
+      },
+    });
+
+    await other;
+    expect(started).toEqual(['U001', 'U002']);
+    release?.();
+  });
+});
+
+describe('restoreLegAfterFailedSave', () => {
+  const previous = mkLeg({ userId: 'U001', userName: '田中太郎', status: 'pending' });
+
+  it('does not restore a failed save onto a different JST date', () => {
+    expect(restoreLegAfterFailedSave({
+      current: [mkLeg({ userId: 'U001', userName: '田中太郎', status: 'arrived', actualTime: '09:05' })],
+      previous,
+      userId: 'U001',
+      direction: 'to',
+      startedDateKey: '2026-03-25',
+      activeDateKey: '2026-03-26',
+      boardDateKey: '2026-03-26',
+      operationRevision: 1,
+      latestRevision: 1,
+    })).toBeNull();
+  });
+
+  it('does not let an older failure replace a newer same-day operation', () => {
+    expect(restoreLegAfterFailedSave({
+      current: [mkLeg({ userId: 'U001', userName: '田中太郎', status: 'arrived', actualTime: '09:05' })],
+      previous,
+      userId: 'U001',
+      direction: 'to',
+      startedDateKey: '2026-03-25',
+      activeDateKey: '2026-03-25',
+      boardDateKey: '2026-03-25',
+      operationRevision: 1,
+      latestRevision: 2,
+    })).toBeNull();
+  });
+
+  it('restores the previous leg when that save is still the latest operation on the same date', () => {
+    const restored = restoreLegAfterFailedSave({
+      current: [mkLeg({ userId: 'U001', userName: '田中太郎', status: 'in-progress', actualTime: '08:41' })],
+      previous,
+      userId: 'U001',
+      direction: 'to',
+      startedDateKey: '2026-03-25',
+      activeDateKey: '2026-03-25',
+      boardDateKey: '2026-03-25',
+      operationRevision: 1,
+      latestRevision: 1,
+    });
+
+    expect(restored?.[0]).toMatchObject({ status: 'pending' });
   });
 });

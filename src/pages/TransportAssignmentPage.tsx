@@ -18,6 +18,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { TransportAssignmentControlSection } from './transport-assignment/TransportAssignmentControlSection';
 import { TransportAssignmentVehicleSection } from './transport-assignment/TransportAssignmentVehicleSection';
 import { TransportConcurrencyInsightBanner } from './transport-assignment/TransportConcurrencyInsightBanner';
+import { describeAssignmentSaveFeedback } from '@/features/schedules/infra/assignmentSaveReport';
 
 export default function TransportAssignmentPage() {
   const {
@@ -33,6 +34,9 @@ export default function TransportAssignmentPage() {
     lastSavedAt,
     effectivePayloadCount,
     canSave,
+    canRecover,
+    recoveryEligibility,
+    onRecover,
     onTargetDateChange,
     onChangeWeek,
     onApplyWeekdayDefault,
@@ -43,6 +47,9 @@ export default function TransportAssignmentPage() {
     weekBulkSummaryLabel,
     coordinationInsights,
     saveError,
+    blockedSaveFeedback,
+    canReconcileLedger,
+    onReconcileLedger,
     isLoading,
     currentDraft,
     persistedAssignments,
@@ -67,6 +74,8 @@ export default function TransportAssignmentPage() {
     onAssignUser,
     onRemoveUser,
   } = useTransportAssignmentPage();
+
+  const saveFeedback = describeAssignmentSaveFeedback(saveStatus, saveError) ?? blockedSaveFeedback;
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} data-testid="transport-assignment-page">
@@ -117,17 +126,48 @@ export default function TransportAssignmentPage() {
         </Alert>
       ) : null}
 
-      {saveStatus === 'success' ? (
-        <Alert severity="success" sx={{ mb: 2 }} data-testid="transport-assignment-save-success">
-          配車設定を保存しました。
+      {saveFeedback ? (
+        <Alert severity={saveFeedback.severity} sx={{ mb: 2 }} data-testid={saveFeedback.testId}>
+          {saveFeedback.message}
         </Alert>
       ) : null}
-
-      {saveStatus === 'error' ? (
-        <Alert severity="error" sx={{ mb: 2 }} data-testid="transport-assignment-save-error">
-          配車設定の保存に失敗しました。時間をおいて再試行してください。
-          {saveError instanceof Error ? ` (${saveError.message})` : ''}
+      {recoveryEligibility === 'legacy' ? (
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="transport-assignment-recovery-legacy">
+          以前の形式の未解決保存が残っています。この画面から自動ではやり直せません。台帳は削除していません。
         </Alert>
+      ) : null}
+      {canRecover ? (
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="transport-assignment-recovery">
+          <Stack spacing={1}>
+            <Typography variant="body2">
+              保存結果が未確認です。下の現在の配車内容を確認してから、保存をやり直せます。
+            </Typography>
+            <Typography variant="body2" data-testid="transport-assignment-recovery-preview">
+              {currentDraft?.vehicles.map((vehicle) => (
+                `${vehicle.vehicleId || '未設定'} / ${vehicle.driverName || '運転未設定'} / ${(vehicle.riderUserIds ?? []).join(',') || '利用者なし'}`
+              )).join('、') || '配車内容はまだありません'}
+            </Typography>
+            <Button
+              variant="contained"
+              color="warning"
+              data-testid="transport-assignment-recover"
+              onClick={onRecover}
+            >
+              保存をやり直す
+            </Button>
+          </Stack>
+        </Alert>
+      ) : null}
+      {canReconcileLedger ? (
+        <Button
+          variant="outlined"
+          color="warning"
+          sx={{ mb: 2 }}
+          data-testid="transport-assignment-reconcile"
+          onClick={onReconcileLedger}
+        >
+          保存結果を再確認
+        </Button>
       ) : null}
 
       {coordinationInsights.map((insight, idx) => (

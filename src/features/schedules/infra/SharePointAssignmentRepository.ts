@@ -9,8 +9,50 @@ import {
 } from '@/features/transport-assignments/domain/transportAssignmentDraft';
 import { emitTelemetry } from '@/lib/telemetry';
 import { getHttpStatus } from './scheduleSpUtils';
+import {
+  AssignmentPartialSaveError,
+  attachAssignmentSaveReport,
+  classifyReconciledTarget,
+  didAssignmentEtagAdvance,
+  isUsableAssignmentEtag,
+  judgeRecoveredAssignmentTarget,
+  sameAssignmentFields,
+  settleUnresolvedRecovery,
+  readAssignmentSaveReport,
+  type AssignmentFieldSnapshot,
+  type AssignmentRecoveryMerge,
+  type UnresolvedAssignmentSave,
+  type AssignmentSavePhase,
+  type AssignmentSaveReport,
+  type AssignmentSaveTargetResult,
+} from './assignmentSaveReport';
 
-type UserAssignmentTarget = { vehicleId: string; driverId: string; attendantId: string };
+type UserAssignmentTarget = {
+  vehicleId: string;
+  driverId: string;
+  attendantId: string;
+  courseId: ReturnType<typeof extractTransportCourseId>;
+};
+
+const ASSIGNMENT_TIME_ZONE = 'Asia/Tokyo';
+
+/**
+ * Calendar date of an assignment instant in Asia/Tokyo.
+ * Throws when `start` is not a parseable timestamp. The assignment id is not a date source.
+ */
+function requireJstDateKey(start: string): string {
+  const parsed = new Date(start);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`[SharePointAssignmentRepository] Cannot resolve JST date from assignment start: ${start}`);
+  }
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: ASSIGNMENT_TIME_ZONE }).format(parsed);
+}
+
+function jstDateKeyOrNull(start: string): string | null {
+  const parsed = new Date(start);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: ASSIGNMENT_TIME_ZONE }).format(parsed);
+}
 
 /**
  * SharePoint-backed implementation of AssignmentRepository.
@@ -19,8 +61,31 @@ type UserAssignmentTarget = { vehicleId: string; driverId: string; attendantId: 
  * It uses the existing ScheduleRepository to perform the actual SharePoint operations
  * and maps the results to the Assignment domain model.
  */
+type PlannedAssignmentTarget = {
+  dateKey: string;
+  direction: 'to' | 'from';
+  userId: string;
+  scheduleRowId: string;
+  patch: UpdateScheduleInput | null;
+  mapping: UserAssignmentTarget;
+  before: AssignmentFieldSnapshot;
+  intent: AssignmentFieldSnapshot;
+  writeStarted: boolean;
+  httpAccepted: boolean;
+  accepted: AssignmentFieldSnapshot | null;
+};
+
 export class SharePointAssignmentRepository implements AssignmentRepository {
   private readonly scheduleRepo: ScheduleRepository;
+  private recoveryMerges: AssignmentRecoveryMerge[] = [];
+  onSavePhase?: (phase: AssignmentSavePhase) => void;
+
+  /** Rows whose recovery MERGE was accepted and whose real ETag advanced. */
+  consumeRecoveryMerges(): AssignmentRecoveryMerge[] {
+    const found = this.recoveryMerges;
+    this.recoveryMerges = [];
+    return found;
+  }
 
   constructor(scheduleRepo: ScheduleRepository) {
     this.scheduleRepo = scheduleRepo;
@@ -70,136 +135,451 @@ export class SharePointAssignmentRepository implements AssignmentRepository {
     throw new Error('[SharePointAssignmentRepository] Mutation (delete) not yet implemented for real repository.');
   }
 
-  async saveBulk(assignments: Assignment[]): Promise<void> {
+  async saveBulk(
+    assignments: Assignment[],
+    options?: { signal?: AbortSignal; recoveryTouchRowIds?: readonly string[] },
+  ): Promise<void> {
+    const signal = options?.signal;
+    const touchRows = new Set(options?.recoveryTouchRowIds ?? []);
+    const recordRecoveryEvidence = options?.recoveryTouchRowIds != null;
+    this.recoveryMerges = [];
     const transportAssignments = assignments.filter(a => a.type === 'transport') as TransportAssignment[];
     if (transportAssignments.length === 0) return;
 
-    // Use the first assignment to determine the date context
-    // Assumes bulk save is for a single date/direction context for now
-    const first = transportAssignments[0];
-    const date = first.id.split('-')[1];
-    const range = {
-      from: `${date}T00:00:00+09:00`,
-      to: `${date}T23:59:59+09:00`,
-    };
-
-    const allItems = await this.scheduleRepo.list({ range });
-
-    const userMapping = new Map<string, UserAssignmentTarget>();
-    for (const a of transportAssignments) {
-      for (const uId of a.userIds) {
-        userMapping.set(uId, {
-          vehicleId: a.vehicleId || '',
-          driverId: a.driverId || '',
-          attendantId: a.assistantStaffIds[0] || ''
+    this.onSavePhase?.('validating');
+    const groups = this.groupTransportAssignments(transportAssignments);
+    const planned: PlannedAssignmentTarget[] = [];
+    try {
+      for (const group of groups) {
+        throwIfSaveAborted(signal);
+        planned.push(...await this.planTransportGroup(group.dateKey, group.direction, group.items, signal));
+      }
+    } catch (error) {
+      const existing = readAssignmentSaveReport(error);
+      if (existing) {
+        attachAssignmentSaveReport(error, {
+          reconciliation: existing.reconciliation,
+          targets: [
+            ...planned.map((target) => ({
+              dateKey: target.dateKey,
+              direction: target.direction,
+              userId: target.userId,
+              scheduleRowId: target.scheduleRowId,
+              outcome: 'NOT_ATTEMPTED' as const,
+              conflict: false,
+              writeStarted: false,
+            })),
+            ...existing.targets,
+          ],
         });
       }
+      throw error;
     }
 
-    for (const item of allItems) {
-      const rawRow = item as unknown as Record<string, unknown>;
-      if (!isTransportScheduleRow(rawRow)) continue;
-
-      const uId = normalizeText(item.userId);
-      if (!uId) continue;
-
-      const mapping = userMapping.get(uId);
-      if (!mapping) continue;
-
-      const patch = this.buildPatch(item as ScheduleItem, mapping);
-      if (!patch) continue;
-
-      await this.updateWithRetry(patch, mapping, range);
+    const writes = planned.filter((target) => target.patch != null || touchRows.has(target.scheduleRowId));
+    let failure: unknown = null;
+    if (writes.length > 0) {
+      this.onSavePhase?.('writing');
     }
+    for (const target of writes) {
+      throwIfSaveAborted(signal);
+      target.writeStarted = true;
+      try {
+        target.accepted = await this.updateWithRetry(
+          target.scheduleRowId,
+          target.mapping,
+          {
+            userId: target.userId,
+            dateKey: target.dateKey,
+            direction: target.direction,
+          },
+          signal,
+          {
+            sameValue: touchRows.has(target.scheduleRowId),
+            recordEvidence: recordRecoveryEvidence,
+          },
+        );
+        target.httpAccepted = true;
+      } catch (error) {
+        failure = error;
+        break;
+      }
+    }
+    if (signal?.aborted || isSaveAbortError(failure)) {
+      throw abortedSaveError(signal, failure);
+    }
+
+    this.onSavePhase?.('reconciling');
+    const report = await this.reconcilePlannedTargets(planned);
+    const unresolved = report.targets.some((target) => target.outcome !== 'CONFIRMED_APPLIED');
+    if (!unresolved && !failure) return;
+
+    if (failure) {
+      attachAssignmentSaveReport(failure, report);
+      throw failure;
+    }
+    const error = new AssignmentPartialSaveError(
+      '[SharePointAssignmentRepository] Persisted assignments do not match the save intent',
+      report,
+    );
+    throw error;
   }
 
-  private buildPatch(item: ScheduleItem, mapping: UserAssignmentTarget): UpdateScheduleInput | null {
-    const currentCourse = extractTransportCourseId(item.notes);
-    const nextNotes = buildTransportNotes(item.notes, mapping.attendantId, currentCourse) || '';
-
-    const isChanged =
-      item.vehicleId !== mapping.vehicleId ||
-      item.assignedStaffId !== mapping.driverId ||
-      (item.notes || '') !== nextNotes;
-
-    if (!isChanged) return null;
-
-    return {
-      ...(item as unknown as UpdateScheduleInput),
-      vehicleId: mapping.vehicleId,
-      assignedStaffId: mapping.driverId,
-      notes: nextNotes,
-      startLocal: item.start,
-      endLocal: item.end,
-    };
+  private groupTransportAssignments(assignments: TransportAssignment[]): Array<{
+    dateKey: string;
+    direction: 'to' | 'from';
+    items: TransportAssignment[];
+  }> {
+    const groups = new Map<string, { dateKey: string; direction: 'to' | 'from'; items: TransportAssignment[] }>();
+    for (const assignment of assignments) {
+      const dateKey = requireJstDateKey(assignment.start);
+      const groupKey = `${dateKey}\u0000${assignment.direction}`;
+      const existing = groups.get(groupKey);
+      if (existing) existing.items.push(assignment);
+      else groups.set(groupKey, { dateKey, direction: assignment.direction, items: [assignment] });
+    }
+    return [...groups.values()];
   }
 
   /**
-   * Update a schedule item with one-shot retry-with-merge on 412 conflicts.
-   * On ETag conflict: refetch the latest row, overlay the caller's intended
-   * assignment fields onto the server's latest snapshot, and retry once.
-   * Telemetry:
-   *  - assignment:conflict_resolved  — retry succeeded after a 412
-   *  - assignment:conflict_unresolved — retry exhausted, row vanished, or non-conflict error
+   * Read one JST date + direction and build the write plan.
+   * Missing rows, duplicate rows, and conflicting intents fail before any write.
+   * A matched row whose vehicle, driver, and notes already agree is not written.
    */
-  private async updateWithRetry(
-    patch: UpdateScheduleInput,
-    mapping: UserAssignmentTarget,
-    range: { from: string; to: string },
-  ): Promise<void> {
-    try {
-      await this.scheduleRepo.update(patch);
-    } catch (err) {
-      const status = getHttpStatus(err);
-      if (status !== 412) {
-        emitTelemetry('assignment:conflict_unresolved', {
-          itemId: patch.id,
-          reason: 'non_conflict_error',
-          status,
-          retryCount: 0,
-        });
-        throw err;
-      }
-
-      // 412: refetch, merge, retry once.
-      const fresh = await this.scheduleRepo.list({ range });
-      const latest = fresh.find(i => i.id === patch.id);
-      if (!latest) {
-        emitTelemetry('assignment:conflict_unresolved', {
-          itemId: patch.id,
-          reason: 'item_gone',
-          retryCount: 1,
-        });
-        throw err;
-      }
-
-      const mergedPatch = this.buildPatch(latest, mapping);
-      if (!mergedPatch) {
-        // Server already reflects our intended state — treat as resolved.
-        emitTelemetry('assignment:conflict_resolved', {
-          itemId: patch.id,
-          reason: 'already_consistent',
-          retryCount: 1,
-        });
-        return;
-      }
-
-      try {
-        await this.scheduleRepo.update(mergedPatch);
-        emitTelemetry('assignment:conflict_resolved', {
-          itemId: patch.id,
-          retryCount: 1,
-        });
-      } catch (retryErr) {
-        emitTelemetry('assignment:conflict_unresolved', {
-          itemId: patch.id,
-          reason: getHttpStatus(retryErr) === 412 ? 'retry_exhausted' : 'retry_failed',
-          status: getHttpStatus(retryErr),
-          retryCount: 1,
-        });
-        throw retryErr;
+  private async planTransportGroup(
+    dateKey: string,
+    direction: 'to' | 'from',
+    group: TransportAssignment[],
+    signal?: AbortSignal,
+  ): Promise<PlannedAssignmentTarget[]> {
+    const userMapping = new Map<string, UserAssignmentTarget>();
+    for (const assignment of group) {
+      for (const rawUserId of assignment.userIds) {
+        if (typeof rawUserId !== 'string' || rawUserId.trim() === '') continue;
+        const next = {
+          vehicleId: assignment.vehicleId || '',
+          driverId: assignment.driverId || '',
+          attendantId: assignment.assistantStaffIds[0] || '',
+          courseId: extractTransportCourseId(assignment.notes),
+        };
+        const previous = userMapping.get(rawUserId);
+        if (previous && !sameUserTarget(previous, next)) {
+          this.rejectPlan(
+            `[SharePointAssignmentRepository] Conflicting assignment targets for ${dateKey} ${direction}: ${rawUserId}`,
+            notAttemptedTargets(dateKey, direction, [...userMapping.keys(), rawUserId]),
+          );
+        }
+        userMapping.set(rawUserId, next);
       }
     }
+    if (userMapping.size === 0) return [];
+
+    let allItems: ScheduleItem[];
+    try {
+      allItems = await this.scheduleRepo.list(
+        signal ? { range: this.rangeFor(dateKey), signal } : { range: this.rangeFor(dateKey) },
+      );
+    } catch (error) {
+      const report: AssignmentSaveReport = {
+        reconciliation: 'incomplete',
+        targets: [...userMapping.keys()].map((userId) => ({
+          dateKey,
+          direction,
+          userId,
+          scheduleRowId: null,
+          outcome: 'UNKNOWN',
+          conflict: false,
+          writeStarted: false,
+          reason: 'list_failed',
+        })),
+      };
+      attachAssignmentSaveReport(error, report);
+      throw error;
+    }
+
+    const planned: PlannedAssignmentTarget[] = [];
+    const seen = new Map<string, string>();
+    for (const item of allItems) {
+      const rawRow = item as unknown as Record<string, unknown>;
+      if (!isTransportScheduleRow(rawRow)) continue;
+      if (jstDateKeyOrNull(item.start) !== dateKey) continue;
+      if (!inferTransportDirections(rawRow).includes(direction)) continue;
+      const userId = normalizeText(item.userId);
+      if (!userId || !userMapping.has(userId)) continue;
+      if (seen.has(userId)) {
+        this.rejectPlan(
+          `[SharePointAssignmentRepository] Multiple schedule rows for ${dateKey} ${direction}: ${userId}`,
+          notAttemptedTargets(dateKey, direction, [...userMapping.keys()]),
+        );
+      }
+      seen.set(userId, item.id);
+      const mapping = userMapping.get(userId)!;
+      const projected = this.projectAssignment(item, mapping);
+      planned.push({
+        dateKey,
+        direction,
+        userId,
+        scheduleRowId: item.id,
+        patch: projected.patch,
+        mapping,
+        before: projected.before,
+        intent: projected.intent,
+        writeStarted: false,
+        httpAccepted: false,
+        accepted: null,
+      });
+    }
+
+    const missing = [...userMapping.keys()].filter((userId) => !seen.has(userId));
+    if (missing.length > 0) {
+      this.rejectPlan(
+        `[SharePointAssignmentRepository] No schedule row for ${dateKey} ${direction}: ${missing.join(',')}`,
+        notAttemptedTargets(dateKey, direction, [...userMapping.keys()]),
+      );
+    }
+    return planned;
+  }
+
+  private rejectPlan(message: string, targets: AssignmentSaveTargetResult[]): never {
+    const error = new Error(message);
+    attachAssignmentSaveReport(error, { reconciliation: 'complete', targets });
+    throw error;
+  }
+
+  private async reconcilePlannedTargets(planned: PlannedAssignmentTarget[]): Promise<AssignmentSaveReport> {
+    const byDate = new Map<string, ScheduleItem[] | null>();
+    let incomplete = false;
+    for (const dateKey of new Set(planned.map((target) => target.dateKey))) {
+      try {
+        const listed = await this.scheduleRepo.list({ range: this.rangeFor(dateKey) });
+        if (!Array.isArray(listed)) {
+          byDate.set(dateKey, null);
+          incomplete = true;
+        } else {
+          byDate.set(dateKey, listed);
+        }
+      } catch {
+        byDate.set(dateKey, null);
+        incomplete = true;
+      }
+    }
+
+    const targets = planned.map((target): AssignmentSaveTargetResult => {
+      const rows = byDate.get(target.dateKey);
+      if (!rows) {
+        return {
+          dateKey: target.dateKey,
+          direction: target.direction,
+          userId: target.userId,
+          scheduleRowId: target.scheduleRowId,
+          outcome: 'UNKNOWN',
+          conflict: false,
+          writeStarted: target.writeStarted,
+          reason: 'reconcile_failed',
+        };
+      }
+      const current = rows.find((item) => item.id === target.scheduleRowId) ?? null;
+      const identityMatches = !current || this.matchesRefetchedTransportRow(current, target.scheduleRowId, target);
+      const after = current && identityMatches ? this.snapshotFields(current) : null;
+      if (after && target.accepted && sameAssignmentFields(after, target.accepted)) {
+        return {
+          dateKey: target.dateKey,
+          direction: target.direction,
+          userId: target.userId,
+          scheduleRowId: target.scheduleRowId,
+          outcome: 'CONFIRMED_APPLIED',
+          conflict: false,
+          writeStarted: target.writeStarted,
+        };
+      }
+      const classified = classifyReconciledTarget({
+        before: target.before,
+        intent: target.intent,
+        after,
+        identityMatches,
+      });
+      return {
+        dateKey: target.dateKey,
+        direction: target.direction,
+        userId: target.userId,
+        scheduleRowId: target.scheduleRowId,
+        outcome: classified.outcome,
+        conflict: classified.conflict,
+        writeStarted: target.writeStarted,
+        reason: classified.reason,
+      };
+    });
+
+    return { reconciliation: incomplete ? 'incomplete' : 'complete', targets };
+  }
+
+  private rangeFor(dateKey: string): { from: string; to: string } {
+    return {
+      from: `${dateKey}T00:00:00+09:00`,
+      to: `${dateKey}T23:59:59+09:00`,
+    };
+  }
+
+  private snapshotFields(item: ScheduleItem): AssignmentFieldSnapshot {
+    return {
+      vehicleId: normalizeText(item.vehicleId) ?? '',
+      driverId: normalizeText(item.assignedStaffId) ?? '',
+      notes: item.notes || '',
+    };
+  }
+
+  private snapshotFromPatch(patch: UpdateScheduleInput): AssignmentFieldSnapshot {
+    return {
+      vehicleId: normalizeText(patch.vehicleId) ?? '',
+      driverId: normalizeText(patch.assignedStaffId) ?? '',
+      notes: patch.notes || '',
+    };
+  }
+
+  private projectAssignment(item: ScheduleItem, mapping: UserAssignmentTarget): {
+    patch: UpdateScheduleInput | null;
+    before: AssignmentFieldSnapshot;
+    intent: AssignmentFieldSnapshot;
+  } {
+    const before = this.snapshotFields(item);
+    const patch = this.buildPatch(item, mapping);
+    return {
+      patch,
+      before,
+      intent: patch
+        ? {
+            vehicleId: normalizeText(patch.vehicleId) ?? '',
+            driverId: normalizeText(patch.assignedStaffId) ?? '',
+            notes: patch.notes || '',
+          }
+        : before,
+    };
+  }
+
+  private buildPatch(item: ScheduleItem, mapping: UserAssignmentTarget, force = false): UpdateScheduleInput | null {
+    const currentCourse = extractTransportCourseId(item.notes);
+    const nextCourse = mapping.courseId ?? currentCourse;
+    const nextNotes = buildTransportNotes(item.notes, mapping.attendantId, nextCourse) || '';
+    const nextVehicleId = normalizeText(mapping.vehicleId) ?? '';
+    const nextDriverId = normalizeText(mapping.driverId) ?? '';
+
+    const isChanged =
+      (normalizeText(item.vehicleId) ?? '') !== nextVehicleId ||
+      (normalizeText(item.assignedStaffId) ?? '') !== nextDriverId ||
+      (item.notes || '') !== nextNotes;
+
+    if (!isChanged && !force) return null;
+
+    return {
+      id: item.id,
+      etag: item.etag,
+      vehicleId: nextVehicleId,
+      assignedStaffId: nextDriverId,
+      notes: nextNotes,
+    };
+  }
+
+  private matchesRefetchedTransportRow(
+    item: ScheduleItem,
+    expectedId: string,
+    identity: { userId: string; dateKey: string; direction: 'to' | 'from' },
+  ): boolean {
+    if (item.id !== expectedId) return false;
+    const rawRow = item as unknown as Record<string, unknown>;
+    if (!isTransportScheduleRow(rawRow)) return false;
+    if (normalizeText(item.userId) !== identity.userId) return false;
+    if (jstDateKeyOrNull(item.start) !== identity.dateKey) return false;
+    return inferTransportDirections(rawRow).includes(identity.direction);
+  }
+
+  /**
+   * Read the row ETag immediately before one assignment MERGE.
+   * A 412, a missing ETag, or a row that no longer matches stops without another write.
+   * Recovery may repeat the current vehicle, staff, and notes so the real ETag advances.
+   */
+  private async updateWithRetry(
+    rowId: string,
+    mapping: UserAssignmentTarget,
+    identity: { userId: string; dateKey: string; direction: 'to' | 'from' },
+    signal: AbortSignal | undefined,
+    recovery: { sameValue: boolean; recordEvidence: boolean },
+  ): Promise<AssignmentFieldSnapshot> {
+    throwIfSaveAborted(signal);
+    const current = await this.readAuthoritativeRow(rowId, signal);
+    if (!current || !isUsableAssignmentEtag(current.etag, rowId)) {
+      emitTelemetry('assignment:conflict_unresolved', {
+        itemId: rowId,
+        reason: 'etag_unavailable',
+        retryCount: 0,
+      });
+      throw new Error(`[SharePointAssignmentRepository] Real ETag is unavailable for schedule ${rowId}`);
+    }
+    if (!this.matchesRefetchedTransportRow(current.item, rowId, identity)) {
+      emitTelemetry('assignment:conflict_unresolved', {
+        itemId: rowId,
+        reason: 'target_mismatch',
+        retryCount: 0,
+      });
+      throw new Error(
+        `[SharePointAssignmentRepository] Refetched schedule ${rowId} no longer matches ${identity.dateKey} ${identity.direction} ${identity.userId}`,
+      );
+    }
+    const authoritativePatch = this.buildPatch(
+      { ...current.item, etag: current.etag },
+      mapping,
+      recovery.sameValue,
+    );
+    if (!authoritativePatch) {
+      return this.snapshotFields(current.item);
+    }
+    const beforeEtag = current.etag;
+    const write: UpdateScheduleInput = { ...authoritativePatch, id: rowId, etag: beforeEtag };
+    try {
+      throwIfSaveAborted(signal);
+      await this.scheduleRepo.update(write, {
+        signal,
+        assignmentWrite: { conflictRetry: 'none' },
+      });
+      if (recovery.recordEvidence) {
+        await this.recordAdvancedEtag(rowId, beforeEtag, signal);
+      }
+      return this.snapshotFromPatch(write);
+    } catch (err) {
+      if (signal?.aborted || isSaveAbortError(err)) throw abortedSaveError(signal, err);
+      const status = getHttpStatus(err);
+      emitTelemetry('assignment:conflict_unresolved', {
+        itemId: rowId,
+        reason: status === 412 ? 'conflict' : 'non_conflict_error',
+        status,
+        retryCount: 0,
+      });
+      throw err;
+    }
+  }
+
+  private async recordAdvancedEtag(rowId: string, beforeEtag: string, signal?: AbortSignal): Promise<void> {
+    try {
+      const after = await this.readAuthoritativeRow(rowId, signal);
+      if (!after || !didAssignmentEtagAdvance(beforeEtag, after.etag, rowId)) return;
+      this.recoveryMerges.push({
+        scheduleRowId: rowId,
+        beforeEtag,
+        afterEtag: after.etag,
+      });
+    } catch {
+      // A lost read is not evidence that the previous ETag is dead.
+    }
+  }
+
+  private async readAuthoritativeRow(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{ etag: string; item: ScheduleItem } | null> {
+    const reader = this.scheduleRepo as ScheduleRepository & {
+      readTransportRowEtag?: (rowId: string, requestSignal?: AbortSignal) => Promise<{ etag: string; item: ScheduleItem } | null>;
+    };
+    if (typeof reader.readTransportRowEtag !== 'function') return null;
+    return reader.readTransportRowEtag(id, signal);
   }
 
   /**
@@ -301,4 +681,106 @@ export class SharePointAssignmentRepository implements AssignmentRepository {
 
     return results;
   }
+
+  /**
+   * Read the rows a save would touch. This does not create, update, or delete.
+   */
+  async previewTransportSave(assignments: Assignment[]): Promise<Array<{
+    dateKey: string;
+    direction: 'to' | 'from';
+    userId: string;
+    scheduleRowId: string;
+    before: AssignmentFieldSnapshot;
+    intent: AssignmentFieldSnapshot;
+  }>> {
+    const transportAssignments = assignments.filter((assignment) => assignment.type === 'transport') as TransportAssignment[];
+    const planned: PlannedAssignmentTarget[] = [];
+    for (const group of this.groupTransportAssignments(transportAssignments)) {
+      planned.push(...await this.planTransportGroup(group.dateKey, group.direction, group.items));
+    }
+    return planned.map((target) => ({
+      dateKey: target.dateKey,
+      direction: target.direction,
+      userId: target.userId,
+      scheduleRowId: target.scheduleRowId,
+      before: target.before,
+      intent: target.intent,
+    }));
+  }
+
+  /**
+   * Compare a persisted save with the current rows. Listing is the only repository call.
+   */
+  async rereadUnresolvedSave(record: UnresolvedAssignmentSave): Promise<UnresolvedAssignmentSave | null> {
+    const byDate = new Map<string, ScheduleItem[] | null>();
+    for (const dateKey of new Set(record.targets.map((target) => target.dateKey).filter((dateKey) => dateKey))) {
+      try {
+        const listed = await this.scheduleRepo.list({ range: this.rangeFor(dateKey) });
+        byDate.set(dateKey, Array.isArray(listed) ? listed : null);
+      } catch {
+        byDate.set(dateKey, null);
+      }
+    }
+    const targets = record.targets.map((target) => {
+      const rows = target.dateKey ? byDate.get(target.dateKey) : null;
+      const readable = Boolean(target.dateKey) && rows != null;
+      const current = rows?.find((item) => item.id === target.scheduleRowId) ?? null;
+      const identityMatches = !current || !target.scheduleRowId
+        ? !current && Boolean(target.scheduleRowId)
+        : this.matchesRefetchedTransportRow(current, target.scheduleRowId, {
+            userId: target.userId,
+            dateKey: target.dateKey,
+            direction: target.direction,
+          });
+      const judged = judgeRecoveredAssignmentTarget({
+        before: target.before ?? null,
+        intent: target.intent ?? null,
+        after: current && identityMatches ? this.snapshotFields(current) : null,
+        identityMatches,
+        readable,
+      });
+      return { ...target, outcome: judged.outcome, conflict: judged.conflict, reason: judged.reason };
+    });
+    return settleUnresolvedRecovery({ ...record, targets });
+  }
+}
+
+function sameUserTarget(left: UserAssignmentTarget, right: UserAssignmentTarget): boolean {
+  return left.vehicleId === right.vehicleId
+    && left.driverId === right.driverId
+    && left.attendantId === right.attendantId
+    && left.courseId === right.courseId;
+}
+
+function notAttemptedTargets(
+  dateKey: string,
+  direction: 'to' | 'from',
+  userIds: string[],
+): AssignmentSaveTargetResult[] {
+  return [...new Set(userIds)].map((userId) => ({
+    dateKey,
+    direction,
+    userId,
+    scheduleRowId: null,
+    outcome: 'NOT_ATTEMPTED',
+    conflict: false,
+    writeStarted: false,
+  }));
+}
+
+function isSaveAbortError(error: unknown): boolean {
+  return typeof error === 'object'
+    && error !== null
+    && 'name' in error
+    && (error as { name?: unknown }).name === 'AbortError';
+}
+
+function abortedSaveError(signal?: AbortSignal, error?: unknown): Error {
+  if (isSaveAbortError(error) && error instanceof Error) return error;
+  if (signal?.reason instanceof Error) return signal.reason;
+  return new DOMException('The operation was aborted.', 'AbortError');
+}
+
+function throwIfSaveAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortedSaveError(signal);
 }

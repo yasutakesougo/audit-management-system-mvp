@@ -14,6 +14,7 @@
 import { UserCore } from '@/features/users/schema';
 import type { TransportMethod } from '@/features/attendance/transportMethod';
 import { resolveFromMethod, resolveToMethod } from '@/features/attendance/transportMethod';
+import { inferTransportDirections, isTransportScheduleRow } from './transportAssignments';
 import {
     AUTO_SWITCH_HOUR,
     TRANSPORT_TRANSITIONS,
@@ -52,6 +53,7 @@ export type TransportLogEntry = {
   actualTime?: string;
   driverName?: string;
   notes?: string;
+  recordDate?: string;
 };
 
 // ─── Core: Derive transport legs ────────────────────────────────────────────
@@ -266,4 +268,258 @@ export function hasTransportInfo(u: UserCore): boolean {
   }
 
   return false;
+}
+
+function hasSavedTransportAssignment(row: Record<string, unknown>): boolean {
+  const vehicleId = typeof row.vehicleId === 'string' ? row.vehicleId.trim() : '';
+  const staffId = typeof row.assignedStaffId === 'string' ? row.assignedStaffId.trim() : '';
+  const notes = typeof row.notes === 'string' ? row.notes : '';
+  return Boolean(
+    vehicleId
+    || staffId
+    || notes.includes('[transport_attendant:')
+    || notes.includes('[transport_course:'),
+  );
+}
+
+/**
+ * Users saved on today's transport schedule still belong on the board when
+ * their master record has no transport profile.
+ */
+const TRANSPORT_CALENDAR_TIME_ZONE = 'Asia/Tokyo';
+
+export function jstCalendarDateKey(value: string | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: TRANSPORT_CALENDAR_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+export function filterScheduleRowsForJstDate<T extends { start?: unknown }>(
+  rows: readonly T[],
+  dateKey: string,
+): T[] {
+  return rows.filter((row) => (
+    jstCalendarDateKey(typeof row.start === 'string' ? row.start : undefined) === dateKey
+  ));
+}
+
+export function selectTransportLogsForDate(
+  logs: readonly TransportLogEntry[],
+  dateKey: string,
+): TransportLogEntry[] {
+  return logs.filter((log) => !log.recordDate || log.recordDate === dateKey);
+}
+
+export function applyTransportLogs(
+  legs: readonly TransportLeg[],
+  logs: readonly TransportLogEntry[],
+  dateKey: string,
+): TransportLeg[] {
+  const logsForDate = selectTransportLogsForDate(logs, dateKey);
+  return legs.map((leg) => {
+    const log = logsForDate.find((entry) => entry.userId === leg.userId && entry.direction === leg.direction);
+    if (!log) return leg;
+    return {
+      ...leg,
+      status: log.status,
+      actualTime: log.actualTime ?? leg.actualTime,
+      driverName: log.driverName ?? leg.driverName,
+      notes: log.notes ?? leg.notes,
+    };
+  });
+}
+
+export function transportLegHoldKey(userId: string, direction: TransportDirection): string {
+  return `${direction}\u0000${userId}`;
+}
+
+function transportLegKey(leg: Pick<TransportLeg, 'userId' | 'direction'>): string {
+  return transportLegHoldKey(leg.userId, leg.direction);
+}
+
+/** Milliseconds until the next Asia/Tokyo midnight. Stable under any host time zone. */
+export function msUntilNextJstMidnight(now = new Date()): number {
+  const key = jstCalendarDateKey(now.toISOString());
+  if (!key) return 60_000;
+  const firstBoundary = new Date(`${key}T15:00:00.000Z`).getTime();
+  const firstDelta = firstBoundary - now.getTime();
+  if (firstDelta > 0) return firstDelta;
+  const [year, month, day] = key.split('-').map(Number);
+  const nextBoundary = Date.UTC(year, month - 1, day + 1, 15, 0, 0, 0);
+  const nextDelta = nextBoundary - now.getTime();
+  return nextDelta > 0 ? nextDelta : 60_000;
+}
+
+/**
+ * One leg per user and direction.
+ * A held key keeps an in-flight optimistic status, or a commit newer than the snapshot.
+ * Every other leg takes the derived Transport_Log status.
+ * A date change passes preserveLocalStatus false and drops the previous day.
+ */
+export function composeEffectiveLegs(input: {
+  previous: readonly TransportLeg[];
+  derived: readonly TransportLeg[];
+  preserveLocalStatus: boolean;
+  heldKeys?: ReadonlySet<string>;
+}): TransportLeg[] {
+  if (!input.preserveLocalStatus) return [...input.derived];
+  const held = input.heldKeys;
+  if (!held || held.size === 0) return [...input.derived];
+  const previousByKey = new Map(input.previous.map((leg) => [transportLegKey(leg), leg]));
+  return input.derived.map((leg) => {
+    const key = transportLegKey(leg);
+    const local = previousByKey.get(key);
+    if (!local || !held.has(key)) return leg;
+    return {
+      ...leg,
+      status: local.status,
+      actualTime: local.actualTime ?? leg.actualTime,
+      notes: local.notes ?? leg.notes,
+      driverName: local.driverName ?? leg.driverName,
+    };
+  });
+}
+
+/**
+ * Restore a leg after a failed save only when that save is still the latest
+ * operation for the same user, direction, and JST date.
+ * Returns null when the board must be left unchanged.
+ */
+export function restoreLegAfterFailedSave(input: {
+  current: readonly TransportLeg[];
+  previous: TransportLeg;
+  userId: string;
+  direction: TransportDirection;
+  startedDateKey: string;
+  activeDateKey: string;
+  boardDateKey: string;
+  operationRevision: number;
+  latestRevision: number;
+}): TransportLeg[] | null {
+  if (!isCurrentTransportDate(input.startedDateKey, input.activeDateKey)) return null;
+  if (!isCurrentTransportDate(input.startedDateKey, input.boardDateKey)) return null;
+  if (input.operationRevision !== input.latestRevision) return null;
+  const index = input.current.findIndex(
+    (leg) => leg.userId === input.userId && leg.direction === input.direction,
+  );
+  if (index < 0) return null;
+  const next = [...input.current];
+  next[index] = input.previous;
+  return next;
+}
+
+export function transitionTransportLegs(
+  legs: readonly TransportLeg[],
+  userId: string,
+  direction: TransportDirection,
+  nextStatus: TransportLegStatus,
+  now?: Date,
+): { legs: TransportLeg[]; updated: TransportLeg; previous: TransportLeg } | null {
+  const index = legs.findIndex((leg) => leg.userId === userId && leg.direction === direction);
+  if (index < 0) return null;
+  const previous = legs[index];
+  const updated = applyTransition(previous, nextStatus, now);
+  if (!updated) return null;
+  const next = [...legs];
+  next[index] = updated;
+  return { legs: next, updated, previous };
+}
+
+export function isCurrentTransportDate(snapshotDateKey: string, activeDateKey: string): boolean {
+  return snapshotDateKey === activeDateKey;
+}
+
+export type TransportFeedPhase = 'loading' | 'ready' | 'error';
+
+/**
+ * loading=false is a completed fetch only after that date's request was seen loading.
+ * A stale false left over from the previous range stays loading.
+ */
+export function resolveScheduleFeedPhase(input: {
+  sawLoadingForDate: boolean;
+  loading: boolean;
+  hasError: boolean;
+}): TransportFeedPhase {
+  if (input.loading || !input.sawLoadingForDate) return 'loading';
+  return input.hasError ? 'error' : 'ready';
+}
+
+export function resolveTransportBoardPhase(input: {
+  schedules: TransportFeedPhase;
+  logs: TransportFeedPhase;
+}): TransportFeedPhase {
+  if (input.schedules === 'error' || input.logs === 'error') return 'error';
+  if (input.schedules === 'ready' && input.logs === 'ready') return 'ready';
+  return 'loading';
+}
+
+export function canOperateTransportBoard(input: {
+  activeDateKey: string;
+  boardDateKey: string;
+  phase: TransportFeedPhase;
+}): boolean {
+  return input.phase === 'ready' && isCurrentTransportDate(input.activeDateKey, input.boardDateKey);
+}
+
+/** Run Transport_Log writes for one leg in request order. A failed earlier write does not block the next. */
+export function enqueueTransportLogSave(input: {
+  chains: Map<string, Promise<void>>;
+  key: string;
+  save: () => Promise<void>;
+}): Promise<void> {
+  const previous = input.chains.get(input.key);
+  let run: Promise<void>;
+  if (!previous) {
+    try {
+      run = Promise.resolve(input.save());
+    } catch (error) {
+      run = Promise.reject(error);
+    }
+  } else {
+    run = previous.then(() => input.save(), () => input.save());
+  }
+  input.chains.set(input.key, run.then(() => undefined, () => undefined));
+  return run;
+}
+
+export function buildLegsForScheduleAssignments(
+  scheduleRows: readonly Record<string, unknown>[],
+  existingLegs: readonly TransportLeg[],
+  userNameById: ReadonlyMap<string, string>,
+  dateKey?: string,
+): TransportLeg[] {
+  const present = new Set(existingLegs.map((leg) => transportLegKey(leg)));
+  const extras: TransportLeg[] = [];
+
+  for (const row of scheduleRows) {
+    if (dateKey) {
+      const rowDate = jstCalendarDateKey(typeof row.start === 'string' ? row.start : undefined);
+      if (rowDate !== dateKey) continue;
+    }
+    if (!isTransportScheduleRow(row) || !hasSavedTransportAssignment(row)) continue;
+    const userId = typeof row.userId === 'string' ? row.userId.trim() : '';
+    if (!userId) continue;
+    const rowName = typeof row.userName === 'string' ? row.userName.trim() : '';
+
+    for (const direction of inferTransportDirections(row)) {
+      const key = `${direction}\u0000${userId}`;
+      if (present.has(key)) continue;
+      present.add(key);
+      extras.push({
+        userId,
+        userName: userNameById.get(userId) || rowName || userId,
+        direction,
+        method: 'office_shuttle',
+        status: 'pending',
+      });
+    }
+  }
+
+  return extras;
 }

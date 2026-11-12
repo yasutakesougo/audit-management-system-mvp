@@ -1,7 +1,17 @@
 import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { useCallback, useState } from 'react';
 
-export type TransportAssignmentSaveStatus = 'idle' | 'saving' | 'success' | 'error';
+export type TransportAssignmentSaveStatus =
+  | 'idle'
+  | 'saving'
+  | 'reconciling'
+  | 'recovering'
+  | 'success'
+  | 'partial'
+  | 'reconcile_failed'
+  | 'conflict'
+  | 'recovery_unavailable'
+  | 'error';
 
 export type UseTransportAssignmentSaveOptions = {
   updateSchedule: (input: UpdateScheduleEventInput) => Promise<void>;
@@ -21,10 +31,8 @@ export function useTransportAssignmentSave(options: UseTransportAssignmentSaveOp
 
   const clearError = useCallback(() => {
     setError(null);
-    if (status === 'error') {
-      setStatus('idle');
-    }
-  }, [status]);
+    setStatus((current) => (current === 'saving' ? current : 'idle'));
+  }, []);
 
   const save = useCallback(
     async (payloads: readonly UpdateScheduleEventInput[]): Promise<TransportAssignmentSaveResult> => {

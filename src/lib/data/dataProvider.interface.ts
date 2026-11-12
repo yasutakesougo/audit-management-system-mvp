@@ -26,6 +26,8 @@ export interface UpdateOptions {
   /** 楽観的ロック用の ETag / If-Match */
   etag?: string;
   signal?: AbortSignal;
+  /** `none` のとき 412 後に同じ本文を再送しない */
+  conflictRetry?: 'none';
 }
 
 /**

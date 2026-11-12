@@ -32,6 +32,7 @@ import {
 } from '@/features/transport-assignments/adapters/assignmentAdapter';
 import { 
   getTransportAssignmentInsights,
+  listTransportAssignmentsForSave,
   orchestrateWeekBulkApply,
   compareDraftWithPersistedAssignments,
   detectConcurrencyConflicts,
@@ -42,7 +43,19 @@ import { useUsers } from '@/features/users/useUsers';
 import { useAssignments } from '@/features/schedules/hooks/useAssignments';
 import { useAssignmentRepository } from '@/features/schedules/assignmentRepositoryFactory';
 import type { TransportAssignment } from '@/features/schedules/domain/assignment';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import {
+  assignmentRecoveryEligibility,
+  assignmentSaveTargetsFrom,
+  describeAssignmentLedger,
+  describeBlockedAssignmentSave,
+  isAssignmentLedgerClosed,
+  isAssignmentRetryClosed,
+  isAssignmentSaveBlocked,
+  isTransportAssignmentEditorBusy,
+  readAssignmentSaveReport,
+  shouldReplaceTransportDraft,
+} from '@/features/schedules/infra/assignmentSaveReport';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { emitTelemetry } from '@/lib/telemetry';
 import { STORAGE_KEY as DAILY_STORAGE_KEY, type DailyFilters } from '../../dailyPageConstants';
@@ -158,7 +171,12 @@ export function useTransportAssignmentPage() {
     error: repoSaveError, 
     saveAssignments: repoSave, 
     saveBulkAssignments: repoBulkSave,
-    clearError: clearRepoSaveError 
+    recoverAssignments: repoRecover,
+    clearError: clearRepoSaveError,
+    resetSaveFeedback,
+    unresolvedSaves = [],
+    ledgerState = { kind: 'empty' as const },
+    reconcileUnresolved,
   } = useAssignmentSave(assignmentRepo);
 
   const clearSaveError = useCallback(() => {
@@ -277,12 +295,19 @@ export function useTransportAssignmentPage() {
   const weekdayDefaultSnapshot = useMemo(() => JSON.stringify(weekdayDefaultDraft), [weekdayDefaultDraft]);
   const hasWeekdayDefaultSuggestion = weekdayDefaultSnapshot !== baseDraftSnapshot;
 
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const draftScopeRef = useRef(`${targetDate}\u0000${direction}`);
   useEffect(() => {
+    const scope = `${targetDate}\u0000${direction}`;
+    const scopeChanged = draftScopeRef.current !== scope;
+    draftScopeRef.current = scope;
+    if (!shouldReplaceTransportDraft({ scopeChanged, dirty: dirtyRef.current })) return;
     setDraft(stableBaseDraft);
-    setDirty(false);
     setPendingAssignByVehicle({});
     setVehicleNameDraftByVehicle({});
-  }, [stableBaseDraft]);
+    if (scopeChanged) setDirty(false);
+  }, [stableBaseDraft, targetDate, direction]);
 
   const currentDraft = draft ?? stableBaseDraft;
   const isLoading = schedulesLoading || staffLoading || usersStatus === 'loading' || usersStatus === 'idle' || assignmentsLoading;
@@ -354,10 +379,25 @@ export function useTransportAssignmentPage() {
     [weekBulkApplyState, weekDateOptions],
   );
 
+  const saveReport = readAssignmentSaveReport(saveError);
+  const saveRequestTargets = useMemo(() => {
+    const assignments = weekBulkApplyState?.assignments?.length
+      ? weekBulkApplyState.assignments
+      : listTransportAssignmentsForSave(currentDraft);
+    return assignmentSaveTargetsFrom(assignments);
+  }, [currentDraft, weekBulkApplyState]);
+  const saveBlocked = isAssignmentLedgerClosed(ledgerState) || isAssignmentSaveBlocked(unresolvedSaves, saveRequestTargets);
+  const blockedSaveFeedback = describeAssignmentLedger(ledgerState) ?? describeBlockedAssignmentSave(unresolvedSaves, saveRequestTargets);
+  const recoveryEligibility = assignmentRecoveryEligibility(ledgerState, saveRequestTargets);
+  const canRecover = recoveryEligibility === 'available' && !isTransportAssignmentEditorBusy(saveStatus);
+  const canReconcileLedger = ledgerState.kind === 'records'
+    && ledgerState.records.some((record) => record.targets.some((target) => target.before && target.intent && target.scheduleRowId));
   const canSave = 
     dirty && 
     effectivePayloadPreview.length > 0 && 
-    saveStatus !== 'saving' &&
+    !isTransportAssignmentEditorBusy(saveStatus) &&
+    !saveBlocked &&
+    !isAssignmentRetryClosed(saveReport) &&
     (!saveReadiness.isBlocked || (saveReadiness.blockReason === 'concurrency_conflict' && allowConcurrencyBypass));
 
   const handleTargetDateChange = (nextDateValue: string) => {
@@ -470,6 +510,16 @@ export function useTransportAssignmentPage() {
     }
   };
 
+  const handleRecover = async () => {
+    if (!canRecover || !draft) return;
+    const result = await repoRecover(draft);
+    if (result.success) {
+      setDirty(false);
+      void refetchSchedules();
+      void refetchAssignments();
+    }
+  };
+
   const handleApplyWeekdayDefault = () => {
     if (!hasWeekdayDefaultSuggestion) return;
     clearSaveError();
@@ -511,10 +561,11 @@ export function useTransportAssignmentPage() {
   }, [dirty, payloadPreview.length, weekBulkApplyState]);
 
   useEffect(() => {
-    clearSaveError();
+    resetSaveFeedback();
+    clearLegacySaveError();
     setWeekBulkApplyState(null);
     setAllowConcurrencyBypass(false);
-  }, [targetDate, direction, clearSaveError]);
+  }, [targetDate, direction, resetSaveFeedback, clearLegacySaveError]);
 
   return {
     targetDate,
@@ -529,6 +580,9 @@ export function useTransportAssignmentPage() {
     lastSavedAt,
     effectivePayloadCount: effectivePayloadPreview.length,
     canSave,
+    canRecover,
+    recoveryEligibility,
+    onRecover: handleRecover,
     onTargetDateChange: handleTargetDateChange,
     onChangeWeek: handleChangeWeek,
     onDirectionChange: setDirection,
@@ -544,6 +598,11 @@ export function useTransportAssignmentPage() {
     weekBulkSummaryLabel,
     coordinationInsights,
     saveError,
+    blockedSaveFeedback,
+    canReconcileLedger,
+    onReconcileLedger: () => {
+      void reconcileUnresolved?.();
+    },
     isLoading,
     currentDraft,
     persistedAssignments: persistedAssignments as TransportAssignment[],

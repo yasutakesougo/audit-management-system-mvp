@@ -70,6 +70,10 @@ export type ScheduleRepositoryListParams = {
  */
 export type ScheduleRepositoryMutationParams = {
   signal?: AbortSignal;
+  /** Present only for transport-assignment writes. Other updates keep the existing retry. */
+  assignmentWrite?: {
+    conflictRetry: 'none';
+  };
 };
 
 /**

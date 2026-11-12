@@ -134,6 +134,21 @@ export function getSaveStatusText(input: {
   if (input.saveStatus === 'saving') {
     return '保存中...';
   }
+  if (input.saveStatus === 'reconciling') {
+    return '照合中...';
+  }
+  if (input.saveStatus === 'recovering') {
+    return '保存をやり直しています';
+  }
+  if (input.saveStatus === 'conflict') {
+    return '他の更新と重なりました';
+  }
+  if (input.saveStatus === 'recovery_unavailable') {
+    return 'この保存はやり直せません';
+  }
+  if (input.saveStatus === 'partial' || input.saveStatus === 'reconcile_failed') {
+    return '保存結果の確認が必要です';
+  }
   if (input.dirty) {
     return '未保存の変更があります';
   }

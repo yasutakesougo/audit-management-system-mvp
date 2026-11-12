@@ -2,6 +2,7 @@ import {
   hasVehicleMissingDriver,
   type TransportAssignmentDraft,
 } from '@/features/transport-assignments/domain/transportAssignmentDraft';
+import { isTransportAssignmentEditorBusy } from '@/features/schedules/infra/assignmentSaveReport';
 import type { TransportAssignmentSaveStatus } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import { TRANSPORT_COURSE_OPTIONS } from '@/features/today/transport/transportCourse';
 import {
@@ -95,7 +96,7 @@ export function TransportAssignmentVehicleSection({
                   onVehicleNameCommit(vehicle.vehicleId, value);
                   (event.target as HTMLInputElement).blur();
                 }}
-                disabled={saveStatus === 'saving'}
+                disabled={isTransportAssignmentEditorBusy(saveStatus)}
                 inputProps={{
                   maxLength: 20,
                   'data-testid': `transport-assignment-vehicle-name-input-${index + 1}`,
@@ -130,7 +131,7 @@ export function TransportAssignmentVehicleSection({
                   value={vehicle.courseId ?? ''}
                   onChange={(event) => onCourseChange(vehicle.vehicleId, String(event.target.value))}
                   data-testid={`transport-assignment-course-select-${index + 1}`}
-                  disabled={saveStatus === 'saving'}
+                  disabled={isTransportAssignmentEditorBusy(saveStatus)}
                 >
                   <MenuItem value="">
                     <em>未設定</em>
@@ -151,7 +152,7 @@ export function TransportAssignmentVehicleSection({
                   value={vehicle.driverStaffId ?? ''}
                   onChange={(event) => onDriverChange(vehicle.vehicleId, String(event.target.value))}
                   data-testid={`transport-assignment-driver-select-${index + 1}`}
-                  disabled={saveStatus === 'saving'}
+                  disabled={isTransportAssignmentEditorBusy(saveStatus)}
                 >
                   <MenuItem value="">
                     <em>未設定</em>
@@ -172,7 +173,7 @@ export function TransportAssignmentVehicleSection({
                   value={vehicle.attendantStaffId ?? ''}
                   onChange={(event) => onAttendantChange(vehicle.vehicleId, String(event.target.value))}
                   data-testid={`transport-assignment-attendant-select-${index + 1}`}
-                  disabled={saveStatus === 'saving'}
+                  disabled={isTransportAssignmentEditorBusy(saveStatus)}
                 >
                   <MenuItem value="">
                     <em>なし</em>
@@ -217,7 +218,7 @@ export function TransportAssignmentVehicleSection({
                     value={pendingAssignByVehicle[vehicle.vehicleId] ?? ''}
                     onChange={(event) => onPendingAssignChange(vehicle.vehicleId, String(event.target.value))}
                     data-testid={`transport-assignment-add-user-select-${index + 1}`}
-                    disabled={saveStatus === 'saving'}
+                    disabled={isTransportAssignmentEditorBusy(saveStatus)}
                   >
                     <MenuItem value="">
                       <em>選択してください</em>
@@ -233,7 +234,7 @@ export function TransportAssignmentVehicleSection({
                   variant="outlined"
                   size="small"
                   onClick={() => onAssignUser(vehicle.vehicleId)}
-                  disabled={saveStatus === 'saving' || !normalizeText(pendingAssignByVehicle[vehicle.vehicleId])}
+                  disabled={isTransportAssignmentEditorBusy(saveStatus) || !normalizeText(pendingAssignByVehicle[vehicle.vehicleId])}
                 >
                   追加
                 </Button>

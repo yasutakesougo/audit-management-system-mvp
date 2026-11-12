@@ -156,8 +156,19 @@ export class SharePointDataProvider implements IDataProvider {
     
     return this.client.updateItem(actualName, numericId, payload, { 
       ifMatch: options?.etag,
-      signal: options?.signal
+      signal: options?.signal,
+      conflictRetry: options?.conflictRetry,
     }) as Promise<T>;
+  }
+
+  async readItemEtag<T>(
+    resourceName: string,
+    id: number,
+    signal?: AbortSignal,
+  ): Promise<{ item: T; etag: string | null }> {
+    await this.ensureResource(resourceName);
+    const actualName = this.resolveResource(resourceName);
+    return this.client.getItemByIdWithEtag<T>(actualName, id, [], signal);
   }
 
   async deleteItem(resourceName: string, id: string | number, options?: { signal?: AbortSignal }): Promise<void> {
