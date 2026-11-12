@@ -627,7 +627,10 @@ describe('useAssignmentSave', () => {
     act(() => {
       pending = result.current.saveAssignments(draft);
     });
-    releasePreview?.(planned);
+    await act(async () => {
+      releasePreview?.(planned);
+      await Promise.resolve();
+    });
     await vi.waitFor(() => {
       expect(loadUnresolvedAssignmentSaves()[0]?.schemaVersion).toBe(2);
     });
@@ -795,12 +798,16 @@ describe('useAssignmentSave', () => {
     act(() => {
       pending = result.current.saveAssignments(draft);
     });
+    await act(async () => {
+      await Promise.resolve();
+    });
     await vi.waitFor(() => {
       expect(localStorage.getItem(key)).toContain('U002');
     });
-    unmount();
     await act(async () => {
+      unmount();
       await pending;
+      await Promise.resolve();
     });
     expect(saveBulk).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem(key)).toContain('U002');

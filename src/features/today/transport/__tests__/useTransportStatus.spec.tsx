@@ -621,6 +621,7 @@ describe('useTransportStatus JST date boundary', () => {
     expect(accepted).toBe(false);
     expect(harness.save).not.toHaveBeenCalled();
     expect(legFor(result, 'U001')).toBeUndefined();
+    await flushEffects();
   });
 
   it('does not operate yesterday while the new date is still loading', async () => {
