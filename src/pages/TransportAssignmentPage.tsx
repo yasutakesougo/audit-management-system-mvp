@@ -18,7 +18,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { TransportAssignmentControlSection } from './transport-assignment/TransportAssignmentControlSection';
 import { TransportAssignmentVehicleSection } from './transport-assignment/TransportAssignmentVehicleSection';
 import { TransportConcurrencyInsightBanner } from './transport-assignment/TransportConcurrencyInsightBanner';
-import { describeAssignmentSaveFeedback } from '@/features/schedules/infra/assignmentSaveReport';
+import { describeAssignmentSaveFeedback } from '@/features/schedules';
 
 export default function TransportAssignmentPage() {
   const {

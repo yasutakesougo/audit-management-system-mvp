@@ -123,7 +123,7 @@ async function openRecoveryPage(page: Page, requestId: string, targets: ReturnTy
   });
   await gate.register(page);
   await page.addInitScript(({ key, ledger }) => {
-    const scope = window as unknown as { Date: DateConstructor };
+    const scope = window as unknown as { Date: DateConstructor; __ENV__?: Record<string, string> };
     const RealDate = Date;
     const fixedTs = new RealDate('2026-03-25T08:00:00+09:00').getTime();
     class MockDate extends RealDate {
@@ -136,6 +136,16 @@ async function openRecoveryPage(page: Page, requestId: string, targets: ReturnTy
       }
     }
     scope.Date = MockDate;
+    scope.__ENV__ = {
+      ...(scope.__ENV__ ?? {}),
+      VITE_DATA_PROVIDER: 'sharepoint',
+      VITE_SKIP_SHAREPOINT: '0',
+      VITE_FORCE_SHAREPOINT: '1',
+      VITE_DEMO_MODE: '0',
+      VITE_FEATURE_USERS_SP: '1',
+      VITE_SP_RESOURCE: 'https://e2e.sharepoint.com',
+      VITE_SP_SITE_RELATIVE: '/sites/demo',
+    };
     window.localStorage.setItem('skipLogin', '1');
     window.localStorage.setItem('demo', '0');
     window.localStorage.setItem(key, ledger);
@@ -187,6 +197,7 @@ test.describe('Transport assignment recovery retry', () => {
 
     await expect(page.getByTestId('transport-assignment-recover')).toBeVisible();
     await page.getByTestId('transport-assignment-recover').click();
+    await expect.poll(async () => page.evaluate((key) => window.localStorage.getItem(key) ?? '', LEDGER_KEY)).not.toContain('one-day');
     await expect(page.getByTestId('transport-assignment-recover')).toHaveCount(0);
     const ledger = await page.evaluate((key) => window.localStorage.getItem(key), LEDGER_KEY);
     expect(ledger ?? '').not.toContain('one-day');

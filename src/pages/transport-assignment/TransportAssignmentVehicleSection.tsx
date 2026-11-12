@@ -2,7 +2,7 @@ import {
   hasVehicleMissingDriver,
   type TransportAssignmentDraft,
 } from '@/features/transport-assignments/domain/transportAssignmentDraft';
-import { isTransportAssignmentEditorBusy } from '@/features/schedules/infra/assignmentSaveReport';
+import { isTransportAssignmentEditorBusy } from '@/features/schedules';
 import type { TransportAssignmentSaveStatus } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import { TRANSPORT_COURSE_OPTIONS } from '@/features/today/transport/transportCourse';
 import {

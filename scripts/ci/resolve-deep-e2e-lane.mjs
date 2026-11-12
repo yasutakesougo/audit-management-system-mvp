@@ -40,6 +40,7 @@ export const SPECIALIZED_LANE_SPECS = {
     "tests/e2e/transport-assignments-integration.spec.ts",
   ],
   "transport-date-check": [
+    "tests/e2e/transport-assignments-recovery-retry.spec.ts",
     "tests/e2e/transport-assignments-save-reflects-in-today.spec.ts",
     "tests/e2e/transport-assignments-week-bulk-apply-reflects-in-today.spec.ts",
     "tests/e2e/transport-course-users-update-reflects-in-transport-assignments.spec.ts",

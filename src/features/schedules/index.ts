@@ -37,3 +37,38 @@ export {
     createInitialScheduleFormState, toCreateScheduleInput, validateScheduleForm, type ScheduleFormState,
     type ScheduleUserOption
 } from './domain/scheduleFormState';
+
+export {
+    ASSIGNMENT_SAVE_CONTRACT_VERSION,
+    ASSIGNMENT_WRITE_LOCK_NAME,
+    AssignmentPartialSaveError,
+    assignmentRecoveryEligibility,
+    assignmentSaveTargetsFrom,
+    describeAssignmentLedger,
+    describeAssignmentSaveFeedback,
+    describeBlockedAssignmentSave,
+    isAssignmentLedgerClosed,
+    isAssignmentRetryClosed,
+    isAssignmentSaveBlocked,
+    isTransportAssignmentEditorBusy,
+    loadUnresolvedAssignmentSaves,
+    nextUnresolvedAssignmentSave,
+    provenRecoveryRequestIds,
+    readAssignmentLedger,
+    readAssignmentSaveReport,
+    removeUnresolvedAssignmentSaves,
+    replaceUnresolvedAssignmentSave,
+    sealAssignmentFields,
+    shouldReplaceTransportDraft,
+} from './infra/assignmentSaveReport';
+export type {
+    AssignmentFieldSnapshot,
+    AssignmentLedgerState,
+    AssignmentRecoveryMerge,
+    AssignmentSavePhase,
+    AssignmentSaveReport,
+    AssignmentSaveRequestTarget,
+    UnresolvedAssignmentSave,
+} from './infra/assignmentSaveReport';
+export { mapSpRowToSchedule } from './data/spRowSchema';
+export type { SpScheduleRow } from './data/spRowSchema';

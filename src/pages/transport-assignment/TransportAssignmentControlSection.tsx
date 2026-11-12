@@ -1,4 +1,4 @@
-import { isTransportAssignmentEditorBusy } from '@/features/schedules/infra/assignmentSaveReport';
+import { isTransportAssignmentEditorBusy } from '@/features/schedules';
 import type { TransportAssignmentSaveStatus } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import type { TransportDirection } from '@/features/today/transport/transportTypes';
 import Button from '@mui/material/Button';

@@ -55,7 +55,7 @@ import {
   isTransportAssignmentEditorBusy,
   readAssignmentSaveReport,
   shouldReplaceTransportDraft,
-} from '@/features/schedules/infra/assignmentSaveReport';
+} from '@/features/schedules';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { emitTelemetry } from '@/lib/telemetry';
 import { STORAGE_KEY as DAILY_STORAGE_KEY, type DailyFilters } from '../../dailyPageConstants';

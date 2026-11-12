@@ -125,10 +125,15 @@ test.describe('Users TransportCourse update reflects in transport assignments', 
 
     const editForm = page.getByRole('form', { name: '利用者情報編集フォーム' });
     await expect(editForm).toBeVisible();
-    await editForm.getByRole('combobox', { name: '送迎固定コース' }).click();
-    await page.getByRole('option', { name: '金沢' }).click();
+    await editForm.getByRole('combobox', { name: '送迎固定コース' }).selectOption({ label: '金沢' });
 
     await editForm.getByRole('button', { name: '保存' }).click();
+    await expect(page.getByText('ユーザー情報を更新しました').first()).toBeVisible();
+    await editForm.getByRole('button', { name: '閉じる' }).click();
+    const discardDialog = page.getByRole('dialog', { name: '未保存の変更があります' });
+    if (await discardDialog.isVisible()) {
+      await discardDialog.getByRole('button', { name: '閉じる' }).click();
+    }
     await editForm.waitFor({ state: 'detached' });
 
     // After update: fixed-course default should be available via weekday-default apply.

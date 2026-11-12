@@ -302,7 +302,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
       acceptedOn: coerceIso(pickFirstValue(row, ['AcceptedOn', 'ApprovalDate'])),
       acceptedBy: coerceString(pickFirstValue(row, ['AcceptedBy', 'Approver'])),
       acceptedNote: coerceString(pickFirstValue(row, ['AcceptedNote', 'ApprovalNote'])) ?? null,
-      userName: undefined,
+      userName: coerceString(pickFirstValue(row, ['cr014_personName', 'PersonName', 'UserName', 'FullName'])),
       userLookupId: userLookupIds[0],
       assignedStaffId: assignedStaffId ?? undefined,
       vehicleId: vehicleId ?? undefined,

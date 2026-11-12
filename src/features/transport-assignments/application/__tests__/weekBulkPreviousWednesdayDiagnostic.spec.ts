@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapSpRowToSchedule, type SpScheduleRow } from '@/features/schedules/data/spRowSchema';
+import { mapSpRowToSchedule, type SpScheduleRow } from '@/features/schedules';
 import type { SchedItem } from '@/features/schedules/domain/ScheduleRepository';
 import { buildWeekDateOptions, getWeekStartDate } from '@/pages/transport-assignment/TransportAssignmentPage.logic';
 import { buildSchedulePatchPayloadsViaDomain } from '@/features/transport-assignments/adapters/assignmentAdapter';
@@ -14,7 +14,7 @@ import {
 import {
   DEFAULT_TRANSPORT_VEHICLE_IDS,
   inferTransportDirections,
-} from '@/features/today/transport/transportAssignments';
+} from '@/features/today';
 
 /**
  * Diagnostic for CI run 42964123100.

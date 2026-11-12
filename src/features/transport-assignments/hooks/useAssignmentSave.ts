@@ -20,7 +20,7 @@ import {
   type AssignmentSavePhase,
   type AssignmentSaveRequestTarget,
   type UnresolvedAssignmentSave,
-} from '@/features/schedules/infra/assignmentSaveReport';
+} from '@/features/schedules';
 import { TransportAssignmentDraft } from '../domain/transportAssignmentDraft';
 import { listTransportAssignmentsForSave, orchestrateAssignmentSave } from '../application/transportAssignmentApplication';
 import type { TransportAssignmentSaveStatus } from './useTransportAssignmentSave';

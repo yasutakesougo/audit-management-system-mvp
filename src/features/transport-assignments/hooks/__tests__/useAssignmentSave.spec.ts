@@ -6,7 +6,7 @@ import {
   AssignmentPartialSaveError,
   loadUnresolvedAssignmentSaves,
   type AssignmentSaveReport,
-} from '@/features/schedules/infra/assignmentSaveReport';
+} from '@/features/schedules';
 import { AssignmentSaveBlockedError, useAssignmentSave } from '../useAssignmentSave';
 
 const draft: TransportAssignmentDraft = {
@@ -740,11 +740,10 @@ describe('useAssignmentSave', () => {
     const key = 'iceberg.transportAssignment.unresolvedSave.v1';
     const saveBulk = vi.fn().mockResolvedValue(undefined);
     const repository = repositoryWith(saveBulk);
-    const setItem = vi.mocked(localStorage.setItem);
-    const originalImpl = setItem.getMockImplementation();
+    const wrappedSetItem = localStorage.setItem.bind(localStorage);
     let injected = false;
-    setItem.mockImplementation((keyName: string, value: string) => {
-      if (!injected && keyName === key && value.includes('U002') && originalImpl) {
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation((keyName: string, value: string) => {
+      if (!injected && keyName === key && value.includes('U002')) {
         injected = true;
         const parsed = JSON.parse(value) as unknown[];
         parsed.push({
@@ -760,9 +759,9 @@ describe('useAssignmentSave', () => {
             writeStarted: false,
           }],
         });
-        return originalImpl(keyName, JSON.stringify(parsed));
+        return wrappedSetItem(keyName, JSON.stringify(parsed));
       }
-      return originalImpl?.(keyName, value);
+      return wrappedSetItem(keyName, value);
     });
     try {
       const { result } = renderHook(() => useAssignmentSave(repository));
@@ -774,7 +773,7 @@ describe('useAssignmentSave', () => {
       const stored = JSON.parse(localStorage.getItem(key) ?? '[]') as Array<{ requestId: string }>;
       expect(stored.map((record) => record.requestId)).toEqual(['tab-b']);
     } finally {
-      if (originalImpl) setItem.mockImplementation(originalImpl);
+      setItem.mockRestore();
     }
   });
 
@@ -812,6 +811,7 @@ describe('useAssignmentSave', () => {
     const key = 'iceberg.transportAssignment.unresolvedSave.v1';
     const saveBulk = vi.fn().mockResolvedValue(undefined);
     const repository = repositoryWith(saveBulk);
+    const setItem = vi.spyOn(localStorage, 'setItem');
     const getItem = vi.mocked(localStorage.getItem);
     const originalGet = getItem.getMockImplementation();
     getItem.mockImplementation((storageKey: string) => (
@@ -824,9 +824,10 @@ describe('useAssignmentSave', () => {
         expect(saved.error).toBeInstanceOf(AssignmentSaveBlockedError);
       });
       expect(saveBulk).not.toHaveBeenCalled();
-      expect(vi.mocked(localStorage.setItem).mock.calls.some((call) => call[0] === key)).toBe(false);
+      expect(setItem.mock.calls.some((call) => call[0] === key)).toBe(false);
       expect(result.current.ledgerState).toMatchObject({ kind: 'corrupt', reason: 'json' });
     } finally {
+      setItem.mockRestore();
       if (originalGet) getItem.mockImplementation(originalGet);
     }
   });
