@@ -395,7 +395,7 @@ jobs:
           if-no-files-found: ignore
 
   canary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: quality
     # Run the deterministic mock/demo canary on PRs as well as main so the
     # dedicated lane is verified before merge.
