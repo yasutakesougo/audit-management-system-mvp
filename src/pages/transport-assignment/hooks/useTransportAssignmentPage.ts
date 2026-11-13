@@ -46,7 +46,7 @@ import { useUsers } from '@/features/users/useUsers';
 import { useAssignments } from '@/features/schedules/hooks/useAssignments';
 import { useAssignmentRepository } from '@/features/schedules/assignmentRepositoryFactory';
 import type { TransportAssignment } from '@/features/schedules/domain/assignment';
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, type SetStateAction } from 'react';
 import {
   assignmentRecoveryEligibility,
   assignmentSaveTargetsFrom,
@@ -407,7 +407,7 @@ export function useTransportAssignmentPage() {
     !isAssignmentRetryClosed(saveReport) &&
     (!saveReadiness.isBlocked || (saveReadiness.blockReason === 'concurrency_conflict' && allowConcurrencyBypass));
 
-  const changeTargetDate = (next: React.SetStateAction<string>) => {
+  const changeTargetDate = (next: SetStateAction<string>) => {
     if (isTransportAssignmentEditorBusy(saveStatus)) return;
     setTargetDate(next);
   };
@@ -595,7 +595,7 @@ export function useTransportAssignmentPage() {
     targetDate,
     setTargetDate: changeTargetDate,
     direction,
-    setDirection: (next: React.SetStateAction<TransportDirection>) => {
+    setDirection: (next: SetStateAction<TransportDirection>) => {
       if (!isTransportAssignmentEditorBusy(saveStatus)) setDirection(next);
     },
     weekRangeLabel,
