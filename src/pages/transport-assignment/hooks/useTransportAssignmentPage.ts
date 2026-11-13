@@ -302,6 +302,8 @@ export function useTransportAssignmentPage() {
   dirtyRef.current = dirty;
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const weekBulkRef = useRef(weekBulkApplyState);
+  weekBulkRef.current = weekBulkApplyState;
   const draftScopeRef = useRef(`${targetDate}\u0000${direction}`);
   useEffect(() => {
     const scope = `${targetDate}\u0000${direction}`;
@@ -405,14 +407,19 @@ export function useTransportAssignmentPage() {
     !isAssignmentRetryClosed(saveReport) &&
     (!saveReadiness.isBlocked || (saveReadiness.blockReason === 'concurrency_conflict' && allowConcurrencyBypass));
 
+  const changeTargetDate = (next: React.SetStateAction<string>) => {
+    if (isTransportAssignmentEditorBusy(saveStatus)) return;
+    setTargetDate(next);
+  };
+
   const handleTargetDateChange = (nextDateValue: string) => {
     const normalized = normalizeText(nextDateValue);
     if (!normalized) return;
-    setTargetDate(normalizeToWeekdayDate(normalized));
+    changeTargetDate(normalizeToWeekdayDate(normalized));
   };
 
   const handleChangeWeek = (offsetDays: number) => {
-    setTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, offsetDays)));
+    changeTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, offsetDays)));
   };
 
   const handleVehicleNameDraftChange = (vehicleId: string, nextName: string) => {
@@ -496,9 +503,15 @@ export function useTransportAssignmentPage() {
     }
 
     if (weekBulkApplyState) {
-      // Modern repository bulk save for the whole week
-      const result = await repoBulkSave(weekBulkApplyState.assignments);
-      if (result.success) {
+      // Do not write or clear a week-long draft that changed during the preview.
+      const savedBulk = weekBulkApplyState;
+      const savedDraft = draft;
+      const savedScope = `${targetDate}\u0000${direction}`;
+      const isCurrent = () => weekBulkRef.current === savedBulk
+        && draftRef.current === savedDraft
+        && draftScopeRef.current === savedScope;
+      const result = await repoBulkSave(savedBulk.assignments, { isDraftCurrent: isCurrent });
+      if (result.success && isCurrent()) {
         setDirty(false);
         setWeekBulkApplyState(null);
         void refetchSchedules();
@@ -531,7 +544,7 @@ export function useTransportAssignmentPage() {
   };
 
   const handleApplyWeekdayDefault = () => {
-    if (!hasWeekdayDefaultSuggestion) return;
+    if (isTransportAssignmentEditorBusy(saveStatus) || !hasWeekdayDefaultSuggestion) return;
     clearSaveError();
     setDraft(weekdayDefaultDraft);
     setDirty(true);
@@ -539,6 +552,7 @@ export function useTransportAssignmentPage() {
   };
 
   const handleApplyWeekBulkDefault = () => {
+    if (isTransportAssignmentEditorBusy(saveStatus)) return;
     clearSaveError();
 
     const result = orchestrateWeekBulkApply({
@@ -579,9 +593,11 @@ export function useTransportAssignmentPage() {
 
   return {
     targetDate,
-    setTargetDate,
+    setTargetDate: changeTargetDate,
     direction,
-    setDirection,
+    setDirection: (next: React.SetStateAction<TransportDirection>) => {
+      if (!isTransportAssignmentEditorBusy(saveStatus)) setDirection(next);
+    },
     weekRangeLabel,
     weekDateOptions,
     hasWeekdayDefaultSuggestion,
@@ -595,8 +611,10 @@ export function useTransportAssignmentPage() {
     onRecover: handleRecover,
     onTargetDateChange: handleTargetDateChange,
     onChangeWeek: handleChangeWeek,
-    onDirectionChange: setDirection,
-    onWeekdayChange: setTargetDate,
+    onDirectionChange: (next: TransportDirection) => {
+      if (!isTransportAssignmentEditorBusy(saveStatus)) setDirection(next);
+    },
+    onWeekdayChange: changeTargetDate,
     onApplyWeekdayDefault: handleApplyWeekdayDefault,
     onApplyWeekBulkDefault: handleApplyWeekBulkDefault,
     onRefresh: () => {
