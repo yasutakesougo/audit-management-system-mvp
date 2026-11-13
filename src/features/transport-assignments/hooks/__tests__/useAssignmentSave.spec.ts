@@ -880,7 +880,9 @@ describe('assignment recovery', () => {
   });
 
   it('does not persist an over-capacity draft through recovery', async () => {
-    localStorage.setItem(key, JSON.stringify([stored('old', 1)]));
+    const original = [stored('old', 1)];
+    localStorage.setItem(key, JSON.stringify(original));
+    const rawBefore = localStorage.getItem(key);
     installLock(true);
     const saveBulk = vi.fn().mockResolvedValue(undefined);
     const overCapacity: TransportAssignmentDraft = {
@@ -900,7 +902,8 @@ describe('assignment recovery', () => {
     });
 
     expect(saveBulk).not.toHaveBeenCalled();
-    expect(loadUnresolvedAssignmentSaves().map((record) => record.requestId)).toEqual(['old']);
+    expect(localStorage.getItem(key)).toBe(rawBefore);
+    expect(loadUnresolvedAssignmentSaves()).toEqual(original);
     expect(result.current.status).toBe('error');
   });
 
