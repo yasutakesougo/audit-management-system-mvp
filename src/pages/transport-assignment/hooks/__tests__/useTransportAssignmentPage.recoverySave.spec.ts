@@ -156,12 +156,17 @@ describe('useTransportAssignmentPage recovery save', () => {
   async function startRecoveryUntilWrite(result: { current: ReturnType<typeof useTransportAssignmentPage> }) {
     expect(result.current.canRecover).toBe(true);
     expect(vehicle(result)?.riderUserIds).toEqual(['I005']);
-    const pending = result.current.onRecover();
+    // onRecover sets status before its first await, then advances to the
+    // in-flight write on the next microtask. Both updates must stay inside act,
+    // while the write itself remains pending for the test to release.
+    let pending: Promise<void> | undefined;
     await act(async () => {
+      pending = result.current.onRecover();
       await Promise.resolve();
     });
     expect(harness.saveBulk).toHaveBeenCalledTimes(1);
     expect(result.current.saveStatus).toBe('saving');
+    if (!pending) throw new Error('recovery did not start');
     return { pending };
   }
 
