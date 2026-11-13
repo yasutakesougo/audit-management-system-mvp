@@ -1356,7 +1356,7 @@ describe('KioskProcedureDetailScreen (memory provider URL for local UI behavior 
     it('B-S14: disables delete confirm button and inputs while delete operation is in flight', async () => {
       let resolveDelete: () => void = () => {};
       mockDeleteRecord.mockImplementation(
-        () => new Promise((resolve) => { resolveDelete = resolve; }),
+        () => new Promise((resolve) => { resolveDelete = () => resolve(undefined); }),
       );
       mockUseExecutionRecord.mockReturnValue(
         makeExecutionRecordHookResult({
