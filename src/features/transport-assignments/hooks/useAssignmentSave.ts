@@ -378,7 +378,10 @@ export function useAssignmentSave(repository: AssignmentRepository) {
   );
 
   const saveBulkAssignments = useCallback(
-    async (assignments: TransportAssignment[]): Promise<AssignmentSaveResult> => {
+    async (
+      assignments: TransportAssignment[],
+      invocation?: { isDraftCurrent?: () => boolean },
+    ): Promise<AssignmentSaveResult> => {
       markEditorBusy();
       const saveBulk = repository.saveBulk as (
         this: AssignmentRepository,
@@ -389,6 +392,7 @@ export function useAssignmentSave(repository: AssignmentRepository) {
         return await withAssignmentWriteLock('save', () => runGuardedSave(
           assignments,
           (signal) => saveBulk.call(repository, assignments, { signal }),
+          { isDraftCurrent: invocation?.isDraftCurrent },
         ));
       } catch (err) {
         applyFailure(err);
