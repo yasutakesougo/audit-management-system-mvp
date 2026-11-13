@@ -20,6 +20,23 @@ import { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { TransportAssignment } from '@/features/schedules/domain/assignment';
 import { hasVehicleMissingDriver } from '../domain/transportAssignmentDraft';
 
+/** Same capacities the assignment screen uses when it blocks a normal save. */
+export const TRANSPORT_ASSIGNMENT_VEHICLE_CAPACITIES: Record<string, number> = {
+  '車両1': 6,
+  '車両2': 6,
+  '車両3': 8,
+  '車両4': 4,
+};
+
+export class AssignmentCoordinationBlockedError extends Error {
+  readonly code = 'ASSIGNMENT_COORDINATION_BLOCKED';
+
+  constructor() {
+    super('車両の定員または調整上の競合があるため、保存をやり直せません。');
+    this.name = 'AssignmentCoordinationBlockedError';
+  }
+}
+
 /**
  * Orchestrates the saving of transport assignments from a draft.
  */
@@ -55,6 +72,9 @@ export async function orchestrateAssignmentSave(
   signal?: AbortSignal,
   options?: { recoveryTouchRowIds?: readonly string[] },
 ): Promise<void> {
+  if (options?.recoveryTouchRowIds && isRecoveryBlockedByCoordination(readAssignmentCoordinationReadiness(draft))) {
+    throw new AssignmentCoordinationBlockedError();
+  }
   const saveBulk = repo.saveBulk as (
     this: AssignmentRepository,
     assignments: TransportAssignment[],
@@ -253,6 +273,24 @@ export function validateSaveReadiness(
     blockReason: hasErrors ? 'coordination_error' : (hasConflicts ? 'concurrency_conflict' : undefined),
     warnings: insights.filter(i => i.severity === 'warning').map(i => i.message)
   };
+}
+
+/**
+ * Coordination readiness for a draft, using the assignment screen's vehicle capacities.
+ * Concurrency conflicts are a separate gate and are not included here.
+ */
+export function readAssignmentCoordinationReadiness(
+  draft: TransportAssignmentDraft,
+  vehicleNameOverrides: TransportVehicleNameOverrides = {},
+): SaveReadiness {
+  return validateSaveReadiness(
+    getTransportAssignmentInsights(draft, vehicleNameOverrides, TRANSPORT_ASSIGNMENT_VEHICLE_CAPACITIES),
+    [],
+  );
+}
+
+export function isRecoveryBlockedByCoordination(readiness: SaveReadiness): boolean {
+  return readiness.isBlocked && readiness.blockReason === 'coordination_error';
 }
 
 /**

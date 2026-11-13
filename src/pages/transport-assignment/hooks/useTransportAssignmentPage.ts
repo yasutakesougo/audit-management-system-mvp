@@ -37,6 +37,9 @@ import {
   compareDraftWithPersistedAssignments,
   detectConcurrencyConflicts,
   validateSaveReadiness,
+  isRecoveryBlockedByCoordination,
+  readAssignmentCoordinationReadiness,
+  TRANSPORT_ASSIGNMENT_VEHICLE_CAPACITIES,
   type ConcurrencyConflictInsight
 } from '@/features/transport-assignments/application/transportAssignmentApplication';
 import { useUsers } from '@/features/users/useUsers';
@@ -339,13 +342,11 @@ export function useTransportAssignmentPage() {
   }, [concurrencyConflicts, targetDate, direction]);
 
   const coordinationInsights = useMemo(() => {
-    const vehicleCapacities: Record<string, number> = {
-      '車両1': 6,
-      '車両2': 6,
-      '車両3': 8,
-      '車両4': 4,
-    };
-    return getTransportAssignmentInsights(currentDraft, vehicleNameOverrides, vehicleCapacities);
+    return getTransportAssignmentInsights(
+      currentDraft,
+      vehicleNameOverrides,
+      TRANSPORT_ASSIGNMENT_VEHICLE_CAPACITIES,
+    );
   }, [currentDraft, vehicleNameOverrides]);
 
   const saveReadiness = useMemo(() => {
@@ -389,7 +390,9 @@ export function useTransportAssignmentPage() {
   const saveBlocked = isAssignmentLedgerClosed(ledgerState) || isAssignmentSaveBlocked(unresolvedSaves, saveRequestTargets);
   const blockedSaveFeedback = describeAssignmentLedger(ledgerState) ?? describeBlockedAssignmentSave(unresolvedSaves, saveRequestTargets);
   const recoveryEligibility = assignmentRecoveryEligibility(ledgerState, saveRequestTargets);
-  const canRecover = recoveryEligibility === 'available' && !isTransportAssignmentEditorBusy(saveStatus);
+  const canRecover = recoveryEligibility === 'available'
+    && !isTransportAssignmentEditorBusy(saveStatus)
+    && !isRecoveryBlockedByCoordination(saveReadiness);
   const canReconcileLedger = ledgerState.kind === 'records'
     && ledgerState.records.some((record) => record.targets.some((target) => target.before && target.intent && target.scheduleRowId));
   const canSave = 
@@ -512,6 +515,7 @@ export function useTransportAssignmentPage() {
 
   const handleRecover = async () => {
     if (!canRecover || !draft) return;
+    if (isRecoveryBlockedByCoordination(readAssignmentCoordinationReadiness(draft, vehicleNameOverrides))) return;
     const result = await repoRecover(draft);
     if (result.success) {
       setDirty(false);

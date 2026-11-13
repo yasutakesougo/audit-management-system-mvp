@@ -7,6 +7,7 @@ import {
   loadUnresolvedAssignmentSaves,
   type AssignmentSaveReport,
 } from '@/features/schedules';
+import { AssignmentCoordinationBlockedError } from '../../application/transportAssignmentApplication';
 import { AssignmentSaveBlockedError, useAssignmentSave } from '../useAssignmentSave';
 
 const draft: TransportAssignmentDraft = {
@@ -876,6 +877,31 @@ describe('assignment recovery', () => {
   beforeEach(() => {
     localStorage.clear();
     Reflect.deleteProperty(navigator, 'locks');
+  });
+
+  it('does not persist an over-capacity draft through recovery', async () => {
+    localStorage.setItem(key, JSON.stringify([stored('old', 1)]));
+    installLock(true);
+    const saveBulk = vi.fn().mockResolvedValue(undefined);
+    const overCapacity: TransportAssignmentDraft = {
+      ...draft,
+      vehicles: [{
+        ...draft.vehicles[0],
+        riderUserIds: ['U002', 'rider-2', 'rider-3', 'rider-4', 'rider-5', 'rider-6', 'rider-7'],
+      }],
+      unassignedUserIds: [],
+    };
+    const { result } = renderHook(() => useAssignmentSave(repositoryWith(saveBulk)));
+
+    await act(async () => {
+      const saved = await result.current.recoverAssignments(overCapacity);
+      expect(saved.success).toBe(false);
+      expect(saved.error).toBeInstanceOf(AssignmentCoordinationBlockedError);
+    });
+
+    expect(saveBulk).not.toHaveBeenCalled();
+    expect(loadUnresolvedAssignmentSaves().map((record) => record.requestId)).toEqual(['old']);
+    expect(result.current.status).toBe('error');
   });
 
   it('replaces a new-contract in-flight save and releases both ids only after success', async () => {

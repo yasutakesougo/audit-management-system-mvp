@@ -22,7 +22,13 @@ import {
   type UnresolvedAssignmentSave,
 } from '@/features/schedules';
 import { TransportAssignmentDraft } from '../domain/transportAssignmentDraft';
-import { listTransportAssignmentsForSave, orchestrateAssignmentSave } from '../application/transportAssignmentApplication';
+import {
+  AssignmentCoordinationBlockedError,
+  isRecoveryBlockedByCoordination,
+  listTransportAssignmentsForSave,
+  orchestrateAssignmentSave,
+  readAssignmentCoordinationReadiness,
+} from '../application/transportAssignmentApplication';
 import type { TransportAssignmentSaveStatus } from './useTransportAssignmentSave';
 
 export type AssignmentSaveStatus = TransportAssignmentSaveStatus;
@@ -361,6 +367,12 @@ export function useAssignmentSave(repository: AssignmentRepository) {
   const recoverAssignments = useCallback(
     async (draft: TransportAssignmentDraft): Promise<AssignmentSaveResult> => {
       return withAssignmentWriteLock('recover', async () => {
+        if (isRecoveryBlockedByCoordination(readAssignmentCoordinationReadiness(draft))) {
+          const blocked = new AssignmentCoordinationBlockedError();
+          setError(blocked);
+          setStatus('error');
+          return { success: false, error: blocked };
+        }
         setStatus('recovering');
         const assignments = listTransportAssignmentsForSave(draft);
         const request = assignmentSaveTargetsFrom(assignments);

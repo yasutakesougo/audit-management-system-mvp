@@ -5,6 +5,9 @@ import {
   detectConcurrencyConflicts,
   validateSaveReadiness,
   orchestrateAssignmentSave,
+  readAssignmentCoordinationReadiness,
+  isRecoveryBlockedByCoordination,
+  AssignmentCoordinationBlockedError,
   CoordinationInsight,
   ConcurrencyConflictInsight
 } from '../transportAssignmentApplication';
@@ -133,6 +136,60 @@ describe('transportAssignmentApplication contract tests', () => {
   });
 
   describe('orchestrateAssignmentSave', () => {
+    it('blocks recovery when 車両1 carries more riders than its capacity of 6', () => {
+      const vehicle = dummyDraft.vehicles[0];
+      const six = readAssignmentCoordinationReadiness({
+        ...dummyDraft,
+        vehicles: [{ ...vehicle, riderUserIds: ['rider-1', 'rider-2', 'rider-3', 'rider-4', 'rider-5', 'rider-6'] }],
+        unassignedUserIds: [],
+      });
+      const seven = readAssignmentCoordinationReadiness({
+        ...dummyDraft,
+        vehicles: [{ ...vehicle, riderUserIds: ['rider-1', 'rider-2', 'rider-3', 'rider-4', 'rider-5', 'rider-6', 'rider-7'] }],
+        unassignedUserIds: [],
+      });
+
+      expect(six.isBlocked).toBe(false);
+      expect(isRecoveryBlockedByCoordination(seven)).toBe(true);
+      expect(seven.blockReason).toBe('coordination_error');
+    });
+
+    it('refuses a recovery write that exceeds vehicle capacity', async () => {
+      const mockRepo = {
+        saveBulk: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AssignmentRepository;
+      const overCapacity: TransportAssignmentDraft = {
+        ...dummyDraft,
+        vehicles: [{
+          ...dummyDraft.vehicles[0],
+          riderUserIds: ['rider-1', 'rider-2', 'rider-3', 'rider-4', 'rider-5', 'rider-6', 'rider-7'],
+        }],
+        unassignedUserIds: [],
+      };
+
+      await expect(orchestrateAssignmentSave(mockRepo, overCapacity, undefined, {
+        recoveryTouchRowIds: ['row-synthetic'],
+      })).rejects.toBeInstanceOf(AssignmentCoordinationBlockedError);
+      expect(mockRepo.saveBulk).not.toHaveBeenCalled();
+    });
+
+    it('does not apply the recovery coordination gate to a normal save', async () => {
+      const mockRepo = {
+        saveBulk: vi.fn().mockResolvedValue(undefined),
+      } as unknown as AssignmentRepository;
+      const overCapacity: TransportAssignmentDraft = {
+        ...dummyDraft,
+        vehicles: [{
+          ...dummyDraft.vehicles[0],
+          riderUserIds: ['rider-1', 'rider-2', 'rider-3', 'rider-4', 'rider-5', 'rider-6', 'rider-7'],
+        }],
+        unassignedUserIds: [],
+      };
+
+      await orchestrateAssignmentSave(mockRepo, overCapacity);
+      expect(mockRepo.saveBulk).toHaveBeenCalledTimes(1);
+    });
+
     it('should call saveBulk on the repository', async () => {
       const mockRepo = {
         saveBulk: vi.fn().mockResolvedValue(undefined)
