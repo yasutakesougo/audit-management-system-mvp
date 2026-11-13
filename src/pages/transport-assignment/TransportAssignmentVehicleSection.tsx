@@ -200,6 +200,7 @@ export function TransportAssignmentVehicleSection({
                         size="small"
                         color="inherit"
                         onClick={() => onRemoveUser(userId)}
+                        disabled={isTransportAssignmentEditorBusy(saveStatus)}
                         data-testid={`transport-assignment-unassign-${vehicle.vehicleId}-${userId}`}
                       >
                         解除

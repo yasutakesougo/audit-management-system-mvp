@@ -475,6 +475,7 @@ export function useTransportAssignmentPage() {
   };
 
   const handleRemoveUser = (userId: string) => {
+    if (isTransportAssignmentEditorBusy(saveStatus)) return;
     clearSaveError();
     setDraft((prev) => (prev ? removeUserFromVehicle(prev, userId) : prev));
     setDirty(true);
@@ -535,8 +536,11 @@ export function useTransportAssignmentPage() {
   const handleRecover = async () => {
     if (!canRecover || !draft) return;
     if (isRecoveryBlockedByCoordination(readAssignmentCoordinationReadiness(draft, vehicleNameOverrides))) return;
-    const result = await repoRecover(draft);
-    if (result.success) {
+    const savedDraft = draft;
+    const result = await repoRecover(savedDraft, {
+      isDraftCurrent: () => draftRef.current === savedDraft,
+    });
+    if (result.success && draftRef.current === savedDraft) {
       setDirty(false);
       void refetchSchedules();
       void refetchAssignments();

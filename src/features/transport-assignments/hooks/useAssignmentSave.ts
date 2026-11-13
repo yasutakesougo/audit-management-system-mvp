@@ -403,7 +403,10 @@ export function useAssignmentSave(repository: AssignmentRepository) {
   );
 
   const recoverAssignments = useCallback(
-    async (draft: TransportAssignmentDraft): Promise<AssignmentSaveResult> => {
+    async (
+      draft: TransportAssignmentDraft,
+      invocation?: { isDraftCurrent?: () => boolean },
+    ): Promise<AssignmentSaveResult> => {
       return withAssignmentWriteLock('recover', async () => {
         if (isRecoveryBlockedByCoordination(readAssignmentCoordinationReadiness(draft))) {
           const blocked = new AssignmentCoordinationBlockedError();
@@ -430,7 +433,7 @@ export function useAssignmentSave(repository: AssignmentRepository) {
           (signal) => orchestrateAssignmentSave(repository, draft, signal, {
             recoveryTouchRowIds: recoveryTouchRowIds.filter((rowId) => rowId !== ''),
           }),
-          { supersedeRequestIds },
+          { supersedeRequestIds, isDraftCurrent: invocation?.isDraftCurrent },
         );
       });
     },
