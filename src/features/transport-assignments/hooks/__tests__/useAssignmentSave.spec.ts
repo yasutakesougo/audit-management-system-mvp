@@ -4,6 +4,7 @@ import type { AssignmentRepository, TransportAssignment } from '@/features/sched
 import type { TransportAssignmentDraft } from '../../domain/transportAssignmentDraft';
 import {
   AssignmentPartialSaveError,
+  isTransportAssignmentEditorBusy,
   loadUnresolvedAssignmentSaves,
   type AssignmentSaveReport,
 } from '@/features/schedules';
@@ -838,6 +839,128 @@ describe('useAssignmentSave', () => {
       setItem.mockRestore();
       if (originalGet) getItem.mockImplementation(originalGet);
     }
+  });
+
+  it('marks the editor busy before the save preview resolves', async () => {
+    let releasePreview: ((value: unknown) => void) | undefined;
+    const saveBulk = vi.fn().mockResolvedValue(undefined);
+    const previewTransportSave = vi.fn(() => new Promise((resolve) => {
+      releasePreview = resolve;
+    }));
+    const repository = {
+      ...repositoryWith(saveBulk as AssignmentRepository['saveBulk']),
+      previewTransportSave,
+    } as AssignmentRepository;
+    const { result } = renderHook(() => useAssignmentSave(repository));
+    const planned = [{
+      dateKey: '2026-11-11',
+      direction: 'to' as const,
+      userId: 'U002',
+      scheduleRowId: 'row-1',
+      before: { vehicleId: '', driverId: '', notes: '' },
+      intent: { vehicleId: '車両1', driverId: 'S001', notes: '' },
+    }];
+
+    let pending: Promise<unknown> | undefined;
+    act(() => {
+      pending = result.current.saveAssignments(draft, { isDraftCurrent: () => true });
+    });
+    await vi.waitFor(() => {
+      expect(previewTransportSave).toHaveBeenCalledTimes(1);
+    });
+
+    expect(result.current.status).toBe('saving');
+    expect(isTransportAssignmentEditorBusy(result.current.status)).toBe(true);
+    expect(saveBulk).not.toHaveBeenCalled();
+
+    await act(async () => {
+      releasePreview?.(planned);
+      await pending;
+    });
+
+    expect(result.current.status).toBe('success');
+    expect(saveBulk).toHaveBeenCalledTimes(1);
+    const written = saveBulk.mock.calls[0]?.[0] as Array<{ driverId?: string }>;
+    expect(written.some((item) => item.driverId === 'S001')).toBe(true);
+  });
+
+  it('does not write a draft that changes during the save preview', async () => {
+    let releasePreview: ((value: unknown) => void) | undefined;
+    const saveBulk = vi.fn().mockResolvedValue(undefined);
+    const previewTransportSave = vi.fn(() => new Promise((resolve) => {
+      releasePreview = resolve;
+    }));
+    const repository = {
+      ...repositoryWith(saveBulk as AssignmentRepository['saveBulk']),
+      previewTransportSave,
+    } as AssignmentRepository;
+    const { result } = renderHook(() => useAssignmentSave(repository));
+    const planned = [{
+      dateKey: '2026-11-11',
+      direction: 'to' as const,
+      userId: 'U002',
+      scheduleRowId: 'row-1',
+      before: { vehicleId: '', driverId: '', notes: '' },
+      intent: { vehicleId: '車両1', driverId: 'S001', notes: '' },
+    }];
+    const edited: TransportAssignmentDraft = {
+      ...draft,
+      vehicles: [{ ...draft.vehicles[0], driverStaffId: 'S009', driverName: '新しい運転' }],
+    };
+    let current = draft;
+
+    let pending: Promise<{ success: boolean }> | undefined;
+    act(() => {
+      pending = result.current.saveAssignments(draft, { isDraftCurrent: () => current === draft });
+    });
+    await vi.waitFor(() => {
+      expect(previewTransportSave).toHaveBeenCalledTimes(1);
+    });
+    expect(isTransportAssignmentEditorBusy(result.current.status)).toBe(true);
+
+    current = edited;
+    let saved: { success: boolean } | undefined;
+    await act(async () => {
+      releasePreview?.(planned);
+      saved = await pending;
+    });
+
+    expect(saved?.success).toBe(false);
+    expect(saveBulk).not.toHaveBeenCalled();
+    expect(loadUnresolvedAssignmentSaves()).toEqual([]);
+    expect(result.current.status).toBe('idle');
+    expect(isTransportAssignmentEditorBusy(result.current.status)).toBe(false);
+    expect(edited.vehicles[0]?.driverStaffId).toBe('S009');
+
+    previewTransportSave.mockResolvedValue(planned);
+    await act(async () => {
+      const saved = await result.current.saveAssignments(edited, { isDraftCurrent: () => true });
+      expect(saved.success).toBe(true);
+    });
+    expect(saveBulk).toHaveBeenCalledTimes(1);
+    const written = saveBulk.mock.calls[0]?.[0] as Array<{ driverId?: string }>;
+    expect(written.some((item) => item.driverId === 'S009')).toBe(true);
+    expect(written.some((item) => item.driverId === 'S001')).toBe(false);
+  });
+
+  it('does not stay busy when the save preview fails before a write', async () => {
+    const saveBulk = vi.fn().mockResolvedValue(undefined);
+    const previewTransportSave = vi.fn().mockRejectedValue(new Error('preview failed'));
+    const repository = {
+      ...repositoryWith(saveBulk as AssignmentRepository['saveBulk']),
+      previewTransportSave,
+    } as AssignmentRepository;
+    const { result } = renderHook(() => useAssignmentSave(repository));
+
+    await act(async () => {
+      const saved = await result.current.saveAssignments(draft);
+      expect(saved.success).toBe(false);
+    });
+
+    expect(saveBulk).not.toHaveBeenCalled();
+    expect(loadUnresolvedAssignmentSaves()).toEqual([]);
+    expect(result.current.status).toBe('error');
+    expect(isTransportAssignmentEditorBusy(result.current.status)).toBe(false);
   });
 });
 

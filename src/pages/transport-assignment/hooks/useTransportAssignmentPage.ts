@@ -300,6 +300,8 @@ export function useTransportAssignmentPage() {
 
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const draftScopeRef = useRef(`${targetDate}\u0000${direction}`);
   useEffect(() => {
     const scope = `${targetDate}\u0000${direction}`;
@@ -503,9 +505,13 @@ export function useTransportAssignmentPage() {
         void refetchAssignments();
       }
     } else if (draft) {
-      // Modern repository-based save for current day
-      const result = await repoSave(draft);
-      if (result.success) {
+      // Modern repository-based save for current day.
+      // Edits during preview keep this newer draft; only the clicked snapshot may clear dirty.
+      const savedDraft = draft;
+      const result = await repoSave(savedDraft, {
+        isDraftCurrent: () => draftRef.current === savedDraft,
+      });
+      if (result.success && draftRef.current === savedDraft) {
         setDirty(false);
         void refetchSchedules();
         void refetchAssignments();

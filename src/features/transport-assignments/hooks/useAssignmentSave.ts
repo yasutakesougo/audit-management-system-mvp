@@ -163,14 +163,28 @@ export function useAssignmentSave(repository: AssignmentRepository) {
     }));
   }, [repository]);
 
+  const markEditorBusy = useCallback(() => {
+    setStatus(busySaveStatus);
+  }, []);
+
   const runGuardedSave = useCallback(
     async (
       assignments: TransportAssignment[],
       execute: (signal: AbortSignal) => Promise<void>,
-      options?: { supersedeRequestIds?: readonly string[] },
+      options?: { supersedeRequestIds?: readonly string[]; isDraftCurrent?: () => boolean },
     ): Promise<AssignmentSaveResult> => {
       const controller = new AbortController();
       abortRef.current = controller;
+      // Preview lists schedule rows before any write. The vehicle editor stays
+      // enabled until status is busy, so mark it before this first await.
+      markEditorBusy();
+      const preparationIsStale = () => options?.isDraftCurrent?.() === false;
+      const abandonStalePreparation = (): AssignmentSaveResult => {
+        setError(null);
+        setStatus('idle');
+        return { success: false };
+      };
+      if (preparationIsStale()) return abandonStalePreparation();
       if (isAssignmentLedgerClosed(ledgerRef.current)) return refuseSave();
       const supersededNow = new Set(options?.supersedeRequestIds ?? []);
       const screening = assignmentSaveTargetsFrom(assignments);
@@ -183,9 +197,13 @@ export function useAssignmentSave(repository: AssignmentRepository) {
       try {
         request = await prepareRequest(assignments);
       } catch (err) {
+        if (preparationIsStale()) return abandonStalePreparation();
         applyFailure(err);
         return { success: false, error: err };
       }
+      // The write still closes over the draft from the click. A newer edit
+      // must stay unsaved: do not record a ledger row or start the write.
+      if (preparationIsStale()) return abandonStalePreparation();
       if (isAssignmentSaveBlocked(
         unresolvedRef.current.filter((record) => !supersededNow.has(record.requestId)),
         request,
@@ -308,7 +326,7 @@ export function useAssignmentSave(repository: AssignmentRepository) {
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [applyFailure, bindSavePhase, commitRequest, prepareRequest, refuseSave, releaseCompletedSave, repository],
+    [applyFailure, bindSavePhase, commitRequest, markEditorBusy, prepareRequest, refuseSave, releaseCompletedSave, repository],
   );
 
   const withAssignmentWriteLock = useCallback(async (
@@ -339,29 +357,45 @@ export function useAssignmentSave(repository: AssignmentRepository) {
   }, [refuseSave]);
 
   const saveAssignments = useCallback(
-    async (draft: TransportAssignmentDraft): Promise<AssignmentSaveResult> => {
+    async (
+      draft: TransportAssignmentDraft,
+      invocation?: { isDraftCurrent?: () => boolean },
+    ): Promise<AssignmentSaveResult> => {
+      markEditorBusy();
       const assignments = listTransportAssignmentsForSave(draft);
-      return withAssignmentWriteLock('save', () => runGuardedSave(
-        assignments,
-        (signal) => orchestrateAssignmentSave(repository, draft, signal),
-      ));
+      try {
+        return await withAssignmentWriteLock('save', () => runGuardedSave(
+          assignments,
+          (signal) => orchestrateAssignmentSave(repository, draft, signal),
+          { isDraftCurrent: invocation?.isDraftCurrent },
+        ));
+      } catch (err) {
+        applyFailure(err);
+        return { success: false, error: err };
+      }
     },
-    [repository, runGuardedSave, withAssignmentWriteLock],
+    [applyFailure, markEditorBusy, repository, runGuardedSave, withAssignmentWriteLock],
   );
 
   const saveBulkAssignments = useCallback(
     async (assignments: TransportAssignment[]): Promise<AssignmentSaveResult> => {
+      markEditorBusy();
       const saveBulk = repository.saveBulk as (
         this: AssignmentRepository,
         items: TransportAssignment[],
         options?: { signal?: AbortSignal },
       ) => Promise<void>;
-      return withAssignmentWriteLock('save', () => runGuardedSave(
-        assignments,
-        (signal) => saveBulk.call(repository, assignments, { signal }),
-      ));
+      try {
+        return await withAssignmentWriteLock('save', () => runGuardedSave(
+          assignments,
+          (signal) => saveBulk.call(repository, assignments, { signal }),
+        ));
+      } catch (err) {
+        applyFailure(err);
+        return { success: false, error: err };
+      }
     },
-    [repository, runGuardedSave, withAssignmentWriteLock],
+    [applyFailure, markEditorBusy, repository, runGuardedSave, withAssignmentWriteLock],
   );
 
   const recoverAssignments = useCallback(
@@ -448,6 +482,11 @@ export function useAssignmentSave(repository: AssignmentRepository) {
     clearError,
     resetSaveFeedback,
   };
+}
+
+function busySaveStatus(current: AssignmentSaveStatus): AssignmentSaveStatus {
+  if (current === 'saving' || current === 'reconciling' || current === 'recovering') return current;
+  return 'saving';
 }
 
 function isAssignmentConflictError(error: unknown): boolean {
