@@ -6,6 +6,7 @@ import {
   SharePointExecutionRecordRepository,
 } from '../SharePointExecutionRecordRepository';
 import { EXECUTION_RECORD_FIELDS } from '../constants';
+import { asSpFetch } from './asSpFetch';
 import type { ExecutionRecord } from '../../../domain/executionRecordTypes';
 
 function pagedValue<T extends { Id?: unknown }>(url: string, items: T[]): { value: T[] } {
@@ -24,8 +25,9 @@ function effectiveRequestMethod(init?: RequestInit): string {
   return (overrideMethod || baseMethod).toUpperCase();
 }
 
-function countTransportPostRequests(spFetch: { mock: { calls: Array<readonly [unknown, RequestInit?]> } }): number {
-  return spFetch.mock.calls.filter(([, init]) => {
+function countTransportPostRequests(spFetch: { mock: { calls: ReadonlyArray<readonly unknown[]> } }): number {
+  return spFetch.mock.calls.filter((call) => {
+    const init = call[1] as RequestInit | undefined;
     const transportMethod = (init?.method ?? 'GET').toUpperCase();
     const effectiveMethod = effectiveRequestMethod(init);
     return transportMethod === 'POST'
@@ -1512,8 +1514,8 @@ describe('SharePointExecutionRecordRepository', () => {
       triggeredBipIds: [],
     });
 
-    const createRepo = (spFetch: ReturnType<typeof vi.fn>) => new SharePointExecutionRecordRepository({
-      spFetch,
+    const createRepo = (spFetch: (path: string, init?: RequestInit) => Promise<unknown>) => new SharePointExecutionRecordRepository({
+      spFetch: asSpFetch(spFetch),
       getListFieldInternalNames: mockGetFields,
     });
 
@@ -1905,8 +1907,8 @@ describe('SharePointExecutionRecordRepository', () => {
       json: async () => body,
     });
 
-    const createRepo = (spFetch: ReturnType<typeof vi.fn>) => new SharePointExecutionRecordRepository({
-      spFetch,
+    const createRepo = (spFetch: (path: string, init?: RequestInit) => Promise<unknown>) => new SharePointExecutionRecordRepository({
+      spFetch: asSpFetch(spFetch),
       getListFieldInternalNames: mockGetFields,
     });
 

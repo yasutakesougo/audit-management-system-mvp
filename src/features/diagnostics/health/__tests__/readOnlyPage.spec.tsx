@@ -78,7 +78,7 @@ describe('read-only diagnostic page', () => {
   it('does not expose column-repair execution when a recommendation exists', async () => {
     dependencies.repairCandidates = true;
     await renderPage();
-    expect(screen.queryByRole('button', { name: '修復', exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '修復' })).not.toBeInTheDocument();
   });
 
   it('does not expose index-repair execution for index pressure', async () => {

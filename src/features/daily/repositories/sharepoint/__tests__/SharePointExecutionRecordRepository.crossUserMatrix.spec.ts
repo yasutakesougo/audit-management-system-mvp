@@ -5,6 +5,7 @@ import {
   AmbiguousExecutionRecordError,
 } from '../SharePointExecutionRecordRepository';
 import type { ExecutionRecord } from '../../../domain/executionRecordTypes';
+import { asSpFetch } from './asSpFetch';
 
 describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix (6 Items + Isolation + Legacy)', () => {
   const DATE = '2026-10-24';
@@ -12,6 +13,18 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
   const USER_6_CODE = 'I005';
   const USER_17_CODE = 'I017';
   const SLOT = 'procedure-1';
+
+  const executionDraft = (status: ExecutionRecord['status']): ExecutionRecord => ({
+    id: `${DATE}-${USER_6_CODE}-${SLOT}`,
+    date: DATE,
+    userId: USER_6_CODE,
+    scheduleItemId: SLOT,
+    status,
+    triggeredBipIds: [],
+    memo: '',
+    recordedBy: '',
+    recordedAt: '',
+  });
 
   const mockGetFields = vi.fn().mockResolvedValue(new Set([
     'Title',
@@ -146,7 +159,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     });
 
     const repo = new SharePointExecutionRecordRepository({
-      spFetch,
+      spFetch: asSpFetch(spFetch),
       getListFieldInternalNames: mockGetFields,
     });
 
@@ -167,13 +180,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     const classification = await repo.classifyExecutionCandidates(DATE, [USER_6_CODE], [SLOT]);
     expect(classification.kind).toBe('absent');
 
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'completed',
-    };
+    const draft = executionDraft('completed');
     await repo.upsertRecord(draft);
 
     const mutations = inspectHttpMutations(spFetch);
@@ -194,13 +201,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     const classification = await repo.classifyExecutionCandidates(DATE, [USER_6_CODE], [SLOT]);
     expect(classification.kind).toBe('absent');
 
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'completed',
-    };
+    const draft = executionDraft('completed');
     await repo.upsertRecord(draft);
 
     const mutations = inspectHttpMutations(spFetch);
@@ -234,13 +235,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
       expect(classification.record.userId).toBe(USER_6_CODE);
     }
 
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'skipped',
-    };
+    const draft = executionDraft('skipped');
     await repo.upsertRecord(draft);
 
     const mutations = inspectHttpMutations(spFetch);
@@ -270,13 +265,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     const classification = await repo.classifyExecutionCandidates(DATE, [USER_6_CODE], [SLOT]);
     expect(classification.kind).toBe('mismatch');
 
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'completed',
-    };
+    const draft = executionDraft('completed');
 
     await expect(repo.upsertRecord(draft)).rejects.toThrow(ExecutionTargetMismatchError);
     await expect(repo.deleteRecord(DATE, USER_6_CODE, SLOT)).rejects.toThrow(ExecutionTargetMismatchError);
@@ -312,13 +301,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     const classification = await repo.classifyExecutionCandidates(DATE, [USER_6_CODE], [SLOT]);
     expect(classification.kind).toBe('duplicate');
 
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'completed',
-    };
+    const draft = executionDraft('completed');
 
     await expect(repo.upsertRecord(draft)).rejects.toThrow(AmbiguousExecutionRecordError);
     await expect(repo.deleteRecord(DATE, USER_6_CODE, SLOT)).rejects.toThrow(AmbiguousExecutionRecordError);
@@ -337,13 +320,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
 
     await expect(repo.classifyExecutionCandidates(DATE, [USER_6_CODE], [SLOT])).rejects.toThrow();
 
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'completed',
-    };
+    const draft = executionDraft('completed');
 
     await expect(repo.upsertRecord(draft)).rejects.toThrow();
     await expect(repo.deleteRecord(DATE, USER_6_CODE, SLOT)).rejects.toThrow();
@@ -407,7 +384,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
       ],
     });
     const repo = new SharePointExecutionRecordRepository({
-      spFetch,
+      spFetch: asSpFetch(spFetch),
       getListFieldInternalNames: mockGetFields,
       store,
     });
@@ -454,7 +431,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
       ],
     });
     const repo = new SharePointExecutionRecordRepository({
-      spFetch,
+      spFetch: asSpFetch(spFetch),
       getListFieldInternalNames: mockGetFields,
       store,
     });
@@ -549,13 +526,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Comprehensive Matrix 
     }
 
     // Upserting for User 6 targets existing 1006 with MERGE, does NOT create duplicate parent or child
-    const draft: ExecutionRecord = {
-      id: `${DATE}-${USER_6_CODE}-${SLOT}`,
-      date: DATE,
-      userId: USER_6_CODE,
-      scheduleItemId: SLOT,
-      status: 'skipped',
-    };
+    const draft = executionDraft('skipped');
     await repo.upsertRecord(draft, { candidateUserIds: [USER_6_CODE, USER_6_ITEM_ID] });
 
     const mutations = inspectHttpMutations(spFetch);

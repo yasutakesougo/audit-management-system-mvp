@@ -183,9 +183,9 @@ vi.mock('@mui/material', async () => {
       const testId = (props as Record<string, unknown>)['data-testid'];
       if (buttonMode.dropSubmitDisabled && testId === 'kiosk-observation-submit') {
         const { disabled, ...rest } = props;
-        return React.createElement(ActualButton, { ...rest, ref, 'data-disabled': String(Boolean(disabled)) });
+        return React.createElement(ActualButton, Object.assign({ ...rest, ref }, { 'data-disabled': String(Boolean(disabled)) }));
       }
-      return React.createElement(ActualButton, { ...props, ref, 'data-disabled': String(Boolean(props.disabled)) });
+      return React.createElement(ActualButton, Object.assign({ ...props, ref }, { 'data-disabled': String(Boolean(props.disabled)) }));
     },
   );
   return { ...actual, Button };

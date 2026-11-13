@@ -141,11 +141,13 @@ vi.mock('@mui/material', async (importOriginal) => {
   return {
     ...actual,
     Snackbar: (props: React.ComponentProps<typeof actual.Snackbar>) => {
-      const message = String(props.children?.props?.children ?? '');
+      const child = props.children;
+      const nested = React.isValidElement<{ children?: React.ReactNode }>(child) ? child.props.children : '';
+      const message = String(nested ?? '');
       React.useEffect(() => {
         if (message !== '記録の取り消しに失敗しました。再度お試しください。' || !props.onClose) return undefined;
         const callback = props.onClose as (...args: any[]) => void;
-        harness.openSnackbarCloseCallbacks.push({ message, open: props.open, callback });
+        harness.openSnackbarCloseCallbacks.push({ message, open: props.open === true, callback });
         return () => {
           harness.openSnackbarCloseCallbacks.push({ message, open: false, callback });
         };
@@ -312,7 +314,7 @@ function installControlledTimers() {
         }
       });
     }, timeout);
-  }) as typeof globalThis.setTimeout);
+  }) as unknown as typeof globalThis.setTimeout);
   const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
   clearSpy.mockImplementation(((id?: Parameters<typeof clearTimeout>[0]) => {
     const numeric = typeof id === 'number' ? id : null;

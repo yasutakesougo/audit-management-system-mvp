@@ -897,6 +897,9 @@ describe('useExecutionRecord', () => {
       scheduleItemId: 'slot-1',
       status: 'completed',
       triggeredBipIds: [],
+      memo: '',
+      recordedBy: '',
+      recordedAt: '',
     };
     mockGetRecord.mockResolvedValue(userARecord);
 
@@ -954,6 +957,8 @@ describe('useExecutionRecord', () => {
       status: 'completed',
       triggeredBipIds: [],
       memo: 'stored',
+      recordedBy: '',
+      recordedAt: '',
     };
     let classifyCount = 0;
     classifyLookup = async (_date, userIds) => {
@@ -1006,6 +1011,9 @@ describe('useExecutionRecord', () => {
       scheduleItemId: 'slot-1',
       status: 'completed',
       triggeredBipIds: [],
+      memo: '',
+      recordedBy: '',
+      recordedAt: '',
     };
     classifyLookup = async (_date, userIds) =>
       userIds[0] === 'user-A'
