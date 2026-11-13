@@ -152,4 +152,40 @@ describe('useTransportAssignmentPage save preview', () => {
     expect(driverId(result)).toBe('S002');
     expect(result.current.saveStatus).toBe('success');
   });
+
+  it('does not navigate to another date, week, or direction during save preview', async () => {
+    let releasePreview: ((value: unknown) => void) | undefined;
+    repositoryBox.previewTransportSave.mockImplementation(() => new Promise((resolve) => {
+      releasePreview = resolve;
+    }));
+    const { result } = renderHook(() => useTransportAssignmentPage());
+
+    act(() => result.current.onDriverChange('車両1', 'S001'));
+    let pending: Promise<void> | undefined;
+    act(() => { pending = result.current.onSave(); });
+    await vi.waitFor(() => expect(repositoryBox.previewTransportSave).toHaveBeenCalledTimes(1));
+    expect(result.current.saveStatus).toBe('saving');
+
+    const originalDate = result.current.targetDate;
+    const originalDirection = result.current.direction;
+    act(() => {
+      result.current.setTargetDate('2026-04-01');
+      result.current.onTargetDateChange('2026-04-01');
+      result.current.onWeekdayChange('2026-04-01');
+      result.current.onChangeWeek(7);
+      result.current.setDirection('from');
+      result.current.onDirectionChange('from');
+      result.current.onApplyWeekBulkDefault();
+    });
+    expect(result.current.targetDate).toBe(originalDate);
+    expect(result.current.direction).toBe(originalDirection);
+    expect(result.current.weekBulkApplyState).toBeNull();
+
+    await act(async () => {
+      releasePreview?.(planned);
+      await pending;
+    });
+    expect(repositoryBox.saveBulk).toHaveBeenCalledTimes(1);
+  });
+
 });
