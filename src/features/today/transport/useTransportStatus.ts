@@ -34,9 +34,24 @@ import { useStaffStore } from '@/features/staff/store';
 import { resolveOperationFailureFeedback } from '../feedback/operationFeedback';
 import { useTodaySummary } from '../domain';
 import {
-    applyTransition,
+    applyTransportLogs,
+    buildLegsForScheduleAssignments,
+    composeEffectiveLegs,
     computeDirectionSummary,
     deriveTransportLegs,
+    filterScheduleRowsForJstDate,
+    canOperateTransportBoard,
+    enqueueTransportLogSave,
+    isCurrentTransportDate,
+    jstCalendarDateKey,
+    msUntilNextJstMidnight,
+    resolveScheduleFeedPhase,
+    resolveTransportBoardPhase,
+    restoreLegAfterFailedSave,
+    selectTransportLogsForDate,
+    transitionTransportLegs,
+    transportLegHoldKey,
+    type TransportFeedPhase,
     formatHHmm,
     getDefaultDirection,
     hasTransportInfo,
@@ -149,8 +164,11 @@ export type UseTransportStatusReturn = {
   /** Current time HH:mm (for overdue detection) */
   currentTime: string;
 
-  /** Whether data is available */
+  /** Whether the active date has legs and both feeds have succeeded */
   isReady: boolean;
+
+  /** loading, failed closed, or operable */
+  boardPhase: TransportFeedPhase;
 
   /** Manual refresh for kiosk/background sync */
   refresh: () => Promise<void>;
@@ -159,22 +177,20 @@ export type UseTransportStatusReturn = {
 // ─── Hook Implementation ────────────────────────────────────────────────────
 
 /** Get today's date as yyyy-MM-dd in JST */
-function getTodayKey(): string {
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+function getTodayKey(now = new Date()): string {
+  return jstCalendarDateKey(now.toISOString()) ?? '';
 }
 
-function getTodayScheduleRange(): { from: string; to: string } {
-  const today = getTodayKey();
+function getTodayScheduleRange(today = getTodayKey()): { from: string; to: string } {
   return {
     from: `${today}T00:00:00+09:00`,
     to: `${today}T23:59:59+09:00`,
   };
 }
+
+const EMPTY_LEGS: TransportLeg[] = [];
+
+type RevisionMark = { dateKey: string; revision: number };
 
 function normalizeLookupKey(value: string): string {
   return value.trim().replace(/[-_\s]/g, '').toUpperCase();
@@ -217,8 +233,45 @@ export function useTransportStatus(): UseTransportStatusReturn {
   const summary = useTodaySummary();
   const sp = useSP();
   const { show } = useToast();
-  const todayScheduleRange = useMemo(() => getTodayScheduleRange(), []);
-  const { items: todaySchedules } = useSchedules(todayScheduleRange);
+  const [todayKey, setTodayKey] = useState(getTodayKey);
+  const todayKeyRef = useRef(todayKey);
+  todayKeyRef.current = todayKey;
+  const legsDateRef = useRef(todayKey);
+  const discardPreviousLegsRef = useRef(false);
+  const holdsRef = useRef(new Map<string, RevisionMark>());
+  const commitsRef = useRef(new Map<string, RevisionMark>());
+  const revisionRef = useRef(0);
+  const snapshotSeqRef = useRef(0);
+  const appliedSnapshotSeqRef = useRef(0);
+  const saveChainsRef = useRef(new Map<string, Promise<void>>());
+  const scheduleWatchRef = useRef({ dateKey: todayKey, sawLoading: false });
+  const todayScheduleRange = useMemo(() => getTodayScheduleRange(todayKey), [todayKey]);
+  const {
+    items: todaySchedules,
+    loading: schedulesLoading,
+    lastError: schedulesError,
+  } = useSchedules(todayScheduleRange);
+  if (scheduleWatchRef.current.dateKey !== todayKey) {
+    scheduleWatchRef.current = { dateKey: todayKey, sawLoading: schedulesLoading };
+  } else if (schedulesLoading) {
+    scheduleWatchRef.current.sawLoading = true;
+  }
+  const schedulesPhase = resolveScheduleFeedPhase({
+    sawLoadingForDate: scheduleWatchRef.current.dateKey === todayKey && scheduleWatchRef.current.sawLoading,
+    loading: schedulesLoading,
+    hasError: schedulesError != null,
+  });
+  const [logsPhase, setLogsPhase] = useState<TransportFeedPhase>('loading');
+  const logsDateRef = useRef(todayKey);
+  if (logsDateRef.current !== todayKey) {
+    logsDateRef.current = todayKey;
+    setLogsPhase('loading');
+  }
+  const boardPhase = !isCurrentTransportDate(todayKey, getTodayKey())
+    ? 'loading'
+    : resolveTransportBoardPhase({ schedules: schedulesPhase, logs: logsPhase });
+  const boardPhaseRef = useRef(boardPhase);
+  boardPhaseRef.current = boardPhase;
   const { data: staffRows } = useStaffStore();
 
   // Direction tab state (auto-switches at 13:00)
@@ -250,14 +303,30 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
   // Staff + schedule assignment enrichment (vehicle/driver visibility)
   const staffNameIndex = useMemo(() => buildStaffNameIndex(staffRows), [staffRows]);
+  const todayScheduleRows = useMemo(
+    () => filterScheduleRowsForJstDate(
+      (todaySchedules ?? []) as unknown as Array<Record<string, unknown> & { start?: unknown }>,
+      todayKey,
+    ),
+    [todaySchedules, todayKey],
+  );
   const assignmentIndex = useMemo(
     () =>
       buildTransportAssignmentIndex(
-        (todaySchedules ?? []) as unknown as Record<string, unknown>[],
+        todayScheduleRows,
         (staffId) => staffNameIndex.get(staffId) ?? staffNameIndex.get(normalizeLookupKey(staffId)),
       ),
-    [todaySchedules, staffNameIndex],
+    [todayScheduleRows, staffNameIndex],
   );
+  const userNameById = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const user of summary.users ?? []) {
+      const userId = user.UserID?.trim();
+      const fullName = user.FullName?.trim();
+      if (userId && fullName) names.set(userId, fullName);
+    }
+    return names;
+  }, [summary.users]);
   const enrichedLegs = useMemo(
     () => enrichTransportLegsWithAssignments(legs, assignmentIndex),
     [legs, assignmentIndex],
@@ -271,41 +340,91 @@ export function useTransportStatus(): UseTransportStatusReturn {
     [show],
   );
 
-  const buildLegSnapshot = useCallback(async () => {
-    if (!summary.users || summary.users.length === 0) return null;
-
+  const buildLegSnapshot = useCallback(async (dateKey: string) => {
+    const startedRevision = revisionRef.current;
+    const seq = ++snapshotSeqRef.current;
     let fallbackActivated = false;
-    const todayKey = getTodayKey();
+    let logsOk = true;
 
     const [existingLogs, attendanceUsers] = await Promise.all([
-      loadTransportLogs(sp, todayKey).catch((err) => {
-        console.warn('[useTransportStatus] Failed to load SP logs, starting fresh', err);
+      loadTransportLogs(sp, dateKey).catch((err) => {
+        console.warn('[useTransportStatus] Failed to load Transport_Log', err);
+        logsOk = false;
         return [] as TransportLogEntry[];
       }),
-      getActiveUsers(sp, undefined, todayKey).catch((err) => {
+      getActiveUsers(sp, undefined, dateKey).catch((err) => {
         console.warn('[useTransportStatus] Failed to load AttendanceUsers, showing all users', err);
         fallbackActivated = true;
         return [] as AttendanceUserItem[];
       }),
     ]);
 
-    const users = adaptUsers(summary.users, attendanceUsers);
+    const logsForDate = selectTransportLogsForDate(existingLogs, dateKey);
+    const users = summary.users?.length
+      ? adaptUsers(summary.users, attendanceUsers)
+      : [];
     const visits = adaptVisits(summary.visits);
-    const toLegs = deriveTransportLegs(users, visits, existingLogs, 'to');
-    const fromLegs = deriveTransportLegs(users, visits, existingLogs, 'from');
+    const masterLegs = [
+      ...deriveTransportLegs(users, visits, logsForDate, 'to'),
+      ...deriveTransportLegs(users, visits, logsForDate, 'from'),
+    ];
+    const scheduleLegs = applyTransportLogs(
+      buildLegsForScheduleAssignments(todayScheduleRows, masterLegs, userNameById, dateKey),
+      logsForDate,
+      dateKey,
+    );
 
     return {
+      dateKey,
+      seq,
+      startedRevision,
+      logsOk,
       fallbackActivated,
       usersCount: users.length,
-      legs: [...toLegs, ...fromLegs],
+      legs: [...masterLegs, ...scheduleLegs],
     };
-  }, [summary.users, summary.visits, sp]);
+  }, [summary.users, summary.visits, sp, todayScheduleRows, userNameById]);
 
-  const refresh = useCallback(async () => {
-    const snapshot = await buildLegSnapshot();
-    if (!snapshot) return;
+  const heldKeysForSnapshot = useCallback((dateKey: string, startedRevision: number) => {
+    const held = new Set<string>();
+    for (const [key, hold] of holdsRef.current) {
+      if (hold.dateKey === dateKey) held.add(key);
+    }
+    for (const [key, mark] of commitsRef.current) {
+      if (mark.dateKey === dateKey && startedRevision < mark.revision) held.add(key);
+    }
+    return held;
+  }, []);
 
-    setLegs(snapshot.legs);
+  const publishLegSnapshot = useCallback((snapshot: {
+    dateKey: string;
+    seq: number;
+    startedRevision: number;
+    logsOk: boolean;
+    fallbackActivated: boolean;
+    usersCount: number;
+    legs: TransportLeg[];
+  }) => {
+    if (!isCurrentTransportDate(snapshot.dateKey, todayKeyRef.current)) return;
+    if (snapshot.seq < appliedSnapshotSeqRef.current) return;
+    appliedSnapshotSeqRef.current = snapshot.seq;
+    if (!snapshot.logsOk) {
+      setLogsPhase('error');
+      return;
+    }
+    setLogsPhase('ready');
+    const preserveLocalStatus = !discardPreviousLegsRef.current && legsDateRef.current === snapshot.dateKey;
+    discardPreviousLegsRef.current = false;
+    legsDateRef.current = snapshot.dateKey;
+    const heldKeys = preserveLocalStatus
+      ? heldKeysForSnapshot(snapshot.dateKey, snapshot.startedRevision)
+      : undefined;
+    setLegs((current) => composeEffectiveLegs({
+      previous: preserveLocalStatus ? current : [],
+      derived: snapshot.legs,
+      preserveLocalStatus,
+      heldKeys,
+    }));
 
     if (snapshot.fallbackActivated) {
       trackTransportEvent({
@@ -317,11 +436,44 @@ export function useTransportStatus(): UseTransportStatusReturn {
         clientTs: new Date().toISOString(),
       });
     }
-  }, [buildLegSnapshot]);
+  }, [heldKeysForSnapshot]);
+
+  const adoptJstDate = useCallback((nextKey: string): boolean => {
+    const stateMatches = isCurrentTransportDate(nextKey, todayKeyRef.current);
+    const legsMatch = isCurrentTransportDate(nextKey, legsDateRef.current);
+    if (stateMatches && legsMatch) return false;
+    discardPreviousLegsRef.current = true;
+    legsDateRef.current = nextKey;
+    todayKeyRef.current = nextKey;
+    setTodayKey((current) => (current === nextKey ? current : nextKey));
+    setLegs(EMPTY_LEGS);
+    return true;
+  }, []);
+
+  const refresh = useCallback(async () => {
+    const dateKey = todayKeyRef.current;
+    const snapshot = await buildLegSnapshot(dateKey);
+    if (!isCurrentTransportDate(snapshot.dateKey, todayKeyRef.current)) return;
+    publishLegSnapshot(snapshot);
+  }, [buildLegSnapshot, publishLegSnapshot]);
+
+  // Align the board at the next JST midnight. The 60s clock below is only a backup.
+  useEffect(() => {
+    let timeoutId = 0;
+    const arm = () => {
+      timeoutId = window.setTimeout(() => {
+        adoptJstDate(getTodayKey());
+        arm();
+      }, msUntilNextJstMidnight());
+    };
+    arm();
+    return () => window.clearTimeout(timeoutId);
+  }, [adoptJstDate]);
 
   // Timer: update currentTime every 60s for overdue detection
   useEffect(() => {
     const timer = setInterval(() => {
+      adoptJstDate(getTodayKey());
       setCurrentTime(formatHHmm(new Date()));
 
       // Only auto-switch direction if user hasn't manually changed
@@ -333,6 +485,9 @@ export function useTransportStatus(): UseTransportStatusReturn {
       // ── Stale-in-progress detection ──
       const todayKey = getTodayKey();
       setLegs((currentLegs) => {
+        if (discardPreviousLegsRef.current || !isCurrentTransportDate(legsDateRef.current, todayKey)) {
+          return currentLegs.length === 0 ? currentLegs : EMPTY_LEGS;
+        }
         for (const leg of currentLegs) {
           if (leg.status !== 'in-progress' || !leg.actualTime) continue;
 
@@ -368,54 +523,60 @@ export function useTransportStatus(): UseTransportStatusReturn {
     }, 60_000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [adoptJstDate]);
 
-  // Derive initial legs when summary data changes (+ load from SP)
+  // One effective leg list for the active JST date, including schedule-only riders.
   useEffect(() => {
     let cancelled = false;
-    if (!summary.users || summary.users.length === 0) return;
+    const dateKey = todayKey;
+    if (legsDateRef.current !== dateKey) {
+      discardPreviousLegsRef.current = true;
+      legsDateRef.current = dateKey;
+      setLegs([]);
+    }
 
     async function initLegs() {
-      const snapshot = await buildLegSnapshot();
-      if (!snapshot || cancelled) return;
-
-      setLegs(snapshot.legs);
-
-      if (snapshot.fallbackActivated) {
-        trackTransportEvent({
-          type: 'transport:fallback-all-users',
-          eventVersion: 1,
-          source: 'useTransportStatus',
-          reason: 'fetch-error',
-          totalUsersShown: snapshot.usersCount,
-          clientTs: new Date().toISOString(),
-        });
-      }
+      const snapshot = await buildLegSnapshot(dateKey);
+      if (cancelled || !isCurrentTransportDate(snapshot.dateKey, todayKeyRef.current)) return;
+      publishLegSnapshot(snapshot);
     }
 
     void initLegs();
     return () => { cancelled = true; };
-  }, [summary.users, buildLegSnapshot]);
+  }, [todayKey, summary.users, buildLegSnapshot, publishLegSnapshot]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   const transition = useCallback(
     (userId: string, direction: TransportDirection, nextStatus: TransportLegStatus): boolean => {
+      const activeDate = getTodayKey();
+      if (adoptJstDate(activeDate) || discardPreviousLegsRef.current) return false;
+      if (!canOperateTransportBoard({
+        activeDateKey: activeDate,
+        boardDateKey: todayKeyRef.current,
+        phase: boardPhaseRef.current,
+      })) return false;
+
       let success = false;
 
       setLegs((prev) => {
-        const index = prev.findIndex(
-          (l) => l.userId === userId && l.direction === direction,
-        );
-        if (index === -1) return prev;
+        if (!isCurrentTransportDate(getTodayKey(), activeDate)) return prev;
+        if (!isCurrentTransportDate(legsDateRef.current, activeDate)) return prev;
+        if (discardPreviousLegsRef.current) return prev;
+        if (!canOperateTransportBoard({
+          activeDateKey: getTodayKey(),
+          boardDateKey: todayKeyRef.current,
+          phase: boardPhaseRef.current,
+        })) return prev;
 
-        const leg = prev[index];
-        const updated = applyTransition(leg, nextStatus);
-        if (!updated) return prev;
+        const result = transitionTransportLegs(prev, userId, direction, nextStatus);
+        if (!result) return prev;
 
         success = true;
-        const next = [...prev];
-        next[index] = updated;
+        const { legs: next, updated, previous: leg } = result;
+        const key = transportLegHoldKey(userId, direction);
+        const revision = ++revisionRef.current;
+        holdsRef.current.set(key, { dateKey: activeDate, revision });
 
         // Telemetry: record status transition
         trackTransportEvent({
@@ -429,24 +590,33 @@ export function useTransportStatus(): UseTransportStatusReturn {
           clientTs: new Date().toISOString(),
         });
 
-        // Phase 3: Fire-and-forget SP save with optimistic rollback
-        const todayKey = getTodayKey();
-        saveTransportLog(spRef.current, {
-          userCode: updated.userId,
-          recordDate: todayKey,
-          direction: updated.direction,
-          status: updated.status,
-          method: updated.method,
-          actualTime: updated.actualTime,
-          driverName: updated.driverName,
-          notes: updated.notes,
+        // Phase 3: Fire-and-forget SP save with optimistic rollback.
+        // Same leg writes wait their turn so arrival cannot land before departure.
+        enqueueTransportLogSave({
+          chains: saveChainsRef.current,
+          key: `${activeDate}\0${key}`,
+          save: () => saveTransportLog(spRef.current, {
+            userCode: updated.userId,
+            recordDate: activeDate,
+            direction: updated.direction,
+            status: updated.status,
+            method: updated.method,
+            actualTime: updated.actualTime,
+            driverName: updated.driverName,
+            notes: updated.notes,
+          }),
         }).then(() => {
+          const hold = holdsRef.current.get(key);
+          if (hold && hold.revision === revision && hold.dateKey === activeDate) {
+            holdsRef.current.delete(key);
+            commitsRef.current.set(key, { dateKey: activeDate, revision });
+          }
           // Phase 3.5: Sync to AttendanceDaily when arrived
           // Fire-and-forget — sync failures should not affect transport log
           if (updated.status === 'arrived') {
             syncToAttendanceDaily(spRef.current, {
               userCode: updated.userId,
-              recordDate: todayKey,
+              recordDate: activeDate,
               direction: updated.direction,
               status: updated.status,
               method: updated.method,
@@ -459,7 +629,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
                 eventVersion: 1,
                 source: 'useTransportStatus',
                 userCode: updated.userId,
-                recordDate: todayKey,
+                recordDate: activeDate,
                 direction: updated.direction,
                 errorMessage: syncErr instanceof Error ? syncErr.message : String(syncErr),
                 errorStatus: (syncErr as { status?: number })?.status,
@@ -470,16 +640,27 @@ export function useTransportStatus(): UseTransportStatusReturn {
         }).catch((err) => {
           console.error('[useTransportStatus] SP save failed, rolling back:', err);
           notifyOperationFailure('transport:rollback', leg.userName);
-          // Rollback: restore the previous leg state
           setLegs((current) => {
-            const rollbackNext = [...current];
-            const rollbackIndex = rollbackNext.findIndex(
-              (l) => l.userId === userId && l.direction === direction,
-            );
-            if (rollbackIndex !== -1) {
-              rollbackNext[rollbackIndex] = leg; // restore original
+            const hold = holdsRef.current.get(key);
+            const latestRevision = hold && hold.dateKey === activeDate ? hold.revision : -1;
+            const restored = restoreLegAfterFailedSave({
+              current,
+              previous: leg,
+              userId,
+              direction,
+              startedDateKey: activeDate,
+              activeDateKey: getTodayKey(),
+              boardDateKey: todayKeyRef.current,
+              operationRevision: revision,
+              latestRevision,
+            });
+            if (!restored) return current;
+            if (hold && hold.revision === revision) holdsRef.current.delete(key);
+            const mark = commitsRef.current.get(key);
+            if (mark && mark.revision === revision && mark.dateKey === activeDate) {
+              commitsRef.current.delete(key);
             }
-            return rollbackNext;
+            return restored;
           });
         });
 
@@ -488,7 +669,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
       return success;
     },
-    [notifyOperationFailure],
+    [adoptJstDate, notifyOperationFailure],
   );
 
   const markInProgress = useCallback(
@@ -511,13 +692,16 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
   // ─── Computed Status ──────────────────────────────────────────────────────
 
-  const status: TodayTransportStatus = useMemo(() => ({
-    to: computeDirectionSummary(enrichedLegs, 'to', currentTime),
-    from: computeDirectionSummary(enrichedLegs, 'from', currentTime),
-    legs: enrichedLegs,
-  }), [enrichedLegs, currentTime]);
+  const wallClockDate = getTodayKey();
+  const legsForActiveDate = isCurrentTransportDate(todayKey, wallClockDate) ? enrichedLegs : EMPTY_LEGS;
 
-  const isReady = legs.length > 0;
+  const status: TodayTransportStatus = useMemo(() => ({
+    to: computeDirectionSummary(legsForActiveDate, 'to', currentTime),
+    from: computeDirectionSummary(legsForActiveDate, 'from', currentTime),
+    legs: legsForActiveDate,
+  }), [legsForActiveDate, currentTime]);
+
+  const isReady = boardPhase === 'ready' && legsForActiveDate.length > 0;
 
   return useMemo(
     () => ({
@@ -530,6 +714,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
       markAbsent,
       currentTime,
       isReady,
+      boardPhase,
       refresh,
     }),
     [
@@ -542,6 +727,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
       markAbsent,
       currentTime,
       isReady,
+      boardPhase,
       refresh,
     ],
   );

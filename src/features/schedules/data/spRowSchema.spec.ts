@@ -8,6 +8,20 @@ vi.mock('@/lib/telemetry/spTelemetry', () => ({
 
 describe('spRowSchema - Robust Mapping', () => {
   describe('mapSpRowToSchedule', () => {
+    it('maps the SharePoint person name onto the schedule user name', () => {
+      const row = {
+        Id: 95_001,
+        Title: '迎え送迎',
+        EventDate: '2026-03-25T08:30:00+09:00',
+        EndDate: '2026-03-25T09:00:00+09:00',
+        UserCode: 'U002',
+        cr014_personName: '鈴木 美子',
+      } as unknown as SpScheduleRow;
+      const mapped = mapSpRowToSchedule(row);
+      expect(mapped?.userId).toBe('U002');
+      expect(mapped?.userName).toBe('鈴木 美子');
+    });
+
     it('handles Japanese categories and statuses', () => {
       const row = {
         Id: 1,

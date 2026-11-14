@@ -23,11 +23,32 @@ test.describe('Transport assignments week bulk apply reflects in today', () => {
               Id: 2_001,
               UserID: USER_KEEP_ID,
               FullName: USER_KEEP_NAME,
+              IsActive: true,
             },
             {
               Id: 2_000,
               UserID: USER_APPLY_ID,
               FullName: USER_APPLY_NAME,
+              IsActive: true,
+            },
+          ],
+        },
+        {
+          name: 'Staff_Master',
+          items: [
+            {
+              Id: 501,
+              StaffID: 'STF001',
+              StaffId: 'STF001',
+              FullName: '佐藤 運転',
+              IsActive: true,
+            },
+            {
+              Id: 502,
+              StaffID: 'STF002',
+              StaffId: 'STF002',
+              FullName: '鈴木 添乗',
+              IsActive: true,
             },
           ],
         },
@@ -152,6 +173,7 @@ test.describe('Transport assignments week bulk apply reflects in today', () => {
       scope.__ENV__ = {
         ...(scope.__ENV__ ?? {}),
         VITE_FORCE_SHAREPOINT: '1',
+        VITE_DATA_PROVIDER: 'sharepoint',
         VITE_SKIP_SHAREPOINT: '0',
         VITE_DEMO_MODE: '0',
         VITE_FEATURE_USERS_SP: '1',
@@ -172,6 +194,9 @@ test.describe('Transport assignments week bulk apply reflects in today', () => {
     await expect(page.getByTestId('transport-assignment-page')).toBeVisible();
     await expect(page.getByTestId('transport-assignment-date')).toHaveValue(TARGET_DATE);
     await expect(page.getByTestId('transport-assignment-save-button')).toBeDisabled();
+    await expect(page.getByText('配車データを読み込み中...')).toBeHidden();
+    await expect(page.getByTestId('transport-assignment-unassigned-list')).toContainText(USER_APPLY_NAME);
+    await expect(page.getByTestId(`transport-assignment-unassign-車両2-${USER_KEEP_ID}`)).toBeVisible();
 
     await page.getByTestId('transport-assignment-apply-week-bulk-default').click();
 

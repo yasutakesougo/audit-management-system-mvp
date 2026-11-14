@@ -209,6 +209,8 @@ export type WriteItemOptions = {
 
 export type UpdateItemOptions = WriteItemOptions & {
   ifMatch?: string;
+  /** Assignment saves pass `none` so a 412 does not replay the original body. */
+  conflictRetry?: 'none';
 };
 
 // ─── Staff identifier ────────────────────────────────────────────

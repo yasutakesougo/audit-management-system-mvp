@@ -5,6 +5,7 @@ import {
   TransportAssignmentStaffSource,
   buildTransportAssignmentDraft,
   applyPreviousWeekdayDefaults,
+  isSameDraftDate,
 } from '../domain/transportAssignmentDraft';
 import { AssignmentRepository } from '@/features/schedules/domain/assignment';
 import { 
@@ -19,15 +20,70 @@ import { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { TransportAssignment } from '@/features/schedules/domain/assignment';
 import { hasVehicleMissingDriver } from '../domain/transportAssignmentDraft';
 
+/** Same capacities the assignment screen uses when it blocks a normal save. */
+export const TRANSPORT_ASSIGNMENT_VEHICLE_CAPACITIES: Record<string, number> = {
+  '車両1': 6,
+  '車両2': 6,
+  '車両3': 8,
+  '車両4': 4,
+};
+
+export class AssignmentCoordinationBlockedError extends Error {
+  readonly code = 'ASSIGNMENT_COORDINATION_BLOCKED';
+
+  constructor() {
+    super('車両の定員または調整上の競合があるため、保存をやり直せません。');
+    this.name = 'AssignmentCoordinationBlockedError';
+  }
+}
+
 /**
  * Orchestrates the saving of transport assignments from a draft.
  */
+export function listTransportAssignmentsForSave(draft: TransportAssignmentDraft): TransportAssignment[] {
+  const assignments = mapDraftToDomainAssignments(draft);
+  const assignedUserIds = new Set(
+    assignments.flatMap((assignment) =>
+      assignment.userIds.filter((userId) => userId.trim() !== ''),
+    ),
+  );
+  const unassignedUserIds = draft.unassignedUserIds.filter(
+    (userId) => userId.trim() !== '' && !assignedUserIds.has(userId),
+  );
+  if (unassignedUserIds.length > 0) {
+    assignments.push({
+      id: `transport-${draft.date}-${draft.direction}-unassigned`,
+      type: 'transport',
+      start: `${draft.date}T08:00:00Z`,
+      end: `${draft.date}T10:00:00Z`,
+      title: '送迎: 未割当',
+      status: 'planned',
+      assistantStaffIds: [],
+      userIds: unassignedUserIds,
+      direction: draft.direction,
+    });
+  }
+  return assignments;
+}
+
 export async function orchestrateAssignmentSave(
   repo: AssignmentRepository,
-  draft: TransportAssignmentDraft
+  draft: TransportAssignmentDraft,
+  signal?: AbortSignal,
+  options?: { recoveryTouchRowIds?: readonly string[] },
 ): Promise<void> {
-  const assignments = mapDraftToDomainAssignments(draft);
-  await repo.saveBulk(assignments);
+  if (options?.recoveryTouchRowIds && isRecoveryBlockedByCoordination(readAssignmentCoordinationReadiness(draft))) {
+    throw new AssignmentCoordinationBlockedError();
+  }
+  const saveBulk = repo.saveBulk as (
+    this: AssignmentRepository,
+    assignments: TransportAssignment[],
+    options?: { signal?: AbortSignal; recoveryTouchRowIds?: readonly string[] },
+  ) => Promise<void>;
+  await saveBulk.call(repo, listTransportAssignmentsForSave(draft), {
+    ...(signal ? { signal } : {}),
+    ...(options?.recoveryTouchRowIds ? { recoveryTouchRowIds: options.recoveryTouchRowIds } : {}),
+  });
 }
 
 /**
@@ -220,6 +276,24 @@ export function validateSaveReadiness(
 }
 
 /**
+ * Coordination readiness for a draft, using the assignment screen's vehicle capacities.
+ * Concurrency conflicts are a separate gate and are not included here.
+ */
+export function readAssignmentCoordinationReadiness(
+  draft: TransportAssignmentDraft,
+  vehicleNameOverrides: TransportVehicleNameOverrides = {},
+): SaveReadiness {
+  return validateSaveReadiness(
+    getTransportAssignmentInsights(draft, vehicleNameOverrides, TRANSPORT_ASSIGNMENT_VEHICLE_CAPACITIES),
+    [],
+  );
+}
+
+export function isRecoveryBlockedByCoordination(readiness: SaveReadiness): boolean {
+  return readiness.isBlocked && readiness.blockReason === 'coordination_error';
+}
+
+/**
  * Orchestrates the logic for applying default assignments to an entire week.
  */
 export function orchestrateWeekBulkApply(params: {
@@ -244,11 +318,7 @@ export function orchestrateWeekBulkApply(params: {
   const payloadMap = new Map<string, UpdateScheduleEventInput>();
   const allAssignments: TransportAssignment[] = [];
   const summary = weekDateOptions.map((option) => {
-    const dayRows = scheduleRows.filter((row) => {
-      // Manual check to avoid circular dependency if possible, but we already import helpers
-      // We'll assume a simplified check here or use the domain helper if available
-      return row.start?.startsWith(option.date);
-    });
+    const dayRows = scheduleRows.filter((row) => isSameDraftDate(row, option.date));
 
     const baseDraftForDate =
       option.date === targetDate

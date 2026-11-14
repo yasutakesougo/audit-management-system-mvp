@@ -81,6 +81,8 @@ export type TransportStatusCardProps = {
   currentTime: string;
   /** ExceptionCenter からのハイライト対象ユーザーID */
   highlightUserId?: string | null;
+  /** loading and error hide actions until both feeds succeed */
+  boardPhase?: 'loading' | 'ready' | 'error';
 };
 
 // ─── Highlight animation ─────────────────────────────────────────────────────
@@ -513,6 +515,7 @@ export function TransportStatusCard({
   onTransition,
   currentTime,
   highlightUserId,
+  boardPhase = 'ready',
 }: TransportStatusCardProps) {
   const activeSummary = activeDirection === 'to' ? toSummary : fromSummary;
   const activeLegs = legs.filter((l) => l.direction === activeDirection);
@@ -621,6 +624,21 @@ export function TransportStatusCard({
 
       <Divider />
 
+      {boardPhase !== 'ready' && (
+        <Box
+          sx={{ px: 2, py: 3 }}
+          data-testid={boardPhase === 'error' ? 'transport-board-error' : 'transport-board-loading'}
+        >
+          <Typography variant="body2" color={boardPhase === 'error' ? 'error' : 'text.secondary'}>
+            {boardPhase === 'error'
+              ? '送迎データを取得できません。出発・到着・欠席はできません。'
+              : '送迎データを読み込んでいます。取得が終わるまで操作できません。'}
+          </Typography>
+        </Box>
+      )}
+
+      {boardPhase === 'ready' && (
+      <>
       {/* Vehicle assignment board */}
       <VehicleAssignmentBoard legs={sortedLegs} />
 
@@ -713,6 +731,8 @@ export function TransportStatusCard({
           />
         )}
       </Box>
+      </>
+      )}
     </Card>
   );
 }

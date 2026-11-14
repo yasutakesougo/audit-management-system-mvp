@@ -14,6 +14,7 @@ import {
 } from '@/lib/sp/helpers';
 import { reportResourceResolution, useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
 import { summarizeSpError } from '@/lib/errors';
+import { isUsableAssignmentEtag } from './assignmentSaveReport';
 import { mapSpRowToSchedule, type SpScheduleRow } from '../data/spRowSchema';
 import { getSchedulesListTitle } from '../data/spSchema';
 import {
@@ -197,6 +198,35 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
     }
   }
 
+  async readTransportRowEtag(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{ etag: string; item: ScheduleItem } | null> {
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId)) return null;
+    const reader = this.provider as IDataProvider & {
+      readItemEtag?: (
+        resourceName: string,
+        itemId: number,
+        requestSignal?: AbortSignal,
+      ) => Promise<{ item: SpScheduleRow; etag: string | null }>;
+    };
+    if (!reader.readItemEtag) return null;
+    const read = await reader.readItemEtag(this.listTitle, numericId, signal);
+    if (!read || !isUsableAssignmentEtag(read.etag, id)) return null;
+    const fields = await this.resolveFields();
+    const washed = fields
+      ? washRow(
+        read.item as unknown as Record<string, unknown>,
+        this.allCandidates,
+        fields as unknown as Record<string, string | undefined>,
+      ) as unknown as SpScheduleRow
+      : read.item;
+    const item = mapSpRowToSchedule(washed);
+    if (!item) return null;
+    return { etag: read.etag, item: { ...item, etag: read.etag } };
+  }
+
   async getById(id: string): Promise<ScheduleItem | null> {
     let fields: ResolvedScheduleFields | null = null;
     try {
@@ -257,7 +287,7 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
   /**
    * 予定更新
    */
-  async update(input: UpdateScheduleInput, _params?: ScheduleRepositoryMutationParams): Promise<ScheduleItem> {
+  async update(input: UpdateScheduleInput, params?: ScheduleRepositoryMutationParams): Promise<ScheduleItem> {
     let fields: ResolvedScheduleFields | null = null;
     try {
       fields = await this.resolveFields();
@@ -274,8 +304,13 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
         return existing;
       }
 
+      if (params?.assignmentWrite?.conflictRetry === 'none' && !isUsableAssignmentEtag(input.etag, input.id)) {
+        throw new Error('[DataProviderScheduleRepository] Assignment save requires a real SharePoint ETag');
+      }
       const updated = await this.provider.updateItem<SpScheduleRow>(this.listTitle, input.id, payload, {
         etag: input.etag,
+        signal: params?.signal,
+        conflictRetry: params?.assignmentWrite?.conflictRetry,
       });
       
       const item = mapSpRowToSchedule(updated);

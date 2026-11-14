@@ -12,7 +12,7 @@ export async function patchListItem<TBody extends object>(
   id: number,
   body: TBody,
   ifMatch?: string,
-  options?: { signal?: AbortSignal; spOptions?: import('./types').SpRequestOptions },
+  options?: { signal?: AbortSignal; spOptions?: import('./types').SpRequestOptions; conflictRetry?: 'none' },
 ): Promise<Response> {
   const signal = options?.signal;
   const spOptions = options?.spOptions;
@@ -37,7 +37,7 @@ export async function patchListItem<TBody extends object>(
   } catch (err) {
     // If NOT a 412 conflict, rethrow immediately
     const error = err as { status?: number };
-    if (error.status !== 412) throw err;
+    if (error.status !== 412 || options?.conflictRetry === 'none') throw err;
 
     // Conflict detected: Refresh the ETag via GET
     let latestResponse: Response;

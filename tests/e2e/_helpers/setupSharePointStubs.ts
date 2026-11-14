@@ -397,7 +397,16 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         if (index === -1) { await fulfill(route, { status: 404, body: {} }); return; }
         if (effectiveMethod === 'GET') {
           const responseItem = isSchedule ? normalizeScheduleRecord(cloneRecord(items[index] as Record<string, unknown>)) : items[index];
-          await fulfill(route, { status: 200, body: responseItem });
+          const storedEtag = responseItem['@odata.etag'];
+          const etag = typeof storedEtag === 'string' && storedEtag.trim() !== '' ? storedEtag : `"${id},1"`;
+          await fulfill(route, {
+            status: 200,
+            body: responseItem,
+            headers: {
+              ETag: etag,
+              'Access-Control-Expose-Headers': 'ETag',
+            },
+          });
           return;
         }
         if (effectiveMethod === 'PATCH' || effectiveMethod === 'MERGE') {

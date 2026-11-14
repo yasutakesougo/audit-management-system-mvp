@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
+const assignmentSaveHarness = vi.hoisted(() => ({
+  recoverAssignments: vi.fn().mockResolvedValue({ success: true }),
+  unresolvedSaves: [] as unknown[],
+  ledgerState: { kind: 'empty' } as unknown,
+}));
 
 // Mock routing
 const mockNavigate = vi.fn();
@@ -80,7 +85,12 @@ vi.mock('@/features/transport-assignments/hooks/useAssignmentSave', () => ({
     error: null,
     saveAssignments: vi.fn().mockResolvedValue({ success: true }),
     saveBulkAssignments: vi.fn().mockResolvedValue({ success: true }),
+    recoverAssignments: assignmentSaveHarness.recoverAssignments,
     clearError: vi.fn(),
+    resetSaveFeedback: vi.fn(),
+    unresolvedSaves: assignmentSaveHarness.unresolvedSaves,
+    ledgerState: assignmentSaveHarness.ledgerState,
+    reconcileUnresolved: vi.fn(),
   }),
 }));
 
@@ -98,9 +108,35 @@ vi.mock('@/features/schedules/hooks/useAssignments', () => ({
 
 import { useTransportAssignmentPage } from '../useTransportAssignmentPage';
 
+function unresolvedLedgerFor(userId: string) {
+  const record = {
+    schemaVersion: 2,
+    saveContractVersion: 1,
+    requestId: 'req-synthetic',
+    reconciliation: 'pending',
+    targets: [{
+      dateKey: '2026-03-25',
+      direction: 'to',
+      userId,
+      scheduleRowId: 'row-1',
+      outcome: 'IN_FLIGHT',
+      conflict: false,
+      writeStarted: false,
+    }],
+  };
+  return {
+    kind: 'records' as const,
+    scopeClosed: false,
+    records: [record],
+  };
+}
+
 describe('useTransportAssignmentPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    assignmentSaveHarness.unresolvedSaves = [];
+    assignmentSaveHarness.ledgerState = { kind: 'empty' };
+    MOCK_SCHEDULES.splice(1);
   });
 
   it('初期状態が正しくロードされること', () => {
@@ -144,5 +180,49 @@ describe('useTransportAssignmentPage', () => {
 
     // 2026-03-25 + 7 days = 2026-04-01
     expect(result.current.targetDate).toBe('2026-04-01');
+  });
+
+  it('定員内の未解決保存ではRecoveryを出せる', () => {
+    const ledger = unresolvedLedgerFor('I005');
+    assignmentSaveHarness.ledgerState = ledger;
+    assignmentSaveHarness.unresolvedSaves = ledger.records;
+    const { result } = renderHook(() => useTransportAssignmentPage());
+
+    const vehicle1 = result.current.currentDraft.vehicles.find((vehicle) => vehicle.vehicleId === '車両1');
+    expect(vehicle1?.riderUserIds).toEqual(['I005']);
+    expect(result.current.recoveryEligibility).toBe('available');
+    expect(result.current.canRecover).toBe(true);
+  });
+
+  it('定員超過のときRecoveryを出さず、やり直しを呼ばない', async () => {
+    const ledger = unresolvedLedgerFor('I005');
+    assignmentSaveHarness.ledgerState = ledger;
+    assignmentSaveHarness.unresolvedSaves = ledger.records;
+    for (let index = 2; index <= 7; index += 1) {
+      MOCK_SCHEDULES.push({
+        id: `row-extra-${index}`,
+        start: '2026-03-25T08:30:00+09:00',
+        end: '2026-03-25T09:30:00+09:00',
+        title: '送迎',
+        userId: `rider-${index}`,
+        vehicleId: '車両1',
+        etag: `mock-etag-extra-${index}`,
+      });
+    }
+    const { result } = renderHook(() => useTransportAssignmentPage());
+
+    const vehicle1 = result.current.currentDraft.vehicles.find((vehicle) => vehicle.vehicleId === '車両1');
+    expect(vehicle1?.riderUserIds).toHaveLength(7);
+    expect(result.current.coordinationInsights).toContainEqual(expect.objectContaining({
+      type: 'capacity',
+      severity: 'error',
+    }));
+    expect(result.current.recoveryEligibility).toBe('available');
+    expect(result.current.canRecover).toBe(false);
+
+    await act(async () => {
+      await result.current.onRecover();
+    });
+    expect(assignmentSaveHarness.recoverAssignments).not.toHaveBeenCalled();
   });
 });

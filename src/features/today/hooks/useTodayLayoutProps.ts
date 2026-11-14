@@ -304,7 +304,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
           transport.markArrived(userId, transport.activeDirection);
         },
       },
-      transportCard: transport.isReady
+      transportCard: transport.boardPhase !== 'ready' || transport.isReady
         ? {
             legs: transport.status.legs,
             toSummary: transport.status.to,
@@ -314,6 +314,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
             onTransition: transport.transition,
             currentTime: transport.currentTime,
             highlightUserId: transportHighlightUserId,
+            boardPhase: transport.boardPhase,
           }
         : undefined,
       userListProps: {

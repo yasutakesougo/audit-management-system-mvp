@@ -55,11 +55,24 @@ function pickBoolean(value: unknown): boolean {
   return value === true;
 }
 
+const TRANSPORT_DIRECTION_TIME_ZONE = 'Asia/Tokyo';
+
 function parseHour(value: string | undefined): number | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.getHours();
+  const hourText = new Intl.DateTimeFormat('en-US', {
+    timeZone: TRANSPORT_DIRECTION_TIME_ZONE,
+    hour: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(date)
+    .find((part) => part.type === 'hour')?.value;
+  if (!hourText) return null;
+  const hour = Number(hourText);
+  if (!Number.isInteger(hour)) return null;
+  // Some ICU builds format midnight as 24 under hourCycle h23.
+  return hour === 24 ? 0 : hour;
 }
 
 function extractAttendantStaffId(notes: unknown): string | undefined {

@@ -77,6 +77,7 @@ const TransportExecutionPage: React.FC = () => {
             onTransition={transport.transition}
             currentTime={transport.currentTime}
             highlightUserId={transportHighlight.userId}
+            boardPhase={transport.boardPhase}
           />
         </Box>
 
