@@ -452,9 +452,28 @@ export function useAssignmentSave(repository: AssignmentRepository) {
         setLedgerState(latest);
         return;
       }
+      const expectedRecord = JSON.stringify(record);
       const judged = await reread.call(repository, record);
       try {
-        const stored = commitRequest(record.requestId, judged);
+        const applyResult = () => {
+          const current = readAssignmentLedger();
+          const existing = current.kind === 'records'
+            ? current.records.find((entry) => entry.requestId === record.requestId)
+            : undefined;
+          // A delayed reread must not recreate a recovered request or overwrite
+          // a newer result. Check and write while holding the recovery lock.
+          const stored = existing && JSON.stringify(existing) === expectedRecord
+            ? replaceUnresolvedAssignmentSave(record.requestId, judged)
+            : current;
+          unresolvedRef.current = stored.kind === 'records' ? stored.records : [];
+          ledgerRef.current = stored;
+          setLedgerState(stored);
+          return stored;
+        };
+        const locks = globalThis.navigator?.locks;
+        const stored = locks?.request
+          ? await locks.request(ASSIGNMENT_WRITE_LOCK_NAME, { mode: 'exclusive' }, applyResult)
+          : applyResult();
         if (stored.kind === 'corrupt') return;
       } catch (err) {
         ledgerRef.current = { kind: 'write-failed' };
@@ -463,7 +482,7 @@ export function useAssignmentSave(repository: AssignmentRepository) {
         return;
       }
     }
-  }, [commitRequest, repository]);
+  }, [repository]);
 
   const clearError = useCallback(() => {
     const current = statusRef.current;
