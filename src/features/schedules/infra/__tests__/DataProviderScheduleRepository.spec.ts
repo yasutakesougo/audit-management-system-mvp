@@ -168,7 +168,7 @@ describe('DataProviderScheduleRepository (Stability Tests)', () => {
     expect(signalled).toMatchObject({ etag: 'W/"1"', signal: controller.signal });
 
     await repo.update(input as never);
-    const plain = vi.mocked(mockProvider.updateItem).mock.calls.at(-1)?.[3] as { signal?: AbortSignal };
+    const plain = vi.mocked(mockProvider.updateItem).mock.calls.at(-1)?.[3] as { etag?: string; signal?: AbortSignal };
     expect(plain.etag).toBe('W/"1"');
     expect(plain.signal).toBeUndefined();
   });

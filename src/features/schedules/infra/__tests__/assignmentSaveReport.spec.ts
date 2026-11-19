@@ -542,9 +542,9 @@ describe('assignment recovery contract', () => {
   });
 
   it('offers recovery only for the new contract and leaves an old record untouched', () => {
-    expect(assignmentRecoveryEligibility({ kind: 'records', records: [record] }, request)).toBe('available');
+    expect(assignmentRecoveryEligibility({ kind: 'records', records: [record], scopeClosed: false }, request)).toBe('available');
     const legacy = { ...record, saveContractVersion: undefined };
-    expect(assignmentRecoveryEligibility({ kind: 'records', records: [legacy] }, request)).toBe('legacy');
+    expect(assignmentRecoveryEligibility({ kind: 'records', records: [legacy], scopeClosed: false }, request)).toBe('legacy');
     expect(assignmentRecoveryEligibility({ kind: 'corrupt', reason: 'json' }, request)).toBe('corrupt');
     expect(assignmentRecoveryEligibility({ kind: 'empty' }, request)).toBe('none');
   });
