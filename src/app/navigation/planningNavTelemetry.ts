@@ -1,5 +1,6 @@
 import type { NavAudience } from '@/app/config/navigationConfig.types';
 import type { Role } from '@/auth/roles';
+import { automaticTelemetryWriteGuard } from '@/lib/kioskAutomaticTelemetryBoundary';
 import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
@@ -85,6 +86,9 @@ const writeToStorage = (key: string, value: string): void => {
  * Failure is intentionally swallowed to avoid blocking UI interactions.
  */
 export function recordPlanningNavTelemetry(event: PlanningNavTelemetryEvent): void {
+  // Explicit user-action telemetry is deliberately outside this automatic boundary.
+  const canWrite = event.trigger === 'user_toggle' ? () => true : automaticTelemetryWriteGuard(event.pathname);
+  if (!canWrite()) return;
   if (!isFirestoreWriteAvailable()) {
     return;
   }
@@ -101,7 +105,9 @@ export function recordPlanningNavTelemetry(event: PlanningNavTelemetryEvent): vo
   );
 
   try {
-    addDoc(collection(getDb(), 'telemetry'), payload).catch((err) => {
+    const target = collection(getDb(), 'telemetry');
+    if (!canWrite()) return;
+    addDoc(target, payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[planning-nav:telemetry] write failed', err);
     });
@@ -124,6 +130,7 @@ export function markPlanningNavInitialExposure(
   context: PlanningNavContext,
   nowMs: number = Date.now(),
 ): void {
+  if (!automaticTelemetryWriteGuard(context.pathname)()) return;
   const existing = readNumberFromStorage(PLANNING_NAV_STORAGE_KEYS.FIRST_VISIBLE_AT_MS);
   if (existing !== null) return;
 
@@ -145,6 +152,7 @@ export function maybeRecordPlanningNavRetention(
   context: PlanningNavContext,
   opts: { nowMs?: number; retentionWindowDays?: number } = {},
 ): void {
+  if (!automaticTelemetryWriteGuard(context.pathname)()) return;
   const firstVisibleAtMs = readNumberFromStorage(PLANNING_NAV_STORAGE_KEYS.FIRST_VISIBLE_AT_MS);
   if (firstVisibleAtMs === null) return;
   if (readBooleanFromStorage(PLANNING_NAV_STORAGE_KEYS.RETENTION_EMITTED)) return;
