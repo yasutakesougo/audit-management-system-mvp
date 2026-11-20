@@ -3,6 +3,7 @@ import {
   SharePointExecutionRecordRepository,
 } from '../SharePointExecutionRecordRepository';
 import type { ExecutionRecord } from '../../../domain/executionRecordTypes';
+import { asSpFetch } from './asSpFetch';
 
 describe('SharePointExecutionRecordRepository - Cross-User Contamination Regression (RED -> GREEN)', () => {
   const DATE = '2026-10-24';
@@ -95,7 +96,7 @@ describe('SharePointExecutionRecordRepository - Cross-User Contamination Regress
     });
 
     const repo = new SharePointExecutionRecordRepository({
-      spFetch,
+      spFetch: asSpFetch(spFetch),
       getListFieldInternalNames: mockGetFields,
     });
 
@@ -136,6 +137,10 @@ describe('SharePointExecutionRecordRepository - Cross-User Contamination Regress
       userId: USER_6_CODE,
       scheduleItemId: SLOT,
       status: 'completed',
+      triggeredBipIds: [],
+      memo: '',
+      recordedBy: '',
+      recordedAt: '',
     };
     await repo.upsertRecord(draft);
 

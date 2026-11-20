@@ -254,7 +254,12 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         // Simple extraction of InternalName from XML if possible, but for now just mock success
         // Actually, the app usually sends XML like <Field Name="InternalName" ... />
         const body = parseRequestBody(request);
-        const schemaXml = (typeof body === 'string') ? body : (body?.parameters?.SchemaXml || body?.parameters?.schemaXml || '');
+        const parameters = body && typeof body === 'object' && 'parameters' in body
+          ? (body as { parameters?: { SchemaXml?: unknown; schemaXml?: unknown } }).parameters
+          : undefined;
+        const schemaXml = typeof body === 'string'
+          ? body
+          : String(parameters?.SchemaXml ?? parameters?.schemaXml ?? '');
         const nameMatch = schemaXml.match(/Name=["']([^"']+)["']/i);
         if (nameMatch) {
           dynamicFields.get(match.key)!.add(nameMatch[1]);

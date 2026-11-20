@@ -326,10 +326,12 @@ describe('useDailyProcedureFlowPreview', () => {
     const recordForA: ExecutionRecord = {
       id: 'record-a', date: '2026-10-24', userId: 'U001', scheduleItemId: 'procedure-1',
       status: 'completed', memo: 'User A record', triggeredBipIds: [],
+      recordedBy: '', recordedAt: '',
     };
     const recordForB: ExecutionRecord = {
       id: 'record-b', date: '2026-10-24', userId: 'U002', scheduleItemId: 'procedure-1',
       status: 'completed', memo: 'User B record', triggeredBipIds: [],
+      recordedBy: '', recordedAt: '',
     };
     let resolveA!: (records: ExecutionRecord[]) => void;
     let resolveB!: (records: ExecutionRecord[]) => void;

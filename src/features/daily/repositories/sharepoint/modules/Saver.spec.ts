@@ -2,8 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { DailyRecordSaver } from './Saver';
 import { DailyRecordDataAccess } from './DataAccess';
-import type { ResolvedParentFields, ResolvedRowsFields } from '../../constants';
-import type { SaveDailyRecordInput } from '../../../../domain/legacy/DailyRecordRepository';
+import type { ResolvedParentFields, ResolvedRowsFields } from '../constants';
+import type { SaveDailyRecordInput } from '../../../domain/legacy/DailyRecordRepository';
 import * as persistence from '../../../domain/persistence/dailyRecordPersistence';
 
 const jsonResponse = (value: unknown, status = 200): Response =>
@@ -17,6 +17,15 @@ const jsonResponseWithEtag = (value: unknown, etag: string, status = 200): Respo
     status,
     headers: { 'Content-Type': 'application/json', ETag: etag },
   });
+
+function readJsonBody(init: RequestInit | undefined): Record<string, unknown> {
+  if (init?.body == null) throw new Error('expected request body');
+  const parsed: unknown = JSON.parse(String(init.body));
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('expected JSON object body');
+  }
+  return parsed as Record<string, unknown>;
+}
 
 const isParentList = (url: string): boolean =>
   url.includes('/items?') &&
@@ -139,12 +148,12 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       }
 
       if (url.includes('/items') && init?.method === 'POST' && !url.includes('items(')) {
-        childBodies.push(JSON.parse(String(init.body)));
+        childBodies.push(readJsonBody(init));
         return jsonResponse({ Id: 1000 + childBodies.length });
       }
 
       if (url.includes('items(42)') && httpMethod === 'MERGE') {
-        parentMerges.push(JSON.parse(String(init.body)));
+        parentMerges.push(readJsonBody(init));
         return new Response(null, { status: 204 });
       }
 
@@ -190,7 +199,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
       }
       if (target.includes("DailyRecordRows')/items") && init?.method === 'POST' && !target.includes('items(')) {
         childPosted = true;
-        childVersion = JSON.parse(String(init.body)).Version as number;
+        childVersion = readJsonBody(init).Version as number;
         return jsonResponse({ Id: 1001 });
       }
       if (target.includes('items(42)') && httpMethod === 'MERGE') {
@@ -275,7 +284,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({ Id: 2000 + childPosts });
       }
       if (url.includes('items(7)') && httpMethod === 'MERGE') {
-        parentMerges.push(JSON.parse(String(init.body)));
+        parentMerges.push(readJsonBody(init));
         return new Response(null, { status: 204 });
       }
       return jsonResponse({ value: [] });
@@ -312,18 +321,18 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({ value: [{ Id: 90 }] });
       }
       if (url.endsWith('/items') && init?.method === 'POST' && url.includes('SupportRecord_Daily')) {
-        creates.push(JSON.parse(String(init.body)));
+        creates.push(readJsonBody(init));
         return jsonResponseWithEtag({ Id: 90 }, '"etag-90"');
       }
       if (isParentCommitSnapshotRead(String(url), init)) {
         return parentCommitSnapshotResponse(String(url), 0, '"etag-90"');
       }
       if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
-        childBodies.push(JSON.parse(String(init.body)));
+        childBodies.push(readJsonBody(init));
         return jsonResponse({ Id: 901 });
       }
       if (url.includes('items(90)') && httpMethod === 'MERGE') {
-        merges.push(JSON.parse(String(init.body)));
+        merges.push(readJsonBody(init));
         return new Response(null, { status: 204 });
       }
       return jsonResponse({ value: [] });
@@ -412,11 +421,11 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return jsonResponse({ Id: 99 });
       }
       if (target.includes('DailyRecordRows') && init?.method === 'POST' && !target.includes('items(')) {
-        childBodies.push(JSON.parse(String(init.body)));
+        childBodies.push(readJsonBody(init));
         return jsonResponse({ Id: 901 });
       }
       if (target.includes('items(10)') && httpMethod === 'MERGE') {
-        merges.push(JSON.parse(String(init.body)));
+        merges.push(readJsonBody(init));
         return new Response(null, { status: 204 });
       }
       return jsonResponse({ value: [] });
@@ -465,11 +474,11 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return new Response('duplicate value found for Title', { status: 409 });
       }
       if (target.includes('DailyRecordRows') && init?.method === 'POST' && !target.includes('items(')) {
-        childBodies.push(JSON.parse(String(init.body)));
+        childBodies.push(readJsonBody(init));
         return jsonResponse({ Id: 901 });
       }
       if (target.includes('items(10)') && httpMethod === 'MERGE') {
-        merges.push(JSON.parse(String(init.body)));
+        merges.push(readJsonBody(init));
         return new Response(null, { status: 204 });
       }
       return jsonResponse({ value: [] });
@@ -564,7 +573,7 @@ describe('DailyRecordSaver DAILY-RECORD-PERSISTENCE-V1', () => {
         return parentCommitSnapshotResponse(String(url), 4, '"etag-stale"', 'commit-v4');
       }
       if (url.includes('DailyRecordRows') && init?.method === 'POST' && !url.includes('items(')) {
-        childBodies.push(JSON.parse(String(init.body)));
+        childBodies.push(readJsonBody(init));
         return jsonResponse({ Id: 3000 + childBodies.length });
       }
       if (url.includes('items(42)') && httpMethod === 'MERGE') {

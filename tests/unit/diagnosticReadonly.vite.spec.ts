@@ -43,8 +43,7 @@ describe.each(['dev', 'preview'] as const)('diagnostic read-only proxy on Vite %
     port = (server.httpServer!.address() as AddressInfo).port;
   });
   afterEach(async () => {
-    if (server && 'close' in server) await server.close();
-    else if (server) await new Promise<void>((done) => server.httpServer.close(() => done()));
+    if (server) await server.close();
     if (directory) await rm(directory, { recursive: true, force: true });
     vi.unstubAllGlobals(); vi.unstubAllEnvs();
   });

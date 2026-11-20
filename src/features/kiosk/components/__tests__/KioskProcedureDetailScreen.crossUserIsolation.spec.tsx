@@ -144,6 +144,9 @@ describe('KioskProcedureDetailScreen - Real Screen Cross-User Isolation', () => 
       scheduleItemId: 'procedure-1',
       status: 'completed',
       memo: '利用者17の記録本文',
+      triggeredBipIds: [],
+      recordedBy: '',
+      recordedAt: '',
     };
     mockUseExecutionRecord.mockReturnValue(makeHookResult(foreignRecord));
 
@@ -174,6 +177,9 @@ describe('KioskProcedureDetailScreen - Real Screen Cross-User Isolation', () => 
       scheduleItemId: 'procedure-1',
       status: 'completed',
       memo: '【様子】良好',
+      triggeredBipIds: [],
+      recordedBy: '',
+      recordedAt: '',
     };
     mockUseExecutionRecord.mockReturnValue(makeHookResult(authenticRecord));
 
@@ -214,6 +220,9 @@ describe('KioskProcedureDetailScreen - Real Screen Cross-User Isolation', () => 
       scheduleItemId: 'procedure-1',
       status: 'completed',
       memo: '【様子】良好',
+      triggeredBipIds: [],
+      recordedBy: '',
+      recordedAt: '',
     };
     mockUseExecutionRecord.mockReturnValue(makeHookResult(legacyRecord));
 
@@ -243,6 +252,10 @@ describe('KioskProcedureDetailScreen - Real Screen Cross-User Isolation', () => 
       userId: 'I005',
       scheduleItemId: 'procedure-1',
       status: 'completed',
+      triggeredBipIds: [],
+      memo: '',
+      recordedBy: '',
+      recordedAt: '',
     };
     mockUseExecutionRecord.mockReturnValue(makeHookResult(user6Record));
 

@@ -1,3 +1,4 @@
+import { isValidElement } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import ProtectedRoute from '@/app/ProtectedRoute';
@@ -15,6 +16,6 @@ describe('recordRoutes', () => {
     const route = recordRoutes.find(item => item.path === 'billing');
 
     expect(route).toBeDefined();
-    expect(route?.element?.type).toBe(ProtectedRoute);
+    expect(isValidElement(route?.element) ? route.element.type : undefined).toBe(ProtectedRoute);
   });
 });
