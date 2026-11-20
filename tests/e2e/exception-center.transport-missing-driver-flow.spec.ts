@@ -4,6 +4,8 @@ import { bootstrapDashboard } from './utils/bootstrapApp';
 const COLLAPSED_PARENTS_STORAGE_KEY = 'exception-collapsed-parents';
 const SCHEDULES_STORAGE_KEY = 'e2e:schedules.v1';
 
+test.use({ timezoneId: 'Asia/Tokyo' });
+
 test.describe('ExceptionCenter transport missing-driver child flow', () => {
   test('flat/grouped rendering and child deep-link landing remain consistent', async ({ page }) => {
     await page.addInitScript(({ collapsedParentsKey, schedulesKey }) => {
