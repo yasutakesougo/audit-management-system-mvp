@@ -4,7 +4,6 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { request } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { createServer, loadConfigFromFile, preview, type Plugin, type ViteDevServer, type PreviewServer } from 'vite';
 
 describe.each(['dev', 'preview'] as const)('diagnostic read-only proxy on Vite %s', (host) => {
@@ -40,11 +39,18 @@ describe.each(['dev', 'preview'] as const)('diagnostic read-only proxy on Vite %
     } else {
       server = await preview({ ...options, preview: { host: '127.0.0.1', port: 0 } });
     }
-    port = (server.httpServer!.address() as AddressInfo).port;
+    const httpServer = server.httpServer;
+    if (!httpServer) {
+      throw new Error('Vite httpServer was not started');
+    }
+    const address = httpServer.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('Vite httpServer is not bound to a TCP port');
+    }
+    port = address.port;
   });
   afterEach(async () => {
-    if (server && 'close' in server) await server.close();
-    else if (server) await new Promise<void>((done) => server.httpServer.close(() => done()));
+    if (server) await server.close();
     if (directory) await rm(directory, { recursive: true, force: true });
     vi.unstubAllGlobals(); vi.unstubAllEnvs();
   });
