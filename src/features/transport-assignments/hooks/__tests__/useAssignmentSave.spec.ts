@@ -7,6 +7,7 @@ import {
   isTransportAssignmentEditorBusy,
   loadUnresolvedAssignmentSaves,
   type AssignmentSaveReport,
+  type UnresolvedAssignmentSave,
 } from '@/features/schedules';
 import { AssignmentCoordinationBlockedError } from '../../application/transportAssignmentApplication';
 import { AssignmentSaveBlockedError, useAssignmentSave } from '../useAssignmentSave';
@@ -1097,6 +1098,141 @@ describe('assignment recovery', () => {
     expect(saveBulk).toHaveBeenCalledTimes(1);
     const remaining = loadUnresolvedAssignmentSaves();
     expect(remaining.map((record) => record.requestId)).toEqual(['other-row']);
+  });
+
+  it.each([false, true])('keeps a recovered request removed after a stale reread (separate hook: %s)', async (separateHook) => {
+    const other = {
+      ...stored('other', 1),
+      targets: [{ ...stored('other', 1).targets[0], userId: 'U009', scheduleRowId: 'row-9' }],
+    };
+    localStorage.setItem(key, JSON.stringify([stored('A', 1), other]));
+    installLock(true);
+    let finishReread!: (record: UnresolvedAssignmentSave) => void;
+    let staleRecord!: UnresolvedAssignmentSave;
+    const repository = Object.assign(repositoryWith(vi.fn().mockResolvedValue(undefined)), {
+      rereadUnresolvedSave: async (record: UnresolvedAssignmentSave) => {
+        if (record.requestId !== 'A') return record;
+        staleRecord = record;
+        return new Promise<UnresolvedAssignmentSave>((resolve) => { finishReread = resolve; });
+      },
+      consumeRecoveryMerges: () => [{ scheduleRowId: 'row-2', beforeEtag: '"8,1"', afterEtag: '"9,1"' }],
+    });
+    const checking = renderHook(() => useAssignmentSave(repository));
+    const recovering = separateHook ? renderHook(() => useAssignmentSave(repository)) : checking;
+    let pending!: Promise<void>;
+    act(() => { pending = checking.result.current.reconcileUnresolved(); });
+    expect(staleRecord.requestId).toBe('A');
+    await act(async () => {
+      const saved = await recovering.result.current.recoverAssignments(draft);
+      expect(saved.success).toBe(true);
+    });
+    expect(loadUnresolvedAssignmentSaves().map((record) => record.requestId)).toEqual(['other']);
+
+    await act(async () => {
+      finishReread(staleRecord);
+      await pending;
+    });
+
+    expect.soft(loadUnresolvedAssignmentSaves()).toEqual([other]);
+    expect.soft(checking.result.current.unresolvedSaves).toEqual([other]);
+    await act(async () => {
+      const saved = await checking.result.current.saveAssignments(draft);
+      expect(saved.success).toBe(true);
+    });
+    expect(loadUnresolvedAssignmentSaves()).toEqual([other]);
+  });
+
+  it.each([false, true])('keeps a newer ledger result when an older reread completes (removal: %s)', async (removal) => {
+    localStorage.setItem(key, JSON.stringify([stored('A', 1)]));
+    let finishReread!: (record: UnresolvedAssignmentSave | null) => void;
+    let staleRecord!: UnresolvedAssignmentSave;
+    const repository = Object.assign(repositoryWith(vi.fn()), {
+      rereadUnresolvedSave: async (record: UnresolvedAssignmentSave) => {
+        staleRecord = record;
+        return new Promise<UnresolvedAssignmentSave | null>((resolve) => { finishReread = resolve; });
+      },
+    });
+    const { result } = renderHook(() => useAssignmentSave(repository));
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.reconcileUnresolved(); });
+    const newer = { ...staleRecord, reconciliation: 'complete' as const };
+    localStorage.setItem(key, JSON.stringify([newer]));
+    await act(async () => {
+      finishReread(removal ? null : staleRecord);
+      await pending;
+    });
+    expect(loadUnresolvedAssignmentSaves()).toEqual([newer]);
+    expect(result.current.unresolvedSaves).toEqual([newer]);
+  });
+
+  it('checks the ledger after acquiring the lock held by a pending recovery', async () => {
+    localStorage.setItem(key, JSON.stringify([stored('A', 1)]));
+    let finishRecoveryWrite!: () => void;
+    let releaseLock!: () => void;
+    const recoveryFinished = new Promise<void>((resolve) => { releaseLock = resolve; });
+    let reconciliationWaiting = false;
+    const requestedLockNames: string[] = [];
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: {
+        request: async (name: string, options: LockOptions, callback: (lock: object) => Promise<unknown>) => {
+          requestedLockNames.push(name);
+          if (options.ifAvailable) {
+            try {
+              return await callback({ name: 'recovery-held' });
+            } finally {
+              releaseLock();
+            }
+          }
+          reconciliationWaiting = true;
+          await recoveryFinished;
+          return callback({ name: 'reconciliation-held' });
+        },
+      },
+    });
+    const repository = Object.assign(repositoryWith(vi.fn(() => new Promise<void>((resolve) => {
+      finishRecoveryWrite = resolve;
+    }))), {
+      rereadUnresolvedSave: async (record: UnresolvedAssignmentSave) => record,
+      consumeRecoveryMerges: () => [{ scheduleRowId: 'row-2', beforeEtag: '"8,1"', afterEtag: '"9,1"' }],
+    });
+    const checking = renderHook(() => useAssignmentSave(repository));
+    const recovering = renderHook(() => useAssignmentSave(repository));
+    let recovery!: Promise<{ success: boolean }>;
+    let reconciliation!: Promise<void>;
+    await act(async () => {
+      recovery = recovering.result.current.recoverAssignments(draft);
+      await Promise.resolve();
+    });
+    expect(finishRecoveryWrite).toBeTypeOf('function');
+    await act(async () => {
+      reconciliation = checking.result.current.reconcileUnresolved();
+      await Promise.resolve();
+    });
+    expect(reconciliationWaiting).toBe(true);
+    expect(requestedLockNames).toHaveLength(2);
+    expect(requestedLockNames[0]).not.toBe('');
+    expect(requestedLockNames[1]).toBe(requestedLockNames[0]);
+    await act(async () => {
+      finishRecoveryWrite();
+      expect((await recovery).success).toBe(true);
+      await reconciliation;
+    });
+    expect(loadUnresolvedAssignmentSaves()).toEqual([]);
+    expect(checking.result.current.unresolvedSaves).toEqual([]);
+  });
+
+  it('applies a reread result to an unchanged request without Web Locks', async () => {
+    localStorage.setItem(key, JSON.stringify([stored('A', 1)]));
+    const repository = Object.assign(repositoryWith(vi.fn()), {
+      rereadUnresolvedSave: async (record: UnresolvedAssignmentSave) => ({
+        ...record, reconciliation: 'complete' as const,
+      }),
+    });
+    const { result } = renderHook(() => useAssignmentSave(repository));
+    await act(async () => { await result.current.reconcileUnresolved(); });
+    expect(loadUnresolvedAssignmentSaves()).toEqual([{ ...stored('A', 1), reconciliation: 'complete' }]);
+    expect(result.current.unresolvedSaves).toEqual([{ ...stored('A', 1), reconciliation: 'complete' }]);
   });
 
   it('keeps the ledger when recovery hits 412 or a network error', async () => {
