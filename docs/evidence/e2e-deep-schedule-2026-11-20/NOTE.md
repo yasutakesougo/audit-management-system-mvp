@@ -17,13 +17,13 @@ Same 5 failed lanes as previous schedule (`44442412713`):
 - FAIL: `implementation-hot`, `fixture-memory`, `app-a11y`, `sp-stub`, `general`
 - PASS: Integration Scenarios, Union Audit, `transport-date-check`
 
-## New fact
+## New fact (historical; superseded 2026-11-21)
 
-`transport-date-check` is now **5 consecutive PASS**:
+At the time of this note, `transport-date-check` was **5 consecutive PASS**:
 
 `43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`
 
-After a one-off FAIL, five consecutive PASSes further support **flake / wobble** over a stable regression.
+**STALE as of run [44854380448](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44854380448)** (`transport-date-check` FAIL on same `9d0d519`). See `docs/evidence/e2e-deep-schedule-2026-11-21/NOTE.md`.
 
 ## Explicit non-claims
 
