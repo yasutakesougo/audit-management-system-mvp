@@ -19,9 +19,27 @@
 
 ## transport-date-check 経過
 
-5連続 PASS（`43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`）の後、本 run `44854380448` で FAIL。同一 commit `9d0d519` で両方向の結果が観測されており、安定回帰より揺れの読みが強まった。
+5連続 PASS（`43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`）の後、本 run `44854380448` で FAIL。[44974887699](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44974887699) でも FAIL（3m54s）し、main では2回連続 FAIL。同一 commit `9d0d519` で PASS と FAIL の両方向が観測されているため、安定した回帰とは断定せず、揺れの読みを維持する。
 
 （親ノート: `docs/evidence/e2e-deep-schedule-2026-11-20/NOTE.md`）
+
+## Follow-up run — 44974887699（追記 2026-11-22）
+
+| Item | Value |
+| --- | --- |
+| Run | [44974887699](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44974887699) |
+| Workflow | E2E Deep Tests (`schedule`) |
+| HEAD | `9d0d519` (`main`) |
+| Failure notice | 2026-11-22 11:36 JST |
+| Run conclusion | failure |
+| 格付け | PARTIALLY REVIEWED（ジョブ単位のみ） |
+
+### Lane outcomes (job-level)
+
+- FAIL 6レーン: `general`（22m50s）、`implementation-hot`（16m12s）、`fixture-memory`（9m29s）、`app-a11y`（9m01s）、`sp-stub`（5m48s）、`transport-date-check`（3m54s）
+- PASS: Integration Scenarios、Deep Lane Union Audit、Select deep lanes
+
+**未投稿の統合記録への位置づけ:** 引用する run が1本増えた（判断変更なし）。
 
 ## Explicit non-claims
 
