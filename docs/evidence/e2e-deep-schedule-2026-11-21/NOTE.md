@@ -19,7 +19,7 @@
 
 ## transport-date-check 経過（現在形の「5連続 PASS」「2回連続 FAIL」主張は不可）
 
-5連続 PASS（`43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`）の後、本 run `44854380448` で FAIL。[44974887699](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44974887699) でも FAIL（3m54s）し2回連続 FAIL。[45098800410](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45098800410) では PASS（4m18s）に反転し、main では2回連続 FAIL のあと再び PASS。同一 commit `9d0d519` で PASS と FAIL の両方向が観測されているため、安定した回帰とは断定せず、揺れの読みを維持する。
+5連続 PASS（`43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`）の後、本 run `44854380448` で FAIL。[44974887699](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44974887699) でも FAIL（3m54s）し2回連続 FAIL。[45098800410](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45098800410) では PASS（4m18s）に反転。[45310529346](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45310529346) でも PASS（3m28s）し、2回連続 FAIL のあと2回連続 PASS。同一 commit `9d0d519` で PASS と FAIL の両方向が連続して観測されているため、安定した回帰とも解消とも断定せず、揺れの読みを維持する。
 
 （親ノート: `docs/evidence/e2e-deep-schedule-2026-11-20/NOTE.md`）
 
@@ -56,6 +56,24 @@
 
 - FAIL 5レーン: `general`（11m24s）、`implementation-hot`（15m52s）、`fixture-memory`（8m22s）、`app-a11y`（8m14s）、`sp-stub`（7m30s）
 - PASS: Integration Scenarios（3m52s）、Select deep lanes、`transport-date-check`（4m18s）、Deep Lane Union Audit（1m51s）
+
+**未投稿の統合記録への位置づけ:** 引用する run が1本増えた（判断変更なし）。
+
+## Follow-up run — 45310529346（追記 2026-11-24）
+
+| Item | Value |
+| --- | --- |
+| Run | [45310529346](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45310529346) |
+| Workflow | E2E Deep Tests (`schedule`) |
+| HEAD | `9d0d519` (`main`) |
+| Failure notice | 2026-11-24 11:31 JST |
+| Run conclusion | failure |
+| 格付け | PARTIALLY REVIEWED（ジョブ単位のみ） |
+
+### Lane outcomes (job-level)
+
+- FAIL 5レーン: `general`（10m43s）、`implementation-hot`（17m09s）、`fixture-memory`（8m36s）、`app-a11y`（7m41s）、`sp-stub`（7m33s）
+- PASS: Integration Scenarios（4m42s）、Select deep lanes、`transport-date-check`（3m28s）、Deep Lane Union Audit（1m59s）
 
 **未投稿の統合記録への位置づけ:** 引用する run が1本増えた（判断変更なし）。
 
