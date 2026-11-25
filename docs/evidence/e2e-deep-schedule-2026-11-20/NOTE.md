@@ -21,7 +21,7 @@ Same 5 failed lanes as previous schedule (`44442412713`):
 
 ## transport-date-check 経過（現在形の「5連続 PASS」「2回連続 FAIL」主張は不可）
 
-5連続 PASS（`43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`）の後、[44854380448](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44854380448) で FAIL。[44974887699](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44974887699) でも FAIL（3m54s）し2回連続 FAIL。[45098800410](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45098800410) では PASS（4m18s）に反転。[45310529346](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45310529346) でも PASS（3m28s）し、2回連続 FAIL のあと2回連続 PASS。同一 commit `9d0d519` で PASS と FAIL の両方向が連続して観測されているため、安定した回帰とも解消とも断定せず、揺れの読みを維持する。
+5連続 PASS（`43790676805` → `44001137183` → `44442412713` → `44474414438` → `44658944409`）の後、[44854380448](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44854380448) で FAIL。[44974887699](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/44974887699) でも FAIL（3m54s）し2回連続 FAIL。[45098800410](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45098800410) では PASS（4m18s）に反転。[45310529346](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45310529346) でも PASS（3m28s）し2回連続 PASS。[45531144993](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45531144993) でも PASS（4m54s）し、3回連続 PASS。同一 commit `9d0d519` で PASS と FAIL の両方向がそれぞれ連続して観測されているため、安定した回帰とも解消とも断定せず、揺れの読みを維持する。
 
 詳細は `docs/evidence/e2e-deep-schedule-2026-11-21/NOTE.md` も参照。
 
@@ -94,6 +94,24 @@ Same 5 failed lanes as previous schedule (`44442412713`):
 
 - FAIL 5レーン: `general`（10m43s）、`implementation-hot`（17m09s）、`fixture-memory`（8m36s）、`app-a11y`（7m41s）、`sp-stub`（7m33s）
 - PASS: Integration Scenarios（4m42s）、Select deep lanes、`transport-date-check`（3m28s）、Deep Lane Union Audit（1m59s）
+
+**未投稿の統合記録への位置づけ:** 引用する run が1本増えた（判断変更なし）。
+
+## Follow-up run — 45531144993（追記 2026-11-25）
+
+| Item | Value |
+| --- | --- |
+| Run | [45531144993](https://github.com/yasutakesougo/audit-management-system-mvp/actions/runs/45531144993) |
+| Workflow | E2E Deep Tests (`schedule`) |
+| HEAD | `9d0d519` (`main`) |
+| Failure notice | 2026-11-25 11:30 JST |
+| Run conclusion | failure |
+| 格付け | PARTIALLY REVIEWED（ジョブ単位のみ） |
+
+### Lane outcomes (job-level)
+
+- FAIL 5レーン: `general`（11m48s）、`implementation-hot`（16m58s）、`fixture-memory`（9m03s）、`app-a11y`（9m02s）、`sp-stub`（7m28s）
+- PASS: Select deep lanes（4s）、Integration Scenarios（3m05s）、`transport-date-check`（4m54s）、Deep Lane Union Audit（1m20s）
 
 **未投稿の統合記録への位置づけ:** 引用する run が1本増えた（判断変更なし）。
 
